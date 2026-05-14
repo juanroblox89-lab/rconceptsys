@@ -78,6 +78,8 @@ export const Sidebar = () => {
                 style: { maxHeight: '44px', width: 'auto', display: 'block', margin: '0 auto' }
             }));
         }
+    }).catch(err => {
+        console.warn("Using text fallback for logo:", err);
     });
 
     // ─── Sidebar container ─────────────────────────────────

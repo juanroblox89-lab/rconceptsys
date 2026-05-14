@@ -146,7 +146,7 @@ export const authService = {
                         callback(userDoc);
                     }
                 } catch (err) {
-                    console.warn("Firestore access error fetching user, returning base token:", err);
+                    console.warn("Firestore access error fetching user, using master fallback:", err);
                     callback({
                         uid: user.uid,
                         nombre: user.displayName || user.email.split('@')[0],

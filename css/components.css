@@ -161,6 +161,13 @@
 
 .sidebar-overlay.visible { display: block; }
 
+/* Hide overlay on desktop even if 'visible' class is present */
+@media (min-width: 769px) {
+    .sidebar-overlay, .sidebar-overlay.visible {
+        display: none !important;
+    }
+}
+
 /* ================================
    BOTTOM NAVIGATION (Mobile Only)
 ================================ */

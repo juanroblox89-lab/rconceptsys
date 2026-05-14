@@ -52,12 +52,12 @@ export const Header = () => {
                 title: 'Acceso Admin Temporal'
             }, '⚡ ADMIN'),
 
-            // User role chip — hidden on very small screens
+            // User role chip
             h('span', {
-                id: 'mobile-role-indicator',
-                className: 'badge badge-secondary sm-hide',
-                style: { fontSize: '0.6rem' }
-            }, user?.role?.toUpperCase() || 'VIEWER'),
+                id: 'role-indicator',
+                className: `badge ${user?.role === 'admin' ? 'badge-success' : 'badge-warning'}`,
+                style: { fontSize: '0.65rem' }
+            }, user?.role === 'admin' ? 'ADMIN' : (user?.approved ? user?.role?.toUpperCase() : 'PENDIENTE')),
 
             // Search button — desktop only
             h('button', {
