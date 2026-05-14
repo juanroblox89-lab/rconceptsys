@@ -58,13 +58,18 @@ export const Header = () => {
                 ? h('span', { className: 'badge badge-success', style: { fontSize: '0.65rem', padding: '3px 8px' } }, [icon('shield-check', 11), h('span', { className: 'ml-1' }, 'ADMIN')])
                 : h('span', { className: `badge ${user?.approved ? 'badge-info' : 'badge-warning'}`, style: { fontSize: '0.65rem' } }, user?.approved ? user?.role?.toUpperCase() : 'PENDIENTE'),
 
-            // Search button — desktop only
+            // Search button — Premium with KBD hint
             h('button', {
-                className: 'btn-icon',
-                id: 'global-search-btn',
-                title: 'Buscar',
-                style: { display: 'none' } // hidden until search is wired up
-            }, [icon('search', 16)])
+                className: 'btn-icon flex items-center gap-2 px-3',
+                id: 'global-search-trigger',
+                title: 'Buscar (Ctrl+K)',
+                style: { width: 'auto', background: 'var(--bg-secondary)', border: '1px solid var(--border)' },
+                onClick: () => window.dispatchEvent(new KeyboardEvent('keydown', { ctrlKey: true, key: 'k' }))
+            }, [
+                icon('search', 16, 'text-muted'),
+                h('span', { className: 'text-xs text-muted font-medium sm-hide' }, 'Buscar...'),
+                h('kbd', { className: 'kbd sm-hide', style: { marginLeft: '4px' } }, 'Ctrl+K')
+            ])
         ])
     ]);
 

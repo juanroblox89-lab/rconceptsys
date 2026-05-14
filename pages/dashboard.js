@@ -42,21 +42,23 @@ export const render = () => {
     // 3. Assemble Dashboard view
     const container = h('div', { className: 'fade-in flex-column gap-6' }, [
         // Main overview banner
-        h('div', { className: 'p-6 bg-secondary border-radius-md flex justify-between items-center flex-wrap gap-4', style: { border: '1px solid var(--border)', borderRadius: '8px' } }, [
+        h('div', { className: 'p-6 bg-secondary border-radius-md flex justify-between items-center flex-wrap gap-4', style: { border: '1px solid var(--border)', borderRadius: '12px', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #fff 100%)' } }, [
             h('div', { className: 'flex-column gap-1' }, [
-                h('span', { className: 'text-xs font-bold text-muted uppercase tracking-wider' }, 'SISTEMA OPERATIVO DE PRODUCCIÓN'),
-                h('h2', { className: 'text-primary', style: { fontSize: '1.3rem' } }, `Bienvenido al flujo de operaciones, ${user?.nombre || 'Líder'}.`),
-                h('p', { className: 'text-xs text-muted max-w-lg mt-1' }, 'Gestión centralizada de narrativas audiovisuales, almacenamiento de medios persistente en Storage y validación doble de entregas.')
+                h('div', { className: 'flex items-center gap-2 mb-1' }, [
+                    h('span', { className: 'badge badge-today' }, 'SISTEMA OPERATIVO'),
+                    h('div', { className: 'flex items-center gap-1 text-xs text-muted font-medium' }, [
+                        h('kbd', { className: 'kbd' }, 'Ctrl'), ' + ', h('kbd', { className: 'kbd' }, 'K'),
+                        h('span', { className: 'ml-1' }, 'para buscar rápido')
+                    ])
+                ]),
+                h('h2', { className: 'text-primary font-bold', style: { fontSize: '1.4rem', letterSpacing: '-0.03em' } }, `Hola, ${user?.nombre || 'Líder'}.`),
+                h('p', { className: 'text-xs text-muted max-w-lg mt-1 leading-relaxed' }, 'Tu centro de mando para narrativas de alta retención. Gestiona clientes, valida facturas y controla el flujo de producción desde un solo lugar.')
             ]),
             h('div', { className: 'flex gap-2' }, [
                 h('button', { 
-                    className: 'btn btn-primary text-xs',
-                    onClick: () => {
-                        const newBtn = document.getElementById('new-action-btn');
-                        if (newBtn) newBtn.click();
-                        else alert("Utiliza el botón 'Nuevo' en la cabecera superior para registrar elementos.");
-                    }
-                }, [icon('plus', 14), h('span', {}, 'Crear Registro')])
+                    className: 'btn btn-primary text-xs px-5',
+                    onClick: () => window.dispatchEvent(new KeyboardEvent('keydown', { ctrlKey: true, key: 'k' }))
+                }, [icon('search', 14), h('span', {}, 'Explorar Sistema')])
             ])
         ]),
 

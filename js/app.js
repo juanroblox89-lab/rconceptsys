@@ -7,6 +7,7 @@ import { router } from './router.js';
 import { authService } from '../firebase/service.js';
 import { Sidebar } from '../components/Sidebar.js';
 import { Header } from '../components/layout/Header.js';
+import { CommandPalette } from '../components/ui/CommandPalette.js';
 
 // Debugging helper for headless testing
 window.debugLog = [];
@@ -145,6 +146,12 @@ class App {
                 const headContainer = document.getElementById('header-container');
                 if (headContainer && header) {
                     headContainer.appendChild(header);
+                }
+
+                // Inject Command Palette
+                const palette = CommandPalette();
+                if (palette) {
+                    this.appContainer.appendChild(palette);
                 }
             }
             

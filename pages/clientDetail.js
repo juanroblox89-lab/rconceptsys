@@ -5,6 +5,7 @@
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { dbService } from '../firebase/service.js';
+import { assignmentService } from '../services/assignmentService.js';
 
 export const render = async (params) => {
     const { id } = params;
@@ -75,6 +76,15 @@ export const render = async (params) => {
                         }, client.guionRecomendado || 'Documentar aquí las estructuras narrativas que mejor funcionan para este cliente...')
                     ]),
 
+                    // Connected Data: Active Assignments
+                    h('section', { className: 'card p-6 flex-column gap-3' }, [
+                        h('div', { className: 'flex justify-between items-center mb-1' }, [
+                            h('div', { className: 'flex items-center gap-2' }, [icon('clock', 16, 'text-info'), h('h3', { className: 'text-sm font-bold' }, 'Asignaciones Activas')]),
+                            h('button', { className: 'text-xs text-info font-bold', onClick: () => window.location.hash = '#assignments' }, 'Ver Todas')
+                        ]),
+                        h('div', { id: 'client-active-assignments', className: 'flex-column gap-2' }, [h('div', { className: 'loader' })])
+                    ]),
+
                     // Formatos y Hooks Efectivos
                     h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
                         h('div', { className: 'card p-5' }, [
@@ -128,6 +138,30 @@ export const render = async (params) => {
 
             container.appendChild(header);
             container.appendChild(summaryGrid);
+
+            // Hydrate Connected Assignments
+            setTimeout(async () => {
+                const asgs = await assignmentService.getAssignmentsByClient(client.name);
+                const asgList = document.getElementById('client-active-assignments');
+                if (asgList) {
+                    asgList.innerHTML = '';
+                    const actives = asgs.filter(a => a.status !== 'Completado');
+                    if (actives.length === 0) {
+                        asgList.innerHTML = '<p class="text-xs text-muted italic">Sin tareas activas para este cliente.</p>';
+                    } else {
+                        actives.forEach(a => {
+                            const isUrgent = new Date(a.dueDate) < new Date() || (new Date(a.dueDate) - new Date() < 86400000);
+                            asgList.appendChild(h('div', { className: 'flex justify-between items-center p-3 bg-secondary border-radius-sm', style: { border: '1px solid var(--border)' } }, [
+                                h('div', { className: 'flex-column' }, [
+                                    h('span', { className: 'text-xs font-bold' }, a.title),
+                                    h('span', { className: 'text-xs text-muted' }, a.type)
+                                ]),
+                                h('span', { className: `badge ${isUrgent ? 'badge-urgent' : 'badge-today'} text-xs` }, isUrgent ? 'URGENTE' : 'PROXIMO')
+                            ]));
+                        });
+                    }
+                }
+            }, 50);
 
         } catch (err) {
             container.innerHTML = `<div class="p-10 text-center text-error">${err.message}</div>`;

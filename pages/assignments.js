@@ -89,16 +89,23 @@ export const render = async () => {
                         h('div', { className: 'flex-column gap-2' }, 
                             pendingAsgs.length === 0 ? [h('span', { className: 'text-xs text-muted italic' }, 'Sin tareas pendientes.')] :
                             pendingAsgs.slice(0, 3).map(asg => {
-                                const isExpired = new Date(asg.dueDate) < new Date();
-                                return h('div', { className: 'flex items-center justify-between p-2 bg-secondary border-radius-sm', style: { border: '1px solid var(--border)' } }, [
-                                    h('div', { className: 'flex items-center gap-2 overflow-hidden' }, [
-                                        h('div', { className: `badge ${asg.type === 'Grabación' ? 'badge-info' : 'badge-warning'}`, style: { width: '8px', height: '8px', padding: 0, borderRadius: '50%' } }),
-                                        h('span', { className: 'text-xs font-medium truncate', style: { maxWidth: '200px' } }, `${asg.client}: ${asg.title}`)
-                                    ]),
-                                    h('span', { className: `text-xs ${isExpired ? 'text-error font-bold' : 'text-muted'}` }, 
-                                        new Date(asg.dueDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-                                    )
-                                ]);
+                                    const now = new Date();
+                                    const due = new Date(asg.dueDate);
+                                    const isExpired = due < now;
+                                    const isToday = !isExpired && due.toDateString() === now.toDateString();
+                                    
+                                    return h('div', { className: 'flex items-center justify-between p-2 bg-secondary border-radius-sm hover-bg-tertiary transition', style: { border: '1px solid var(--border)' } }, [
+                                        h('div', { className: 'flex items-center gap-2 overflow-hidden' }, [
+                                            h('div', { className: `badge ${isExpired ? 'badge-urgent' : (isToday ? 'badge-today' : 'badge-info')}`, style: { width: '8px', height: '8px', padding: 0, borderRadius: '50%' } }),
+                                            h('span', { className: 'text-xs font-medium truncate', style: { maxWidth: '200px' } }, `${asg.client}: ${asg.title}`)
+                                        ]),
+                                        h('div', { className: 'flex items-center gap-2' }, [
+                                            h('span', { className: `text-xs ${isExpired ? 'text-error font-bold' : 'text-muted'}` }, 
+                                                isToday ? 'Hoy' : due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+                                            ),
+                                            h('button', { className: 'action-btn', style: { padding: '2px' }, onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients }) }, [icon('edit-3', 10)])
+                                        ])
+                                    ]);
                             })
                         ),
 

@@ -41,6 +41,15 @@ export const assignmentService = {
         }
     },
 
+    async getAssignmentsByClient(clientName) {
+        try {
+            const list = await dbService.getByQuery('assignments', 'client', '==', clientName);
+            return list.length ? list : localAssignments.filter(a => a.client === clientName);
+        } catch (err) {
+            return localAssignments.filter(a => a.client === clientName);
+        }
+    },
+
     async saveAssignment(data) {
         const newAsg = {
             id: data.id || `ASG-${Date.now().toString().slice(-4)}`,
