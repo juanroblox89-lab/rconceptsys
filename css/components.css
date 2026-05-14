@@ -427,6 +427,17 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
     background: #ffffff;
+    max-width: 100%;
+}
+
+@media (max-width: 768px) {
+    .table-container {
+        margin: 0 -16px;
+        width: calc(100% + 32px);
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
 }
 
 /* Mobile card-style row fallback */

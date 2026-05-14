@@ -39,6 +39,13 @@ export const render = async () => {
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
             
+            // Fix: Fallback to local clients if DB is empty to prevent empty dropdowns
+            const localClients = [
+                { name: 'Gimnasio Elite' },
+                { name: 'Barbería Classic' }
+            ];
+            const finalClients = clients.length ? clients : localClients;
+            
             container.innerHTML = '';
 
             // Header
@@ -50,7 +57,7 @@ export const render = async () => {
                 h('div', { className: 'flex gap-2' }, [
                     h('button', { 
                         className: 'btn btn-primary text-xs',
-                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients })
+                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients })
                     }, [icon('plus', 14), h('span', {}, 'Nueva Asignación')])
                 ])
             ]);

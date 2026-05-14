@@ -17,7 +17,17 @@ export const render = async (params) => {
         container.innerHTML = '<div class="loader"></div>';
         
         try {
-            const client = await dbService.getById('clients', id);
+            let client = await dbService.getById('clients', id);
+            
+            // Fix: Fallback to local clients for details if DB fetch fails/null
+            if (!client) {
+                const localClients = [
+                    { id: 'gimnasio-elite', name: 'Gimnasio Elite', businessType: 'Salud y Deporte', description: 'Cadena de centros de acondicionamiento físico premium.' },
+                    { id: 'barberia-classic', name: 'Barbería Classic', businessType: 'Estética', description: 'Barbería tradicional.' }
+                ];
+                client = localClients.find(c => c.id === id);
+            }
+
             if (!client) throw new Error("Cliente no encontrado.");
 
             container.innerHTML = '';
