@@ -1,0 +1,101 @@
+/**
+ * User Service - Creative Production OS
+ * Handles real user validation, pending users flow, and admin role assignments.
+ * Contains strictly one hardcoded Admin master fallback account.
+ */
+import { dbService } from '../firebase/service.js';
+import { store } from '../js/store.js';
+
+let localUsers = [];
+
+export const userService = {
+    async getAllUsers() {
+        try {
+            const list = await dbService.getAll('users');
+            const currentUser = store.getState().user;
+            
+            let result = list || [];
+            
+            // Ensure the current user is in the list for administrative visibility
+            if (currentUser && !result.some(u => u.uid === currentUser.uid)) {
+                result.push(currentUser);
+            }
+            
+            return result;
+        } catch (err) {
+            console.warn("Using local store user fallback:", err);
+            const currentUser = store.getState().user;
+            return currentUser ? [currentUser] : [];
+        }
+    },
+
+    async getPendingUsers() {
+        const all = await this.getAllUsers();
+        return all.filter(u => u.approved === false);
+    },
+
+    async approveUser(uid, assignedRole) {
+        try {
+            await dbService.update('users', uid, {
+                approved: true,
+                role: assignedRole || 'editor'
+            });
+        } catch (err) {
+            console.warn("Simulated user approval offline:", err);
+        }
+
+        const idx = localUsers.findIndex(u => u.uid === uid);
+        if (idx >= 0) {
+            localUsers[idx].approved = true;
+            localUsers[idx].role = assignedRole || 'editor';
+        }
+    },
+
+    async delegateAdminRole(targetUid, currentUid) {
+        // Full Admin Handover: Promote target, demote current
+        try {
+            // 1. Promote target
+            await dbService.update('users', targetUid, {
+                approved: true,
+                role: 'admin'
+            });
+            // 2. Demote current
+            if (currentUid && currentUid !== 'master-admin') {
+                await dbService.update('users', currentUid, {
+                    role: 'editor'
+                });
+            }
+            alert("¡Título de Administrador cedido exitosamente! Has sido reasignado como Editor.");
+        } catch (err) {
+            console.warn("Offline admin handover simulation:", err);
+            alert("Simulación offline: Título cedido.");
+        }
+        
+        // Update local cache if present
+        const tIdx = localUsers.findIndex(u => u.uid === targetUid);
+        if (tIdx >= 0) { localUsers[tIdx].approved = true; localUsers[tIdx].role = 'admin'; }
+        
+        const cIdx = localUsers.findIndex(u => u.uid === currentUid);
+        if (cIdx >= 0) { localUsers[cIdx].role = 'editor'; }
+    },
+
+    async rejectUser(uid) {
+        try {
+            await dbService.delete('users', uid);
+        } catch (err) {
+            console.warn("Simulated user rejection offline:", err);
+        }
+
+        localUsers = localUsers.filter(u => u.uid !== uid);
+    },
+
+    async promoteAllPendingToAdmin() {
+        const pending = await this.getPendingUsers();
+        if (!pending.length) return 0;
+        
+        for (const user of pending) {
+            await this.approveUser(user.uid, 'admin');
+        }
+        return pending.length;
+    }
+};

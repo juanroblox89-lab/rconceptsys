@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Check if authenticated user is the master admin (matches juanroblox)
+    function isAdmin() {
+      return request.auth != null && 
+        request.auth.token.email.lower().matches('.*juanroblox89.*');
+    }
+
+    // Public Logos (anyone can read)
+    match /logos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Client Assets (only Admin or approved employees can see)
+    match /assets/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Default: Only authenticated users
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

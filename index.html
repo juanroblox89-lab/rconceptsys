@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreativeOS | Sistema Operativo de Producción</title>
+    <meta name="description" content="Plataforma interna de gestión y producción creativa para agencias audiovisuales.">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=32&q=80">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar injected by Sidebar.js component -->
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Dynamic Content View (populated by router.js) -->
+            <div id="router-view"></div>
+        </main>
+    </div>
+
+    <!-- App Logic: cache-bust with timestamp to force fresh module load -->
+    <script type="module" src="js/app.js?v=2"></script>
+</body>
+</html>

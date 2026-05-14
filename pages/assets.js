@@ -1,0 +1,182 @@
+/**
+ * Assets Page - Creative Production OS
+ * Notion Light UI presenting video production deliveries, thumbnails, and cloud storage controls.
+ */
+import { h, icon } from '../utils/dom.js';
+import { dbService, storageService } from '../firebase/service.js';
+import { store } from '../js/store.js';
+
+let localAssetsCache = [
+    { id: 'AST-001', title: 'Reel Gancho - Gimnasio Elite', type: 'video', client: 'Gimnasio Elite', format: 'RC-01', thumbnail: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80', status: 'ready', url: '#' },
+    { id: 'AST-002', title: 'POV Recorrido - Local', type: 'video', client: 'Barbería Classic', format: 'HK-04', thumbnail: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&q=80', status: 'editing', url: '#' },
+    { id: 'AST-003', title: 'Educativo - Tips Gym', type: 'video', client: 'Gimnasio Elite', format: 'ED-02', thumbnail: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&q=80', status: 'ready', url: '#' },
+];
+
+export const render = () => {
+    const { user } = store.getState();
+    const isAdmin = user?.role === 'admin';
+    const container = h('div', { className: 'fade-in flex-column gap-4' });
+
+    const loadAssets = async () => {
+        container.innerHTML = '<div class="loader mb-4"></div>';
+        
+        let assetsList = [];
+        try {
+            const list = await dbService.getAll('assets');
+            assetsList = list.length ? list : localAssetsCache;
+        } catch (err) {
+            assetsList = localAssetsCache;
+        }
+
+        container.innerHTML = '';
+
+        const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
+            h('div', {}, [
+                h('h1', {}, 'Librería de Producción y Assets en Storage'),
+                h('p', { className: 'text-xs text-muted mt-1' }, 'Materiales audiovisuales curados, miniaturas de alta retención y recursos compartidos.')
+            ]),
+            h('div', { className: 'flex gap-2' }, [
+                isAdmin ? h('button', { 
+                    className: 'btn btn-primary text-xs',
+                    onClick: () => openAssetUploadModal() 
+                }, [icon('upload', 14), h('span', {}, 'Subir Asset a Storage')]) : null
+            ])
+        ]);
+
+        const grid = h('div', {
+            className: 'grid gap-4',
+            style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }
+        }, assetsList.map(asset => createAssetCard(asset)));
+
+        container.appendChild(header);
+        container.appendChild(grid);
+    };
+
+    const openAssetUploadModal = () => {
+        const overlay = h('div', { className: 'modal-overlay' });
+        
+        const saveAssetFlow = async (e) => {
+            e.preventDefault();
+            const clientVal = form.querySelector('#as-client').value;
+            const formatVal = form.querySelector('#as-format').value;
+            const fileInput = form.querySelector('#as-file');
+
+            if (!fileInput.files[0]) {
+                alert("Selecciona un archivo multimedia válido.");
+                return;
+            }
+
+            alert(`Subiendo archivo a Firebase Storage: assets/${clientVal}/${fileInput.files[0].name}...`);
+            const dlUrl = await storageService.uploadFile(`assets/${clientVal}/${fileInput.files[0].name}`, fileInput.files[0]);
+
+            const newObj = {
+                id: `AST-${Date.now().toString().slice(-3)}`,
+                title: fileInput.files[0].name,
+                type: fileInput.files[0].type.includes('video') ? 'video' : 'thumbnail',
+                client: clientVal,
+                format: formatVal,
+                thumbnail: dlUrl,
+                status: 'ready',
+                url: dlUrl
+            };
+
+            try {
+                await dbService.add('assets', newObj);
+            } catch (err) {
+                console.warn("Simulated asset append local:", err);
+            }
+            localAssetsCache.push(newObj);
+
+            document.body.removeChild(overlay);
+            loadAssets();
+        };
+
+        const form = h('form', { className: 'modal-container', onSubmit: saveAssetFlow }, [
+            h('div', { className: 'modal-header' }, [
+                h('span', { className: 'modal-title text-sm' }, 'Subir Nuevo Asset a Firebase Storage'),
+                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
+            ]),
+            h('div', { className: 'modal-body flex-column gap-3' }, [
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Cliente Asignado'),
+                    h('input', { id: 'as-client', className: 'form-input', placeholder: 'Ej. Gimnasio Elite', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Formato Narrativo Relacionado'),
+                    h('input', { id: 'as-format', className: 'form-input', placeholder: 'Ej. RC-01', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Seleccionar Archivo Multimedia (Se almacenará en Storage)'),
+                    h('input', { id: 'as-file', type: 'file', className: 'form-input text-xs', accept: 'video/*,image/*', required: true })
+                ])
+            ]),
+            h('div', { className: 'modal-footer' }, [
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Subir y Almacenar')
+            ])
+        ]);
+
+        overlay.appendChild(form);
+        document.body.appendChild(overlay);
+    };
+
+    loadAssets();
+    return container;
+};
+
+const statusMap = {
+    ready: { label: 'Listo', cls: 'badge-success' },
+    editing: { label: 'En Edición', cls: 'badge-warning' },
+    review: { label: 'En Revisión', cls: 'badge-error' }
+};
+
+const createAssetCard = (asset) => {
+    const status = statusMap[asset.status] || { label: asset.status, cls: 'badge-secondary' };
+
+    return h('div', { className: 'card flex-column justify-between', style: { padding: '0', overflow: 'hidden' } }, [
+        h('div', {
+            style: {
+                height: '150px',
+                background: `url(${asset.thumbnail}) center/cover no-repeat`,
+                position: 'relative',
+                backgroundColor: 'var(--bg-tertiary)',
+                borderBottom: '1px solid var(--border)'
+            }
+        }, [
+            h('div', {
+                style: {
+                    position: 'absolute', top: '8px', right: '8px',
+                    display: 'flex', gap: '4px'
+                }
+            }, [
+                h('span', { className: `badge ${status.cls} text-xs`, style: { fontSize: '0.6rem' } }, status.label)
+            ]),
+            h('div', {
+                style: {
+                    position: 'absolute', bottom: '8px', left: '12px',
+                }
+            }, [
+                h('span', { className: 'badge badge-secondary text-xs', style: { fontSize: '0.6rem', background: 'rgba(255,255,255,0.9)' } }, asset.format || 'GEN')
+            ])
+        ]),
+        h('div', { className: 'p-4 flex-column gap-2' }, [
+            h('div', { className: 'font-bold text-xs text-primary truncate' }, asset.title),
+            h('div', { className: 'text-xs text-muted font-medium' }, asset.client || 'General'),
+            h('div', { className: 'flex justify-between items-center mt-2 pt-2 border-top' }, [
+                h('a', { 
+                    href: asset.url !== '#' ? asset.url : asset.thumbnail, 
+                    target: '_blank', 
+                    className: 'btn btn-outline text-xs', 
+                    style: { padding: '4px 8px', textDecoration: 'none' } 
+                }, [icon('external-link', 12), h('span', { className: 'ml-1' }, 'Abrir Media')]),
+                
+                h('button', { 
+                    className: 'btn-icon text-xs', 
+                    style: { width: '26px', height: '26px' }, 
+                    title: 'Descargar Original',
+                    onClick: () => alert(`Descargando asset de Storage en alta resolución...`) 
+                }, [icon('download', 12)])
+            ])
+        ])
+    ]);
+};
