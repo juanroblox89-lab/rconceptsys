@@ -45,19 +45,18 @@ export const Header = () => {
 
         // Right: Actions
         h('div', { className: 'flex items-center gap-2', style: { flexShrink: 0 } }, [
-            // Bypass button — compact on mobile
+            // Bypass button — subtle green
             h('button', {
                 className: 'admin-bypass-btn',
+                style: { background: 'var(--success)', fontSize: '0.55rem', padding: '4px 8px' },
                 onClick: handleAutoAdmin,
                 title: 'Acceso Admin Temporal'
-            }, '⚡ ADMIN'),
+            }, '⚡ BYPASS'),
 
-            // User role chip
-            h('span', {
-                id: 'role-indicator',
-                className: `badge ${user?.role === 'admin' ? 'badge-success' : 'badge-warning'}`,
-                style: { fontSize: '0.65rem' }
-            }, user?.role === 'admin' ? 'ADMIN' : (user?.approved ? user?.role?.toUpperCase() : 'PENDIENTE')),
+            // User role chip - Consolidated
+            user?.role === 'admin' 
+                ? h('span', { className: 'badge badge-success', style: { fontSize: '0.65rem', padding: '3px 8px' } }, [icon('shield-check', 11), h('span', { className: 'ml-1' }, 'ADMIN')])
+                : h('span', { className: `badge ${user?.approved ? 'badge-info' : 'badge-warning'}`, style: { fontSize: '0.65rem' } }, user?.approved ? user?.role?.toUpperCase() : 'PENDIENTE'),
 
             // Search button — desktop only
             h('button', {

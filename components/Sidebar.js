@@ -59,12 +59,20 @@ export const Sidebar = () => {
 
     // ─── Logo ──────────────────────────────────────────────
     const logoEl = h('div', {
-        className: 'w-full mb-2 flex items-center justify-center',
-        style: { minHeight: '38px' }
+        className: 'w-full mb-3 flex items-center justify-center',
+        style: { minHeight: '44px' }
     }, [
         h('div', {
             className: 'text-xs font-bold text-center tracking-widest uppercase',
-            style: { border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '6px', letterSpacing: '0.1em' }
+            style: { 
+                border: '1.5px solid var(--border)', 
+                padding: '6px 14px', 
+                borderRadius: '8px', 
+                letterSpacing: '0.15em',
+                background: 'white',
+                color: '#000',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+            }
         }, 'ROHLFING CONCEPT')
     ]);
 

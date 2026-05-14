@@ -88,8 +88,8 @@ class App {
             
             loginContainer.innerHTML = `
                 <div class="card p-10 flex-column items-center gap-6 shadow-xl" style="width: 100%; max-width: 400px; background: #1a1a1a; border-radius: 12px; color: white; border: 1px solid #333;">
-                    <div class="brand-logo flex items-center justify-center p-4" style="background: #252525; border-radius: 8px;">
-                        <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=100&q=80" style="width: 40px; height: 40px; border-radius: 4px;">
+                    <div class="brand-logo flex items-center justify-center p-4" style="background: white; border-radius: 8px; border: 1.5px solid #333;">
+                        <span style="color: #000; font-size: 0.6rem; font-weight: 900; letter-spacing: 0.1em;">ROHLFING</span>
                     </div>
                     <div class="text-center">
                         <h2 class="text-xl font-bold">Creative Production OS</h2>

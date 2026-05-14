@@ -94,7 +94,9 @@ class Router {
                     viewContainer.innerHTML = pageElement;
                 }
                 
-                if (window.lucide) window.lucide.createIcons();
+                setTimeout(() => {
+                    if (window.lucide) window.lucide.createIcons();
+                }, 50);
                 
             } catch (error) {
                 console.error(`[Router] Failed to load page: ${route.module}`, error);

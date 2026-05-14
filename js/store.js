@@ -8,7 +8,7 @@ class Store {
             user: null, // Set on auth change
             authLoading: true,
             ui: {
-                sidebarOpen: window.innerWidth > 768,
+                sidebarOpen: window.innerWidth > 1024,
                 currentTheme: 'dark',
                 activeTab: 'dashboard'
             },

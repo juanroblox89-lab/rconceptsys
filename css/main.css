@@ -10,22 +10,14 @@
     --bg-primary: #ffffff;
     --bg-secondary: #f8f8f8;
     --bg-tertiary: #f0f0f2;
-    --bg-accent: rgba(0, 0, 0, 0.04);
+    --accent-glow: rgba(0, 0, 0, 0.03);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
 
-    --text-primary: #09090b;
-    --text-secondary: #52525b;
-    --text-muted: #a1a1aa;
-
-    --accent: #18181b;
-    --accent-blue: #2563eb;
-    --accent-glow: rgba(0, 0, 0, 0.06);
-    --success: #059669;
-    --warning: #d97706;
-    --error: #dc2626;
-    --info: #2563eb;
-
-    --border: rgba(0, 0, 0, 0.07);
-    --border-hover: rgba(0, 0, 0, 0.14);
+    --border: rgba(0, 0, 0, 0.06);
+    --border-hover: rgba(0, 0, 0, 0.12);
 
     /* Layout */
     --sidebar-width: 240px;
@@ -104,8 +96,8 @@ button:active { transform: scale(0.97); }
 
 #main-content {
     flex: 1;
-    /* Mobile: full width, top padding for header + bottom for nav */
-    padding: calc(var(--header-height) + 16px) 16px calc(var(--bottom-nav-height) + 16px + env(safe-area-inset-bottom));
+    /* Mobile: increase top padding to avoid header overlap */
+    padding: calc(var(--header-height) + 24px) 16px calc(var(--bottom-nav-height) + 24px + env(safe-area-inset-bottom));
     min-height: 100vh;
     background-color: var(--bg-primary);
     transition: margin-left var(--transition), padding var(--transition);
@@ -115,7 +107,7 @@ button:active { transform: scale(0.97); }
 @media (min-width: 769px) {
     #main-content {
         margin-left: var(--sidebar-width);
-        padding: 40px 40px 40px;
+        padding: 48px 48px 64px;
     }
 }
 
