@@ -19,5 +19,7 @@ Sistema operativo interno diseñado para la gestión de producción creativa, as
 2. Correr en local: `npm run dev`
 3. Construir para producción: `npm run build`
 
-## Despliegue
-El proyecto está configurado para desplegarse en **Netlify** y utiliza **Firebase** para la persistencia de datos.
+## Despliegue e Inteligencia Artificial
+* **Hosting**: El proyecto está optimizado y configurado para desplegarse automáticamente en **Vercel** (`vercel.json` rewrite rules).
+* **Base de Datos**: Utiliza **Firebase** (Firestore, Auth, Storage) para la persistencia.
+* **AI Copiloto**: Integra **Anthropic Claude 3.5 Sonnet** (`api/chat.js` serverless function) configurado mediante la variable de entorno `ANTHROPIC_API_KEY` en el panel de Vercel.
