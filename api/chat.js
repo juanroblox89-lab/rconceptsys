@@ -101,8 +101,8 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
             }
         };
 
-        // Tier 1: Claude 3.5 Sonnet v2 (Ideal)
-        console.log("Attempting Tier 1: Claude 3.5 Sonnet v2...");
+        // Tier 1: Claude 4.6 Sonnet (Latest 2026 flagship Sonnet)
+        console.log("Attempting Tier 1: Claude 4.6 Sonnet...");
         response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: {
@@ -111,20 +111,44 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
                 "content-type": "application/json"
             },
             body: JSON.stringify({
-                model: "claude-3-5-sonnet-20241022",
+                model: "claude-sonnet-4-6",
                 max_tokens: 3000,
                 system: systemPrompt,
                 messages: apiMessages
             })
         });
 
-        // Tier 2: Claude 3.5 Sonnet v1
+        // Tier 2: Claude 3.5 Sonnet v2 (Ideal fallback)
         if (!response.ok) {
             lastErrorText = await extractErrorText(response);
-            console.warn("Tier 1 (Sonnet v2) failed. Reason:", lastErrorText);
+            console.warn("Tier 1 (Sonnet 4.6) failed. Reason:", lastErrorText);
 
             if (isModelError(response.status, lastErrorText)) {
-                console.log("Attempting Tier 2: Claude 3.5 Sonnet v1...");
+                console.log("Attempting Tier 2: Claude 3.5 Sonnet v2...");
+                response = await fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST",
+                    headers: {
+                        "x-api-key": anthropicKey,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "claude-3-5-sonnet-20241022",
+                        max_tokens: 3000,
+                        system: systemPrompt,
+                        messages: apiMessages
+                    })
+                });
+            }
+        }
+
+        // Tier 3: Claude 3.5 Sonnet v1
+        if (!response.ok) {
+            lastErrorText = await extractErrorText(response);
+            console.warn("Previous tier failed. Reason:", lastErrorText);
+
+            if (isModelError(response.status, lastErrorText)) {
+                console.log("Attempting Tier 3: Claude 3.5 Sonnet v1...");
                 response = await fetch("https://api.anthropic.com/v1/messages", {
                     method: "POST",
                     headers: {
@@ -142,13 +166,37 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
             }
         }
 
-        // Tier 3: Claude 3.5 Haiku (Affordable and highly active)
+        // Tier 4: Claude 4.5 Haiku (Latest 2026 Haiku)
         if (!response.ok) {
             lastErrorText = await extractErrorText(response);
             console.warn("Previous tier failed. Reason:", lastErrorText);
 
             if (isModelError(response.status, lastErrorText)) {
-                console.log("Attempting Tier 3: Claude 3.5 Haiku...");
+                console.log("Attempting Tier 4: Claude 4.5 Haiku...");
+                response = await fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST",
+                    headers: {
+                        "x-api-key": anthropicKey,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "claude-haiku-4-5-20251001",
+                        max_tokens: 3000,
+                        system: systemPrompt,
+                        messages: apiMessages
+                    })
+                });
+            }
+        }
+
+        // Tier 5: Claude 3.5 Haiku
+        if (!response.ok) {
+            lastErrorText = await extractErrorText(response);
+            console.warn("Previous tier failed. Reason:", lastErrorText);
+
+            if (isModelError(response.status, lastErrorText)) {
+                console.log("Attempting Tier 5: Claude 3.5 Haiku...");
                 response = await fetch("https://api.anthropic.com/v1/messages", {
                     method: "POST",
                     headers: {
