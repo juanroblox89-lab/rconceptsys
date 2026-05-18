@@ -33,6 +33,15 @@ export const render = () => {
             let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => []);
             let systemRules = await dbService.getAll('system_rules').catch(() => []);
 
+            // MIGRATION: Purge legacy formats (ed-02 and pv-03) from Firestore to prevent polluting the context
+            if (formats.some(f => f.id === 'ed-02' || f.id === 'pv-03')) {
+                console.log("[Migration] Purging legacy formats ed-02 and pv-03 from Firestore...");
+                await dbService.delete('formats', 'ed-02').catch(() => {});
+                await dbService.delete('formats', 'pv-03').catch(() => {});
+                // Reload formats list
+                formats = await dbService.getAll('formats').catch(() => []);
+            }
+
             // AUTO-SEEDING LIVING SYSTEM CONFIGURATION RULES (Dynamic context memory)
             if (systemRules.length === 0) {
                 const defaultRules = [
@@ -50,6 +59,11 @@ Debes actuar como un estratega operacional, arquitecto de patrones y auditor de 
 3. Relacionar métricas
 4. Profundizar contexto estratégico por cliente
 5. Construir memoria operacional reutilizable
+
+=== PROTOCOLO PARA CLIENTES SIN DESCRIPCIÓN ESTRATÉGICA ===
+Cuando un cliente sin descripción estratégica registrada (Jerez el Caballero, Kantel, Ricos Pandeyucas o Villa Grande) esté enfocado o sea mencionado, debes:
+- Tomar la iniciativa y proponer de inmediato una descripción estratégica concreta para esa marca (asumiendo su nicho/giro de negocio lógico).
+- Pedirle una única confirmación breve al usuario para guardarla en Firestore utilizando tu acción "update_client". ¡Poblemos activamente los perfiles de la agencia!
 
 === COMPORTAMIENTO ANTE AMBIGÜEDAD ===
 Cuando el usuario haga solicitudes ambiguas:
@@ -98,7 +112,8 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
 - retention (Tasa de retención promedio, ej: "74%")
 - views (Vistas totales, ej: "15400")
 - shares (Compartidos, ej: "320")
-- saves (Guardados, ej: "840")`,
+- saves (Guardados, ej: "840")
+- source: obligatorio establecer "seed" (si es dato de ejemplo sembrado) o "real" (si es una métrica de campaña real cargada de producción). Esto mantiene separadas las métricas de prueba de las de producción.`,
                         updatedAt: new Date().toISOString()
                     }
                 ];
@@ -124,9 +139,9 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
 
             if (hooks.length === 0) {
                 const defaultHooks = [
-                    { id: 'hk-01', title: 'La mayoría de la gente hace esto mal...', category: 'Error común', psychology: 'Curiosidad / Desafío', timesUsed: 14, avgRetention: '82%', topClient: 'kantel', createdAt: new Date().toISOString() },
-                    { id: 'hk-02', title: 'Tuve que gastar más de 100 dólares para descubrir esto...', category: 'Secreto de Valor', psychology: 'Autoridad / FOMO', timesUsed: 8, avgRetention: '79%', topClient: 'jerez-el-caballero', createdAt: new Date().toISOString() },
-                    { id: 'hk-03', title: 'Si tienes este tipo de negocio y no estás haciendo esto, estás perdiendo dinero...', category: 'Dolor Directo', psychology: 'Pérdida / Urgencia', timesUsed: 22, avgRetention: '85%', topClient: 'tizon-dorado', createdAt: new Date().toISOString() }
+                    { id: 'hk-01', title: 'La mayoría de la gente hace esto mal...', category: 'Error común', psychology: 'Curiosidad / Desafío', timesUsed: 14, avgRetention: '82%', topClient: 'kantel', source: 'seed', createdAt: new Date().toISOString() },
+                    { id: 'hk-02', title: 'Tuve que gastar más de 100 dólares para descubrir esto...', category: 'Secreto de Valor', psychology: 'Autoridad / FOMO', timesUsed: 8, avgRetention: '79%', topClient: 'jerez-el-caballero', source: 'seed', createdAt: new Date().toISOString() },
+                    { id: 'hk-03', title: 'Si tienes este tipo de negocio y no estás haciendo esto, estás perdiendo dinero...', category: 'Dolor Directo', psychology: 'Pérdida / Urgencia', timesUsed: 22, avgRetention: '85%', topClient: 'tizon-dorado', source: 'seed', createdAt: new Date().toISOString() }
                 ];
                 for (const hk of defaultHooks) {
                     await dbService.set('hooks', hk.id, hk);
@@ -136,9 +151,9 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
 
             if (metricsList.length === 0) {
                 const defaultMetrics = [
-                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', clientId: 'tizon-dorado', formatId: 'rc-01', period: 'Mayo 2026', retention: '74%', views: '15400', shares: '320', saves: '840', updatedAt: new Date().toISOString() },
-                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', clientId: 'ricos-pandeyucas', formatId: 'pl-01', period: 'Mayo 2026', retention: '62%', views: '28000', shares: '1100', saves: '2400', updatedAt: new Date().toISOString() },
-                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', clientId: 'jerez-el-caballero', formatId: 'fe-01', period: 'Mayo 2026', retention: '68%', views: '12200', shares: '190', saves: '520', updatedAt: new Date().toISOString() }
+                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', clientId: 'tizon-dorado', formatId: 'rc-01', period: 'Mayo 2026', retention: '74%', views: '15400', shares: '320', saves: '840', source: 'seed', updatedAt: new Date().toISOString() },
+                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', clientId: 'ricos-pandeyucas', formatId: 'pl-01', period: 'Mayo 2026', retention: '62%', views: '28000', shares: '1100', saves: '2400', source: 'seed', updatedAt: new Date().toISOString() },
+                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', clientId: 'jerez-el-caballero', formatId: 'fe-01', period: 'Mayo 2026', retention: '68%', views: '12200', shares: '190', saves: '520', source: 'seed', updatedAt: new Date().toISOString() }
                 ];
                 for (const mt of defaultMetrics) {
                     await dbService.set('metrics', mt.id, mt);
@@ -523,7 +538,9 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
 
                     if (!messageText) return;
 
-                    // Check daily rate limit globally in chats_limit collection (20 messages per day)
+                    // Enforce strict message limit: 10 per day for admins, 5 per day for collaborators/viewers
+                    const isAdmin = user?.role === 'admin';
+                    const maxDailyLimit = isAdmin ? 10 : 5;
                     const todayStr = new Date().toISOString().split('T')[0];
                     let dailyCount = 0;
                     let lastDate = "";
@@ -538,11 +555,11 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                         console.warn("Could not check rate limit from db, using safety checks:", err);
                     }
 
-                    if (lastDate === todayStr && dailyCount >= 20) {
+                    if (lastDate === todayStr && dailyCount >= maxDailyLimit) {
                         activeConversation.push({ role: 'user', content: messageText });
                         activeConversation.push({
                             role: 'assistant',
-                            content: `⚠️ **Límite diario alcanzado**: Has alcanzado tu límite de **20 mensajes diarios** para tu cuenta. Este límite se restablecerá mañana.`
+                            content: `⚠️ **Límite diario alcanzado**: Has alcanzado tu límite de **${maxDailyLimit} mensajes diarios** para tu cuenta (${isAdmin ? 'Administrador' : 'Colaborador'}). Este límite se restablecerá mañana.`
                         });
                         textInput.value = '';
                         renderChatFeed();
@@ -714,6 +731,7 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                             views: action.payload.views || '0',
                             shares: action.payload.shares || '0',
                             saves: action.payload.saves || '0',
+                            source: 'real', // Every metric updated/inserted via assistant is tagged as production "real"!
                             updatedAt: new Date().toISOString()
                         };
                         const id = action.payload.id || `${action.payload.clientId || 'all'}-${action.payload.period || 'Mayo-2026'}`.toLowerCase().replace(/\s+/g, '-');
@@ -731,6 +749,7 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                             timesUsed: action.payload.timesUsed || 0,
                             avgRetention: action.payload.avgRetention || '0%',
                             topClient: action.payload.topClient || 'N/A',
+                            source: 'real', // Tagged as real production hook
                             createdAt: new Date().toISOString()
                         };
                         await dbService.add('hooks', newHook);
@@ -914,6 +933,7 @@ Detalles del Payload según el type:
    - "views": string (Opcional: vistas totales, ej: "15400")
    - "shares": string (Opcional: compartidos, ej: "320")
    - "saves": string (Opcional: guardados, ej: "840")
+   - "source": "real" (Siempre establece "real" para métricas de producción ingresadas por ti)
 5. "create_hook":
    - "title": string (Frase literal del gancho de marketing)
    - "category": string (ej: "Problema", "Curiosidad", "Deseo")
@@ -921,6 +941,7 @@ Detalles del Payload según el type:
    - "timesUsed": number (Cantidad de veces usado, ej: 14)
    - "avgRetention": string (Tasa promedio de retención, ej: "82%")
    - "topClient": string (ID del cliente donde más funcionó, ej: "kantel")
+   - "source": "real"
 6. "create_client":
    - "name": string (Nombre del cliente/marca)
    - "businessType": string (Industria, ej: "Salud e Higiene")
@@ -963,7 +984,7 @@ ${clients.map(c => `- Cliente: "${c.nombre || c.name}" | ID: "${c.id}" | Industr
 ${formats.map(f => `- Formato: ${f.name} (ID: "${f.id}" | Estructura: ${f.structure || 'Hook + Storytelling + CTA'} | Objetivo: ${f.usedFor || 'General'})`).join('\n')}
 
 === HOOKS DE RETENCIÓN DISPONIBLES (CON MÉTRICAS) ===
-${hooks.map(h => `- Hook: "${h.title}" (ID: "${h.id}" | Categoría: ${h.category || 'Problema'} | Retención Promedio: ${h.avgRetention || '0%'} | Veces Usado: ${h.timesUsed || 0} | Mejor Cliente: "${h.topClient || 'N/A'}")`).join('\n')}
+${hooks.map(h => `- Hook: "${h.title}" (ID: "${h.id}" | Categoría: ${h.category || 'Problema'} | Retención Promedio: ${h.avgRetention || '0%'} | Veces Usado: ${h.timesUsed || 0} | Mejor Cliente: "${h.topClient || 'N/A'}" | Origen: "${h.source || 'seed'}")`).join('\n')}
 
 === LISTA DE TAREAS EN CURSO ===
 ${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.client} | Tarea: ${a.title} | Responsable: ${a.employeeName || '@equipo'}`).join('\n')}
@@ -972,7 +993,7 @@ ${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.cl
 ${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de checklist registrados)`).join('\n')}
 
 === MÉTRICAS RECIENTES VINCULADAS ===
-${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m.type} | Cliente ID: "${m.clientId || 'all'}" | Formato ID: "${m.formatId || 'all'}" | Hook ID: "${m.hookId || 'all'}" | Período: "${m.period || 'N/A'}" | Vistas: ${m.views || '0'} | Compartidos: ${m.shares || '0'} | Guardados: ${m.saves || '0'}`).join('\n')}
+${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m.type} | Cliente ID: "${m.clientId || 'all'}" | Formato ID: "${m.formatId || 'all'}" | Hook ID: "${m.hookId || 'all'}" | Período: "${m.period || 'N/A'}" | Vistas: ${m.views || '0'} | Compartidos: ${m.shares || '0'} | Guardados: ${m.saves || '0'} | Origen: "${m.source || 'seed'}"`).join('\n')}
 `;
 
                 try {
