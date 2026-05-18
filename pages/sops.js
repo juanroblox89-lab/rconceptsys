@@ -56,21 +56,35 @@ export const render = () => {
             ]),
             isAdmin ? h('button', { 
                 className: 'btn btn-primary text-xs',
-                onClick: () => {
-                    const btn = document.getElementById('new-action-btn');
-                    if (btn) btn.click();
-                } 
+                onClick: () => openCreateSopModal()
             }, [icon('plus', 14), h('span', {}, 'Nueva Guía')]) : null
         ]);
 
         const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } }, 
             sopsList.map(sop => h('div', { key: sop.id || sop.title, className: 'card flex-column justify-between p-5' }, [
                 h('div', {}, [
-                    h('div', { className: 'flex items-center gap-3 mb-3 border-bottom pb-3' }, [
-                        h('div', { className: 'btn-icon flex items-center justify-center font-bold text-accent', style: { width: '36px', height: '36px', borderRadius: '6px', background: 'var(--bg-tertiary)' } }, [
-                            icon(sop.iconName || 'check-square', 18)
+                    h('div', { className: 'flex items-center justify-between gap-3 mb-3 border-bottom pb-3' }, [
+                        h('div', { className: 'flex items-center gap-3' }, [
+                            h('div', { className: 'btn-icon flex items-center justify-center font-bold text-accent', style: { width: '36px', height: '36px', borderRadius: '6px', background: 'var(--bg-tertiary)', flexShrink: 0 } }, [
+                                icon(sop.iconName || 'check-square', 18)
+                            ]),
+                            h('h4', { className: 'font-bold text-sm text-primary truncate', style: { maxWidth: '180px' } }, sop.title || sop.name)
                         ]),
-                        h('h4', { className: 'font-bold text-sm text-primary' }, sop.title || sop.name)
+                        isAdmin ? h('button', {
+                            className: 'btn-icon text-error',
+                            style: { width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+                            title: 'Eliminar SOP',
+                            onClick: async () => {
+                                if (confirm('¿Eliminar este SOP y todo su progreso?')) {
+                                    try {
+                                        await dbService.delete('sops', sop.id);
+                                    } catch (err) {
+                                        console.warn("Offline SOP deletion simulated:", err);
+                                    }
+                                    loadSops();
+                                }
+                            }
+                        }, [icon('trash-2', 13)]) : null
                     ]),
                     
                     h('ul', { className: 'flex-column gap-2 mt-2', style: { listStyle: 'none' } }, 
@@ -90,6 +104,79 @@ export const render = () => {
 
         container.appendChild(header);
         container.appendChild(grid);
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    const openCreateSopModal = () => {
+        const overlay = h('div', { className: 'modal-overlay' });
+        const form = h('form', {
+            className: 'modal-container',
+            onSubmit: async (e) => {
+                e.preventDefault();
+                const titleVal = form.querySelector('#sop-title').value.trim();
+                const iconVal = form.querySelector('#sop-icon').value.trim();
+                const stepsText = form.querySelector('#sop-steps').value.trim();
+
+                const stepsArr = stepsText.split('\n')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                    .map(text => ({ text, done: false }));
+
+                const id = `SOP-${Date.now().toString().slice(-4)}`;
+                const newSop = {
+                    id,
+                    title: titleVal,
+                    iconName: iconVal || 'check-square',
+                    steps: stepsArr.length ? stepsArr : [{ text: 'Primer paso procedimental', done: false }]
+                };
+
+                try {
+                    await dbService.set('sops', id, newSop);
+                } catch (err) {
+                    console.warn("Offline SOP saving simulated:", err);
+                }
+
+                document.body.removeChild(overlay);
+                loadSops();
+            }
+        }, [
+            h('div', { className: 'modal-header' }, [
+                h('span', { className: 'modal-title' }, 'Crear Nuevo Procedimiento SOP'),
+                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+            ]),
+            h('div', { className: 'modal-body flex-column gap-3' }, [
+                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '2fr 1fr' } }, [
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Título de la Guía SOP'),
+                        h('input', { id: 'sop-title', className: 'form-input', placeholder: 'Ej. Control de Audio', required: true })
+                    ]),
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Icono Lucide'),
+                        h('select', { id: 'sop-icon', className: 'form-select text-xs', required: true }, [
+                            h('option', { value: 'check-square' }, 'Square Check'),
+                            h('option', { value: 'video' }, 'Video/Cámara'),
+                            h('option', { value: 'scissors' }, 'Scissors/Editor'),
+                            h('option', { value: 'mic' }, 'Mic/Audio'),
+                            h('option', { value: 'sparkles' }, 'Sparkles/AI')
+                        ])
+                    ])
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Puntos de la Lista de Verificación (Uno por línea)'),
+                    h('textarea', { id: 'sop-steps', className: 'form-textarea', placeholder: 'Paso 1: Limpieza de audio\nPaso 2: Compresión multibanda\nPaso 3: Nivelar a -14 LUFS', style: { minHeight: '120px' }, required: true })
+                ])
+            ]),
+            h('div', { className: 'modal-footer' }, [
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Crear SOP')
+            ])
+        ]);
+        overlay.appendChild(form);
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => {
+            if (window.lucide) window.lucide.createIcons();
+        }, 50);
     };
 
     const openSopDetailModal = (sopItem) => {
@@ -100,13 +187,25 @@ export const render = () => {
                     icon(sopItem.iconName || 'check-square', 18),
                     h('span', {}, `SOP: ${sopItem.title || sopItem.name}`)
                 ]),
-                h('button', { className: 'btn-icon text-xs', style: { width: '24px', height: '24px' }, onClick: () => document.body.removeChild(overlay) }, '×')
+                h('button', { className: 'btn-icon text-xs', style: { width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }, onClick: () => document.body.removeChild(overlay) }, '×')
             ]),
             h('p', { className: 'text-xs text-muted' }, 'Guía procedimental y validación paso a paso de producción. Todos los miembros del equipo deben verificar el cumplimiento de cada punto antes de la renderización final.'),
             
             h('div', { className: 'flex-column gap-2 mt-2 p-3 bg-secondary border-radius-sm' }, 
-                (sopItem.steps || [{ text: sopItem.objective || 'Verificación en curso', done: true }]).map((st, idx) => h('div', { key: idx, className: 'flex items-center gap-2 text-xs' }, [
-                    h('input', { type: 'checkbox', checked: st.done, disabled: true }),
+                (sopItem.steps || [{ text: sopItem.objective || 'Verificación en curso', done: true }]).map((st, idx) => h('div', { key: idx, className: 'flex items-center gap-2 text-xs cursor-pointer' }, [
+                    h('input', { 
+                        type: 'checkbox', 
+                        checked: st.done,
+                        onChange: async (e) => {
+                            st.done = e.target.checked;
+                            try {
+                                await dbService.set('sops', sopItem.id, sopItem);
+                            } catch (err) {
+                                console.warn("Offline SOP update simulated:", err);
+                            }
+                            loadSops();
+                        }
+                    }),
                     h('span', { className: st.done ? 'text-primary font-medium' : 'text-muted' }, st.text)
                 ]))
             ),
@@ -118,6 +217,7 @@ export const render = () => {
 
         overlay.appendChild(panel);
         document.body.appendChild(overlay);
+        if (window.lucide) window.lucide.createIcons();
     };
 
     loadSops();

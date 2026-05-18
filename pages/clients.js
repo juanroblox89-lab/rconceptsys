@@ -169,6 +169,7 @@ export const render = () => {
 
         container.appendChild(header);
         container.appendChild(grid);
+        if (window.lucide) window.lucide.createIcons();
     };
 
     // Form modal to Create or Edit Client Profile

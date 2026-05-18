@@ -112,8 +112,9 @@ export const render = async () => {
                         // Footer Stats
                         h('div', { className: 'flex justify-between items-center mt-2' }, [
                             h('div', { className: 'flex gap-3' }, [
-                                h('div', { className: 'flex items-center gap-1 text-xs text-muted' }, [icon('film', 12), h('span', {}, empAsgs.filter(a => a.type === 'Grabación').length)]),
-                                h('div', { className: 'flex items-center gap-1 text-xs text-muted' }, [icon('zap', 12), h('span', {}, empAsgs.filter(a => a.type === 'Edición').length)])
+                                h('div', { className: 'flex items-center gap-1 text-xs text-muted', title: 'Grabaciones' }, [icon('film', 12), h('span', {}, empAsgs.filter(a => a.type === 'Grabación').length)]),
+                                h('div', { className: 'flex items-center gap-1 text-xs text-muted', title: 'Ediciones' }, [icon('zap', 12), h('span', {}, empAsgs.filter(a => a.type === 'Edición').length)]),
+                                h('div', { className: 'flex items-center gap-1 text-xs text-muted', title: 'Creador 360°' }, [icon('sparkles', 12), h('span', {}, empAsgs.filter(a => a.type === 'Creador 360° (Grabación + Edición)').length)])
                             ]),
                             h('button', { 
                                 className: 'btn btn-outline py-1 px-3 text-xs',
@@ -126,6 +127,7 @@ export const render = async () => {
 
             container.appendChild(header);
             container.appendChild(grid);
+            if (window.lucide) window.lucide.createIcons();
 
         } catch (err) {
             console.error("Assignments render failed:", err);
@@ -171,8 +173,9 @@ export const render = async () => {
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Tipo'),
                         h('select', { id: 'asg-type', className: 'form-select text-xs' }, [
-                            h('option', { value: 'Grabación' }, 'Grabación'),
-                            h('option', { value: 'Edición' }, 'Edición')
+                            h('option', { value: 'Grabación', selected: existing?.type === 'Grabación' }, 'Grabación'),
+                            h('option', { value: 'Edición', selected: existing?.type === 'Edición' }, 'Edición'),
+                            h('option', { value: 'Creador 360° (Grabación + Edición)', selected: existing?.type === 'Creador 360° (Grabación + Edición)' }, 'Creador 360° (Grabación + Edición)')
                         ])
                     ])
                 ]),

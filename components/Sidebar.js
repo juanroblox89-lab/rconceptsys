@@ -4,7 +4,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { authService, storageService } from '../firebase/service.js';
+import { authService, storageService, dbService } from '../firebase/service.js';
 
 // Primary nav (shown in sidebar AND bottom nav)
 const primaryNavItems = [
@@ -130,6 +130,21 @@ export const Sidebar = () => {
                             style: { fontSize: '0.55rem', padding: '1px 4px', marginTop: '2px' }
                         }, user.role === 'admin' ? 'ADMIN' : (user.approved ? user.role?.toUpperCase() : 'PENDIENTE'))
                     ]),
+                    h('button', {
+                        className: 'btn-icon text-info',
+                        style: { width: '28px', height: '28px', flexShrink: 0, marginRight: '4px' },
+                        title: 'Cambiar Rol (Admin/Creador)',
+                        onClick: async () => {
+                            const newRole = user.role === 'admin' ? 'creador' : 'admin';
+                            try {
+                                await dbService.update('users', user.uid, { role: newRole });
+                            } catch (err) {
+                                console.warn("Offline role update simulated:", err);
+                            }
+                            store.setState({ user: { ...user, role: newRole } });
+                            window.location.reload();
+                        }
+                    }, [icon('refresh-cw', 13)]),
                     h('button', {
                         className: 'btn-icon',
                         style: { width: '28px', height: '28px', flexShrink: 0 },
