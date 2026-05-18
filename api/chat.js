@@ -30,8 +30,20 @@ export default async function handler(req, res) {
         const anthropicKey = apiKey?.trim() || process.env.ANTHROPIC_API_KEY || DEFAULT_API_KEY;
 
         if (!anthropicKey) {
-            return res.status(400).json({ error: 'Missing Anthropic API Key.' });
+            return res.status(400).json({ error: 'Missing Anthropic API Key. Please add it to your Vercel Environment Variables.' });
         }
+
+        // 1. Anthropic Compliance: Filter and slice messages so it starts STRICTLY with a 'user' role
+        let apiMessages = messages.map(m => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
+        }));
+
+        const firstUserIdx = apiMessages.findIndex(m => m.role === 'user');
+        if (firstUserIdx === -1) {
+            return res.status(400).json({ error: 'Conversation must contain at least one user message.' });
+        }
+        apiMessages = apiMessages.slice(firstUserIdx);
 
         // Custom system prompt driven by marketing expertise
         const systemPrompt = `Eres "RConcept AI Studio", un asistente de Inteligencia Artificial de nivel elite, experto en Marketing Digital de Alto Rendimiento, Estrategia de Contenidos Virales, Copywriting persuasivo (estilos como Alex Hormozi, GaryVee, MrBeast), y Guiones de Corto Formato de alta retención.
@@ -54,8 +66,8 @@ DIRECTRICES OPERATIVAS PARA TUS RESPUESTAS:
 
 Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfocado al 100% en optimizar la producción.`;
 
-        // Map conversation to Anthropic schema
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
+        // 2. Primary request with Claude 3.5 Sonnet v2
+        let response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: {
                 "x-api-key": anthropicKey,
@@ -66,16 +78,44 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
                 model: "claude-3-5-sonnet-20241022",
                 max_tokens: 3000,
                 system: systemPrompt,
-                messages: messages.map(m => ({
-                    role: m.role === 'assistant' ? 'assistant' : 'user',
-                    content: m.content
-                }))
+                messages: apiMessages
             })
         });
 
+        // 3. Fallback check: If Sonnet v2 fails, retry with the highly compatible Claude 3.5 Sonnet v1
+        if (!response.ok) {
+            const errClone = response.clone();
+            try {
+                const errData = await errClone.json();
+                const errMsg = errData.error?.message || '';
+                
+                // If it is a model availability or request tier limitation error, run fallback
+                if (errMsg.includes("model") || response.status === 404 || response.status === 400) {
+                    console.warn("Sonnet v2 failed or restricted. Retrying with fallback model claude-3-5-sonnet-20240620...");
+                    
+                    response = await fetch("https://api.anthropic.com/v1/messages", {
+                        method: "POST",
+                        headers: {
+                            "x-api-key": anthropicKey,
+                            "anthropic-version": "2023-06-01",
+                            "content-type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            model: "claude-3-5-sonnet-20240620",
+                            max_tokens: 3000,
+                            system: systemPrompt,
+                            messages: apiMessages
+                        })
+                    });
+                }
+            } catch (jsonErr) {
+                console.error("Failed to parse initial error response:", jsonErr);
+            }
+        }
+
         if (!response.ok) {
             const errData = await response.json();
-            console.error("Anthropic API Error Details:", errData);
+            console.error("Anthropic API Final Error Details:", errData);
             return res.status(response.status).json({ 
                 error: errData.error?.message || 'Error communicating with Anthropic Claude API.' 
             });
