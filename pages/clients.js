@@ -6,49 +6,6 @@ import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { dbService, storageService } from '../firebase/service.js';
 
-// Fully populated robust offline/online pre-populated demo database
-let localClients = [
-    {
-        id: 'gimnasio-elite',
-        name: 'Gimnasio Elite',
-        logo: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=100&q=80',
-        description: 'Cadena de centros de acondicionamiento físico premium enfocada en alto rendimiento y comunidad.',
-        businessType: 'Salud y Deporte',
-        assignedFormats: ['RC-01: Recorrido Comercial', 'HK-04: Hook Impacto'],
-        usedHooks: ['Problema-Solución', 'POV Curiosidad'],
-        viralVideos: [
-            { platform: 'TikTok', url: 'https://www.tiktok.com/@gimnasioelite/video/123456789', title: 'Recorrido Sala de Fuerza (1.2M Vistas)' },
-            { platform: 'Instagram', url: 'https://www.instagram.com/reel/123456789', title: 'Reto 30 Días Transformación (450K Vistas)' }
-        ],
-        assets: [
-            { title: 'Logo Vectorial', url: '#', type: 'logo' },
-            { title: 'Branding Guidelines', url: '#', type: 'reference' }
-        ],
-        recommendedLinks: [
-            { title: 'Carpeta de Material Bruto Drive', url: 'https://drive.google.com' },
-            { title: 'Moodboard de Inspiración Pinterest', url: 'https://pinterest.com' }
-        ]
-    },
-    {
-        id: 'barberia-classic',
-        name: 'Barbería Classic',
-        logo: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&q=80',
-        description: 'Barbería tradicional con enfoque en experiencia estética, cortes clásicos y cuidado de barba.',
-        businessType: 'Estética y Cuidado Personal',
-        assignedFormats: ['ED-02: Educativo Rápido'],
-        usedHooks: ['Sabías que?', 'Error común al peinar'],
-        viralVideos: [
-            { platform: 'YouTube', url: 'https://www.youtube.com/shorts/123456789', title: 'Cómo mantener el fade en casa (890K Vistas)' }
-        ],
-        assets: [
-            { title: 'Intro Animada', url: '#', type: 'video' }
-        ],
-        recommendedLinks: [
-            { title: 'Carpeta de Assets Compartidos Drive', url: 'https://drive.google.com' }
-        ]
-    }
-];
-
 export const render = () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
@@ -59,10 +16,10 @@ export const render = () => {
 
         let clientsList = [];
         try {
-            const list = await dbService.getAll('clients');
-            clientsList = list.length ? list : localClients;
+            clientsList = await dbService.getAll('clients');
         } catch (err) {
-            clientsList = localClients;
+            console.warn("Error fetching real clients from DB:", err);
+            clientsList = [];
         }
 
         container.innerHTML = '';
@@ -79,6 +36,22 @@ export const render = () => {
             }, [icon('plus', 14), h('span', {}, 'Nuevo Cliente')]) : null
         ]);
 
+        if (clientsList.length === 0) {
+            const emptyState = h('div', { className: 'text-center p-20 card flex-column items-center justify-center gap-4' }, [
+                icon('users', 40, 'text-muted mb-2'),
+                h('h3', { className: 'text-md font-bold' }, 'Directorio de Clientes Vacío'),
+                h('p', { className: 'text-xs text-muted max-w-xs' }, 'No tienes ningún cliente registrado en tu base de datos actualmente.'),
+                isAdmin ? h('button', { 
+                    className: 'btn btn-primary text-xs mt-2',
+                    onClick: () => openCreateClientModal() 
+                }, [icon('plus', 14), h('span', {}, 'Crear Primer Cliente')]) : null
+            ]);
+            container.appendChild(header);
+            container.appendChild(emptyState);
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
+
         // 2. Clients Grid Layout
         const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' } }, 
             clientsList.map(c => {
@@ -93,12 +66,29 @@ export const render = () => {
                                 h('span', { className: 'badge badge-secondary text-xs mt-1', style: { fontSize: '0.65rem' } }, c.businessType || 'General')
                             ])
                         ]),
-                        isAdmin ? h('button', { 
-                            className: 'btn-icon text-xs', 
-                            style: { width: '28px', height: '28px' }, 
-                            title: 'Editar Cliente',
-                            onClick: () => openCreateClientModal(c) 
-                        }, [icon('edit', 14)]) : null
+                        isAdmin ? h('div', { className: 'flex gap-1' }, [
+                            h('button', { 
+                                className: 'btn-icon text-xs', 
+                                style: { width: '28px', height: '28px' }, 
+                                title: 'Editar Cliente',
+                                onClick: () => openCreateClientModal(c) 
+                            }, [icon('edit', 14)]),
+                            h('button', { 
+                                className: 'btn-icon text-xs text-error', 
+                                style: { width: '28px', height: '28px' }, 
+                                title: 'Eliminar Cliente',
+                                onClick: async () => {
+                                    if (confirm(`¿Estás seguro de eliminar a ${c.name}?`)) {
+                                        try {
+                                            await dbService.delete('clients', c.id);
+                                            loadAndRenderClients();
+                                        } catch (err) {
+                                            alert("Error al eliminar cliente.");
+                                        }
+                                    }
+                                } 
+                            }, [icon('trash-2', 14)])
+                        ]) : null
                     ]),
 
                     // Description
@@ -137,7 +127,7 @@ export const render = () => {
                                 h('div', { className: 'flex items-center gap-2' }, [
                                     h('span', { className: `badge ${vv.platform === 'TikTok' ? 'badge-error' : (vv.platform === 'Instagram' ? 'badge-warning' : 'badge-info')} text-xs`, style: { fontSize: '0.55rem' } }, vv.platform),
                                     h('span', { className: 'text-xs font-medium text-primary', style: { maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, vv.title)
-                                ]),
+                                    ]),
                                 icon('external-link', 12, 'text-muted')
                             ]))
                         )
@@ -178,14 +168,36 @@ export const render = () => {
         
         const submitForm = async (e) => {
             e.preventDefault();
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Guardando...';
+
             const nameVal = form.querySelector('#cli-name').value;
             const typeVal = form.querySelector('#cli-type').value;
             const descVal = form.querySelector('#cli-desc').value;
             const formatsVal = form.querySelector('#cli-formats').value.split(',').map(s=>s.trim()).filter(Boolean);
             const hooksVal = form.querySelector('#cli-hooks').value.split(',').map(s=>s.trim()).filter(Boolean);
+            const logoUrlVal = form.querySelector('#cli-logo-url').value.trim();
+            const logoFile = form.querySelector('#cli-logo-file').files[0];
+
+            const clientId = existingClient?.id || nameVal.toLowerCase().replace(/\s+/g, '-');
+            let logoUrl = logoUrlVal || existingClient?.logo || '';
+
+            if (logoFile) {
+                try {
+                    logoUrl = await storageService.uploadFile(`client-logos/${clientId}`, logoFile);
+                } catch (err) {
+                    console.warn("Storage upload failed:", err);
+                }
+            }
+
+            if (!logoUrl) {
+                // Fallback to high-quality Unsplash brand identity cover placeholder
+                logoUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&q=80';
+            }
 
             const payload = {
-                id: existingClient?.id || nameVal.toLowerCase().replace(/\s+/g, '-'),
+                id: clientId,
                 name: nameVal,
                 businessType: typeVal,
                 description: descVal,
@@ -193,21 +205,14 @@ export const render = () => {
                 usedHooks: hooksVal.length ? hooksVal : ['Problema-Solución'],
                 viralVideos: existingClient?.viralVideos || [],
                 assets: existingClient?.assets || [],
-                logo: existingClient?.logo || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=100&q=80',
+                logo: logoUrl,
                 recommendedLinks: existingClient?.recommendedLinks || []
             };
 
             try {
                 await dbService.set('clients', payload.id, payload);
             } catch (err) {
-                console.warn("Offline user persistent action simulated:", err);
-            }
-
-            // Update statefully
-            if (existingClient) {
-                Object.assign(existingClient, payload);
-            } else {
-                localClients.push(payload);
+                console.warn("Firestore client write failed:", err);
             }
 
             document.body.removeChild(overlay);
@@ -231,6 +236,14 @@ export const render = () => {
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Descripción Estratégica General'),
                     h('textarea', { id: 'cli-desc', className: 'form-textarea', placeholder: 'Enfoque de marca, tono de comunicación y público objetivo...' }, existingClient?.description || '')
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Subir Foto de Perfil / Logo (Imagen)'),
+                    h('input', { id: 'cli-logo-file', type: 'file', className: 'form-input', accept: 'image/*' })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'O, Enlace a Foto de Perfil (URL)'),
+                    h('input', { id: 'cli-logo-url', className: 'form-input', value: existingClient?.logo || '', placeholder: 'Ej. https://images.unsplash.com/...' })
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Formatos Asignados (Separados por coma)'),

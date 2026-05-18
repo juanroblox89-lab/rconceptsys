@@ -3,7 +3,6 @@
  * Notion Light UI presenting video production structures and operational objectives.
  */
 import { h, icon } from '../utils/dom.js';
-import { formats as initialFormats } from '../data/mockData.js';
 import { dbService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 
@@ -17,10 +16,10 @@ export const render = () => {
         
         let formatsList = [];
         try {
-            const list = await dbService.getAll('formats');
-            formatsList = list.length ? list : initialFormats;
+            formatsList = await dbService.getAll('formats');
         } catch (err) {
-            formatsList = initialFormats;
+            console.warn("Error fetching formats from Firestore:", err);
+            formatsList = [];
         }
 
         container.innerHTML = '';
@@ -36,6 +35,22 @@ export const render = () => {
                 onClick: () => openCreateFormatModal()
             }, [icon('plus', 14), h('span', {}, 'Crear Formato')]) : null
         ]);
+
+        if (formatsList.length === 0) {
+            const emptyState = h('div', { className: 'text-center p-20 card flex-column items-center justify-center gap-4' }, [
+                icon('trending-up', 40, 'text-muted mb-2'),
+                h('h3', { className: 'text-md font-bold' }, 'Librería de Formatos Vacía'),
+                h('p', { className: 'text-xs text-muted max-w-xs' }, 'No has registrado ningún formato narrativo de video en tu base de datos actualmente.'),
+                isAdmin ? h('button', { 
+                    className: 'btn btn-primary text-xs mt-2',
+                    onClick: () => openCreateFormatModal() 
+                }, [icon('plus', 14), h('span', {}, 'Crear Primer Formato')]) : null
+            ]);
+            container.appendChild(header);
+            container.appendChild(emptyState);
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
 
         // Grid
         const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' } }, 
@@ -53,7 +68,7 @@ export const render = () => {
                                     try {
                                         await dbService.delete('formats', f.id);
                                     } catch (err) {
-                                        console.warn("Offline format deletion simulated:", err);
+                                        console.warn("Error deleting format:", err);
                                     }
                                     loadFormats();
                                 }
@@ -108,7 +123,7 @@ export const render = () => {
                 try {
                     await dbService.set('formats', codeVal, newFormat);
                 } catch (err) {
-                    console.warn("Offline format saving simulated:", err);
+                    console.warn("Error saving format:", err);
                 }
 
                 document.body.removeChild(overlay);

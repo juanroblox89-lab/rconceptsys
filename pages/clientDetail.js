@@ -4,7 +4,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { dbService } from '../firebase/service.js';
+import { dbService, storageService } from '../firebase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 
 export const render = async (params) => {
@@ -19,63 +19,86 @@ export const render = async (params) => {
         
         try {
             let client = await dbService.getById('clients', id);
-            
-            // Fix: Fallback to local clients for details if DB fetch fails/null
-            if (!client) {
-                const localClients = [
-                    { 
-                        id: 'gimnasio-elite', 
-                        name: 'Gimnasio Elite', 
-                        businessType: 'Salud y Deporte', 
-                        description: 'Cadena de centros de acondicionamiento físico premium enfocada en alto rendimiento y comunidad.',
-                        logo: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=100&q=80',
-                        guionRecomendado: 'RC-01 - Recorrido POV: Mostrar la sala de fuerza, el sauna premium y los coaches.\nHK-04 - Reto 30 Días: Ofrecer un gancho directo al dolor de perder el año.',
-                        assignedFormats: ['RC-01: Recorrido Comercial', 'HK-04: Hook Impacto'],
-                        usedHooks: ['Problema-Solución', 'POV Curiosidad'],
-                        recommendedLinks: [
-                            { title: 'Carpeta de Material Bruto Drive', url: 'https://drive.google.com' },
-                            { title: 'Moodboard de Inspiración Pinterest', url: 'https://pinterest.com' }
-                        ]
-                    },
-                    { 
-                        id: 'barberia-classic', 
-                        name: 'Barbería Classic', 
-                        businessType: 'Estética y Cuidado Personal', 
-                        description: 'Barbería tradicional con enfoque en experiencia estética, cortes clásicos y cuidado de barba.',
-                        logo: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&q=80',
-                        guionRecomendado: 'ED-02 - Educativo Rápido: Mostrar cómo peinar el pompadour en casa paso a paso.',
-                        assignedFormats: ['ED-02: Educativo Rápido'],
-                        usedHooks: ['Sabías que?', 'Error común al peinar'],
-                        recommendedLinks: [
-                            { title: 'Carpeta de Assets Compartidos Drive', url: 'https://drive.google.com' }
-                        ]
-                    }
-                ];
-                client = localClients.find(c => c.id === id);
-            }
 
-            if (!client) throw new Error("Cliente no encontrado.");
+            if (!client) {
+                container.innerHTML = '';
+                const emptyDetail = h('div', { className: 'text-center p-20 card flex-column items-center justify-center gap-4' }, [
+                    icon('users', 40, 'text-muted mb-2'),
+                    h('h3', { className: 'text-md font-bold' }, 'Cliente no encontrado'),
+                    h('p', { className: 'text-xs text-muted max-w-xs' }, 'El identificador de cliente ingresado no coincide con ningún registro en tu base de datos.'),
+                    h('button', { 
+                        className: 'btn btn-outline text-xs mt-2',
+                        onClick: () => window.location.hash = '#clients' 
+                    }, [icon('arrow-left', 14), h('span', {}, 'Volver al Directorio')])
+                ]);
+                container.appendChild(emptyDetail);
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
 
             container.innerHTML = '';
 
-            // Header with Back Button
+            // Header with Back Button and clickable logo image uploader (Admin only)
             const header = h('div', { className: 'flex justify-between items-center mb-4' }, [
                 h('div', { className: 'flex items-center gap-4' }, [
                     h('button', { 
                         className: 'btn-icon', 
                         onClick: () => window.location.hash = '#clients' 
                     }, [icon('arrow-left', 18)]),
-                    h('div', { className: 'flex items-center gap-3' }, [
-                        client.logo ? h('img', { src: client.logo, style: { width: '40px', height: '40px', borderRadius: '8px' } }) : null,
+                    h('div', { className: 'flex items-center gap-3 relative group' }, [
+                        // Clickable uploader frame
+                        h('div', { 
+                            className: 'relative overflow-hidden border-radius-sm', 
+                            style: { width: '44px', height: '44px', borderRadius: '8px', border: '1px solid var(--border)' } 
+                        }, [
+                            h('img', { 
+                                src: client.logo || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&q=80', 
+                                style: { width: '100%', height: '100%', objectFit: 'cover' } 
+                            }),
+                            isAdmin ? h('label', { 
+                                className: 'absolute inset-0 bg-black bg-opacity-65 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity',
+                                style: { transition: 'opacity 0.2s ease' }
+                            }, [
+                                icon('camera', 14, 'text-white'),
+                                h('input', { 
+                                    type: 'file', 
+                                    accept: 'image/*', 
+                                    style: { display: 'none' },
+                                    onChange: async (e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            const loader = h('div', { className: 'absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center' }, [
+                                                h('div', { className: 'loader', style: { width: '16px', height: '16px', borderWidth: '2px', borderColor: '#fff', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' } })
+                                            ]);
+                                            e.target.parentElement.appendChild(loader);
+                                            try {
+                                                const uploadedUrl = await storageService.uploadFile(`client-logos/${client.id}`, file);
+                                                await dbService.update('clients', client.id, { logo: uploadedUrl });
+                                                client.logo = uploadedUrl;
+                                                alert("¡Foto de perfil del cliente actualizada exitosamente!");
+                                                loadClient();
+                                            } catch (err) {
+                                                console.error(err);
+                                                alert("Error al subir la imagen.");
+                                            } finally {
+                                                loader.remove();
+                                            }
+                                        }
+                                    }
+                                })
+                            ]) : null
+                        ]),
                         h('div', {}, [
-                            h('h1', { className: 'text-xl font-bold' }, client.name),
-                            h('span', { className: 'text-xs text-muted' }, client.businessType)
+                            h('h1', { className: 'text-xl font-bold flex items-center gap-2' }, [
+                                h('span', {}, client.name)
+                            ]),
+                            h('span', { className: 'badge badge-secondary text-xs mt-1', style: { fontSize: '0.65rem' } }, client.businessType)
                         ])
                     ])
                 ]),
                 isAdmin ? h('button', { 
                     className: 'btn btn-outline text-xs',
-                    onClick: () => alert("Función de edición rápida próximamente.")
+                    onClick: () => editEstrategia(client)
                 }, [icon('edit-3', 14), h('span', {}, 'Editar Estrategia')]) : null
             ]);
 
@@ -254,6 +277,46 @@ export const render = async (params) => {
             h('div', { className: 'modal-footer' }, [
                 h('button', { type: 'button', className: 'btn btn-outline', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary' }, 'Guardar Cambios')
+            ])
+        ]);
+        overlay.appendChild(form);
+        document.body.appendChild(overlay);
+    };
+
+    const editEstrategia = (client) => {
+        const overlay = h('div', { className: 'modal-overlay' });
+        const form = h('form', { 
+            className: 'modal-container', 
+            onSubmit: async (e) => {
+                e.preventDefault();
+                const descVal = form.querySelector('#cli-strat-desc').value;
+                const styleVal = form.querySelector('#cli-strat-style').value;
+                
+                client.description = descVal;
+                client.visualStyle = styleVal;
+                
+                await dbService.set('clients', client.id, client);
+                document.body.removeChild(overlay);
+                loadClient();
+            }
+        }, [
+            h('div', { className: 'modal-header' }, [
+                h('span', { className: 'modal-title' }, `Editar Estrategia: ${client.name}`), 
+                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+            ]),
+            h('div', { className: 'modal-body flex-column gap-3' }, [
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Descripción Estratégica del Negocio'),
+                    h('textarea', { id: 'cli-strat-desc', className: 'form-textarea', style: { minHeight: '120px' }, required: true }, client.description || '')
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Directrices de Estilo Visual / Edición'),
+                    h('input', { id: 'cli-strat-style', className: 'form-input', value: client.visualStyle || 'Subtítulos dinámicos, transiciones de compás rápido, música trending.', required: true })
+                ])
+            ]),
+            h('div', { className: 'modal-footer' }, [
+                h('button', { type: 'button', className: 'btn btn-outline', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'submit', className: 'btn btn-primary' }, 'Guardar Estrategia')
             ])
         ]);
         overlay.appendChild(form);

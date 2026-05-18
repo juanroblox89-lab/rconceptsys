@@ -5,48 +5,34 @@
  */
 import { dbService } from '../firebase/service.js';
 
-// Pre-populated demo data
-let localAssignments = [
-    {
-        id: 'ASG-001',
-        employeeId: 'qa-editor1',
-        type: 'Edición',
-        client: 'Gimnasio Elite',
-        title: 'Reel Recorrido Pesas',
-        description: 'Edición de video dinámico con música tendencia y subtítulos.',
-        assignedDate: new Date().toISOString(),
-        dueDate: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days from now
-        status: 'Pendiente',
-        createdBy: 'admin'
-    }
-];
-
 export const assignmentService = {
     async getAllAssignments() {
         try {
             const list = await dbService.getAll('assignments');
-            return list.length ? list : localAssignments;
+            return list || [];
         } catch (err) {
-            console.warn("Using offline assignments cache:", err);
-            return localAssignments;
+            console.warn("Error fetching live assignments from DB:", err);
+            return [];
         }
     },
 
     async getAssignmentsByEmployee(employeeId) {
         try {
             const list = await dbService.getByQuery('assignments', 'employeeId', '==', employeeId);
-            return list.length ? list : localAssignments.filter(a => a.employeeId === employeeId);
+            return list || [];
         } catch (err) {
-            return localAssignments.filter(a => a.employeeId === employeeId);
+            console.warn(`Error fetching assignments for employee ${employeeId}:`, err);
+            return [];
         }
     },
 
     async getAssignmentsByClient(clientName) {
         try {
             const list = await dbService.getByQuery('assignments', 'client', '==', clientName);
-            return list.length ? list : localAssignments.filter(a => a.client === clientName);
+            return list || [];
         } catch (err) {
-            return localAssignments.filter(a => a.client === clientName);
+            console.warn(`Error fetching assignments for client ${clientName}:`, err);
+            return [];
         }
     },
 
@@ -54,7 +40,7 @@ export const assignmentService = {
         const newAsg = {
             id: data.id || `ASG-${Date.now().toString().slice(-4)}`,
             employeeId: data.employeeId,
-            type: data.type || 'Edición', // 'Grabación' | 'Edición'
+            type: data.type || 'Edición', // 'Grabación' | 'Edición' | 'Creador 360°'
             client: data.client || 'General',
             title: data.title || 'Nueva Asignación',
             description: data.description || '',
@@ -67,12 +53,8 @@ export const assignmentService = {
         try {
             await dbService.set('assignments', newAsg.id, newAsg);
         } catch (err) {
-            console.warn("Offline assignment persistence simulated:", err);
+            console.warn("Error saving assignment to DB:", err);
         }
-
-        const idx = localAssignments.findIndex(a => a.id === newAsg.id);
-        if (idx >= 0) localAssignments[idx] = newAsg;
-        else localAssignments.push(newAsg);
 
         return newAsg;
     },
@@ -81,9 +63,8 @@ export const assignmentService = {
         try {
             await dbService.delete('assignments', id);
         } catch (err) {
-            console.warn("Offline assignment deletion simulated:", err);
+            console.warn("Error deleting assignment from DB:", err);
         }
-        localAssignments = localAssignments.filter(a => a.id !== id);
     },
 
     /**
@@ -95,6 +76,7 @@ export const assignmentService = {
         
         const all = await this.getAllAssignments();
         const toDelete = all.filter(asg => {
+            if (!asg.dueDate) return false;
             const deadline = new Date(asg.dueDate);
             return (now - deadline) > twoDaysMs;
         });

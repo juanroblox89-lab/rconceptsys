@@ -6,31 +6,6 @@ import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 
-let localSopsCache = [
-    {
-        id: 'SOP-001',
-        title: 'Grabación en Set',
-        iconName: 'video',
-        steps: [
-            { text: 'Limpieza de lentes y sensores', done: true },
-            { text: 'Ajuste de Shutter Speed (Regla de los 180°)', done: true },
-            { text: 'Chequeo de niveles de audio (-12db)', done: false },
-            { text: 'Backup de tarjetas SD al terminar', done: false }
-        ]
-    },
-    {
-        id: 'SOP-002',
-        title: 'Post-Producción',
-        iconName: 'scissors',
-        steps: [
-            { text: 'Naming de archivos (YYYYMMDD_Client_Project)', done: true },
-            { text: 'Primer corte (Rough Cut) - Sin música', done: false },
-            { text: 'Color Grading (Rec.709 base)', done: false },
-            { text: 'Exportación para Reels (1080x1920)', done: false }
-        ]
-    }
-];
-
 export const render = () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
@@ -41,10 +16,10 @@ export const render = () => {
         
         let sopsList = [];
         try {
-            const list = await dbService.getAll('sops');
-            sopsList = list.length ? list : localSopsCache;
+            sopsList = await dbService.getAll('sops');
         } catch (err) {
-            sopsList = localSopsCache;
+            console.warn("Error fetching SOPs from Firestore:", err);
+            sopsList = [];
         }
 
         container.innerHTML = '';
@@ -59,6 +34,22 @@ export const render = () => {
                 onClick: () => openCreateSopModal()
             }, [icon('plus', 14), h('span', {}, 'Nueva Guía')]) : null
         ]);
+
+        if (sopsList.length === 0) {
+            const emptyState = h('div', { className: 'text-center p-20 card flex-column items-center justify-center gap-4' }, [
+                icon('check-square', 40, 'text-muted mb-2'),
+                h('h3', { className: 'text-md font-bold' }, 'Librería de SOPs Vacía'),
+                h('p', { className: 'text-xs text-muted max-w-xs' }, 'No has registrado ninguna guía SOP de cumplimiento de calidad en tu base de datos actualmente.'),
+                isAdmin ? h('button', { 
+                    className: 'btn btn-primary text-xs mt-2',
+                    onClick: () => openCreateSopModal() 
+                }, [icon('plus', 14), h('span', {}, 'Crear Primer SOP')]) : null
+            ]);
+            container.appendChild(header);
+            container.appendChild(emptyState);
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
 
         const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } }, 
             sopsList.map(sop => h('div', { key: sop.id || sop.title, className: 'card flex-column justify-between p-5' }, [
@@ -79,7 +70,7 @@ export const render = () => {
                                     try {
                                         await dbService.delete('sops', sop.id);
                                     } catch (err) {
-                                        console.warn("Offline SOP deletion simulated:", err);
+                                        console.warn("Error deleting SOP:", err);
                                     }
                                     loadSops();
                                 }
@@ -133,7 +124,7 @@ export const render = () => {
                 try {
                     await dbService.set('sops', id, newSop);
                 } catch (err) {
-                    console.warn("Offline SOP saving simulated:", err);
+                    console.warn("Error saving SOP:", err);
                 }
 
                 document.body.removeChild(overlay);
@@ -201,7 +192,7 @@ export const render = () => {
                             try {
                                 await dbService.set('sops', sopItem.id, sopItem);
                             } catch (err) {
-                                console.warn("Offline SOP update simulated:", err);
+                                console.warn("Error updating SOP:", err);
                             }
                             loadSops();
                         }

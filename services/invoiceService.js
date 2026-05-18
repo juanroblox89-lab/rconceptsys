@@ -4,59 +4,19 @@
  */
 import { dbService } from '../firebase/service.js';
 
-// Base mock storage ensuring flawless UI presentation offline/pre-populated
-let localEmployeeInvoices = [
-    {
-        id: 'EMP-INV-001',
-        employeeId: 'qa-editor1',
-        employeeName: 'QA Editor Uno',
-        type: 'Factura de Edición de Video',
-        client: 'Gimnasio Elite',
-        amount: 150000,
-        observations: 'Edición de 5 Reels formato RC-01 con subtítulos dinámicos.',
-        createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-        editedAt: null,
-        status: 'Pendiente'
-    },
-    {
-        id: 'EMP-INV-002',
-        employeeId: 'qa-camara1',
-        employeeName: 'QA Cámara Uno',
-        type: 'Factura de Grabación de Video',
-        client: 'Barbería Classic',
-        amount: 250000,
-        observations: 'Jornada de grabación con equipo Sony FX3 e iluminación led.',
-        createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-        editedAt: null,
-        status: 'Aprobado'
-    }
-];
-
-let localAdminInvoices = [
-    {
-        id: 'ADM-INV-001',
-        relatedEmployeeInvoice: 'EMP-INV-001',
-        adminObservations: 'Los tiempos de entrega y retención validan el pago. Excelente hook.',
-        verificationStatus: 'Coherente',
-        internalNotes: 'Costo por reel unitario dentro del margen operativo de la agencia.',
-        validatedAt: new Date().toISOString()
-    }
-];
-
 export const invoiceService = {
     async getEmployeeInvoices(userId, role) {
         try {
-            // Firestore call if available
             if (role === 'admin') {
                 const list = await dbService.getAll('invoices');
-                return list.length ? list : localEmployeeInvoices;
+                return list || [];
             } else {
                 const list = await dbService.getByQuery('invoices', 'employeeId', '==', userId);
-                return list.length ? list : localEmployeeInvoices.filter(i => i.employeeId === userId);
+                return list || [];
             }
         } catch (err) {
-            console.warn("Using offline employee invoices cache:", err);
-            return role === 'admin' ? localEmployeeInvoices : localEmployeeInvoices.filter(i => i.employeeId === userId);
+            console.warn("Error fetching employee invoices from DB:", err);
+            return [];
         }
     },
 
@@ -64,9 +24,10 @@ export const invoiceService = {
         try {
             const list = await dbService.getByQuery('admin_invoices', 'relatedEmployeeInvoice', '==', employeeInvoiceId);
             if (list && list.length > 0) return list[0];
-            return localAdminInvoices.find(a => a.relatedEmployeeInvoice === employeeInvoiceId) || null;
+            return null;
         } catch (err) {
-            return localAdminInvoices.find(a => a.relatedEmployeeInvoice === employeeInvoiceId) || null;
+            console.warn(`Error fetching admin invoice comparison for ${employeeInvoiceId}:`, err);
+            return null;
         }
     },
 
@@ -87,13 +48,8 @@ export const invoiceService = {
         try {
             await dbService.set('invoices', newInv.id, newInv);
         } catch (err) {
-            console.warn("Offline persistence simulation for employee invoice:", err);
+            console.warn("Error saving employee invoice to DB:", err);
         }
-
-        // Update local cache
-        const idx = localEmployeeInvoices.findIndex(i => i.id === newInv.id);
-        if (idx >= 0) localEmployeeInvoices[idx] = newInv;
-        else localEmployeeInvoices.push(newInv);
 
         return newInv;
     },
@@ -111,12 +67,8 @@ export const invoiceService = {
         try {
             await dbService.set('admin_invoices', newAdmInv.id, newAdmInv);
         } catch (err) {
-            console.warn("Offline persistence simulation for admin invoice:", err);
+            console.warn("Error saving admin validation invoice to DB:", err);
         }
-
-        const idx = localAdminInvoices.findIndex(a => a.relatedEmployeeInvoice === newAdmInv.relatedEmployeeInvoice);
-        if (idx >= 0) localAdminInvoices[idx] = newAdmInv;
-        else localAdminInvoices.push(newAdmInv);
 
         return newAdmInv;
     },

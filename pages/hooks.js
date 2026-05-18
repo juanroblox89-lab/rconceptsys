@@ -3,7 +3,6 @@
  * Notion Light UI presenting video retention hooks and operational psychology guidelines.
  */
 import { h, icon } from '../utils/dom.js';
-import { hooks as initialHooks } from '../data/mockData.js';
 import { Table } from '../components/ui/Table.js';
 import { dbService } from '../firebase/service.js';
 import { store } from '../js/store.js';
@@ -18,10 +17,10 @@ export const render = () => {
         
         let hooksList = [];
         try {
-            const list = await dbService.getAll('hooks');
-            hooksList = list.length ? list : initialHooks;
+            hooksList = await dbService.getAll('hooks');
         } catch (err) {
-            hooksList = initialHooks;
+            console.warn("Error fetching hooks from Firestore:", err);
+            hooksList = [];
         }
 
         container.innerHTML = '';
@@ -37,6 +36,22 @@ export const render = () => {
                 onClick: () => openCreateHookModal()
             }, [icon('plus', 14), h('span', {}, 'Añadir Hook')]) : null
         ]);
+
+        if (hooksList.length === 0) {
+            const emptyState = h('div', { className: 'text-center p-20 card flex-column items-center justify-center gap-4' }, [
+                icon('zap', 40, 'text-muted mb-2'),
+                h('h3', { className: 'text-md font-bold' }, 'Biblioteca de Hooks Vacía'),
+                h('p', { className: 'text-xs text-muted max-w-xs' }, 'No has registrado ningún hook o gancho de retención en tu base de datos actualmente.'),
+                isAdmin ? h('button', { 
+                    className: 'btn btn-primary text-xs mt-2',
+                    onClick: () => openCreateHookModal() 
+                }, [icon('plus', 14), h('span', {}, 'Crear Primer Hook')]) : null
+            ]);
+            container.appendChild(header);
+            container.appendChild(emptyState);
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
 
         // Table
         const hooksTable = Table({
@@ -102,27 +117,26 @@ export const render = () => {
 
     const openCreateHookModal = () => {
         const overlay = h('div', { className: 'modal-overlay' });
-        const form = h('form', {
-            className: 'modal-container',
+        const form = h('form', { 
+            className: 'modal-container', 
             onSubmit: async (e) => {
                 e.preventDefault();
-                const catVal = form.querySelector('#hk-cat').value.trim();
                 const titleVal = form.querySelector('#hk-title').value.trim();
+                const catVal = form.querySelector('#hk-category').value.trim();
                 const psychVal = form.querySelector('#hk-psych').value.trim();
 
-                const id = `HK-${Date.now().toString().slice(-4)}`;
                 const newHook = {
-                    id,
-                    category: catVal || 'General',
+                    id: titleVal.toLowerCase().replace(/\s+/g, '-'),
                     title: titleVal,
+                    category: catVal,
                     psychology: psychVal,
                     examples: []
                 };
 
                 try {
-                    await dbService.set('hooks', id, newHook);
+                    await dbService.set('hooks', newHook.id, newHook);
                 } catch (err) {
-                    console.warn("Offline hook saving simulated:", err);
+                    console.warn("Error saving hook:", err);
                 }
 
                 document.body.removeChild(overlay);
@@ -130,27 +144,21 @@ export const render = () => {
             }
         }, [
             h('div', { className: 'modal-header' }, [
-                h('span', { className: 'modal-title' }, 'Añadir Nuevo Hook Gancho'),
+                h('span', { className: 'modal-title' }, 'Añadir Nuevo Hook Gancho'), 
                 h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Categoría'),
-                    h('select', { id: 'hk-cat', className: 'form-select text-xs', required: true }, [
-                        h('option', { value: 'Problema / Dolor' }, 'Problema / Dolor'),
-                        h('option', { value: 'Curiosidad / Misterio' }, 'Curiosidad / Misterio'),
-                        h('option', { value: 'Contradicción / Contra-Intuitivo' }, 'Contradicción / Contra-Intuitivo'),
-                        h('option', { value: 'Autoridad / Desafío' }, 'Autoridad / Desafío'),
-                        h('option', { value: 'General' }, 'General')
-                    ])
+                    h('label', { className: 'form-label' }, 'Patrón de Hook (Enunciado verbal)'),
+                    h('input', { id: 'hk-title', className: 'form-input', placeholder: 'Ej. Deja de cometer este error en...', required: true })
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Patrón de Gancho / Frase Verbal'),
-                    h('input', { id: 'hk-title', className: 'form-input', placeholder: 'Ej. "Esta es la razón número uno por la que..."', required: true })
+                    h('label', { className: 'form-label' }, 'Categoría (Ej. Descubrimiento, Pérdida)'),
+                    h('input', { id: 'hk-category', className: 'form-input', placeholder: 'Ej. Problema', required: true })
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Psicología Aplicada'),
-                    h('textarea', { id: 'hk-psych', className: 'form-textarea', placeholder: '¿Por qué funciona este hook y qué sesgo cognitivo activa?', required: true })
+                    h('label', { className: 'form-label' }, 'Psicología Detrás (Retención)'),
+                    h('textarea', { id: 'hk-psych', className: 'form-textarea', placeholder: 'Explica por qué detiene el scroll (miedo a perder, curiosidad)...', required: true })
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
@@ -158,30 +166,35 @@ export const render = () => {
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Crear Hook')
             ])
         ]);
+
         overlay.appendChild(form);
         document.body.appendChild(overlay);
-        
-        setTimeout(() => {
-            if (window.lucide) window.lucide.createIcons();
-        }, 50);
     };
 
     const openEditExamplesModal = (hk) => {
         const overlay = h('div', { className: 'modal-overlay' });
         
         const renderModalContent = () => {
-            const container = h('div', { className: 'modal-container', style: { maxWidth: '500px' } });
+            const container = h('div', { className: 'modal-container', style: { maxWidth: '550px' } });
             
             const renderModalContentBody = () => {
-                const examplesList = h('div', { className: 'flex-column gap-2 mb-3 mt-1' }, 
-                    (!hk.examples || !hk.examples.length) 
-                        ? [h('span', { className: 'text-xs text-muted italic p-3 bg-secondary text-center border-radius-sm', style: { display: 'block', border: '1px dashed var(--border)' } }, 'Sin ejemplos guardados.')]
-                        : hk.examples.map((ex, idx) => h('div', { key: idx, className: 'flex justify-between items-center p-2 bg-secondary border-radius-sm', style: { border: '1px solid var(--border)' } }, [
-                            h('a', { href: ex.url, target: '_blank', className: 'text-xs text-info hover-underline font-medium flex items-center gap-1' }, [icon('external-link', 10), h('span', {}, ex.label || 'Ver Video')]),
-                            h('button', {
-                                type: 'button',
-                                className: 'btn-icon text-error',
-                                style: { padding: '2px', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+                const examplesList = h('div', { className: 'flex flex-column gap-2 mt-1' });
+                
+                if (!hk.examples || hk.examples.length === 0) {
+                    examplesList.appendChild(h('p', { className: 'text-xs text-muted italic p-2 bg-secondary border-radius-sm' }, 'Sin ejemplos de video adjuntos actualmente.'));
+                } else {
+                    hk.examples.forEach((ex, idx) => {
+                        examplesList.appendChild(h('div', { 
+                            className: 'p-3 bg-secondary rounded flex justify-between items-center border',
+                            style: { border: '1px solid var(--border)', borderRadius: '4px' }
+                        }, [
+                            h('div', { className: 'flex-column gap-1' }, [
+                                h('span', { className: 'text-xs font-semibold text-primary' }, ex.label),
+                                h('a', { href: ex.url, target: '_blank', className: 'text-xs text-info hover-underline' }, ex.url)
+                            ]),
+                            h('button', { 
+                                className: 'btn-icon text-error', 
+                                style: { padding: '4px' },
                                 onClick: async () => {
                                     hk.examples.splice(idx, 1);
                                     try {
@@ -195,8 +208,9 @@ export const render = () => {
                                     if (window.lucide) window.lucide.createIcons();
                                 }
                             }, [icon('trash-2', 12)])
-                        ]))
-                );
+                        ]));
+                    });
+                }
 
                 const addForm = h('form', {
                     onSubmit: async (e) => {

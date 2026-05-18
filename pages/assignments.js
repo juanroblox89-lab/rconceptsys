@@ -39,12 +39,7 @@ export const render = async () => {
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
             
-            // Fix: Fallback to local clients if DB is empty to prevent empty dropdowns
-            const localClients = [
-                { name: 'Gimnasio Elite' },
-                { name: 'Barbería Classic' }
-            ];
-            const finalClients = clients.length ? clients : localClients;
+            const finalClients = clients || [];
             
             container.innerHTML = '';
 
@@ -81,7 +76,7 @@ export const render = async () => {
                             ]),
                             h('div', { className: 'flex gap-1' }, [
                                 h('button', { className: 'btn-icon text-muted', title: 'Ver Factura Admin', onClick: () => window.location.hash = '#billing' }, [icon('credit-card', 14)]),
-                                h('button', { className: 'btn-icon text-muted', title: 'Editar Asignaciones', onClick: () => openEmployeeTasksModal(emp, empAsgs, { clients }) }, [icon('more-horizontal', 14)])
+                                h('button', { className: 'btn-icon text-muted', title: 'Editar Asignaciones', onClick: () => openEmployeeTasksModal(emp, empAsgs, { clients: finalClients }) }, [icon('more-horizontal', 14)])
                             ])
                         ]),
 
@@ -118,7 +113,7 @@ export const render = async () => {
                             ]),
                             h('button', { 
                                 className: 'btn btn-outline py-1 px-3 text-xs',
-                                onClick: () => openAssignmentModal(null, { users: [emp], clients, preselectedUser: emp.uid })
+                                onClick: () => openAssignmentModal(null, { users: [emp], clients: finalClients, preselectedUser: emp.uid })
                             }, '+ Asignar')
                         ])
                     ]);
