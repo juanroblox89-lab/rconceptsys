@@ -1,7 +1,9 @@
 /**
  * AI Assistant Page - Creative Production OS
  * High-fidelity, highly interactive marketing and copy assistant driven by Anthropic Claude.
- * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, inline typing indicator, auto-seeding defaults, brand focus summary profiles, and deeply integrated client-format-hook relational logic.
+ * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits,
+ * inline typing indicator, living Firestore-based System Rules (system_rules), brand focus summary profiles,
+ * and deeply integrated client-format-hook relational logic.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
@@ -29,13 +31,90 @@ export const render = () => {
             let sopsList = await dbService.getAll('sops').catch(() => []);
             let metricsList = await dbService.getAll('metrics').catch(() => []);
             let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => []);
+            let systemRules = await dbService.getAll('system_rules').catch(() => []);
+
+            // AUTO-SEEDING LIVING SYSTEM CONFIGURATION RULES (Dynamic context memory)
+            if (systemRules.length === 0) {
+                const defaultRules = [
+                    {
+                        id: 'manifesto',
+                        title: 'Filosofía Central y Directrices de Operación de la Agencia',
+                        content: `=== FILOSOFÍA CENTRAL DEL SISTEMA ===
+El objetivo NO es crear contenido aleatorio. El objetivo es DETECTAR PATRONES REUTILIZABLES BASADOS EN EVIDENCIA REAL.
+Priorizar siempre: formatos probados, hooks reales, métricas reales, contexto operativo y documentación estructurada.
+Debes actuar como un estratega operacional, arquitecto de patrones y auditor de estructura, convirtiendo la experiencia creativa en conocimiento escalable.
+
+=== PRIORIDAD ACTUAL DEL SISTEMA ===
+1. Consolidar formatos reales (RC-01, PL-01, FE-01, UB-01)
+2. Consolidar hooks reales
+3. Relacionar métricas
+4. Profundizar contexto estratégico por cliente
+5. Construir memoria operacional reutilizable
+
+=== COMPORTAMIENTO ANTE AMBIGÜEDAD ===
+Cuando el usuario haga solicitudes ambiguas:
+- NO hagas múltiples preguntas.
+- NO bloques el flujo creativo.
+- Debes obligatoriamente:
+  1. Asumir la dirección más lógica según el contexto.
+  2. Proponer una solución concreta.
+  3. Terminar con UNA sola confirmación breve.
+Ejemplo: "Para Tizón Dorado propondría un RC-01 enfocado en abundancia y cocina criolla. ¿Quieres que lo estructure hacia descubrimiento o familiar?"`,
+                        updatedAt: new Date().toISOString()
+                    },
+                    {
+                        id: 'format_rules',
+                        title: 'Reglas de Formatos y Diferenciación de Acciones',
+                        content: `=== REGLA: CREATE_FORMAT vs CREATE_SOP ===
+- "create_format": Usar cuando exista estructura narrativa reutilizable, patrón creativo repetible, formato de contenido o lógica audiovisual. Ejemplos: recorrido comercial, top productos, comparación, POV, storytelling.
+- "create_sop": Usar cuando sea un procedimiento operativo de checklist, flujo técnico, proceso interno o ejecución física. Ejemplos: cómo exportar, cómo grabar, naming, revisión de calidad, workflow de edición.
+
+=== DEFINICIÓN DE FORMATOS OPERATIVOS PRINCIPALES ===
+1. RC-01 — Recorrido Comercial Narrado
+   - Objetivo: Presentar negocio físico mediante recorrido narrado.
+   - Estructura: hook + presentación + productos/servicios + experiencia + ambiente + ubicación + cierre.
+   - Industria: restaurantes y locales físicos.
+2. PL-01 — Presentación/Listado de Productos
+   - Objetivo: Mostrar múltiples productos/platos rápidamente.
+   - Estructura: producto 1 + producto 2 + producto 3 + CTA ligero.
+   - Ideal para: restaurantes, combos, catálogos, promociones.
+3. FE-01 — Formato Evento/Fecha Especial
+   - Objetivo: Aprovechar contexto temporal/social (fechas especiales, fines de semana, celebraciones).
+   - Nota: Es una variación contextual de RC-01.
+4. UB-01 — Descubrimiento por Ubicación
+   - Objetivo: Activar descubrimiento local y proximidad.
+   - Hooks típicos: "Si estás en...", "A 5 minutos de...".
+   - Útil para: carretera, turismo local, negocios físicos.`,
+                        updatedAt: new Date().toISOString()
+                    },
+                    {
+                        id: 'metric_rules',
+                        title: 'Reglas de Registro de Métricas',
+                        content: `=== REGLA DE MÉTRICAS ===
+Siempre usar el formato "Mes YYYY" para el campo "period" (obligatorio).
+Ejemplos válidos: "Mayo 2026", "Junio 2026".
+Nunca usar: "05/2026", "Mayo", "Q2".
+Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y period, y registrar métricas de rendimiento reales:
+- retention (Tasa de retención promedio, ej: "74%")
+- views (Vistas totales, ej: "15400")
+- shares (Compartidos, ej: "320")
+- saves (Guardados, ej: "840")`,
+                        updatedAt: new Date().toISOString()
+                    }
+                ];
+                for (const rule of defaultRules) {
+                    await dbService.set('system_rules', rule.id, rule);
+                }
+                systemRules = defaultRules;
+            }
 
             // AUTO-SEEDING DEFAULTS IF EMPTY (Ensures the agency has elite real-world templates loaded immediately)
             if (formats.length === 0) {
                 const defaultFormats = [
-                    { id: 'rc-01', name: 'RC-01: Recorrido Comercial', structure: 'Hook visual llamativo + Recorrido en primera persona por el local + Explicación del producto estrella + Llamada a la acción (CTA) con oferta limitada.', usedFor: 'Locales comerciales y gastronomía', exampleHooks: ['hk-03'], clients: ['tizon-dorado', 'ricos-pandeyucas'], createdAt: new Date().toISOString() },
-                    { id: 'ed-02', name: 'ED-02: Educativo de Valor', structure: 'Hook con gancho psicológico ("Sabías que...") + 3 datos de valor que resuelven un dolor del cliente + Demostración práctica + Cierre invitando a seguir la cuenta.', usedFor: 'Marcas personales y servicios corporativos', exampleHooks: ['hk-01', 'hk-02'], clients: ['jerez-el-caballero', 'kantel'], createdAt: new Date().toISOString() },
-                    { id: 'pv-03', name: 'PV-03: Demostración Viral', structure: 'Gancho visual ("Este producto cambió mi vida...") + Demostración en primer plano + Sonido en tendencia de fondo + CTA invitando a comentar para recibir el enlace.', usedFor: 'E-commerce y productos físicos innovadores', exampleHooks: ['hk-02'], clients: ['villa-grande'], createdAt: new Date().toISOString() }
+                    { id: 'rc-01', name: 'RC-01: Recorrido Comercial Narrado', structure: 'Hook + Presentación + Productos/Servicios + Experiencia + Ambiente + Ubicación + Cierre', usedFor: 'Presentar negocio físico mediante recorrido narrado', exampleHooks: ['hk-03'], clients: ['tizon-dorado'], createdAt: new Date().toISOString() },
+                    { id: 'pl-01', name: 'PL-01: Presentación/Listado de Productos', structure: 'Producto 1 + Producto 2 + Producto 3 + CTA ligero', usedFor: 'Mostrar múltiples productos o platos rápidamente. Ideal para combos, catálogos y promociones.', exampleHooks: ['hk-01', 'hk-02'], clients: ['ricos-pandeyucas'], createdAt: new Date().toISOString() },
+                    { id: 'fe-01', name: 'FE-01: Formato Evento/Fecha Especial', structure: 'Hook Contextual Temporal + Variación de Recorrido Comercial (RC-01) adaptada a celebración + CTA de reserva/invitación', usedFor: 'Aprovechar contexto temporal/social (fechas especiales, fines de semana, celebraciones familiares).', exampleHooks: ['hk-01'], clients: ['jerez-el-caballero'], createdAt: new Date().toISOString() },
+                    { id: 'ub-01', name: 'UB-01: Descubrimiento por Ubicación', structure: 'Hook de Proximidad ("Si estás en..." / "A 5 minutos de...") + Activación de descubrimiento local + CTA de visita inmediata', usedFor: 'Activar descubrimiento local y proximidad. Muy útil para carretera, turismo local y negocios físicos.', exampleHooks: ['hk-02'], clients: ['villa-grande'], createdAt: new Date().toISOString() }
                 ];
                 for (const fmt of defaultFormats) {
                     await dbService.set('formats', fmt.id, fmt);
@@ -57,9 +136,9 @@ export const render = () => {
 
             if (metricsList.length === 0) {
                 const defaultMetrics = [
-                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', clientId: 'tizon-dorado', formatId: 'rc-01', period: 'Mayo 2026', updatedAt: new Date().toISOString() },
-                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', clientId: 'ricos-pandeyucas', formatId: 'pv-03', period: 'Mayo 2026', updatedAt: new Date().toISOString() },
-                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', clientId: 'jerez-el-caballero', formatId: 'ed-02', period: 'Mayo 2026', updatedAt: new Date().toISOString() }
+                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', clientId: 'tizon-dorado', formatId: 'rc-01', period: 'Mayo 2026', retention: '74%', views: '15400', shares: '320', saves: '840', updatedAt: new Date().toISOString() },
+                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', clientId: 'ricos-pandeyucas', formatId: 'pl-01', period: 'Mayo 2026', retention: '62%', views: '28000', shares: '1100', saves: '2400', updatedAt: new Date().toISOString() },
+                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', clientId: 'jerez-el-caballero', formatId: 'fe-01', period: 'Mayo 2026', retention: '68%', views: '12200', shares: '190', saves: '520', updatedAt: new Date().toISOString() }
                 ];
                 for (const mt of defaultMetrics) {
                     await dbService.set('metrics', mt.id, mt);
@@ -624,18 +703,25 @@ export const render = () => {
                     } 
                     else if (action.type === 'update_metric') {
                         const metricDoc = {
-                            label: action.payload.label,
-                            value: action.payload.value,
+                            label: action.payload.label || `Métrica: ${action.payload.period || 'General'}`,
+                            value: action.payload.value || action.payload.retention || '0%',
                             type: action.payload.type || 'retention',
                             clientId: action.payload.clientId || 'all',
                             formatId: action.payload.formatId || 'all',
                             hookId: action.payload.hookId || 'all',
                             period: action.payload.period || 'Mayo 2026',
+                            retention: action.payload.retention || '0%',
+                            views: action.payload.views || '0',
+                            shares: action.payload.shares || '0',
+                            saves: action.payload.saves || '0',
                             updatedAt: new Date().toISOString()
                         };
-                        const id = action.payload.id || action.payload.label.toLowerCase().replace(/\s+/g, '-');
+                        const id = action.payload.id || `${action.payload.clientId || 'all'}-${action.payload.period || 'Mayo-2026'}`.toLowerCase().replace(/\s+/g, '-');
                         await dbService.set('metrics', id, metricDoc);
-                        console.log("[Agent] Metric updated successfully with linkages:", id);
+                        console.log("[Agent] Metric updated successfully with contextual linkages:", id);
+                        
+                        // Force refresh metrics list in local state
+                        metricsList = await dbService.getAll('metrics').catch(() => []);
                     } 
                     else if (action.type === 'create_hook') {
                         const newHook = {
@@ -806,7 +892,7 @@ Detalles del Payload según el type:
    - "iconName": "check-square" | "video" | "scissors" | "mic" | "sparkles"
    - "steps": array de strings (pasos de la lista de verificación, ej: ["Limpiar lente", "Comprobar volumen del lavalier"])
 2. "create_format":
-   - "name": string (Nombre de la plantilla de formato, ej: "RC-01: Recorrido Comercial")
+   - "name": string (Nombre de la plantilla de formato, ej: "RC-01: Recorrido Comercial Narrado")
    - "structure": string (Estructura paso a paso, ej: "Gancho + Recorrido por Local + Demo + CTA")
    - "usedFor": string (Propósito, ej: "E-commerce de Ropa")
    - "exampleHooks": array de strings (ej: ["hk-01", "hk-03"])
@@ -817,13 +903,17 @@ Detalles del Payload según el type:
    - "employeeName": string (Nombre de la persona asignada)
    - "status": "Pendiente" | "En Producción" | "Revisión" | "Completado"
 4. "update_metric":
-   - "label": string (Nombre o tag de la métrica, ej: "CTR Promedio Conversión")
-   - "value": string (Valor en porcentaje o número, ej: "4.2%")
+   - "label": string (Nombre descriptivo, ej: "Rendimiento RC-01 Tizón Dorado")
+   - "value": string (Valor en porcentaje o número de la retención, ej: "74%")
    - "type": "retention" | "conversion" | "watch-time"
-   - "clientId": string (Opcional: ID del cliente al que se vincula la métrica, ej: "tizon-dorado")
-   - "formatId": string (Opcional: ID del formato al que se vincula la métrica, ej: "rc-01")
-   - "hookId": string (Opcional: ID del hook al que se vincula la métrica, ej: "hk-01")
-   - "period": string (Período de medición, ej: "Mayo 2026")
+   - "clientId": string (Opcional: ID del cliente al que se vincula, ej: "tizon-dorado")
+   - "formatId": string (Opcional: ID del formato al que se vincula, ej: "rc-01")
+   - "hookId": string (Opcional: ID del hook al que se vincula, ej: "hk-01")
+   - "period": string (Período obligatorio con formato exacto "Mes YYYY", ej: "Mayo 2026")
+   - "retention": string (Opcional: Tasa de retención, ej: "74%")
+   - "views": string (Opcional: vistas totales, ej: "15400")
+   - "shares": string (Opcional: compartidos, ej: "320")
+   - "saves": string (Opcional: guardados, ej: "840")
 5. "create_hook":
    - "title": string (Frase literal del gancho de marketing)
    - "category": string (ej: "Problema", "Curiosidad", "Deseo")
@@ -838,10 +928,18 @@ Detalles del Payload según el type:
 7. "update_client":
    - "clientId": string (ID del cliente a actualizar, ej: "jerez-el-caballero", "kantel", "ricos-pandeyucas", "villa-grande")
    - "description": string (Nueva descripción estratégica de marca a agregar o actualizar)
-   - "assignedFormats": array de strings (ej: ["RC-01: Recorrido Comercial"]) - Estos formatos se fusionarán de forma segura sin sobreescribir los que ya existen.
+   - "assignedFormats": array de strings (ej: ["rc-01"]) - Estos formatos se fusionarán de forma segura sin sobreescribir los que ya existen.
    - "usedHooks": array de strings (ej: ["hk-01"]) - Estos hooks se fusionarán de forma segura sin sobreescribir los que ya existen.
 
 `;
+
+                // Append living Firestore guidelines dynamically (Direct dynamic reference memory)
+                if (systemRules && systemRules.length > 0) {
+                    contextPrompt += `=== REGLAS OPERATIVAS VIVAS DE LA AGENCIA (Firestore system_rules) ===\n`;
+                    systemRules.forEach(rule => {
+                        contextPrompt += `--- ${rule.title} ---\n${rule.content}\n\n`;
+                    });
+                }
 
                 if (activeClientFocus) {
                     contextPrompt += `=== MARCA EN FOCO ACTIVO ===
@@ -874,7 +972,7 @@ ${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.cl
 ${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de checklist registrados)`).join('\n')}
 
 === MÉTRICAS RECIENTES VINCULADAS ===
-${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m.type} | Cliente ID: "${m.clientId || 'all'}" | Formato ID: "${m.formatId || 'all'}" | Período: "${m.period || 'N/A'}"`).join('\n')}
+${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m.type} | Cliente ID: "${m.clientId || 'all'}" | Formato ID: "${m.formatId || 'all'}" | Hook ID: "${m.hookId || 'all'}" | Período: "${m.period || 'N/A'}" | Vistas: ${m.views || '0'} | Compartidos: ${m.shares || '0'} | Guardados: ${m.saves || '0'}`).join('\n')}
 `;
 
                 try {
@@ -1047,8 +1145,8 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                     iconName = "clipboard-list";
                     colorClass = "#3b82f6"; // Info Blue
                 } else if (action.type === 'update_metric') {
-                    title = "Acción: Actualizar Métrica";
-                    details = `**Métrica**: ${action.payload.label}<br>**Valor**: ${action.payload.value}<br>**Período**: ${action.payload.period || 'Mayo 2026'}`;
+                    title = "Acción: Actualizar Métrica de Rendimiento";
+                    details = `**Cliente ID**: ${action.payload.clientId}<br>**Formato ID**: ${action.payload.formatId}<br>**Hook ID**: ${action.payload.hookId || 'N/A'}<br>**Período**: ${action.payload.period}<br>**Retención**: ${action.payload.retention || '0%'}<br>**Vistas**: ${action.payload.views || '0'}<br>**Saves**: ${action.payload.saves || '0'}`;
                     iconName = "bar-chart-2";
                     colorClass = "#f59e0b"; // Warning Orange
                 } else if (action.type === 'create_hook') {
@@ -1094,7 +1192,7 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
         html = html.replace(/`([^`]+)`/g, '<code class="bg-tertiary px-1 rounded font-mono text-xs text-accent">$1</code>');
         
         // Bold
-        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*\*([^*]+)\*\"/g, '<strong>$1</strong>');
         
         // Headers (###, ##, #)
         html = html.replace(/### (.*$)/gim, '<h4 class="font-bold text-xs text-primary mt-3 mb-1">$1</h4>');
