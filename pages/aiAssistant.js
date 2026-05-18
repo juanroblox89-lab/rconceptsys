@@ -1,7 +1,7 @@
 /**
  * AI Assistant Page - Creative Production OS
  * High-fidelity, highly interactive marketing and copy assistant driven by Anthropic Claude.
- * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, inline typing indicator, auto-seeding defaults, and non-destructive client updates.
+ * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, inline typing indicator, auto-seeding defaults, brand focus summary profiles, and deeply integrated client-format-hook relational logic.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
@@ -30,46 +30,41 @@ export const render = () => {
             let metricsList = await dbService.getAll('metrics').catch(() => []);
             let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => []);
 
-            // AUTO-SEEDING DEFAULTS IF EMPTY (Ensures the agency is never empty)
-            let seededAny = false;
-            
+            // AUTO-SEEDING DEFAULTS IF EMPTY (Ensures the agency has elite real-world templates loaded immediately)
             if (formats.length === 0) {
                 const defaultFormats = [
-                    { id: 'rc-01', name: 'RC-01: Recorrido Comercial', structure: 'Hook visual llamativo + Recorrido en primera persona por el local + Explicación del producto estrella + Llamada a la acción (CTA) con oferta limitada.', createdAt: new Date().toISOString() },
-                    { id: 'ed-02', name: 'ED-02: Educativo de Valor', structure: 'Hook con gancho psicológico ("Sabías que...") + 3 datos de valor que resuelven un dolor del cliente + Demostración práctica + Cierre invitando a seguir la cuenta.', createdAt: new Date().toISOString() },
-                    { id: 'pv-03', name: 'PV-03: Demostración Viral', structure: 'Gancho visual ("Este producto cambió mi vida...") + Demostración en primer plano + Sonido en tendencia de fondo + CTA invitando a comentar para recibir el enlace.', createdAt: new Date().toISOString() }
+                    { id: 'rc-01', name: 'RC-01: Recorrido Comercial', structure: 'Hook visual llamativo + Recorrido en primera persona por el local + Explicación del producto estrella + Llamada a la acción (CTA) con oferta limitada.', usedFor: 'Locales comerciales y gastronomía', exampleHooks: ['hk-03'], clients: ['tizon-dorado', 'ricos-pandeyucas'], createdAt: new Date().toISOString() },
+                    { id: 'ed-02', name: 'ED-02: Educativo de Valor', structure: 'Hook con gancho psicológico ("Sabías que...") + 3 datos de valor que resuelven un dolor del cliente + Demostración práctica + Cierre invitando a seguir la cuenta.', usedFor: 'Marcas personales y servicios corporativos', exampleHooks: ['hk-01', 'hk-02'], clients: ['jerez-el-caballero', 'kantel'], createdAt: new Date().toISOString() },
+                    { id: 'pv-03', name: 'PV-03: Demostración Viral', structure: 'Gancho visual ("Este producto cambió mi vida...") + Demostración en primer plano + Sonido en tendencia de fondo + CTA invitando a comentar para recibir el enlace.', usedFor: 'E-commerce y productos físicos innovadores', exampleHooks: ['hk-02'], clients: ['villa-grande'], createdAt: new Date().toISOString() }
                 ];
                 for (const fmt of defaultFormats) {
                     await dbService.set('formats', fmt.id, fmt);
                 }
                 formats = defaultFormats;
-                seededAny = true;
             }
 
             if (hooks.length === 0) {
                 const defaultHooks = [
-                    { id: 'hk-01', title: 'La mayoría de la gente hace esto mal...', category: 'Error común', psychology: 'Curiosidad / Desafío', createdAt: new Date().toISOString() },
-                    { id: 'hk-02', title: 'Tuve que gastar más de 100 dólares para descubrir esto...', category: 'Secreto de Valor', psychology: 'Autoridad / FOMO', createdAt: new Date().toISOString() },
-                    { id: 'hk-03', title: 'Si tienes este tipo de negocio y no estás haciendo esto, estás perdiendo dinero...', category: 'Dolor Directo', psychology: 'Pérdida / Urgencia', createdAt: new Date().toISOString() }
+                    { id: 'hk-01', title: 'La mayoría de la gente hace esto mal...', category: 'Error común', psychology: 'Curiosidad / Desafío', timesUsed: 14, avgRetention: '82%', topClient: 'kantel', createdAt: new Date().toISOString() },
+                    { id: 'hk-02', title: 'Tuve que gastar más de 100 dólares para descubrir esto...', category: 'Secreto de Valor', psychology: 'Autoridad / FOMO', timesUsed: 8, avgRetention: '79%', topClient: 'jerez-el-caballero', createdAt: new Date().toISOString() },
+                    { id: 'hk-03', title: 'Si tienes este tipo de negocio y no estás haciendo esto, estás perdiendo dinero...', category: 'Dolor Directo', psychology: 'Pérdida / Urgencia', timesUsed: 22, avgRetention: '85%', topClient: 'tizon-dorado', createdAt: new Date().toISOString() }
                 ];
                 for (const hk of defaultHooks) {
                     await dbService.set('hooks', hk.id, hk);
                 }
                 hooks = defaultHooks;
-                seededAny = true;
             }
 
             if (metricsList.length === 0) {
                 const defaultMetrics = [
-                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', updatedAt: new Date().toISOString() },
-                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', updatedAt: new Date().toISOString() },
-                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', updatedAt: new Date().toISOString() }
+                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', clientId: 'tizon-dorado', formatId: 'rc-01', period: 'Mayo 2026', updatedAt: new Date().toISOString() },
+                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', clientId: 'ricos-pandeyucas', formatId: 'pv-03', period: 'Mayo 2026', updatedAt: new Date().toISOString() },
+                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', clientId: 'jerez-el-caballero', formatId: 'ed-02', period: 'Mayo 2026', updatedAt: new Date().toISOString() }
                 ];
                 for (const mt of defaultMetrics) {
                     await dbService.set('metrics', mt.id, mt);
                 }
                 metricsList = defaultMetrics;
-                seededAny = true;
             }
 
             if (sopsList.length === 0) {
@@ -81,8 +76,13 @@ export const render = () => {
                     await dbService.set('sops', sop.id, sop);
                 }
                 sopsList = defaultSops;
-                seededAny = true;
             }
+
+            // Ensure our default clients have formatted IDs & initial formats/hooks setup if they don't have them
+            clients.forEach(c => {
+                if (!c.assignedFormats) c.assignedFormats = [];
+                if (!c.usedHooks) c.usedHooks = [];
+            });
 
             // Save threads list sorted by latest updated
             chatThreadsList = userChats.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
@@ -94,7 +94,7 @@ export const render = () => {
             } else {
                 currentThreadId = null;
                 activeConversation = [
-                    { role: 'assistant', content: `¡Hola, ${user?.nombre || 'Usuario'}! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso en tiempo real a toda tu agencia. Pídeme crear SOPs, asignar tareas o actualizar métricas operativas directamente. ¿Qué marca o guión trabajamos hoy?` }
+                    { role: 'assistant', content: `¡Hola, ${user?.nombre || 'Usuario'}! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso en tiempo real a toda tu agencia. Pídeme crear SOPs, registrar nuevos Formatos Creativos, asignar tareas o actualizar métricas vinculadas directamente. ¿Qué marca o guión trabajamos hoy?` }
                 ];
             }
 
@@ -285,11 +285,66 @@ export const render = () => {
                 ])
             ]);
 
+            // Middle Column: Dynamic Brand Profile Summary Card
+            const brandSummaryContainer = h('div', { 
+                id: 'ai-brand-focus-summary', 
+                className: 'mb-3',
+                style: { display: 'none' }
+            });
+
+            const renderBrandFocusSummary = () => {
+                brandSummaryContainer.innerHTML = '';
+                const selectedId = clientSelect.value;
+                if (selectedId === 'all') {
+                    brandSummaryContainer.style.display = 'none';
+                    return;
+                }
+                
+                const client = clients.find(c => c.id === selectedId);
+                if (!client) {
+                    brandSummaryContainer.style.display = 'none';
+                    return;
+                }
+                
+                brandSummaryContainer.style.display = 'block';
+                brandSummaryContainer.appendChild(h('div', { 
+                    className: 'card p-3 flex-column gap-2 bg-secondary border',
+                    style: { borderLeft: '4px solid var(--accent)' }
+                }, [
+                    h('div', { className: 'flex justify-between items-center' }, [
+                        h('div', { className: 'flex items-center gap-2' }, [
+                            icon('users', 14, 'text-accent'),
+                            h('span', { className: 'text-xs font-bold text-primary' }, `Perfil Estratégico: ${client.nombre || client.name}`)
+                        ]),
+                        h('span', { className: 'badge badge-secondary text-xs' }, client.businessType || 'General')
+                    ]),
+                    h('p', { className: 'text-xs text-muted leading-relaxed' }, client.description || 'Sin descripción estratégica disponible. Pídele al Copiloto crear una.'),
+                    h('div', { className: 'flex gap-4 flex-wrap mt-1 border-top pt-2' }, [
+                        h('div', { className: 'flex-column gap-1' }, [
+                            h('span', { className: 'text-xs font-semibold text-secondary' }, 'Formatos Asignados:'),
+                            h('div', { className: 'flex gap-1 flex-wrap mt-1' }, 
+                                (client.assignedFormats || []).length === 0 ? [h('span', { className: 'text-xs text-muted italic' }, 'Ninguno')] :
+                                (client.assignedFormats || []).map(f => h('span', { className: 'badge badge-info text-xs font-normal' }, f))
+                            )
+                        ]),
+                        h('div', { className: 'flex-column gap-1' }, [
+                            h('span', { className: 'text-xs font-semibold text-secondary' }, 'Hooks Utilizados:'),
+                            h('div', { className: 'flex gap-1 flex-wrap mt-1' }, 
+                                (client.usedHooks || []).length === 0 ? [h('span', { className: 'text-xs text-muted italic' }, 'Ninguno')] :
+                                (client.usedHooks || []).map(hk => h('span', { className: 'badge badge-secondary text-xs font-normal' }, hk))
+                            )
+                        ])
+                    ])
+                ]));
+                
+                if (window.lucide) window.lucide.createIcons();
+            };
+
             // Middle Column: Dynamic Chat Messaging Feed View
             const chatFeed = h('div', { 
                 className: 'flex-column gap-3 p-4 mb-2 border-radius-md',
                 style: { 
-                    height: '480px', 
+                    height: '440px', 
                     overflowY: 'auto',
                     background: 'var(--bg-tertiary)', 
                     border: '1px solid var(--border)',
@@ -459,7 +514,7 @@ export const render = () => {
                 h('textarea', { 
                     id: 'ai-user-message', 
                     className: 'form-textarea text-xs flex-1', 
-                    placeholder: 'Pídeme crear un SOP, asignar tareas ("Asigna a Juan la edición de..."), guardar ganchos o actualizar métricas...', 
+                    placeholder: 'Pídeme crear un Formato Creativo, asignar tareas, vincular un hook a una marca o actualizar métricas vinculadas...', 
                     rows: 2, 
                     style: { resize: 'none', borderRadius: '8px', minHeight: '44px', maxHeight: '100px' },
                     required: true,
@@ -513,13 +568,13 @@ export const render = () => {
             const executeAgentAction = async (action) => {
                 console.log("[Agent] Executing Action:", action);
                 try {
-                    // Check admin role for delicate actions (SOP creation, metrics, client creation/updates)
-                    if (action.type === 'create_sop' || action.type === 'update_metric' || action.type === 'create_client' || action.type === 'update_client') {
+                    // Check admin role for delicate actions (SOP, Format, Client updates, Metric updates)
+                    if (action.type === 'create_sop' || action.type === 'create_format' || action.type === 'update_metric' || action.type === 'create_client' || action.type === 'update_client') {
                         if (user?.role !== 'admin') {
                             console.warn("[Agent] Permission Denied: User is not an admin.");
                             activeConversation.push({
                                 role: 'assistant',
-                                content: `⚠️ **Permiso Denegado**: Lo siento, pero no tienes permisos de administrador para realizar modificaciones estratégicas en clientes, procedimientos (SOPs) o métricas. Solo los administradores pueden realizar estas operaciones.`
+                                content: `⚠️ **Permiso Denegado**: Lo siento, pero no tienes permisos de administrador para realizar modificaciones estratégicas en clientes, formatos, procedimientos (SOPs) o métricas. Solo los administradores pueden realizar estas operaciones.`
                             });
                             renderChatFeed();
                             return;
@@ -538,6 +593,23 @@ export const render = () => {
                         await dbService.set('sops', id, newSop);
                         console.log("[Agent] SOP created successfully:", id);
                     } 
+                    else if (action.type === 'create_format') {
+                        const id = action.payload.id || action.payload.name.toLowerCase().replace(/\s+/g, '-');
+                        const newFormat = {
+                            id,
+                            name: action.payload.name,
+                            structure: action.payload.structure || 'Hook + Storytelling + CTA',
+                            usedFor: action.payload.usedFor || 'General',
+                            exampleHooks: action.payload.exampleHooks || [],
+                            clients: action.payload.clients || [],
+                            createdAt: new Date().toISOString()
+                        };
+                        await dbService.set('formats', id, newFormat);
+                        console.log("[Agent] Format created successfully:", id);
+                        
+                        // Force refresh main formats list in local state
+                        formats = await dbService.getAll('formats').catch(() => []);
+                    }
                     else if (action.type === 'create_assignment') {
                         const newAsg = {
                             title: action.payload.title,
@@ -555,35 +627,44 @@ export const render = () => {
                             label: action.payload.label,
                             value: action.payload.value,
                             type: action.payload.type || 'retention',
+                            clientId: action.payload.clientId || 'all',
+                            formatId: action.payload.formatId || 'all',
+                            hookId: action.payload.hookId || 'all',
+                            period: action.payload.period || 'Mayo 2026',
                             updatedAt: new Date().toISOString()
                         };
                         const id = action.payload.id || action.payload.label.toLowerCase().replace(/\s+/g, '-');
                         await dbService.set('metrics', id, metricDoc);
-                        console.log("[Agent] Metric updated successfully:", id);
+                        console.log("[Agent] Metric updated successfully with linkages:", id);
                     } 
                     else if (action.type === 'create_hook') {
                         const newHook = {
                             title: action.payload.title,
                             category: action.payload.category || 'General',
                             psychology: action.payload.psychology || 'Curiosidad',
+                            timesUsed: action.payload.timesUsed || 0,
+                            avgRetention: action.payload.avgRetention || '0%',
+                            topClient: action.payload.topClient || 'N/A',
                             createdAt: new Date().toISOString()
                         };
                         await dbService.add('hooks', newHook);
-                        console.log("[Agent] Hook saved successfully.");
+                        console.log("[Agent] Hook saved successfully with metrics.");
                     }
                     else if (action.type === 'update_client') {
                         const clientDoc = await dbService.getById('clients', action.payload.clientId);
                         if (clientDoc) {
                             const updatedDescription = action.payload.description || clientDoc.description || '';
                             
-                            // Merge assignedFormats and usedHooks non-destructively to avoid overwrites
-                            const currentFormats = clientDoc.assignedFormats || [];
-                            const newFormats = action.payload.assignedFormats || [];
-                            const mergedFormats = Array.from(new Set([...currentFormats, ...newFormats]));
+                            // Merge formats & hooks safely, preventing overrides with empty payloads
+                            let mergedFormats = clientDoc.assignedFormats || [];
+                            if (action.payload.assignedFormats && action.payload.assignedFormats.length > 0) {
+                                mergedFormats = Array.from(new Set([...mergedFormats, ...action.payload.assignedFormats]));
+                            }
 
-                            const currentHooks = clientDoc.usedHooks || [];
-                            const newHooks = action.payload.usedHooks || [];
-                            const mergedHooks = Array.from(new Set([...currentHooks, ...newHooks]));
+                            let mergedHooks = clientDoc.usedHooks || [];
+                            if (action.payload.usedHooks && action.payload.usedHooks.length > 0) {
+                                mergedHooks = Array.from(new Set([...mergedHooks, ...action.payload.usedHooks]));
+                            }
 
                             const updatedClient = {
                                 ...clientDoc,
@@ -593,7 +674,11 @@ export const render = () => {
                                 updatedAt: new Date().toISOString()
                             };
                             await dbService.set('clients', action.payload.clientId, updatedClient);
-                            console.log("[Agent] Client updated successfully (merged formats and hooks):", action.payload.clientId);
+                            console.log("[Agent] Client updated successfully (merged formats and hooks safely):", action.payload.clientId);
+                            
+                            // Force refresh main clients list in local state
+                            clients = await dbService.getAll('clients').catch(() => []);
+                            renderBrandFocusSummary();
                         } else {
                             throw new Error(`Client with ID ${action.payload.clientId} not found`);
                         }
@@ -605,8 +690,8 @@ export const render = () => {
                             name: action.payload.name,
                             businessType: action.payload.businessType || 'General',
                             description: action.payload.description || 'Creado automáticamente por el Copiloto de IA',
-                            assignedFormats: action.payload.assignedFormats || ['RC-01: Recorrido Comercial'],
-                            usedHooks: action.payload.usedHooks || ['Problema-Solución'],
+                            assignedFormats: action.payload.assignedFormats || [],
+                            usedHooks: action.payload.usedHooks || [],
                             logo: action.payload.logo || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&q=80',
                             viralVideos: [],
                             assets: [],
@@ -614,6 +699,9 @@ export const render = () => {
                         };
                         await dbService.set('clients', id, newClient);
                         console.log("[Agent] Client created successfully:", id);
+                        
+                        // Force refresh main clients list in local state
+                        clients = await dbService.getAll('clients').catch(() => []);
                     }
                 } catch (err) {
                     console.error("[Agent] Error executing database operation:", err);
@@ -668,6 +756,12 @@ export const render = () => {
                 }
             };
 
+            // Listen to client focus changes and draw the strategic connection profile card immediately
+            const clientSelect = header.querySelector('#ai-client-focus');
+            clientSelect.addEventListener('change', () => {
+                renderBrandFocusSummary();
+            });
+
             // Core fetch trigger to serverless Claude proxy
             const callClaudeProxy = async (firstMessageText = '') => {
                 isAssistantLoading = true;
@@ -688,6 +782,7 @@ export const render = () => {
 2. Reduce al mínimo absoluto el uso de emojis. Usa un máximo de 1 emoji por respuesta completa. No decores cada viñeta o frase con emojis.
 3. No saludes al inicio de cada mensaje si ya estamos conversando.
 4. MUY IMPORTANTE: Dirígete al usuario por su nombre (${user?.nombre || 'Usuario'}) de forma natural y profesional en tu respuesta para que sepa que lo reconoces individualmente.
+5. Toda actualización estratégica que hagas a un cliente o formato se almacena inmediatamente en Firestore, lo que significa que el sistema te la inyectará automáticamente en tu contexto en futuros chats. ¡Tienes memoria viva permanente!
 
 === INFORMACIÓN DEL USUARIO ACTIVO ===
 Nombre del Usuario: ${user?.nombre || 'Usuario'}
@@ -696,74 +791,90 @@ Rol en la Agencia: ${user?.role || 'viewer'}
 
 === CAPACIDADES DEL AGENTE CREATIVEOS (ACCIONES DIRECTAS) ===
 Tú no eres un simple chatbot pasivo; eres un AGENTE activo de la agencia. Tienes el poder de modificar la base de datos de Firestore directamente respondiendo con un bloque estructurado en formato JSON.
-Cuando el usuario te pida crear un procedimiento (SOP), asignar una tarea, guardar un hook, registrar/actualizar la descripción de un cliente, o actualizar métricas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
+Cuando el usuario te pida crear un procedimiento (SOP), crear un formato creativo, asignar una tarea, guardar un hook, registrar/actualizar la descripción de un cliente, o actualizar métricas vinculadas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
 
 \`\`\`agency-action
 {
-  "type": "create_sop" | "create_assignment" | "update_metric" | "create_hook" | "create_client" | "update_client",
+  "type": "create_sop" | "create_format" | "create_assignment" | "update_metric" | "create_hook" | "create_client" | "update_client",
   "payload": { ... }
 }
 \`\`\`
 
 Detalles del Payload según el type:
 1. "create_sop":
-   - "title": string (Título del procedimiento, ej: "Grabación en Exteriores")
+   - "title": string (Título del procedimiento operativo de checklist, ej: "Grabación en Exteriores")
    - "iconName": "check-square" | "video" | "scissors" | "mic" | "sparkles"
    - "steps": array de strings (pasos de la lista de verificación, ej: ["Limpiar lente", "Comprobar volumen del lavalier"])
-2. "create_assignment":
+2. "create_format":
+   - "name": string (Nombre de la plantilla de formato, ej: "RC-01: Recorrido Comercial")
+   - "structure": string (Estructura paso a paso, ej: "Gancho + Recorrido por Local + Demo + CTA")
+   - "usedFor": string (Propósito, ej: "E-commerce de Ropa")
+   - "exampleHooks": array de strings (ej: ["hk-01", "hk-03"])
+   - "clients": array de strings (ej: ["tizon-dorado"])
+3. "create_assignment":
    - "title": string (Título de la tarea)
    - "client": string (Nombre de la marca o cliente, ej: "RConcept")
    - "employeeName": string (Nombre de la persona asignada)
    - "status": "Pendiente" | "En Producción" | "Revisión" | "Completado"
-3. "update_metric":
-   - "label": string (Nombre o tag de la métrica, ej: "HK-Problema")
-   - "value": string (Valor en porcentaje o número, ej: "92%")
-   - "type": "retention"
-4. "create_hook":
+4. "update_metric":
+   - "label": string (Nombre o tag de la métrica, ej: "CTR Promedio Conversión")
+   - "value": string (Valor en porcentaje o número, ej: "4.2%")
+   - "type": "retention" | "conversion" | "watch-time"
+   - "clientId": string (Opcional: ID del cliente al que se vincula la métrica, ej: "tizon-dorado")
+   - "formatId": string (Opcional: ID del formato al que se vincula la métrica, ej: "rc-01")
+   - "hookId": string (Opcional: ID del hook al que se vincula la métrica, ej: "hk-01")
+   - "period": string (Período de medición, ej: "Mayo 2026")
+5. "create_hook":
    - "title": string (Frase literal del gancho de marketing)
    - "category": string (ej: "Problema", "Curiosidad", "Deseo")
    - "psychology": string (ej: "Curiosidad", "FOMO", "Contraria")
-5. "create_client":
+   - "timesUsed": number (Cantidad de veces usado, ej: 14)
+   - "avgRetention": string (Tasa promedio de retención, ej: "82%")
+   - "topClient": string (ID del cliente donde más funcionó, ej: "kantel")
+6. "create_client":
    - "name": string (Nombre del cliente/marca)
    - "businessType": string (Industria, ej: "Salud e Higiene")
    - "description": string (Descripción estratégica general)
-6. "update_client":
+7. "update_client":
    - "clientId": string (ID del cliente a actualizar, ej: "jerez-el-caballero", "kantel", "ricos-pandeyucas", "villa-grande")
    - "description": string (Nueva descripción estratégica de marca a agregar o actualizar)
    - "assignedFormats": array de strings (ej: ["RC-01: Recorrido Comercial"]) - Estos formatos se fusionarán de forma segura sin sobreescribir los que ya existen.
-   - "usedHooks": array de strings (ej: ["La mayoría de la gente hace esto mal..."]) - Estos hooks se fusionarán de forma segura sin sobreescribir los que ya existen.
+   - "usedHooks": array de strings (ej: ["hk-01"]) - Estos hooks se fusionarán de forma segura sin sobreescribir los que ya existen.
 
 `;
 
                 if (activeClientFocus) {
                     contextPrompt += `=== MARCA EN FOCO ACTIVO ===
 Nombre de la Marca/Cliente: ${activeClientFocus.nombre || activeClientFocus.name}
-Giro del Negocio: ${activeClientFocus.business || 'Marketing Creativo'}
-Directrices Estilo Visual: ${activeClientFocus.visualStyle || 'Retención moderna en Reels/TikTok'}
-Objetivo Estratégico: ${activeClientFocus.objective || 'Conversión orgánica e impacto de marca'}
+ID de la Marca: ${activeClientFocus.id}
+Giro del Negocio / Tipo: ${activeClientFocus.businessType || 'Marketing Creativo'}
+Descripción Estratégica General: ${activeClientFocus.description || 'Sin descripción estratégica registrada'}
+Formatos Asignados a esta Marca: ${(activeClientFocus.assignedFormats || []).join(', ')}
+Hooks Utilizados por esta Marca: ${(activeClientFocus.usedHooks || []).join(', ')}
 Guiones e Ideas Recomendados: ${JSON.stringify(activeClientFocus.recommendedScripts || [])}
 
 `;
                 } else {
                     contextPrompt += `=== RESUMEN GLOBAL DE LA AGENCIA ===
-Lista de Clientes Registrados: ${clients.map(c => `${c.name} (ID: "${c.id}" | Industria: "${c.businessType || 'General'}" | Descripción: "${c.description || 'Sin descripción'}")`).join(', ')}
+Lista de Clientes Registrados:
+${clients.map(c => `- Cliente: "${c.nombre || c.name}" | ID: "${c.id}" | Industria: "${c.businessType || 'General'}" | Descripción: "${c.description || 'Sin descripción'}" | Formatos Asignados: [${(c.assignedFormats || []).join(', ')}] | Hooks Utilizados: [${(c.usedHooks || []).join(', ')}]`).join('\n')}
 `;
                 }
 
                 contextPrompt += `=== FORMATOS AUTORIZADOS ===
-${formats.map(f => `- ${f.name} (Estructura: ${f.structure || 'Hook + Storytelling + CTA'})`).join('\n')}
+${formats.map(f => `- Formato: ${f.name} (ID: "${f.id}" | Estructura: ${f.structure || 'Hook + Storytelling + CTA'} | Objetivo: ${f.usedFor || 'General'})`).join('\n')}
 
-=== HOOKS DE RETENCIÓN DISPONIBLES ===
-${hooks.map(h => `- "${h.title}" (Categoría: ${h.category || 'Problema'} | Psicología: ${h.psychology || 'Curiosidad'})`).join('\n')}
+=== HOOKS DE RETENCIÓN DISPONIBLES (CON MÉTRICAS) ===
+${hooks.map(h => `- Hook: "${h.title}" (ID: "${h.id}" | Categoría: ${h.category || 'Problema'} | Retención Promedio: ${h.avgRetention || '0%'} | Veces Usado: ${h.timesUsed || 0} | Mejor Cliente: "${h.topClient || 'N/A'}")`).join('\n')}
 
 === LISTA DE TAREAS EN CURSO ===
 ${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.client} | Tarea: ${a.title} | Responsable: ${a.employeeName || '@equipo'}`).join('\n')}
 
 === PROCEDIMIENTOS ESTÁNDAR (SOPs) ACTIVOS ===
-${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos registrados)`).join('\n')}
+${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de checklist registrados)`).join('\n')}
 
-=== MÉTRICAS RECIENTES ===
-${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m.type}`).join('\n')}
+=== MÉTRICAS RECIENTES VINCULADAS ===
+${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m.type} | Cliente ID: "${m.clientId || 'all'}" | Formato ID: "${m.formatId || 'all'}" | Período: "${m.period || 'N/A'}"`).join('\n')}
 `;
 
                 try {
@@ -881,6 +992,7 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
             }, [
                 chatHistorySidebar, // ChatGPT-style left sidebar
                 h('div', { className: 'flex-column', style: { flex: '3', minWidth: '320px' } }, [
+                    brandSummaryContainer, // Dynamic Focus Profile summary card!
                     chatFeed,
                     inputArea
                 ]),
@@ -893,6 +1005,7 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
             // Initial render of feed and threads list
             renderChatFeed();
             renderThreadsList();
+            renderBrandFocusSummary();
 
             if (window.lucide) window.lucide.createIcons();
 
@@ -923,6 +1036,11 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                     details = `**Título**: ${action.payload.title}<br>**Pasos**: ${(action.payload.steps || []).join(', ')}`;
                     iconName = "check-square";
                     colorClass = "#10b981"; // Success Green
+                } else if (action.type === 'create_format') {
+                    title = "Acción: Registrar Nuevo Formato Creativo";
+                    details = `**Nombre**: ${action.payload.name}<br>**Estructura**: ${action.payload.structure}<br>**Uso**: ${action.payload.usedFor || 'General'}`;
+                    iconName = "file-text";
+                    colorClass = "#ec4899"; // Pink
                 } else if (action.type === 'create_assignment') {
                     title = "Acción: Asignar Tarea";
                     details = `**Tarea**: ${action.payload.title}<br>**Cliente**: ${action.payload.client}<br>**Responsable**: ${action.payload.employeeName || '@equipo'}`;
@@ -930,12 +1048,12 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                     colorClass = "#3b82f6"; // Info Blue
                 } else if (action.type === 'update_metric') {
                     title = "Acción: Actualizar Métrica";
-                    details = `**Métrica**: ${action.payload.label}<br>**Valor**: ${action.payload.value}`;
+                    details = `**Métrica**: ${action.payload.label}<br>**Valor**: ${action.payload.value}<br>**Período**: ${action.payload.period || 'Mayo 2026'}`;
                     iconName = "bar-chart-2";
                     colorClass = "#f59e0b"; // Warning Orange
                 } else if (action.type === 'create_hook') {
                     title = "Acción: Guardar Hook";
-                    details = `**Hook**: "${action.payload.title}"<br>**Psicología**: ${action.payload.psychology}`;
+                    details = `**Hook**: "${action.payload.title}"<br>**Psicología**: ${action.payload.psychology}<br>**Retención Promedio**: ${action.payload.avgRetention || '0%'}`;
                     iconName = "zap";
                     colorClass = "#a855f7"; // Accent Purple
                 } else if (action.type === 'update_client') {
@@ -979,9 +1097,9 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
         html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
         
         // Headers (###, ##, #)
-        html = html.replace(/^### (.*$)/gim, '<h4 class="font-bold text-xs text-primary mt-3 mb-1">$1</h4>');
-        html = html.replace(/^## (.*$)/gim, '<h3 class="font-bold text-sm text-primary mt-4 mb-2 border-bottom pb-1">$1</h3>');
-        html = html.replace(/^# (.*$)/gim, '<h2 class="font-bold text-md text-primary mt-4 mb-2">$1</h2>');
+        html = html.replace(/### (.*$)/gim, '<h4 class="font-bold text-xs text-primary mt-3 mb-1">$1</h4>');
+        html = html.replace(/## (.*$)/gim, '<h3 class="font-bold text-sm text-primary mt-4 mb-2 border-bottom pb-1">$1</h3>');
+        html = html.replace(/# (.*$)/gim, '<h2 class="font-bold text-md text-primary mt-4 mb-2">$1</h2>');
         
         // Lists
         html = html.replace(/^\s*-\s+(.*$)/gim, '<li class="text-xs text-secondary list-disc ml-4 my-1">$1</li>');
