@@ -1,7 +1,7 @@
 /**
  * AI Assistant Page - Creative Production OS
  * High-fidelity, highly interactive marketing and copy assistant driven by Anthropic Claude.
- * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, and global rate limits.
+ * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, and instant chat persisting.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
@@ -334,6 +334,39 @@ export const render = () => {
                     activeConversation.push({ role: 'user', content: messageText });
                     renderChatFeed();
 
+                    // If it is a new chat session, generate currentThreadId immediately and persist user's initial message
+                    if (currentThreadId === null) {
+                        currentThreadId = `${user?.uid}_${Date.now()}`;
+                        const cleanTitle = messageText.slice(0, 24) + (messageText.length > 24 ? '...' : '');
+                        
+                        const newThreadObj = {
+                            id: currentThreadId,
+                            userId: user?.uid,
+                            title: cleanTitle || 'Conversación Creativa',
+                            messages: activeConversation,
+                            updatedAt: new Date().toISOString()
+                        };
+
+                        try {
+                            await dbService.set('chats', currentThreadId, newThreadObj);
+                            chatThreadsList.unshift(newThreadObj);
+                            renderThreadsList();
+                        } catch (err) {
+                            console.warn("Could not save initial chat message thread to Firestore:", err);
+                        }
+                    } else {
+                        // Persist user's message in the current thread immediately to prevent losing history on reload
+                        try {
+                            await dbService.set('chats', currentThreadId, {
+                                messages: activeConversation,
+                                userId: user?.uid,
+                                updatedAt: new Date().toISOString()
+                            });
+                        } catch (err) {
+                            console.warn("Could not persist message to existing thread:", err);
+                        }
+                    }
+
                     // Trigger request to Claude API proxy
                     await callClaudeProxy(messageText);
                 }
@@ -368,6 +401,7 @@ export const render = () => {
                                 try {
                                     await dbService.set('chats', currentThreadId, {
                                         messages: activeConversation,
+                                        userId: user?.uid,
                                         updatedAt: new Date().toISOString()
                                     });
                                 } catch(e) {
@@ -383,13 +417,13 @@ export const render = () => {
             const executeAgentAction = async (action) => {
                 console.log("[Agent] Executing Action:", action);
                 try {
-                    // Check admin role for delicate actions (SOP creation and metrics modifications)
-                    if (action.type === 'create_sop' || action.type === 'update_metric') {
+                    // Check admin role for delicate actions (SOP creation, metrics, client creation/updates)
+                    if (action.type === 'create_sop' || action.type === 'update_metric' || action.type === 'create_client' || action.type === 'update_client') {
                         if (user?.role !== 'admin') {
                             console.warn("[Agent] Permission Denied: User is not an admin.");
                             activeConversation.push({
                                 role: 'assistant',
-                                content: `⚠️ **Permiso Denegado**: Lo siento, pero no tienes permisos de administrador para crear o modificar procedimientos estándar (SOPs) o métricas. Solo los administradores pueden realizar estas operaciones.`
+                                content: `⚠️ **Permiso Denegado**: Lo siento, pero no tienes permisos de administrador para realizar modificaciones estratégicas en clientes, procedimientos (SOPs) o métricas. Solo los administradores pueden realizar estas operaciones.`
                             });
                             renderChatFeed();
                             return;
@@ -440,6 +474,39 @@ export const render = () => {
                         };
                         await dbService.add('hooks', newHook);
                         console.log("[Agent] Hook saved successfully.");
+                    }
+                    else if (action.type === 'update_client') {
+                        const clientDoc = await dbService.getById('clients', action.payload.clientId);
+                        if (clientDoc) {
+                            const updatedClient = {
+                                ...clientDoc,
+                                description: action.payload.description || clientDoc.description,
+                                assignedFormats: action.payload.assignedFormats || clientDoc.assignedFormats || [],
+                                usedHooks: action.payload.usedHooks || clientDoc.usedHooks || [],
+                                updatedAt: new Date().toISOString()
+                            };
+                            await dbService.set('clients', action.payload.clientId, updatedClient);
+                            console.log("[Agent] Client updated successfully:", action.payload.clientId);
+                        } else {
+                            throw new Error(`Client with ID ${action.payload.clientId} not found`);
+                        }
+                    }
+                    else if (action.type === 'create_client') {
+                        const id = action.payload.id || action.payload.name.toLowerCase().replace(/\s+/g, '-');
+                        const newClient = {
+                            id,
+                            name: action.payload.name,
+                            businessType: action.payload.businessType || 'General',
+                            description: action.payload.description || 'Creado automáticamente por el Copiloto de IA',
+                            assignedFormats: action.payload.assignedFormats || ['RC-01: Recorrido Comercial'],
+                            usedHooks: action.payload.usedHooks || ['Problema-Solución'],
+                            logo: action.payload.logo || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&q=80',
+                            viralVideos: [],
+                            assets: [],
+                            createdAt: new Date().toISOString()
+                        };
+                        await dbService.set('clients', id, newClient);
+                        console.log("[Agent] Client created successfully:", id);
                     }
                 } catch (err) {
                     console.error("[Agent] Error executing database operation:", err);
@@ -520,11 +587,11 @@ Rol en la Agencia: ${user?.role || 'viewer'}
 
 === CAPACIDADES DEL AGENTE CREATIVEOS (ACCIONES DIRECTAS) ===
 Tú no eres un simple chatbot pasivo; eres un AGENTE activo de la agencia. Tienes el poder de modificar la base de datos de Firestore directamente respondiendo con un bloque estructurado en formato JSON.
-Cuando el usuario te pida crear un procedimiento (SOP), asignar una tarea, guardar un hook o actualizar métricas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
+Cuando el usuario te pida crear un procedimiento (SOP), asignar una tarea, guardar un hook, registrar/actualizar la descripción de un cliente, o actualizar métricas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
 
 \`\`\`agency-action
 {
-  "type": "create_sop" | "create_assignment" | "update_metric" | "create_hook",
+  "type": "create_sop" | "create_assignment" | "update_metric" | "create_hook" | "create_client" | "update_client",
   "payload": { ... }
 }
 \`\`\`
@@ -547,6 +614,15 @@ Detalles del Payload según el type:
    - "title": string (Frase literal del gancho de marketing)
    - "category": string (ej: "Problema", "Curiosidad", "Deseo")
    - "psychology": string (ej: "Curiosidad", "FOMO", "Contraria")
+5. "create_client":
+   - "name": string (Nombre del cliente/marca)
+   - "businessType": string (Industria, ej: "Salud e Higiene")
+   - "description": string (Descripción estratégica general)
+6. "update_client":
+   - "clientId": string (ID del cliente a actualizar, ej: "clinica-dental-sonrisa")
+   - "description": string (Nueva descripción estratégica a guardar)
+   - "assignedFormats": array de strings (ej: ["RC-01: Recorrido"])
+   - "usedHooks": array de strings (ej: ["Problema-Solución"])
 
 `;
 
@@ -561,7 +637,7 @@ Guiones e Ideas Recomendados: ${JSON.stringify(activeClientFocus.recommendedScri
 `;
                 } else {
                     contextPrompt += `=== RESUMEN GLOBAL DE LA AGENCIA ===
-Lista de Clientes Registrados: ${clients.map(c => `${c.nombre} (${c.business || 'General'})`).join(', ')}
+Lista de Clientes Registrados: ${clients.map(c => `${c.name} (ID: "${c.id}" | Industria: "${c.businessType || 'General'}")`).join(', ')}
 `;
                 }
 
@@ -617,26 +693,11 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
                     activeConversation.push({ role: 'assistant', content: text });
                     renderChatFeed();
 
-                    // If it is a new chat session, generate title automatically and save document
-                    if (currentThreadId === null) {
-                        currentThreadId = `${user?.uid}_${Date.now()}`;
-                        const cleanTitle = firstMessageText.slice(0, 24) + (firstMessageText.length > 24 ? '...' : '');
-                        
-                        const newThreadObj = {
-                            id: currentThreadId,
-                            userId: user?.uid,
-                            title: cleanTitle || 'Conversación Creativa',
-                            messages: activeConversation,
-                            updatedAt: new Date().toISOString()
-                        };
-
-                        await dbService.set('chats', currentThreadId, newThreadObj);
-                        chatThreadsList.unshift(newThreadObj);
-                        renderThreadsList();
-                    } else {
-                        // Update existing chat thread
+                    // Persist thread updates in Firestore
+                    if (currentThreadId) {
                         await dbService.set('chats', currentThreadId, {
                             messages: activeConversation,
+                            userId: user?.uid,
                             updatedAt: new Date().toISOString()
                         });
                         
@@ -770,6 +831,16 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                     details = `**Hook**: "${action.payload.title}"<br>**Psicología**: ${action.payload.psychology}`;
                     iconName = "zap";
                     colorClass = "#a855f7"; // Accent Purple
+                } else if (action.type === 'update_client') {
+                    title = "Acción: Actualizar Estrategia de Cliente";
+                    details = `**Cliente ID**: ${action.payload.clientId}<br>**Descripción**: ${action.payload.description || 'Sin cambios'}<br>**Formatos**: ${(action.payload.assignedFormats || []).join(', ')}`;
+                    iconName = "users";
+                    colorClass = "#3b82f6"; // Info Blue
+                } else if (action.type === 'create_client') {
+                    title = "Acción: Registrar Nuevo Cliente";
+                    details = `**Nombre**: ${action.payload.name}<br>**Industria**: ${action.payload.businessType}<br>**Descripción**: ${action.payload.description}`;
+                    iconName = "users";
+                    colorClass = "#10b981"; // Success Green
                 }
 
                 return `
