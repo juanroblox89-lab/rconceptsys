@@ -18,6 +18,7 @@ const primaryNavItems = [
 // Secondary nav (sidebar only)
 const secondaryNavItems = [
     { href: '#formats',      icon: 'film',              label: 'Formatos' },
+    { href: '#scripts',      icon: 'file-text',         label: 'Guiones' },
     { href: '#hooks',        icon: 'zap',               label: 'Hooks' },
     { href: '#sops',         icon: 'check-square',      label: 'SOPs' },
     { href: '#metrics',      icon: 'bar-chart-3',       label: 'Métricas' },

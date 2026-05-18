@@ -101,6 +101,7 @@ export const CommandPalette = () => {
             { type: 'action', id: 'new-inv', title: 'Reportar Nuevo Trabajo / Cobros', icon: 'file-plus', shortcut: 'F', action: () => window.location.hash = '#billing' },
             { type: 'action', id: 'go-dashboard', title: 'Ir al Dashboard', icon: 'layout-dashboard', action: () => window.location.hash = '#dashboard' },
             { type: 'action', id: 'go-clients', title: 'Ver Directorio de Clientes', icon: 'users', action: () => window.location.hash = '#clients' },
+            { type: 'action', id: 'go-scripts', title: 'Ver Guiones Recomendados', icon: 'file-text', action: () => window.location.hash = '#scripts' },
             !isAdmin ? { type: 'action', id: 'go-assignments', title: 'Ver Mis Tareas Asignadas', icon: 'clipboard-list', action: () => window.location.hash = '#assignments' } : null
         ].filter(Boolean);
 
