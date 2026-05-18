@@ -1,7 +1,7 @@
 /**
  * AI Assistant Page - Creative Production OS
  * High-fidelity, highly interactive marketing and copy assistant driven by Anthropic Claude.
- * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, and inline typing indicator.
+ * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, inline typing indicator, auto-seeding defaults, and non-destructive client updates.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
@@ -21,16 +21,68 @@ export const render = () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
 
         try {
-            // Load complete dynamic agency context from Firestore, user chats list, and global rate limit doc
-            const [formats, hooks, clients, assignments, sopsList, metricsList, userChats] = await Promise.all([
-                dbService.getAll('formats'),
-                dbService.getAll('hooks'),
-                dbService.getAll('clients'),
-                assignmentService.getAllAssignments(),
-                dbService.getAll('sops').catch(() => []),
-                dbService.getAll('metrics').catch(() => []),
-                dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => [])
-            ]);
+            // Load complete dynamic agency context from Firestore
+            let formats = await dbService.getAll('formats').catch(() => []);
+            let hooks = await dbService.getAll('hooks').catch(() => []);
+            let clients = await dbService.getAll('clients').catch(() => []);
+            let assignments = await assignmentService.getAllAssignments().catch(() => []);
+            let sopsList = await dbService.getAll('sops').catch(() => []);
+            let metricsList = await dbService.getAll('metrics').catch(() => []);
+            let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => []);
+
+            // AUTO-SEEDING DEFAULTS IF EMPTY (Ensures the agency is never empty)
+            let seededAny = false;
+            
+            if (formats.length === 0) {
+                const defaultFormats = [
+                    { id: 'rc-01', name: 'RC-01: Recorrido Comercial', structure: 'Hook visual llamativo + Recorrido en primera persona por el local + Explicación del producto estrella + Llamada a la acción (CTA) con oferta limitada.', createdAt: new Date().toISOString() },
+                    { id: 'ed-02', name: 'ED-02: Educativo de Valor', structure: 'Hook con gancho psicológico ("Sabías que...") + 3 datos de valor que resuelven un dolor del cliente + Demostración práctica + Cierre invitando a seguir la cuenta.', createdAt: new Date().toISOString() },
+                    { id: 'pv-03', name: 'PV-03: Demostración Viral', structure: 'Gancho visual ("Este producto cambió mi vida...") + Demostración en primer plano + Sonido en tendencia de fondo + CTA invitando a comentar para recibir el enlace.', createdAt: new Date().toISOString() }
+                ];
+                for (const fmt of defaultFormats) {
+                    await dbService.set('formats', fmt.id, fmt);
+                }
+                formats = defaultFormats;
+                seededAny = true;
+            }
+
+            if (hooks.length === 0) {
+                const defaultHooks = [
+                    { id: 'hk-01', title: 'La mayoría de la gente hace esto mal...', category: 'Error común', psychology: 'Curiosidad / Desafío', createdAt: new Date().toISOString() },
+                    { id: 'hk-02', title: 'Tuve que gastar más de 100 dólares para descubrir esto...', category: 'Secreto de Valor', psychology: 'Autoridad / FOMO', createdAt: new Date().toISOString() },
+                    { id: 'hk-03', title: 'Si tienes este tipo de negocio y no estás haciendo esto, estás perdiendo dinero...', category: 'Dolor Directo', psychology: 'Pérdida / Urgencia', createdAt: new Date().toISOString() }
+                ];
+                for (const hk of defaultHooks) {
+                    await dbService.set('hooks', hk.id, hk);
+                }
+                hooks = defaultHooks;
+                seededAny = true;
+            }
+
+            if (metricsList.length === 0) {
+                const defaultMetrics = [
+                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', updatedAt: new Date().toISOString() },
+                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', updatedAt: new Date().toISOString() },
+                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', updatedAt: new Date().toISOString() }
+                ];
+                for (const mt of defaultMetrics) {
+                    await dbService.set('metrics', mt.id, mt);
+                }
+                metricsList = defaultMetrics;
+                seededAny = true;
+            }
+
+            if (sopsList.length === 0) {
+                const defaultSops = [
+                    { id: 'SOP-01', title: 'Grabación de Reels y TikToks de Alto Impacto', iconName: 'video', steps: [{ text: 'Limpiar el lente de la cámara principal', done: false }, { text: 'Configurar a 4K 60fps con buena iluminación frontal', done: false }, { text: 'Grabar el Hook visual por triplicado con diferentes expresiones', done: false }, { text: 'Mantener tomas dinámicas de máximo 3 segundos de duración', done: false }] },
+                    { id: 'SOP-02', title: 'Edición Ágil para Retención en Redes', iconName: 'scissors', steps: [{ text: 'Eliminar espacios vacíos y respiraciones del audio', done: false }, { text: 'Añadir subtítulos automáticos animados en la zona central', done: false }, { text: 'Insertar Sound Effects (SFX) tipo Pop/Woosh en cada corte', done: false }, { text: 'Mantener música de fondo en volumen bajo (-20db)', done: false }] }
+                ];
+                for (const sop of defaultSops) {
+                    await dbService.set('sops', sop.id, sop);
+                }
+                sopsList = defaultSops;
+                seededAny = true;
+            }
 
             // Save threads list sorted by latest updated
             chatThreadsList = userChats.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
@@ -522,15 +574,26 @@ export const render = () => {
                     else if (action.type === 'update_client') {
                         const clientDoc = await dbService.getById('clients', action.payload.clientId);
                         if (clientDoc) {
+                            const updatedDescription = action.payload.description || clientDoc.description || '';
+                            
+                            // Merge assignedFormats and usedHooks non-destructively to avoid overwrites
+                            const currentFormats = clientDoc.assignedFormats || [];
+                            const newFormats = action.payload.assignedFormats || [];
+                            const mergedFormats = Array.from(new Set([...currentFormats, ...newFormats]));
+
+                            const currentHooks = clientDoc.usedHooks || [];
+                            const newHooks = action.payload.usedHooks || [];
+                            const mergedHooks = Array.from(new Set([...currentHooks, ...newHooks]));
+
                             const updatedClient = {
                                 ...clientDoc,
-                                description: action.payload.description || clientDoc.description,
-                                assignedFormats: action.payload.assignedFormats || clientDoc.assignedFormats || [],
-                                usedHooks: action.payload.usedHooks || clientDoc.usedHooks || [],
+                                description: updatedDescription,
+                                assignedFormats: mergedFormats,
+                                usedHooks: mergedHooks,
                                 updatedAt: new Date().toISOString()
                             };
                             await dbService.set('clients', action.payload.clientId, updatedClient);
-                            console.log("[Agent] Client updated successfully:", action.payload.clientId);
+                            console.log("[Agent] Client updated successfully (merged formats and hooks):", action.payload.clientId);
                         } else {
                             throw new Error(`Client with ID ${action.payload.clientId} not found`);
                         }
@@ -665,10 +728,10 @@ Detalles del Payload según el type:
    - "businessType": string (Industria, ej: "Salud e Higiene")
    - "description": string (Descripción estratégica general)
 6. "update_client":
-   - "clientId": string (ID del cliente a actualizar, ej: "clinica-dental-sonrisa")
-   - "description": string (Nueva descripción estratégica a guardar)
-   - "assignedFormats": array de strings (ej: ["RC-01: Recorrido"])
-   - "usedHooks": array de strings (ej: ["Problema-Solución"])
+   - "clientId": string (ID del cliente a actualizar, ej: "jerez-el-caballero", "kantel", "ricos-pandeyucas", "villa-grande")
+   - "description": string (Nueva descripción estratégica de marca a agregar o actualizar)
+   - "assignedFormats": array de strings (ej: ["RC-01: Recorrido Comercial"]) - Estos formatos se fusionarán de forma segura sin sobreescribir los que ya existen.
+   - "usedHooks": array de strings (ej: ["La mayoría de la gente hace esto mal..."]) - Estos hooks se fusionarán de forma segura sin sobreescribir los que ya existen.
 
 `;
 
@@ -683,7 +746,7 @@ Guiones e Ideas Recomendados: ${JSON.stringify(activeClientFocus.recommendedScri
 `;
                 } else {
                     contextPrompt += `=== RESUMEN GLOBAL DE LA AGENCIA ===
-Lista de Clientes Registrados: ${clients.map(c => `${c.name} (ID: "${c.id}" | Industria: "${c.businessType || 'General'}")`).join(', ')}
+Lista de Clientes Registrados: ${clients.map(c => `${c.name} (ID: "${c.id}" | Industria: "${c.businessType || 'General'}" | Descripción: "${c.description || 'Sin descripción'}")`).join(', ')}
 `;
                 }
 
