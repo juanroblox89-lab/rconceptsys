@@ -1,6 +1,7 @@
 /**
  * Serverless Vercel Function: Claude API Proxy
  * Handles dynamic marketing copywriting prompts by integrating agency-wide customer metrics and script styles.
+ * Tailored with a 4-tier model fallback pipeline and helpful error translator.
  */
 
 const DEFAULT_API_KEY = process.env.ANTHROPIC_API_KEY || "";
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
         const anthropicKey = apiKey?.trim() || process.env.ANTHROPIC_API_KEY || DEFAULT_API_KEY;
 
         if (!anthropicKey) {
-            return res.status(400).json({ error: 'Missing Anthropic API Key. Please add it to your Vercel Environment Variables.' });
+            return res.status(400).json({ error: 'Falta la clave API de Anthropic. Agrégala en las Variables de Entorno de Vercel o en el engranaje de configuración.' });
         }
 
         // Defensive validation: Ensure the key is ASCII-only and starts with 'sk-'
@@ -49,7 +50,7 @@ export default async function handler(req, res) {
 
         const firstUserIdx = apiMessages.findIndex(m => m.role === 'user');
         if (firstUserIdx === -1) {
-            return res.status(400).json({ error: 'Conversation must contain at least one user message.' });
+            return res.status(400).json({ error: 'La conversación debe contener al menos un mensaje del usuario.' });
         }
         apiMessages = apiMessages.slice(firstUserIdx);
 
@@ -74,8 +75,15 @@ DIRECTRICES OPERATIVAS PARA TUS RESPUESTAS:
 
 Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfocado al 100% en optimizar la producción.`;
 
-        // 2. Primary request with Claude 3.5 Sonnet v2
-        let response = await fetch("https://api.anthropic.com/v1/messages", {
+        // ==========================================
+        // 4-TIER MODEL FALLBACK PIPELINE
+        // ==========================================
+        let response;
+        let lastErrorText = "";
+
+        // Tier 1: Claude 3.5 Sonnet v2 (Ideal)
+        console.log("Attempting Tier 1: Claude 3.5 Sonnet v2...");
+        response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: {
                 "x-api-key": anthropicKey,
@@ -90,17 +98,16 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
             })
         });
 
-        // 3. Fallback check: If Sonnet v2 fails, retry with the highly compatible Claude 3.5 Sonnet v1
+        // Tier 2: Claude 3.5 Sonnet v1
         if (!response.ok) {
             const errClone = response.clone();
             try {
                 const errData = await errClone.json();
-                const errMsg = errData.error?.message || '';
-                
-                // If it is a model availability or request tier limitation error, run fallback
-                if (errMsg.includes("model") || response.status === 404 || response.status === 400) {
-                    console.warn("Sonnet v2 failed or restricted. Retrying with fallback model claude-3-5-sonnet-20240620...");
-                    
+                lastErrorText = errData.error?.message || "";
+                console.warn("Tier 1 (Sonnet v2) failed. Reason:", lastErrorText);
+
+                if (lastErrorText.includes("model") || response.status === 404 || response.status === 400) {
+                    console.log("Attempting Tier 2: Claude 3.5 Sonnet v1...");
                     response = await fetch("https://api.anthropic.com/v1/messages", {
                         method: "POST",
                         headers: {
@@ -116,17 +123,88 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
                         })
                     });
                 }
-            } catch (jsonErr) {
-                console.error("Failed to parse initial error response:", jsonErr);
+            } catch (e) {
+                console.error("Failed to parse Tier 1 error:", e);
             }
         }
 
+        // Tier 3: Claude 3.5 Haiku (Affordable and highly active)
+        if (!response.ok) {
+            const errClone = response.clone();
+            try {
+                const errData = await errClone.json();
+                lastErrorText = errData.error?.message || "";
+                console.warn("Tier 2 (Sonnet v1) failed. Reason:", lastErrorText);
+
+                if (lastErrorText.includes("model") || response.status === 404 || response.status === 400) {
+                    console.log("Attempting Tier 3: Claude 3.5 Haiku...");
+                    response = await fetch("https://api.anthropic.com/v1/messages", {
+                        method: "POST",
+                        headers: {
+                            "x-api-key": anthropicKey,
+                            "anthropic-version": "2023-06-01",
+                            "content-type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            model: "claude-3-5-haiku-20241022",
+                            max_tokens: 3000,
+                            system: systemPrompt,
+                            messages: apiMessages
+                        })
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to parse Tier 2 error:", e);
+            }
+        }
+
+        // Tier 4: Claude 3 Haiku (Universally enabled on all tiers including free)
+        if (!response.ok) {
+            const errClone = response.clone();
+            try {
+                const errData = await errClone.json();
+                lastErrorText = errData.error?.message || "";
+                console.warn("Tier 3 (Claude 3.5 Haiku) failed. Reason:", lastErrorText);
+
+                if (lastErrorText.includes("model") || response.status === 404 || response.status === 400) {
+                    console.log("Attempting Tier 4: Claude 3 Haiku...");
+                    response = await fetch("https://api.anthropic.com/v1/messages", {
+                        method: "POST",
+                        headers: {
+                            "x-api-key": anthropicKey,
+                            "anthropic-version": "2023-06-01",
+                            "content-type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            model: "claude-3-haiku-20240307",
+                            max_tokens: 3000,
+                            system: systemPrompt,
+                            messages: apiMessages
+                        })
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to parse Tier 3 error:", e);
+            }
+        }
+
+        // Final response handling with error translator
         if (!response.ok) {
             const errData = await response.json();
-            console.error("Anthropic API Final Error Details:", errData);
-            return res.status(response.status).json({ 
-                error: errData.error?.message || 'Error communicating with Anthropic Claude API.' 
-            });
+            console.error("Anthropic API Pipeline Final Failure:", errData);
+            
+            let errMsg = errData.error?.message || 'Error al comunicarse con la API de Claude.';
+
+            // User-friendly credit balance check
+            if (errMsg.includes("credit_balance_zero") || errMsg.includes("billing") || errMsg.includes("credit") || errMsg.includes("balance")) {
+                errMsg = "Tu cuenta de Anthropic no tiene saldo de créditos disponible. Para activar tu API Key, por favor inicia sesión en tu consola de Anthropic (https://console.anthropic.com/settings/billing) y añade un saldo inicial mínimo (ej. $5 USD) en la sección de facturación.";
+            } else if (errMsg.includes("rate_limit")) {
+                errMsg = "Límite de velocidad superado. Espera unos segundos e intenta nuevamente.";
+            } else if (errMsg.includes("invalid") && (errMsg.includes("key") || errMsg.includes("auth"))) {
+                errMsg = "La API Key ingresada no es válida o ha sido revocada. Por favor, verifica que la hayas copiado completa y correctamente desde tu consola de Anthropic.";
+            }
+
+            return res.status(response.status).json({ error: errMsg });
         }
 
         const data = await response.json();
@@ -136,6 +214,6 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
 
     } catch (err) {
         console.error("Serverless Claude Proxy error:", err);
-        return res.status(500).json({ error: 'Internal server error: ' + err.message });
+        return res.status(500).json({ error: 'Error interno del servidor proxy: ' + err.message });
     }
 }
