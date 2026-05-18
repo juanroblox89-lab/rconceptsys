@@ -1,16 +1,16 @@
 /**
  * AI Assistant Page - Creative Production OS
  * High-fidelity, highly interactive marketing and copy assistant driven by Anthropic Claude.
- * Updated: Supports agentic execution, Firestore write actions, and comprehensive agency context loading.
+ * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, and global rate limits.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { store } from '../js/store.js';
 
-let activeConversation = [
-    { role: 'assistant', content: '¡Hola! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso en tiempo real a toda tu agencia. Pídeme crear SOPs, asignar tareas o actualizar métricas operativas directamente. ¿Qué marca o guión trabajamos hoy?' }
-];
+let activeConversation = [];
+let currentThreadId = null;
+let chatThreadsList = [];
 
 export const render = () => {
     const { user } = store.getState();
@@ -20,22 +20,28 @@ export const render = () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
 
         try {
-            // Load complete dynamic agency context from Firestore and user's persistent chat
-            const [formats, hooks, clients, assignments, sopsList, metricsList, savedChat] = await Promise.all([
+            // Load complete dynamic agency context from Firestore, user chats list, and global rate limit doc
+            const [formats, hooks, clients, assignments, sopsList, metricsList, userChats] = await Promise.all([
                 dbService.getAll('formats'),
                 dbService.getAll('hooks'),
                 dbService.getAll('clients'),
                 assignmentService.getAllAssignments(),
                 dbService.getAll('sops').catch(() => []),
                 dbService.getAll('metrics').catch(() => []),
-                dbService.getById('chats', user?.uid).catch(() => null)
+                dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => [])
             ]);
 
-            if (savedChat && Array.isArray(savedChat.messages) && savedChat.messages.length > 0) {
-                activeConversation = savedChat.messages;
+            // Save threads list sorted by latest updated
+            chatThreadsList = userChats.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+
+            // Select active thread
+            if (chatThreadsList.length > 0) {
+                currentThreadId = chatThreadsList[0].id;
+                activeConversation = chatThreadsList[0].messages || [];
             } else {
+                currentThreadId = null;
                 activeConversation = [
-                    { role: 'assistant', content: '¡Hola! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso en tiempo real a toda tu agencia. Pídeme crear SOPs, asignar tareas o actualizar métricas operativas directamente. ¿Qué marca o guión trabajamos hoy?' }
+                    { role: 'assistant', content: `¡Hola, ${user?.nombre || 'Usuario'}! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso en tiempo real a toda tu agencia. Pídeme crear SOPs, asignar tareas o actualizar métricas operativas directamente. ¿Qué marca o guión trabajamos hoy?` }
                 ];
             }
 
@@ -64,10 +70,111 @@ export const render = () => {
                 ])
             ]);
 
-            // Sidebar Copywriting Favor Pills
+            // Left Column: ChatGPT-style Sidebar Panel for Chat History
+            const chatHistorySidebar = h('div', {
+                className: 'flex-column gap-3 card p-3',
+                style: { width: '220px', minWidth: '200px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }
+            }, [
+                h('button', {
+                    className: 'btn btn-primary w-full flex items-center justify-center gap-2 py-2 text-xs font-bold',
+                    onClick: async () => {
+                        currentThreadId = null;
+                        activeConversation = [
+                            { role: 'assistant', content: `¡Hola de nuevo, ${user?.nombre || 'Usuario'}! He iniciado un nuevo chat para ti. ¿En qué marca o guión trabajamos en esta sesión?` }
+                        ];
+                        renderChatFeed();
+                        renderThreadsList();
+                    }
+                }, [icon('plus', 12), h('span', {}, 'Nuevo Chat')]),
+                
+                h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1 border-bottom pb-2 mt-2' }, [
+                    icon('message-square', 14, 'text-muted'),
+                    h('span', {}, 'Historial de Chats')
+                ]),
+
+                // Container for threads list
+                h('div', { 
+                    id: 'threads-list-container',
+                    className: 'flex-column gap-1 overflow-y-auto mt-2',
+                    style: { maxHeight: '350px' }
+                })
+            ]);
+
+            const renderThreadsList = () => {
+                const threadsContainer = chatHistorySidebar.querySelector('#threads-list-container');
+                if (!threadsContainer) return;
+                threadsContainer.innerHTML = '';
+
+                if (chatThreadsList.length === 0) {
+                    threadsContainer.appendChild(h('span', { className: 'text-xs text-muted text-center py-4 font-medium' }, 'Sin chats anteriores'));
+                    return;
+                }
+
+                chatThreadsList.forEach((thread) => {
+                    const isActive = thread.id === currentThreadId;
+                    
+                    const threadBtn = h('div', {
+                        className: `flex items-center justify-between p-2 rounded text-xs w-full gap-1 cursor-pointer transition-all hover-bg-tertiary ${isActive ? 'bg-secondary font-bold border-left-active' : 'text-secondary'}`,
+                        style: {
+                            border: '1px solid var(--border)',
+                            background: isActive ? 'var(--bg-tertiary)' : 'transparent',
+                            marginBottom: '4px'
+                        },
+                        onClick: () => {
+                            if (isActive) return;
+                            currentThreadId = thread.id;
+                            activeConversation = thread.messages || [];
+                            renderChatFeed();
+                            renderThreadsList();
+                        }
+                    }, [
+                        h('span', { 
+                            className: 'truncate flex-1 pr-1', 
+                            style: { maxWidth: '130px', color: isActive ? 'var(--accent)' : 'var(--text-secondary)' } 
+                        }, thread.title || 'Conversación sin título'),
+                        h('div', { className: 'flex items-center gap-1' }, [
+                            h('button', {
+                                className: 'btn btn-icon p-1 text-muted hover-text-danger',
+                                style: { background: 'none', border: 'none', padding: 0 },
+                                title: 'Eliminar Chat',
+                                onClick: async (e) => {
+                                    e.stopPropagation();
+                                    if (confirm('¿Estás seguro de que deseas eliminar esta conversación?')) {
+                                        try {
+                                            await dbService.delete('chats', thread.id);
+                                            chatThreadsList = chatThreadsList.filter(t => t.id !== thread.id);
+                                            if (currentThreadId === thread.id) {
+                                                if (chatThreadsList.length > 0) {
+                                                    currentThreadId = chatThreadsList[0].id;
+                                                    activeConversation = chatThreadsList[0].messages || [];
+                                                } else {
+                                                    currentThreadId = null;
+                                                    activeConversation = [
+                                                        { role: 'assistant', content: `¡Hola, ${user?.nombre || 'Usuario'}! He iniciado una nueva sesión para ti. Pídeme lo que necesites.` }
+                                                    ];
+                                                }
+                                            }
+                                            renderChatFeed();
+                                            renderThreadsList();
+                                        } catch (err) {
+                                            console.error("Error deleting chat:", err);
+                                        }
+                                    }
+                                }
+                            }, [icon('trash-2', 11)])
+                        ])
+                    ]);
+
+                    threadsContainer.appendChild(threadBtn);
+                });
+                
+                if (window.lucide) window.lucide.createIcons();
+            };
+
+            // Right Column: Operational stats and quick templates
             const sidePanel = h('div', { 
                 className: 'flex-column gap-3 card p-4', 
-                style: { flex: '1', minWidth: '240px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' } 
+                style: { width: '220px', minWidth: '200px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' } 
             }, [
                 h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1 border-bottom pb-2' }, [
                     icon('zap', 14, 'text-warning'),
@@ -119,7 +226,7 @@ export const render = () => {
                 ])
             ]);
 
-            // Dynamic Chat Messaging Feed View
+            // Middle Column: Dynamic Chat Messaging Feed View
             const chatFeed = h('div', { 
                 className: 'flex-column gap-3 p-4 mb-2 border-radius-md',
                 style: { 
@@ -197,16 +304,16 @@ export const render = () => {
 
                     if (!messageText) return;
 
-                    // Check daily rate limit (20 messages per day)
+                    // Check daily rate limit globally in chats_limit collection (20 messages per day)
                     const todayStr = new Date().toISOString().split('T')[0];
                     let dailyCount = 0;
                     let lastDate = "";
                     
                     try {
-                        const chatSession = await dbService.getById('chats', user?.uid);
-                        if (chatSession) {
-                            dailyCount = chatSession.dailyCount || 0;
-                            lastDate = chatSession.lastMessageDate || "";
+                        const limitDoc = await dbService.getById('chats_limit', user?.uid);
+                        if (limitDoc) {
+                            dailyCount = limitDoc.dailyCount || 0;
+                            lastDate = limitDoc.lastMessageDate || "";
                         }
                     } catch (err) {
                         console.warn("Could not check rate limit from db, using safety checks:", err);
@@ -228,7 +335,7 @@ export const render = () => {
                     renderChatFeed();
 
                     // Trigger request to Claude API proxy
-                    await callClaudeProxy();
+                    await callClaudeProxy(messageText);
                 }
             }, [
                 h('textarea', { 
@@ -250,25 +357,22 @@ export const render = () => {
                     h('button', { 
                         type: 'button', 
                         className: 'btn btn-outline text-xs text-muted px-2',
-                        title: 'Limpiar Conversación',
+                        title: 'Limpiar Chat Actual',
                         onClick: async () => {
                             activeConversation = [
                                 { role: 'assistant', content: 'Conversación reiniciada. Inyecta una orden o pídemelo de manera directa y comenzaremos.' }
                             ];
                             renderChatFeed();
                             
-                            try {
-                                const chatSession = await dbService.getById('chats', user?.uid).catch(() => null);
-                                const dailyCount = chatSession ? (chatSession.dailyCount || 0) : 0;
-                                const lastDate = chatSession ? (chatSession.lastMessageDate || "") : "";
-                                await dbService.set('chats', user?.uid, {
-                                    messages: activeConversation,
-                                    dailyCount,
-                                    lastMessageDate: lastDate,
-                                    updatedAt: new Date().toISOString()
-                                });
-                            } catch(e) {
-                                console.warn("Failed to clear chat session in Firestore:", e);
+                            if (currentThreadId) {
+                                try {
+                                    await dbService.set('chats', currentThreadId, {
+                                        messages: activeConversation,
+                                        updatedAt: new Date().toISOString()
+                                    });
+                                } catch(e) {
+                                    console.warn("Failed to clear current thread in Firestore:", e);
+                                }
                             }
                         }
                     }, [icon('trash-2', 12)])
@@ -391,7 +495,7 @@ export const render = () => {
             };
 
             // Core fetch trigger to serverless Claude proxy
-            const callClaudeProxy = async () => {
+            const callClaudeProxy = async (firstMessageText = '') => {
                 typingIndicator.classList.remove('hidden');
                 
                 // 1. Gather dynamic focus context
@@ -402,11 +506,17 @@ export const render = () => {
                     activeClientFocus = clients.find(c => c.id === focusClientId);
                 }
 
-                // 2. Build structured Operational System prompt
+                // 2. Build structured Operational System prompt with Personal Name and role context
                 let contextPrompt = `=== TONALIDAD Y DIRECTRICES DE COMUNICACIÓN ===
 1. Sé extremadamente profesional, directo y conciso. Ve directo al grano sin rodeos, introducciones largas ni saludos repetitivos.
 2. Reduce al mínimo absoluto el uso de emojis. Usa un máximo de 1 emoji por respuesta completa. No decores cada viñeta o frase con emojis.
 3. No saludes al inicio de cada mensaje si ya estamos conversando.
+4. MUY IMPORTANTE: Dirígete al usuario por su nombre (${user?.nombre || 'Usuario'}) de forma natural y profesional en tu respuesta para que sepa que lo reconoces individualmente.
+
+=== INFORMACIÓN DEL USUARIO ACTIVO ===
+Nombre del Usuario: ${user?.nombre || 'Usuario'}
+Correo del Usuario: ${user?.email || 'General'}
+Rol en la Agencia: ${user?.role || 'viewer'}
 
 === CAPACIDADES DEL AGENTE CREATIVEOS (ACCIONES DIRECTAS) ===
 Tú no eres un simple chatbot pasivo; eres un AGENTE activo de la agencia. Tienes el poder de modificar la base de datos de Firestore directamente respondiendo con un bloque estructurado en formato JSON.
@@ -507,25 +617,57 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
                     activeConversation.push({ role: 'assistant', content: text });
                     renderChatFeed();
 
-                    // Increment daily messages count and persist chat history to Firestore
+                    // If it is a new chat session, generate title automatically and save document
+                    if (currentThreadId === null) {
+                        currentThreadId = `${user?.uid}_${Date.now()}`;
+                        const cleanTitle = firstMessageText.slice(0, 24) + (firstMessageText.length > 24 ? '...' : '');
+                        
+                        const newThreadObj = {
+                            id: currentThreadId,
+                            userId: user?.uid,
+                            title: cleanTitle || 'Conversación Creativa',
+                            messages: activeConversation,
+                            updatedAt: new Date().toISOString()
+                        };
+
+                        await dbService.set('chats', currentThreadId, newThreadObj);
+                        chatThreadsList.unshift(newThreadObj);
+                        renderThreadsList();
+                    } else {
+                        // Update existing chat thread
+                        await dbService.set('chats', currentThreadId, {
+                            messages: activeConversation,
+                            updatedAt: new Date().toISOString()
+                        });
+                        
+                        // Update lists local state reference and sort again
+                        const localIndex = chatThreadsList.findIndex(t => t.id === currentThreadId);
+                        if (localIndex !== -1) {
+                            chatThreadsList[localIndex].messages = activeConversation;
+                            chatThreadsList[localIndex].updatedAt = new Date().toISOString();
+                            chatThreadsList = chatThreadsList.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+                            renderThreadsList();
+                        }
+                    }
+
+                    // Increment global rate limit in Firestore chats_limit collection
                     const todayStr = new Date().toISOString().split('T')[0];
                     let currentCount = 1;
                     try {
-                        const chatSession = await dbService.getById('chats', user?.uid);
-                        if (chatSession && chatSession.lastMessageDate === todayStr) {
-                            currentCount = (chatSession.dailyCount || 0) + 1;
+                        const limitDoc = await dbService.getById('chats_limit', user?.uid);
+                        if (limitDoc && limitDoc.lastMessageDate === todayStr) {
+                            currentCount = (limitDoc.dailyCount || 0) + 1;
                         }
                     } catch(e) {}
 
                     try {
-                        await dbService.set('chats', user?.uid, {
-                            messages: activeConversation,
+                        await dbService.set('chats_limit', user?.uid, {
                             dailyCount: currentCount,
                             lastMessageDate: todayStr,
                             updatedAt: new Date().toISOString()
                         });
                     } catch (e) {
-                        console.warn("Could not save chat memory to Firestore:", e);
+                        console.warn("Could not save global rate limit count:", e);
                     }
 
                 } catch (err) {
@@ -563,24 +705,26 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                 }
             };
 
-            // Assemble main grid layout
+            // Assemble main ChatGPT three-column grid layout
             const chatMainView = h('div', { 
                 className: 'flex gap-4 w-full flex-wrap', 
                 style: { display: 'flex', flexDirection: 'row', alignItems: 'stretch' } 
             }, [
+                chatHistorySidebar, // ChatGPT-style left sidebar
                 h('div', { className: 'flex-column', style: { flex: '3', minWidth: '320px' } }, [
                     chatFeed,
                     typingIndicator,
                     inputArea
                 ]),
-                sidePanel
+                sidePanel // Quick shortcuts right sidebar
             ]);
 
             container.appendChild(header);
             container.appendChild(chatMainView);
 
-            // Initial render of chat thread
+            // Initial render of feed and threads list
             renderChatFeed();
+            renderThreadsList();
 
             if (window.lucide) window.lucide.createIcons();
 
