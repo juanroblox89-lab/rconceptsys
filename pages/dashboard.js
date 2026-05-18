@@ -16,12 +16,13 @@ export const render = () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
 
         try {
+            const isAdmin = user?.role === 'admin';
             const [formats, hooks, clients, assignments, usersList] = await Promise.all([
-                dbService.getAll('formats'),
-                dbService.getAll('hooks'),
-                dbService.getAll('clients'),
-                assignmentService.getAllAssignments(),
-                dbService.getAll('users')
+                dbService.getAll('formats').catch(() => []),
+                dbService.getAll('hooks').catch(() => []),
+                dbService.getAll('clients').catch(() => []),
+                assignmentService.getAllAssignments().catch(() => []),
+                (isAdmin ? dbService.getAll('users').catch(() => []) : Promise.resolve([]))
             ]);
 
             const activeAssignments = assignments.filter(a => a.status !== 'Completado');

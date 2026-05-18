@@ -26,6 +26,7 @@ export const invoiceService = {
             client: data.client || '',
             amount: Number(data.amount) || 0,
             observations: data.observations || '',
+            items: data.items || [],
             createdAt: data.createdAt || new Date().toISOString(),
             status: data.status || 'Pendiente'
         };
@@ -60,6 +61,7 @@ export const invoiceService = {
             client: data.client || '',
             amount: Number(data.amount) || 0,
             observations: data.observations || '',
+            items: data.items || [],
             createdAt: data.createdAt || new Date().toISOString(),
             status: data.status || 'Pendiente'
         };
