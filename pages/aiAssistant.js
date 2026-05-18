@@ -43,7 +43,7 @@ export const render = () => {
             }
 
             // AUTO-SEEDING LIVING SYSTEM CONFIGURATION RULES (Dynamic context memory)
-            if (systemRules.length === 0) {
+            if (systemRules.length === 0 && user?.role === 'admin') {
                 const defaultRules = [
                     {
                         id: 'manifesto',
@@ -124,7 +124,7 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
             }
 
             // AUTO-SEEDING DEFAULTS IF EMPTY (Ensures the agency has elite real-world templates loaded immediately)
-            if (formats.length === 0) {
+            if (formats.length === 0 && user?.role === 'admin') {
                 const defaultFormats = [
                     { id: 'rc-01', name: 'RC-01: Recorrido Comercial Narrado', structure: 'Hook + Presentación + Productos/Servicios + Experiencia + Ambiente + Ubicación + Cierre', usedFor: 'Presentar negocio físico mediante recorrido narrado', exampleHooks: ['hk-03'], clients: ['tizon-dorado'], createdAt: new Date().toISOString() },
                     { id: 'pl-01', name: 'PL-01: Presentación/Listado de Productos', structure: 'Producto 1 + Producto 2 + Producto 3 + CTA ligero', usedFor: 'Mostrar múltiples productos o platos rápidamente. Ideal para combos, catálogos y promociones.', exampleHooks: ['hk-01', 'hk-02'], clients: ['ricos-pandeyucas'], createdAt: new Date().toISOString() },
@@ -137,7 +137,7 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                 formats = defaultFormats;
             }
 
-            if (hooks.length === 0) {
+            if (hooks.length === 0 && user?.role === 'admin') {
                 const defaultHooks = [
                     { id: 'hk-01', title: 'La mayoría de la gente hace esto mal...', category: 'Error común', psychology: 'Curiosidad / Desafío', timesUsed: 14, avgRetention: '82%', topClient: 'kantel', source: 'seed', createdAt: new Date().toISOString() },
                     { id: 'hk-02', title: 'Tuve que gastar más de 100 dólares para descubrir esto...', category: 'Secreto de Valor', psychology: 'Autoridad / FOMO', timesUsed: 8, avgRetention: '79%', topClient: 'jerez-el-caballero', source: 'seed', createdAt: new Date().toISOString() },
@@ -149,7 +149,7 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                 hooks = defaultHooks;
             }
 
-            if (metricsList.length === 0) {
+            if (metricsList.length === 0 && user?.role === 'admin') {
                 const defaultMetrics = [
                     { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', clientId: 'tizon-dorado', formatId: 'rc-01', period: 'Mayo 2026', retention: '74%', views: '15400', shares: '320', saves: '840', source: 'seed', updatedAt: new Date().toISOString() },
                     { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', clientId: 'ricos-pandeyucas', formatId: 'pl-01', period: 'Mayo 2026', retention: '62%', views: '28000', shares: '1100', saves: '2400', source: 'seed', updatedAt: new Date().toISOString() },
@@ -161,7 +161,7 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                 metricsList = defaultMetrics;
             }
 
-            if (sopsList.length === 0) {
+            if (sopsList.length === 0 && user?.role === 'admin') {
                 const defaultSops = [
                     { id: 'SOP-01', title: 'Grabación de Reels y TikToks de Alto Impacto', iconName: 'video', steps: [{ text: 'Limpiar el lente de la cámara principal', done: false }, { text: 'Configurar a 4K 60fps con buena iluminación frontal', done: false }, { text: 'Grabar el Hook visual por triplicado con diferentes expresiones', done: false }, { text: 'Mantener tomas dinámicas de máximo 3 segundos de duración', done: false }] },
                     { id: 'SOP-02', title: 'Edición Ágil para Retención en Redes', iconName: 'scissors', steps: [{ text: 'Eliminar espacios vacíos y respiraciones del audio', done: false }, { text: 'Añadir subtítulos automáticos animados en la zona central', done: false }, { text: 'Insertar Sound Effects (SFX) tipo Pop/Woosh en cada corte', done: false }, { text: 'Mantener música de fondo en volumen bajo (-20db)', done: false }] }
