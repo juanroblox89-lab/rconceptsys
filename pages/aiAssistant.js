@@ -178,6 +178,25 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                 if (!c.usedHooks) c.usedHooks = [];
             });
 
+            // Load daily chat message limits
+            let dailyCount = 0;
+            let lastDate = "";
+            const todayStr = new Date().toISOString().split('T')[0];
+            try {
+                const limitDoc = await dbService.getById('chats_limit', user?.uid);
+                if (limitDoc) {
+                    dailyCount = limitDoc.dailyCount || 0;
+                    lastDate = limitDoc.lastMessageDate || "";
+                }
+            } catch (err) {
+                console.warn("Could not check rate limit from db:", err);
+            }
+
+            const isAdmin = user?.role === 'admin';
+            const maxAllowed = isAdmin ? 10 : 5;
+            const currentTodayCount = (lastDate === todayStr) ? dailyCount : 0;
+            const remainingMessages = Math.max(0, maxAllowed - currentTodayCount);
+
             // Save threads list sorted by latest updated
             chatThreadsList = userChats.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
 
@@ -200,7 +219,23 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                 style: { borderBottom: '1px solid var(--border)', paddingBottom: '1rem' } 
             }, [
                 h('div', {}, [
-                    h('h1', {}, 'AI Creative Assistant & Agent'),
+                    h('div', { className: 'flex items-center gap-2 flex-wrap' }, [
+                        h('h1', {}, 'AI Creative Assistant & Agent'),
+                        // Beautiful remaining message pill badge
+                        h('span', {
+                            id: 'ai-remaining-badge',
+                            className: 'badge text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5',
+                            style: {
+                                background: remainingMessages > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                color: remainingMessages > 0 ? '#10b981' : '#ef4444',
+                                border: remainingMessages > 0 ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                                display: 'inline-flex'
+                            }
+                        }, [
+                            icon('message-square', 10),
+                            h('span', {}, `Quedan ${remainingMessages} mensajes hoy`)
+                        ])
+                    ]),
                     h('p', { className: 'text-xs text-muted mt-1' }, 'Copiloto y agente de ejecución integrado en tiempo real con las marcas, métricas, ganchos y flujos de producción de tu agencia.')
                 ]),
                 h('div', { className: 'flex gap-2 items-center' }, [
@@ -1047,7 +1082,7 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
                         }
                     }
 
-                    // Increment global rate limit in Firestore chats_limit collection
+                    // Increment global rate limit count in Firestore chats_limit collection
                     const todayStr = new Date().toISOString().split('T')[0];
                     let currentCount = 1;
                     try {
@@ -1065,6 +1100,19 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
                         });
                     } catch (e) {
                         console.warn("Could not save global rate limit count:", e);
+                    }
+
+                    // Dynamically update the remaining messages badge in the DOM immediately!
+                    const badge = container.querySelector('#ai-remaining-badge');
+                    if (badge) {
+                        const isAdmin = user?.role === 'admin';
+                        const maxAllowed = isAdmin ? 10 : 5;
+                        const newRemaining = Math.max(0, maxAllowed - currentCount);
+                        badge.style.background = newRemaining > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+                        badge.style.color = newRemaining > 0 ? '#10b981' : '#ef4444';
+                        badge.style.border = newRemaining > 0 ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)';
+                        badge.innerHTML = `<i data-lucide="message-square" style="width: 10px; height: 10px;"></i><span>Quedan ${newRemaining} mensajes hoy</span>`;
+                        if (window.lucide) window.lucide.createIcons();
                     }
 
                 } catch (err) {

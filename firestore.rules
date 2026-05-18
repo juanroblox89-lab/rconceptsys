@@ -59,7 +59,7 @@ service cloud.firestore {
 
     // ── ASSIGNMENTS Collection ───────────────────────────────
     match /assignments/{asgId} {
-      allow read: if isApprovedUser() && (resource.data.employeeId == request.auth.uid || isAdmin());
+      allow read: if isApprovedUser();
       allow write: if isAdmin();
     }
 
