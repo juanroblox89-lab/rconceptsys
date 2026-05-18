@@ -43,7 +43,7 @@ export const render = () => {
             }
 
             // AUTO-SEEDING LIVING SYSTEM CONFIGURATION RULES (Dynamic context memory)
-            if (systemRules.length === 0 && user?.role === 'admin') {
+            if (systemRules.length < 4 && user?.role === 'admin') {
                 const defaultRules = [
                     {
                         id: 'manifesto',
@@ -114,6 +114,26 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
 - shares (Compartidos, ej: "320")
 - saves (Guardados, ej: "840")
 - source: obligatorio establecer "seed" (si es dato de ejemplo sembrado) o "real" (si es una métrica de campaña real cargada de producción). Esto mantiene separadas las métricas de prueba de las de producción.`,
+                        updatedAt: new Date().toISOString()
+                    },
+                    {
+                        id: 'assignment_script_rules',
+                        title: 'Reglas de Vinculación de Guiones y Plan de Producción',
+                        content: `=== REGLA DE VINCULACIÓN EN TAREAS ===
+Al crear o editar asignaciones ("create_assignment"), los administradores pueden vincular un guión recomendado de la biblioteca ('linkedScript') o un asset de la galería ('linkedAsset'). Esto genera un bloque interactivo con un botón de copia rápida y una referencia visual directa para los empleados en su tablero.
+
+=== VISTA DE GUIONES Y PLAN MENSUAL ===
+En la sección de Guiones, todo se organiza de forma Notion-style agrupado por Cliente:
+1. "Biblioteca de Guiones Recomendados" (copies ganadores listos para copiar).
+2. "Plan de Producción (Este Mes)" (tareas operativas activas del mes corriente programadas para ese cliente).
+Los administradores pueden pulsar "+ Añadir a Biblioteca" en el bloque del cliente para agregar nuevos guiones específicos.
+
+=== CÓMO OPERAR CUANDO HAY MUCHA INFORMACIÓN ===
+Cuando el usuario te entregue mucha información o copies de marcas:
+- Agrupa la información de inmediato por Cliente/Marca.
+- Identifica si el copy corresponde a un formato de video (ej. RC-01, PL-01) o es una sugerencia general.
+- Usa la acción "create_assignment" para registrar las tareas correspondientes en el plan de producción del mes actual.
+- Usa la acción "update_client" para nutrir las directrices estratégicas de cada cliente y asociarle los formatos y hooks indicados.`,
                         updatedAt: new Date().toISOString()
                     }
                 ];

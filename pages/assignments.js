@@ -23,10 +23,12 @@ export const render = async () => {
             await assignmentService.cleanupAssignments();
 
             // 1. Load Data
-            const [users, assignments, clients] = await Promise.all([
+            const [users, assignments, clients, scripts, assets] = await Promise.all([
                 userService.getAllUsers(),
                 assignmentService.getAllAssignments(),
-                dbService.getAll('clients')
+                dbService.getAll('clients'),
+                dbService.getAll('scripts'),
+                dbService.getAll('assets')
             ]);
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
@@ -119,7 +121,35 @@ export const render = async () => {
                             asg.description ? h('p', { 
                                 className: 'text-xs text-secondary leading-relaxed p-3 bg-secondary rounded mt-1', 
                                 style: { whiteSpace: 'pre-wrap', borderLeft: '3px solid var(--border)' } 
-                            }, asg.description) : null
+                            }, asg.description) : null,
+
+                            // Linked script box
+                            asg.linkedScript ? h('div', { 
+                                className: 'p-3 bg-tertiary mt-2 relative flex-column gap-2', 
+                                style: { border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-tertiary)' } 
+                            }, [
+                                h('div', { className: 'flex justify-between items-center w-full' }, [
+                                    h('span', { className: 'text-xs text-accent uppercase font-bold tracking-wider', style: { fontSize: '0.6rem' } }, '📄 Guión Vinculado'),
+                                    h('button', {
+                                        type: 'button',
+                                        className: 'btn btn-outline text-xs',
+                                        style: { padding: '2px 6px', fontSize: '0.65rem' },
+                                        onClick: (e) => {
+                                            navigator.clipboard.writeText(asg.linkedScript);
+                                            const btn = e.currentTarget;
+                                            btn.innerText = '¡Copiado!';
+                                            setTimeout(() => { btn.innerText = 'Copiar Guión'; }, 1500);
+                                        }
+                                    }, 'Copiar Guión')
+                                ]),
+                                h('pre', { className: 'text-xs font-mono text-secondary leading-relaxed mt-1', style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '150px', overflowY: 'auto' } }, asg.linkedScript)
+                            ]) : null,
+
+                            // Linked asset box
+                            asg.linkedAsset ? h('div', { className: 'p-2 bg-secondary mt-2 flex items-center justify-between', style: { borderRadius: '6px', border: '1px solid var(--border)' } }, [
+                                h('span', { className: 'text-xs text-muted font-medium flex items-center gap-1' }, [icon('image', 12), h('span', {}, 'Asset / Referencia Vinculada')]),
+                                h('a', { href: asg.linkedAsset, target: '_blank', className: 'btn btn-outline text-xs', style: { padding: '4px 8px' } }, 'Ver Referencia')
+                            ]) : null
                         ])
                     ]);
                 };
@@ -168,7 +198,7 @@ export const render = async () => {
                 h('div', { className: 'flex gap-2' }, [
                     h('button', { 
                         className: 'btn btn-primary text-xs',
-                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients })
+                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] })
                     }, [icon('plus', 14), h('span', {}, 'Nueva Asignación')])
                 ])
             ]);
@@ -192,7 +222,7 @@ export const render = async () => {
                             ]),
                             h('div', { className: 'flex gap-1' }, [
                                 h('button', { className: 'btn-icon text-muted', title: 'Ver Factura Admin', onClick: () => window.location.hash = '#billing' }, [icon('credit-card', 14)]),
-                                h('button', { className: 'btn-icon text-muted', title: 'Editar Asignaciones', onClick: () => openEmployeeTasksModal(emp, empAsgs, { clients: finalClients }) }, [icon('more-horizontal', 14)])
+                                h('button', { className: 'btn-icon text-muted', title: 'Editar Asignaciones', onClick: () => openEmployeeTasksModal(emp, empAsgs, { clients: finalClients, scripts: scripts || [], assets: assets || [] }) }, [icon('more-horizontal', 14)])
                             ])
                         ]),
 
@@ -214,7 +244,7 @@ export const render = async () => {
                                             h('span', { className: `text-xs ${isExpired ? 'text-error font-bold' : 'text-muted'}` }, 
                                                 isToday ? 'Hoy' : due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
                                             ),
-                                            h('button', { className: 'action-btn', style: { padding: '2px' }, onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients }) }, [icon('edit-3', 10)])
+                                            h('button', { className: 'action-btn', style: { padding: '2px' }, onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] }) }, [icon('edit-3', 10)])
                                         ])
                                     ]);
                             })
@@ -229,7 +259,7 @@ export const render = async () => {
                             ]),
                             h('button', { 
                                 className: 'btn btn-outline py-1 px-3 text-xs',
-                                onClick: () => openAssignmentModal(null, { users: [emp], clients: finalClients, preselectedUser: emp.uid })
+                                onClick: () => openAssignmentModal(null, { users: [emp], clients: finalClients, preselectedUser: emp.uid, scripts: scripts || [], assets: assets || [] })
                             }, '+ Asignar')
                         ])
                     ]);
@@ -260,7 +290,9 @@ export const render = async () => {
                 description: form.querySelector('#asg-desc').value,
                 dueDate: form.querySelector('#asg-due').value,
                 status: existing?.status || 'Pendiente',
-                createdBy: user.uid
+                createdBy: user.uid,
+                linkedScript: form.querySelector('#asg-link-script').value,
+                linkedAsset: form.querySelector('#asg-link-asset').value
             };
 
             await assignmentService.saveAssignment(formData);
@@ -278,7 +310,7 @@ export const render = async () => {
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Empleado'),
                         h('select', { id: 'asg-emp', className: 'form-select text-xs', required: true }, 
-                            context.users.map(u => h('option', { value: u.uid, selected: u.uid === context.preselectedUser }, u.nombre || u.email))
+                            context.users.map(u => h('option', { value: u.uid, selected: u.uid === (existing?.employeeId || context.preselectedUser) }, u.nombre || u.email))
                         )
                     ]),
                     h('div', { className: 'form-group' }, [
@@ -293,8 +325,50 @@ export const render = async () => {
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Cliente'),
                     h('select', { id: 'asg-client', className: 'form-select text-xs', required: true }, 
-                        context.clients.map(c => h('option', { value: c.name }, c.name))
+                        context.clients.map(c => h('option', { value: c.name, selected: existing?.client === c.name }, c.name))
                     )
+                ]),
+                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Vincular Guión Recomendado'),
+                        h('select', { 
+                            id: 'asg-link-script', 
+                            className: 'form-select text-xs',
+                            style: { height: '38px' },
+                            onChange: (e) => {
+                                const val = e.target.value;
+                                if (val) {
+                                    const textarea = form.querySelector('#asg-desc');
+                                    if (textarea) {
+                                        textarea.value = (textarea.value ? textarea.value + '\n\n' : '') + val;
+                                    }
+                                }
+                            }
+                        }, [
+                            h('option', { value: '' }, '-- Sin Vincular --'),
+                            ...(context.scripts || []).map(s => h('option', { value: s.script, selected: existing?.linkedScript === s.script }, `[${s.client}] ${s.title || 'Sin Título'}`))
+                        ])
+                    ]),
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Vincular Asset de Galería'),
+                        h('select', { 
+                            id: 'asg-link-asset', 
+                            className: 'form-select text-xs',
+                            style: { height: '38px' },
+                            onChange: (e) => {
+                                const val = e.target.value;
+                                if (val) {
+                                    const textarea = form.querySelector('#asg-desc');
+                                    if (textarea) {
+                                        textarea.value = (textarea.value ? textarea.value + '\n\n' : '') + `Referencia de Galería: ${val}`;
+                                    }
+                                }
+                            }
+                        }, [
+                            h('option', { value: '' }, '-- Sin Vincular --'),
+                            ...(context.assets || []).map(a => h('option', { value: a.url || a.thumbnail, selected: existing?.linkedAsset === (a.url || a.thumbnail) }, `[${a.client}] ${a.title}`))
+                        ])
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Título del Trabajo'),
@@ -331,14 +405,16 @@ export const render = async () => {
                 asgs.map(asg => h('div', { className: 'card p-3 flex justify-between items-center' }, [
                     h('div', { className: 'flex-column' }, [
                         h('span', { className: 'text-xs font-bold' }, `${asg.client}: ${asg.title}`),
-                        h('span', { className: 'text-xs text-muted' }, `${asg.type} — Límite: ${new Date(asg.dueDate).toLocaleString()}`)
+                        h('span', { className: 'text-xs text-muted' }, `${asg.type} — Límite: ${new Date(asg.dueDate).toLocaleString()}`),
+                        asg.linkedScript ? h('span', { className: 'text-xs text-accent font-medium mt-0.5 flex items-center gap-1', style: { fontSize: '0.65rem' } }, [icon('file-text', 10), h('span', {}, 'Guión Vinculado')]) : null,
+                        asg.linkedAsset ? h('span', { className: 'text-xs text-success font-medium mt-0.5 flex items-center gap-1', style: { fontSize: '0.65rem' } }, [icon('image', 10), h('span', {}, 'Asset Vinculado')]) : null
                     ]),
                     h('div', { className: 'flex gap-2' }, [
                         h('button', { 
                             className: 'btn-icon text-muted', 
                             onClick: () => {
                                 document.body.removeChild(overlay);
-                                openAssignmentModal(asg, { users: [emp], clients: context.clients });
+                                openAssignmentModal(asg, { users: [emp], clients: context.clients, scripts: context.scripts || [], assets: context.assets || [] });
                             }
                         }, [icon('edit', 14)]),
                         h('button', { 

@@ -47,7 +47,9 @@ export const assignmentService = {
             assignedDate: data.assignedDate || new Date().toISOString(),
             dueDate: data.dueDate,
             status: data.status || 'Pendiente',
-            createdBy: data.createdBy || 'admin'
+            createdBy: data.createdBy || 'admin',
+            linkedScript: data.linkedScript || '',
+            linkedAsset: data.linkedAsset || ''
         };
 
         try {

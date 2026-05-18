@@ -1,27 +1,33 @@
 /**
  * Scripts Page - Creative Production OS
- * Notion Light UI presenting recommended scripts/copies, search filters, and copy controls.
- * Only editable by Admins. Simplified: Only uses Client, Script and Recommendations fields.
+ * Notion Light UI presenting recommended scripts grouped by client,
+ * alongside active monthly production scripts (assignments).
+ * Only editable by Admins.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
 import { store } from '../js/store.js';
+import { assignmentService } from '../services/assignmentService.js';
+import { userService } from '../services/userService.js';
 
 let localScriptsCache = [
     { 
         id: 'SCR-001', 
+        title: 'Gancho de Curiosidad de Alta Retención',
         client: 'Gimnasio Elite', 
         script: '[0-3s] Gancho: "El mayor error al lavar tu rostro por las mañanas..."\n\n[3-10s] Desarrollo: "La mayoría usa jabón común que reseca la piel. Mira lo que pasa cuando usas este serum hidratante premium..."\n\n[10-15s] CTA: "Consigue el tuyo con 15% de descuento en el link de abajo."', 
         recommendations: 'Grabar tomas macro del producto y la textura del serum. Subtítulos dinámicos de color amarillo y blanco.' 
     },
     { 
         id: 'SCR-002', 
+        title: 'POV Recorrido Visual Dinámico',
         client: 'Barbería Classic', 
         script: '[0-3s] Gancho: "No compres un curso de edición de video sin antes saber esto..."\n\n[3-10s] Desarrollo: "La mayoría te enseña herramientas aburridas. Nosotros te enseñamos retención psicológica real y cómo cobrar $1,000 USD al mes..."\n\n[10-15s] CTA: "Haz clic abajo y regístrate a la clase gratuita."', 
         recommendations: 'Grabar cara a cámara con buena iluminación. Usar zoom-in/zoom-out rápidos para mantener dinamismo.' 
     },
     { 
         id: 'SCR-003', 
+        title: 'POV Encontraste la App Perfecta',
         client: 'App Móvil Organízate', 
         script: '[0-3s] Gancho: "POV: Encontraste la app que organiza tu día en 5 minutos..."\n\n[3-10s] Desarrollo: "Ya no uso agendas aburridas. Esta app sincroniza mis tareas y me premia por completarlas..."\n\n[10-15s] CTA: "Descarga gratis con el enlace de mi perfil."', 
         recommendations: 'Tomas naturales de una persona usando el celular en la cama o el escritorio. Música ambiental y relajada.' 
@@ -35,15 +41,26 @@ export const render = () => {
 
     let searchQuery = '';
     let scriptsList = [];
+    let assignmentsList = [];
+    let clientsList = [];
+    let usersList = [];
 
     const loadScripts = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
         
         try {
-            const list = await dbService.getAll('scripts');
+            const [list, assignments, clients, users] = await Promise.all([
+                dbService.getAll('scripts'),
+                assignmentService.getAllAssignments(),
+                dbService.getAll('clients'),
+                userService.getAllUsers()
+            ]);
             scriptsList = list.length ? list : localScriptsCache;
+            assignmentsList = assignments || [];
+            clientsList = clients || [];
+            usersList = users || [];
         } catch (err) {
-            console.warn("Error fetching scripts, using local cache:", err);
+            console.warn("Error fetching scripts/assignments, using local cache:", err);
             scriptsList = localScriptsCache;
         }
 
@@ -56,14 +73,14 @@ export const render = () => {
         // 1. Header
         const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
             h('div', {}, [
-                h('h1', {}, 'Guiones Recomendados'),
-                h('p', { className: 'text-xs text-muted mt-1' }, 'Copies ganadores y estructuras narrativas virales validadas, listos para duplicar y adaptar.')
+                h('h1', {}, 'Control de Guiones y Producción Mensual'),
+                h('p', { className: 'text-xs text-muted mt-1' }, 'Planificación de copies y guiones a trabajar este mes, agrupados por cliente.')
             ]),
             h('div', { className: 'flex gap-2' }, [
                 isAdmin ? h('button', { 
                     className: 'btn btn-primary text-xs',
-                    onClick: () => openScriptModal() 
-                }, [icon('plus', 14), h('span', {}, 'Nuevo Guión')]) : null
+                    onClick: () => openScriptModal(null, { clients: clientsList }) 
+                }, [icon('plus', 14), h('span', {}, 'Nuevo Guión Recomendado')]) : null
             ])
         ]);
 
@@ -71,7 +88,7 @@ export const render = () => {
         const searchInput = h('input', {
             type: 'text',
             className: 'form-input text-xs',
-            placeholder: 'Buscar por cliente, guión o recomendaciones...',
+            placeholder: 'Buscar por cliente, título, guión o tarea...',
             value: searchQuery,
             style: { maxWidth: '320px', height: '36px' },
             onInput: (e) => {
@@ -88,126 +105,261 @@ export const render = () => {
                 icon('search', 14, 'text-muted'),
                 searchInput
             ]),
-            h('span', { className: 'text-xs text-muted font-medium' }, 'Solo editables por administradores')
+            h('span', { className: 'text-xs text-muted font-medium' }, 'Filtrando plan de producción actual')
         ]);
 
-        // Grid Container Placeholder
-        const gridContainer = h('div', { id: 'scripts-grid-container' });
+        // Grouped Container Placeholder
+        const groupedContainer = h('div', { id: 'scripts-grouped-container', className: 'flex-column gap-5 w-full' });
 
         container.appendChild(header);
         container.appendChild(controlsRow);
-        container.appendChild(gridContainer);
+        container.appendChild(groupedContainer);
 
         applyFiltersAndRenderGrid();
     };
 
     const applyFiltersAndRenderGrid = () => {
-        const gridContainer = container.querySelector('#scripts-grid-container');
-        if (!gridContainer) return;
+        const groupedContainer = container.querySelector('#scripts-grouped-container');
+        if (!groupedContainer) return;
 
-        gridContainer.innerHTML = '';
+        groupedContainer.innerHTML = '';
 
-        // Filter and Search logic
-        const filtered = scriptsList.filter(s => {
-            const matchesSearch = !searchQuery || 
-                (s.client || '').toLowerCase().includes(searchQuery) || 
-                (s.script || '').toLowerCase().includes(searchQuery) ||
-                (s.recommendations || '').toLowerCase().includes(searchQuery);
-            return matchesSearch;
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        // Construct client map
+        const clientMap = {};
+
+        // 1. Group recommended scripts
+        scriptsList.forEach(s => {
+            const clientName = s.client || 'General';
+            if (!clientMap[clientName]) {
+                clientMap[clientName] = { name: clientName, recommended: [], activeMonthly: [] };
+            }
+            clientMap[clientName].recommended.push(s);
         });
 
-        if (filtered.length === 0) {
-            gridContainer.appendChild(h('div', { className: 'text-center p-10 card flex-column items-center justify-center gap-3', style: { border: '1px dashed var(--border)' } }, [
+        // 2. Group current month's active assignments
+        assignmentsList.forEach(asg => {
+            const dueDateVal = asg.dueDate ? new Date(asg.dueDate) : null;
+            const isThisMonth = dueDateVal && dueDateVal.getFullYear() === currentYear && dueDateVal.getMonth() === currentMonth;
+            
+            if (isThisMonth) {
+                const clientName = asg.client || 'General';
+                if (!clientMap[clientName]) {
+                    clientMap[clientName] = { name: clientName, recommended: [], activeMonthly: [] };
+                }
+                clientMap[clientName].activeMonthly.push(asg);
+            }
+        });
+
+        // 3. Make sure all registered clients appear
+        clientsList.forEach(c => {
+            const name = c.name;
+            if (name && !clientMap[name]) {
+                clientMap[name] = { name, recommended: [], activeMonthly: [] };
+            }
+        });
+
+        // Filter keys by search query
+        const filteredClientNames = Object.keys(clientMap).filter(clientName => {
+            if (!searchQuery) return true;
+            
+            const info = clientMap[clientName];
+            const matchesClientName = clientName.toLowerCase().includes(searchQuery);
+            const matchesRecommended = info.recommended.some(s => 
+                (s.title || '').toLowerCase().includes(searchQuery) ||
+                (s.script || '').toLowerCase().includes(searchQuery) ||
+                (s.recommendations || '').toLowerCase().includes(searchQuery)
+            );
+            const matchesActive = info.activeMonthly.some(a => 
+                (a.title || '').toLowerCase().includes(searchQuery) ||
+                (a.description || '').toLowerCase().includes(searchQuery) ||
+                (a.linkedScript || '').toLowerCase().includes(searchQuery)
+            );
+            
+            return matchesClientName || matchesRecommended || matchesActive;
+        });
+
+        if (filteredClientNames.length === 0) {
+            groupedContainer.appendChild(h('div', { className: 'text-center p-10 card flex-column items-center justify-center gap-3', style: { border: '1px dashed var(--border)' } }, [
                 icon('file-text', 28, 'text-muted'),
-                h('span', { className: 'text-xs font-bold text-muted' }, 'No se encontraron guiones que coincidan con la búsqueda.')
+                h('span', { className: 'text-xs font-bold text-muted' }, 'No se encontraron clientes ni guiones que coincidan con la búsqueda.')
             ]));
             return;
         }
 
-        const grid = h('div', {
-            className: 'grid gap-4',
-            style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }
-        }, filtered.map(script => createScriptCard(script)));
+        // Render each client block
+        filteredClientNames.forEach(clientName => {
+            const data = clientMap[clientName];
+            
+            const clientSection = h('div', { 
+                className: 'card flex-column gap-3 p-5', 
+                style: { border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg-secondary)' } 
+            }, [
+                // Header
+                h('div', { className: 'flex justify-between items-center border-bottom pb-2' }, [
+                    h('div', { className: 'flex items-center gap-2' }, [
+                        h('div', { className: 'glass flex items-center justify-center font-bold text-accent text-xs', style: { width: '28px', height: '28px', borderRadius: '50%' } }, clientName.slice(0,2).toUpperCase()),
+                        h('h2', { className: 'text-sm font-bold text-primary', style: { margin: 0 } }, clientName),
+                        h('span', { className: 'badge badge-secondary text-xs', style: { fontSize: '0.65rem' } }, `${data.recommended.length} biblioteca • ${data.activeMonthly.length} este mes`)
+                    ]),
+                    isAdmin ? h('button', {
+                        className: 'btn btn-outline text-xs',
+                        style: { padding: '4px 8px' },
+                        onClick: () => openScriptModal(null, { clients: clientsList, preselectedClient: clientName })
+                    }, '+ Añadir a Biblioteca') : null
+                ]),
 
-        gridContainer.appendChild(grid);
+                // Columns Grid
+                h('div', { 
+                    className: 'grid gap-4 mt-2', 
+                    style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } 
+                }, [
+                    // Column 1: Biblioteca de Guiones
+                    h('div', { 
+                        className: 'flex-column gap-3 p-4 bg-tertiary rounded', 
+                        style: { background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: '6px' } 
+                    }, [
+                        h('h3', { className: 'text-xs font-bold text-secondary uppercase tracking-wider mb-2 flex items-center gap-1.5' }, [
+                            icon('book-open', 13, 'text-accent'),
+                            h('span', {}, 'Biblioteca de Guiones Recomendados')
+                        ]),
+                        data.recommended.length === 0 
+                            ? h('div', { className: 'text-center p-6 text-xs text-muted italic' }, 'Sin guiones recomendados en biblioteca.')
+                            : h('div', { className: 'flex-column gap-3' }, data.recommended.map(script => createScriptSubCard(script)))
+                    ]),
+
+                    // Column 2: Producción Activa del Mes
+                    h('div', { 
+                        className: 'flex-column gap-3 p-4 bg-secondary rounded', 
+                        style: { border: '1px solid var(--border)', borderRadius: '6px', background: 'rgba(var(--info-rgb), 0.02)' } 
+                    }, [
+                        h('h3', { className: 'text-xs font-bold text-secondary uppercase tracking-wider mb-2 flex items-center gap-1.5' }, [
+                            icon('film', 13, 'text-info'),
+                            h('span', {}, `Trabajos en Producción (Este Mes)`)
+                        ]),
+                        data.activeMonthly.length === 0 
+                            ? h('div', { className: 'text-center p-6 text-xs text-muted italic' }, 'Sin trabajos de producción agendados este mes.')
+                            : h('div', { className: 'flex-column gap-3' }, data.activeMonthly.map(asg => createAssignmentSubCard(asg)))
+                    ])
+                ])
+            ]);
+
+            groupedContainer.appendChild(clientSection);
+        });
+
         if (window.lucide) window.lucide.createIcons();
     };
 
-    const createScriptCard = (s) => {
-        return h('div', { className: 'card flex-column justify-between p-5 hover-border transition relative gap-3' }, [
-            // Top Bar
-            h('div', { className: 'flex justify-between items-center' }, [
-                h('div', { className: 'flex items-center gap-1.5' }, [
-                    h('span', { className: 'badge badge-info text-xs font-bold' }, s.id || 'SCR'),
-                    h('span', { className: 'badge badge-secondary text-xs font-normal' }, 'Estrategia Recomendada')
+    // Recommended Script card element
+    const createScriptSubCard = (s) => {
+        return h('div', { className: 'card p-4 flex-column gap-2 hover-border transition bg-secondary relative' }, [
+            h('div', { className: 'flex justify-between items-start' }, [
+                h('div', {}, [
+                    h('h4', { className: 'text-xs font-bold text-accent' }, s.title || 'Guión General'),
+                    h('span', { className: 'text-muted', style: { fontSize: '0.6rem' } }, `ID: ${s.id || 'SCR'}`)
                 ]),
                 isAdmin ? h('div', { className: 'flex gap-1' }, [
                     h('button', { 
                         className: 'btn-icon text-accent', 
-                        style: { width: '24px', height: '24px' },
-                        onClick: () => openScriptModal(s)
-                    }, [icon('edit-3', 12)]),
+                        style: { width: '20px', height: '20px' },
+                        onClick: () => openScriptModal(s, { clients: clientsList })
+                    }, [icon('edit-3', 11)]),
                     h('button', { 
                         className: 'btn-icon text-error', 
-                        style: { width: '24px', height: '24px' },
+                        style: { width: '20px', height: '20px' },
                         onClick: () => deleteScriptFlow(s)
-                    }, [icon('trash-2', 12)])
+                    }, [icon('trash-2', 11)])
                 ]) : null
             ]),
 
-            // Content
-            h('div', { className: 'flex-column gap-1' }, [
-                h('div', { className: 'text-xs text-muted uppercase tracking-wider font-semibold', style: { fontSize: '0.6rem' } }, 'Cliente'),
-                h('h3', { className: 'text-sm font-bold text-primary mb-1' }, s.client),
-                
-                // Script Code Container
-                h('div', { 
-                    className: 'p-3 bg-secondary border-radius-sm mt-1 flex-column relative',
-                    style: { border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-tertiary)' } 
-                }, [
-                    h('button', {
-                        className: 'btn btn-outline text-xs',
-                        style: { position: 'absolute', top: '6px', right: '6px', padding: '4px 8px', fontSize: '0.65rem' },
-                        onClick: (e) => {
-                            navigator.clipboard.writeText(s.script);
-                            const btn = e.currentTarget;
-                            const origText = btn.innerHTML;
-                            btn.innerHTML = '¡Copiado!';
-                            btn.style.color = 'var(--success)';
-                            setTimeout(() => {
-                                btn.innerHTML = origText;
-                                btn.style.color = '';
-                            }, 1500);
-                        }
-                    }, [icon('copy', 10), h('span', { className: 'ml-1' }, 'Copiar')]),
-                    h('span', { className: 'text-xs text-muted uppercase tracking-wider mb-2 font-bold', style: { fontSize: '0.55rem' } }, 'Cuerpo del Guión'),
-                    h('pre', { 
-                        className: 'text-xs font-mono text-secondary leading-relaxed',
-                        style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '180px', overflowY: 'auto', paddingRight: '2.5rem' }
-                    }, s.script)
-                ])
+            // Copy box
+            h('div', { 
+                className: 'p-3 bg-tertiary rounded relative flex-column mt-1', 
+                style: { border: '1px solid var(--border)', borderRadius: '4px' } 
+            }, [
+                h('button', {
+                    className: 'btn btn-outline text-xs',
+                    style: { position: 'absolute', top: '6px', right: '6px', padding: '3px 6px', fontSize: '0.65rem' },
+                    onClick: (e) => {
+                        navigator.clipboard.writeText(s.script);
+                        const btn = e.currentTarget;
+                        btn.innerHTML = '¡Copiado!';
+                        setTimeout(() => { btn.innerHTML = 'Copiar'; }, 1500);
+                    }
+                }, 'Copiar'),
+                h('pre', { 
+                    className: 'text-xs font-mono text-secondary leading-relaxed',
+                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '120px', overflowY: 'auto' }
+                }, s.script)
             ]),
 
-            // Footer Recommendations
-            s.recommendations ? h('div', { 
-                className: 'p-3 bg-secondary flex gap-2 items-start mt-1', 
-                style: { borderRadius: '4px', borderLeft: '3px solid var(--accent)' } 
-            }, [
-                icon('info', 13, 'text-accent mt-0.5'),
-                h('div', { className: 'flex-column gap-0.5' }, [
-                    h('span', { className: 'text-xs uppercase tracking-wider font-bold text-primary', style: { fontSize: '0.55rem', color: 'var(--text-secondary)' } }, 'Recomendaciones'),
-                    h('p', { className: 'text-xs text-muted leading-relaxed italic m-0', style: { fontSize: '0.7rem' } }, s.recommendations)
-                ])
+            // Recs box
+            s.recommendations ? h('div', { className: 'flex gap-1.5 items-start mt-1 bg-tertiary p-2 rounded', style: { borderLeft: '3px solid var(--accent)' } }, [
+                icon('info', 11, 'text-accent mt-0.5'),
+                h('p', { className: 'text-xs text-muted leading-relaxed italic m-0', style: { fontSize: '0.65rem' } }, s.recommendations)
             ]) : null
         ]);
     };
 
-    const openScriptModal = (editingScript = null) => {
+    // Assignment Sub Card element
+    const createAssignmentSubCard = (asg) => {
+        const emp = usersList.find(u => u.uid === asg.employeeId);
+        const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin asignar';
+        
+        const due = new Date(asg.dueDate);
+        const statusClass = asg.status === 'Completado' ? 'success' : (asg.status === 'En Proceso' || asg.status === 'En Producción' ? 'info' : 'warning');
+
+        return h('div', { className: 'card p-4 flex-column gap-2 hover-border transition bg-secondary relative' }, [
+            h('div', { className: 'flex justify-between items-start flex-wrap gap-1' }, [
+                h('div', {}, [
+                    h('h4', { className: 'text-xs font-bold text-primary' }, asg.title),
+                    h('span', { className: `badge badge-${statusClass} mt-1 text-xs`, style: { fontSize: '0.55rem', padding: '1px 5px' } }, asg.status)
+                ]),
+                h('div', { className: 'text-right' }, [
+                    h('span', { className: 'text-muted block', style: { fontSize: '0.65rem' } }, `Encargado: ${empName}`),
+                    h('span', { className: 'text-muted block mt-0.5', style: { fontSize: '0.6rem' } }, `Límite: ${due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`)
+                ])
+            ]),
+
+            // Body script/copy box if linked
+            (asg.linkedScript || asg.description) ? h('div', { 
+                className: 'p-3 bg-tertiary rounded relative flex-column mt-1', 
+                style: { border: '1px solid var(--border)', borderRadius: '4px' } 
+            }, [
+                h('button', {
+                    className: 'btn btn-outline text-xs',
+                    style: { position: 'absolute', top: '6px', right: '6px', padding: '3px 6px', fontSize: '0.65rem' },
+                    onClick: (e) => {
+                        navigator.clipboard.writeText(asg.linkedScript || asg.description);
+                        const btn = e.currentTarget;
+                        btn.innerHTML = '¡Copiado!';
+                        setTimeout(() => { btn.innerHTML = 'Copiar'; }, 1500);
+                    }
+                }, 'Copiar'),
+                h('pre', { 
+                    className: 'text-xs font-mono text-secondary leading-relaxed',
+                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '100px', overflowY: 'auto' }
+                }, asg.linkedScript || asg.description)
+            ]) : null,
+
+            // Linked Asset Reference link if present
+            asg.linkedAsset ? h('div', { className: 'flex items-center justify-between mt-1 bg-tertiary p-2 rounded' }, [
+                h('span', { className: 'text-xs text-muted font-medium', style: { fontSize: '0.65rem' } }, '🖼️ Asset Referenciado:'),
+                h('a', { href: asg.linkedAsset, target: '_blank', className: 'text-xs text-info font-bold' }, 'Ver Referencia')
+            ]) : null
+        ]);
+    };
+
+    const openScriptModal = (editingScript = null, context = {}) => {
         const overlay = h('div', { className: 'modal-overlay' });
         
         const saveScriptFlow = async (e) => {
             e.preventDefault();
-            const clientVal = form.querySelector('#sc-client').value.trim();
+            const titleVal = form.querySelector('#sc-title').value.trim();
+            const clientVal = form.querySelector('#sc-client').value;
             const scriptVal = form.querySelector('#sc-script').value.trim();
             const recVal = form.querySelector('#sc-rec').value.trim();
 
@@ -215,6 +367,7 @@ export const render = () => {
 
             const newScript = {
                 id: scriptId,
+                title: titleVal,
                 client: clientVal,
                 script: scriptVal,
                 recommendations: recVal
@@ -243,14 +396,20 @@ export const render = () => {
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Cliente'),
+                    h('label', { className: 'form-label' }, 'Título del Guión'),
                     h('input', { 
-                        id: 'sc-client', 
+                        id: 'sc-title', 
                         className: 'form-input', 
-                        placeholder: 'Ej. Gimnasio Elite', 
+                        placeholder: 'Ej. Gancho de Curiosidad para Reels', 
                         required: true,
-                        value: editingScript ? editingScript.client : ''
+                        value: editingScript ? editingScript.title : ''
                     })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Cliente Asignado'),
+                    h('select', { id: 'sc-client', className: 'form-select text-xs', style: { height: '38px' }, required: true }, 
+                        (context.clients || []).map(c => h('option', { value: c.name, selected: editingScript?.client === c.name || c.name === context.preselectedClient }, c.name))
+                    )
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Guión (Cuerpo del Copy)'),
@@ -284,7 +443,7 @@ export const render = () => {
     };
 
     const deleteScriptFlow = async (s) => {
-        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el guión de "${s.client}"?`)) return;
+        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el guión "${s.title}"?`)) return;
 
         try {
             await dbService.delete('scripts', s.id);
