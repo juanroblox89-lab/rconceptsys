@@ -1,7 +1,7 @@
 /**
  * AI Assistant Page - Creative Production OS
  * High-fidelity, highly interactive marketing and copy assistant driven by Anthropic Claude.
- * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, and instant chat persisting.
+ * Updated: Supports agentic execution, ChatGPT-style multi-thread chat history, personal name context, global rate limits, and inline typing indicator.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
@@ -11,6 +11,7 @@ import { store } from '../js/store.js';
 let activeConversation = [];
 let currentThreadId = null;
 let chatThreadsList = [];
+let isAssistantLoading = false;
 
 export const render = () => {
     const { user } = store.getState();
@@ -78,6 +79,7 @@ export const render = () => {
                 h('button', {
                     className: 'btn btn-primary w-full flex items-center justify-center gap-2 py-2 text-xs font-bold',
                     onClick: async () => {
+                        if (isAssistantLoading) return;
                         currentThreadId = null;
                         activeConversation = [
                             { role: 'assistant', content: `¡Hola de nuevo, ${user?.nombre || 'Usuario'}! He iniciado un nuevo chat para ti. ¿En qué marca o guión trabajamos en esta sesión?` }
@@ -121,7 +123,7 @@ export const render = () => {
                             marginBottom: '4px'
                         },
                         onClick: () => {
-                            if (isActive) return;
+                            if (isActive || isAssistantLoading) return;
                             currentThreadId = thread.id;
                             activeConversation = thread.messages || [];
                             renderChatFeed();
@@ -137,8 +139,10 @@ export const render = () => {
                                 className: 'btn btn-icon p-1 text-muted hover-text-danger',
                                 style: { background: 'none', border: 'none', padding: 0 },
                                 title: 'Eliminar Chat',
+                                disabled: isAssistantLoading,
                                 onClick: async (e) => {
                                     e.stopPropagation();
+                                    if (isAssistantLoading) return;
                                     if (confirm('¿Estás seguro de que deseas eliminar esta conversación?')) {
                                         try {
                                             await dbService.delete('chats', thread.id);
@@ -184,16 +188,19 @@ export const render = () => {
                 
                 h('button', { 
                     className: 'btn btn-outline text-xs justify-start w-full gap-2 text-left py-2 hover-bg-tertiary',
+                    disabled: isAssistantLoading,
                     onClick: () => triggerPresetPrompt('Escribir Hook Viral')
                 }, [icon('sparkles', 12, 'text-accent'), h('span', {}, 'Escribir Hook Viral')]),
                 
                 h('button', { 
                     className: 'btn btn-outline text-xs justify-start w-full gap-2 text-left py-2 hover-bg-tertiary',
+                    disabled: isAssistantLoading,
                     onClick: () => triggerPresetPrompt('Redactar Guión Completo')
                 }, [icon('file-text', 12, 'text-accent'), h('span', {}, 'Redactar Guión Completo')]),
 
                 h('button', { 
                     className: 'btn btn-outline text-xs justify-start w-full gap-2 text-left py-2 hover-bg-tertiary',
+                    disabled: isAssistantLoading,
                     onClick: () => triggerPresetPrompt('Auditar Marca y Estrategia')
                 }, [icon('shield-alert', 12, 'text-accent'), h('span', {}, 'Auditar Estrategia Creativa')]),
 
@@ -279,26 +286,52 @@ export const render = () => {
                     chatFeed.appendChild(row);
                 });
 
+                // Render dynamic inline typing indicator bubble inside feed
+                if (isAssistantLoading) {
+                    const avatar = h('div', { 
+                        className: 'flex items-center justify-center font-bold text-xs',
+                        style: { 
+                            width: '28px', 
+                            height: '28px', 
+                            borderRadius: '50%', 
+                            flexShrink: 0,
+                            background: 'linear-gradient(135deg, var(--accent) 0%, #a855f7 100%)',
+                            color: 'white'
+                        } 
+                    }, [icon('sparkles', 12)]);
+
+                    const bubble = h('div', { 
+                        className: 'p-3 text-xs leading-relaxed max-w-xl flex items-center gap-2',
+                        style: { 
+                            borderRadius: '4px 16px 16px 16px',
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border)',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
+                        }
+                    }, [
+                        h('div', { className: 'dot-flashing', style: { width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: 'dotFlashing 1s infinite alternate' } }),
+                        h('span', { className: 'text-muted' }, 'Claude está analizando la solicitud y ejecutando acciones...')
+                    ]);
+
+                    const row = h('div', { 
+                        className: 'flex gap-3 w-full my-1 items-start justify-start'
+                    }, [avatar, bubble]);
+
+                    chatFeed.appendChild(row);
+                }
+
                 // Auto-scroll anchor to bottom
                 setTimeout(() => {
                     chatFeed.scrollTop = chatFeed.scrollHeight;
                 }, 50);
             };
 
-            // Typing Indicator Loader
-            const typingIndicator = h('div', { 
-                className: 'flex items-center gap-1 p-3 bg-secondary rounded text-xs text-muted mb-2 border hidden',
-                style: { width: 'fit-content', borderRadius: '4px 16px 16px 16px' }
-            }, [
-                h('div', { className: 'dot-flashing', style: { width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: 'dotFlashing 1s infinite alternate' } }),
-                h('span', { className: 'ml-2' }, 'Claude está analizando la solicitud y ejecutando acciones en la base de datos...')
-            ]);
-
             // Form message controls
             const inputArea = h('form', {
                 className: 'flex gap-2 w-full',
                 onSubmit: async (e) => {
                     e.preventDefault();
+                    if (isAssistantLoading) return;
                     const textInput = inputArea.querySelector('#ai-user-message');
                     const messageText = textInput.value.trim();
 
@@ -381,7 +414,7 @@ export const render = () => {
                     onKeydown: (e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            inputArea.requestSubmit();
+                            if (!isAssistantLoading) inputArea.requestSubmit();
                         }
                     }
                 }),
@@ -392,6 +425,7 @@ export const render = () => {
                         className: 'btn btn-outline text-xs text-muted px-2',
                         title: 'Limpiar Chat Actual',
                         onClick: async () => {
+                            if (isAssistantLoading) return;
                             activeConversation = [
                                 { role: 'assistant', content: 'Conversación reiniciada. Inyecta una orden o pídemelo de manera directa y comenzaremos.' }
                             ];
@@ -412,6 +446,16 @@ export const render = () => {
                     }, [icon('trash-2', 12)])
                 ])
             ]);
+
+            // Helper to toggle inputs and buttons disabled state while loading
+            const toggleFormState = (disabled) => {
+                const textarea = inputArea.querySelector('#ai-user-message');
+                const submitBtn = inputArea.querySelector('button[type="submit"]');
+                const clearBtn = inputArea.querySelector('button[type="button"]');
+                if (textarea) textarea.disabled = disabled;
+                if (submitBtn) submitBtn.disabled = disabled;
+                if (clearBtn) clearBtn.disabled = disabled;
+            };
 
             // Helper to execute agent actions directly on Firestore in real-time
             const executeAgentAction = async (action) => {
@@ -563,7 +607,9 @@ export const render = () => {
 
             // Core fetch trigger to serverless Claude proxy
             const callClaudeProxy = async (firstMessageText = '') => {
-                typingIndicator.classList.remove('hidden');
+                isAssistantLoading = true;
+                toggleFormState(true);
+                renderChatFeed();
                 
                 // 1. Gather dynamic focus context
                 const focusClientId = container.querySelector('#ai-client-focus').value;
@@ -667,8 +713,6 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
                         })
                     });
 
-                    typingIndicator.classList.add('hidden');
-
                     if (!response.ok) {
                         const err = await response.json();
                         throw new Error(err.error || 'Fallo de API al consultar a Claude proxy.');
@@ -691,7 +735,6 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
                     }
 
                     activeConversation.push({ role: 'assistant', content: text });
-                    renderChatFeed();
 
                     // Persist thread updates in Firestore
                     if (currentThreadId) {
@@ -732,12 +775,14 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
                     }
 
                 } catch (err) {
-                    typingIndicator.classList.add('hidden');
                     console.error("Assistant prompt relay error:", err);
                     activeConversation.push({ 
                         role: 'assistant', 
                         content: `⚠️ **Error de Conectividad con Claude:** ${err.message || 'No se pudo recibir respuesta del proxy Vercel API.'}\n\n*Por favor, verifica que tu Vercel Serverless Function esté en producción.*` 
                     });
+                } finally {
+                    isAssistantLoading = false;
+                    toggleFormState(false);
                     renderChatFeed();
                 }
             };
@@ -766,7 +811,7 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                 }
             };
 
-            // Assemble main ChatGPT three-column grid layout
+            // Assemble main ChatGPT three-column grid layout (No static typing indicator below feed!)
             const chatMainView = h('div', { 
                 className: 'flex gap-4 w-full flex-wrap', 
                 style: { display: 'flex', flexDirection: 'row', alignItems: 'stretch' } 
@@ -774,7 +819,6 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                 chatHistorySidebar, // ChatGPT-style left sidebar
                 h('div', { className: 'flex-column', style: { flex: '3', minWidth: '320px' } }, [
                     chatFeed,
-                    typingIndicator,
                     inputArea
                 ]),
                 sidePanel // Quick shortcuts right sidebar
