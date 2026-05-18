@@ -969,5 +969,37 @@ tr:hover td { background-color: var(--bg-secondary); }
     }
 }
 
+/* ==================================
+   RESPONSIVE CLIENT DETAILS CLASSES
+   ================================== */
+.client-detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+}
+
+@media (min-width: 769px) {
+    .client-detail-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.client-two-column-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .client-two-column-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+
 
 

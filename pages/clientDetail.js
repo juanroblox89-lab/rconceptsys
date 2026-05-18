@@ -103,7 +103,7 @@ export const render = async (params) => {
             ]);
 
             // Top Summary Section
-            const summaryGrid = h('div', { className: 'grid gap-6', style: { display: 'grid', gridTemplateColumns: '2fr 1fr' } }, [
+            const summaryGrid = h('div', { className: 'client-detail-grid' }, [
                 // Main Content
                 h('div', { className: 'flex-column gap-6' }, [
                     // Resumen del Negocio
@@ -175,7 +175,7 @@ export const render = async (params) => {
                     ]),
 
                     // Formatos y Hooks Efectivos
-                    h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'client-two-column-grid' }, [
                         h('div', { className: 'card p-5' }, [
                             h('h4', { className: 'text-xs font-bold uppercase tracking-wider text-muted mb-3' }, 'Formatos Asignados'),
                             h('div', { className: 'flex gap-2 flex-wrap' }, (client.assignedFormats || []).map(f => h('span', { className: 'badge badge-info text-xs' }, f)))

@@ -91,8 +91,14 @@ export const render = () => {
                             href: refItem.url, 
                             target: '_blank', 
                             className: 'btn btn-primary text-xs flex items-center justify-center gap-1',
-                            style: { flex: 1, padding: '6px', textDecoration: 'none' } 
+                            style: { padding: '6px 12px', textDecoration: 'none', background: 'var(--primary)' } 
                         }, [icon('external-link', 12), h('span', {}, 'Ver Video')]),
+
+                        h('button', {
+                            className: 'btn btn-outline text-xs flex-1 flex items-center justify-center gap-1',
+                            style: { padding: '6px' },
+                            onClick: () => openDetailModal(refItem)
+                        }, [icon('zoom-in', 12), h('span', {}, 'Ver a Fondo')]),
                         
                         isAdmin ? h('button', {
                             className: 'btn btn-outline text-xs',
@@ -123,6 +129,83 @@ export const render = () => {
 
         container.appendChild(header);
         container.appendChild(grid);
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    const openDetailModal = (refItem) => {
+        const overlay = h('div', { className: 'modal-overlay' });
+        
+        const modal = h('div', {
+            className: 'modal-container',
+            style: { maxWidth: '540px' }
+        }, [
+            h('div', { className: 'modal-header' }, [
+                h('span', { className: 'modal-title flex items-center gap-1.5' }, [
+                    icon('bookmark', 16, 'text-primary'),
+                    h('span', {}, 'Análisis Visual de Referencia')
+                ]),
+                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+            ]),
+            h('div', { className: 'modal-body flex-column gap-3' }, [
+                h('div', { 
+                    style: { 
+                        width: '100%', 
+                        aspectRatio: '16/9', 
+                        borderRadius: '8px', 
+                        backgroundImage: `url(${refItem.cover || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&q=80'})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        border: '1px solid var(--border)'
+                    } 
+                }),
+                h('div', { className: 'flex-column gap-1 mt-2' }, [
+                    h('h3', { className: 'text-sm font-bold text-primary' }, refItem.title),
+                    h('div', { className: 'flex gap-2 items-center mt-1' }, [
+                        h('span', { className: 'badge badge-info text-xs' }, refItem.platform),
+                        h('span', { className: 'text-xs text-muted font-mono' }, `Estilo: ${refItem.style || 'General'}`)
+                    ])
+                ]),
+                h('div', { className: 'p-3 bg-secondary rounded border mt-1 text-xs text-muted leading-relaxed' }, [
+                    h('strong', { className: 'text-secondary block mb-1' }, '¿Por qué funciona esta referencia?'),
+                    h('p', {}, 'Esta referencia es seleccionada por sus dinámicas de retención, gancho inicial ultra fuerte, transiciones fluidas de audio/video y paleta de colores de alta retención.')
+                ]),
+                h('div', { className: 'flex-column gap-1.5 mt-2' }, [
+                    h('label', { className: 'text-xs font-semibold text-secondary' }, 'Enlace de Inspiración'),
+                    h('div', { className: 'flex gap-2' }, [
+                        h('input', { 
+                            type: 'text', 
+                            className: 'form-input text-xs flex-1', 
+                            value: refItem.url, 
+                            readOnly: true,
+                            style: { background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }
+                        }),
+                        h('button', {
+                            className: 'btn btn-outline text-xs',
+                            onClick: () => {
+                                navigator.clipboard.writeText(refItem.url);
+                                alert("¡Enlace copiado al portapapeles!");
+                            }
+                        }, 'Copiar')
+                    ])
+                ])
+            ]),
+            h('div', { className: 'modal-footer' }, [
+                h('a', { 
+                    href: refItem.url, 
+                    target: '_blank', 
+                    className: 'btn btn-primary text-xs no-underline flex items-center gap-1',
+                    style: { padding: '8px 16px' }
+                }, [icon('external-link', 14), h('span', {}, 'Ver en Plataforma')]),
+                h('button', { 
+                    type: 'button', 
+                    className: 'btn btn-outline text-xs', 
+                    onClick: () => document.body.removeChild(overlay) 
+                }, 'Cerrar')
+            ])
+        ]);
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
         if (window.lucide) window.lucide.createIcons();
     };
 
