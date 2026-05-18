@@ -10,29 +10,7 @@ import { store } from '../js/store.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
 
-let localScriptsCache = [
-    { 
-        id: 'SCR-001', 
-        title: 'Gancho de Curiosidad de Alta Retención',
-        client: 'Gimnasio Elite', 
-        script: '[0-3s] Gancho: "El mayor error al lavar tu rostro por las mañanas..."\n\n[3-10s] Desarrollo: "La mayoría usa jabón común que reseca la piel. Mira lo que pasa cuando usas este serum hidratante premium..."\n\n[10-15s] CTA: "Consigue el tuyo con 15% de descuento en el link de abajo."', 
-        recommendations: 'Grabar tomas macro del producto y la textura del serum. Subtítulos dinámicos de color amarillo y blanco.' 
-    },
-    { 
-        id: 'SCR-002', 
-        title: 'POV Recorrido Visual Dinámico',
-        client: 'Barbería Classic', 
-        script: '[0-3s] Gancho: "No compres un curso de edición de video sin antes saber esto..."\n\n[3-10s] Desarrollo: "La mayoría te enseña herramientas aburridas. Nosotros te enseñamos retención psicológica real y cómo cobrar $1,000 USD al mes..."\n\n[10-15s] CTA: "Haz clic abajo y regístrate a la clase gratuita."', 
-        recommendations: 'Grabar cara a cámara con buena iluminación. Usar zoom-in/zoom-out rápidos para mantener dinamismo.' 
-    },
-    { 
-        id: 'SCR-003', 
-        title: 'POV Encontraste la App Perfecta',
-        client: 'App Móvil Organízate', 
-        script: '[0-3s] Gancho: "POV: Encontraste la app que organiza tu día en 5 minutos..."\n\n[3-10s] Desarrollo: "Ya no uso agendas aburridas. Esta app sincroniza mis tareas y me premia por completarlas..."\n\n[10-15s] CTA: "Descarga gratis con el enlace de mi perfil."', 
-        recommendations: 'Tomas naturales de una persona usando el celular en la cama o el escritorio. Música ambiental y relajada.' 
-    }
-];
+let localScriptsCache = [];
 
 export const render = () => {
     const { user } = store.getState();

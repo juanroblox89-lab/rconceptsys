@@ -29,7 +29,7 @@ export const render = () => {
             let clients = await dbService.getAll('clients').catch(() => []);
             let assignments = await assignmentService.getAllAssignments().catch(() => []);
             let sopsList = await dbService.getAll('sops').catch(() => []);
-            let metricsList = await dbService.getAll('metrics').catch(() => []);
+            let metricsList = [];
             let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => []);
             let systemRules = await dbService.getAll('system_rules').catch(() => []);
 
@@ -43,7 +43,7 @@ export const render = () => {
             }
 
             // AUTO-SEEDING LIVING SYSTEM CONFIGURATION RULES (Dynamic context memory)
-            if (systemRules.length < 4 && user?.role === 'admin') {
+            if (systemRules.length < 3 && user?.role === 'admin') {
                 const defaultRules = [
                     {
                         id: 'manifesto',
@@ -102,21 +102,6 @@ Ejemplo: "Para Tizón Dorado propondría un RC-01 enfocado en abundancia y cocin
                         updatedAt: new Date().toISOString()
                     },
                     {
-                        id: 'metric_rules',
-                        title: 'Reglas de Registro de Métricas',
-                        content: `=== REGLA DE MÉTRICAS ===
-Siempre usar el formato "Mes YYYY" para el campo "period" (obligatorio).
-Ejemplos válidos: "Mayo 2026", "Junio 2026".
-Nunca usar: "05/2026", "Mayo", "Q2".
-Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y period, y registrar métricas de rendimiento reales:
-- retention (Tasa de retención promedio, ej: "74%")
-- views (Vistas totales, ej: "15400")
-- shares (Compartidos, ej: "320")
-- saves (Guardados, ej: "840")
-- source: obligatorio establecer "seed" (si es dato de ejemplo sembrado) o "real" (si es una métrica de campaña real cargada de producción). Esto mantiene separadas las métricas de prueba de las de producción.`,
-                        updatedAt: new Date().toISOString()
-                    },
-                    {
                         id: 'assignment_script_rules',
                         title: 'Reglas de Vinculación de Guiones y Plan de Producción',
                         content: `=== REGLA DE VINCULACIÓN EN TAREAS ===
@@ -167,18 +152,6 @@ Cuando el usuario te entregue mucha información o copies de marcas:
                     await dbService.set('hooks', hk.id, hk);
                 }
                 hooks = defaultHooks;
-            }
-
-            if (metricsList.length === 0 && user?.role === 'admin') {
-                const defaultMetrics = [
-                    { id: 'retention-rate-reels', label: 'Tasa de Retención Reels', value: '74%', type: 'retention', clientId: 'tizon-dorado', formatId: 'rc-01', period: 'Mayo 2026', retention: '74%', views: '15400', shares: '320', saves: '840', source: 'seed', updatedAt: new Date().toISOString() },
-                    { id: 'ctr-conversion', label: 'CTR Promedio Conversión', value: '4.2%', type: 'conversion', clientId: 'ricos-pandeyucas', formatId: 'pl-01', period: 'Mayo 2026', retention: '62%', views: '28000', shares: '1100', saves: '2400', source: 'seed', updatedAt: new Date().toISOString() },
-                    { id: 'average-watch-time', label: 'Tiempo de Reproducción Promedio', value: '12.8s', type: 'watch-time', clientId: 'jerez-el-caballero', formatId: 'fe-01', period: 'Mayo 2026', retention: '68%', views: '12200', shares: '190', saves: '520', source: 'seed', updatedAt: new Date().toISOString() }
-                ];
-                for (const mt of defaultMetrics) {
-                    await dbService.set('metrics', mt.id, mt);
-                }
-                metricsList = defaultMetrics;
             }
 
             if (sopsList.length === 0 && user?.role === 'admin') {
@@ -474,10 +447,6 @@ Información del Administrador:
                     h('div', { className: 'flex justify-between items-center' }, [
                         h('span', {}, 'Guías SOPs Activas:'),
                         h('span', { className: 'font-bold text-primary' }, `${sopsList.length}`)
-                    ]),
-                    h('div', { className: 'flex justify-between items-center' }, [
-                        h('span', {}, 'Métricas Operativas:'),
-                        h('span', { className: 'font-bold text-primary' }, `${metricsList.length}`)
                     ])
                 ])
             ]);
@@ -768,12 +737,12 @@ Información del Administrador:
                 console.log("[Agent] Executing Action:", action);
                 try {
                     // Check admin role for delicate actions (SOP, Format, Client updates, Metric updates)
-                    if (action.type === 'create_sop' || action.type === 'create_format' || action.type === 'update_metric' || action.type === 'create_client' || action.type === 'update_client') {
+                    if (action.type === 'create_sop' || action.type === 'create_format' || action.type === 'create_client' || action.type === 'update_client') {
                         if (user?.role !== 'admin') {
                             console.warn("[Agent] Permission Denied: User is not an admin.");
                             activeConversation.push({
                                 role: 'assistant',
-                                content: `⚠️ **Permiso Denegado**: Lo siento, pero no tienes permisos de administrador para realizar modificaciones estratégicas en clientes, formatos, procedimientos (SOPs) o métricas. Solo los administradores pueden realizar estas operaciones.`
+                                content: `⚠️ **Permiso Denegado**: Lo siento, pero no tienes permisos de administrador para realizar modificaciones estratégicas en clientes, formatos o procedimientos (SOPs). Solo los administradores pueden realizar estas operaciones.`
                             });
                             renderChatFeed();
                             return;
@@ -820,31 +789,7 @@ Información del Administrador:
                         };
                         await dbService.add('assignments', newAsg);
                         console.log("[Agent] Assignment created successfully.");
-                    } 
-                    else if (action.type === 'update_metric') {
-                        const metricDoc = {
-                            label: action.payload.label || `Métrica: ${action.payload.period || 'General'}`,
-                            value: action.payload.value || action.payload.retention || '0%',
-                            type: action.payload.type || 'retention',
-                            clientId: action.payload.clientId || 'all',
-                            formatId: action.payload.formatId || 'all',
-                            hookId: action.payload.hookId || 'all',
-                            period: action.payload.period || 'Mayo 2026',
-                            retention: action.payload.retention || '0%',
-                            views: action.payload.views || '0',
-                            shares: action.payload.shares || '0',
-                            saves: action.payload.saves || '0',
-                            source: 'real', // Every metric updated/inserted via assistant is tagged as production "real"!
-                            updatedAt: new Date().toISOString()
-                        };
-                        const id = action.payload.id || `${action.payload.clientId || 'all'}-${action.payload.period || 'Mayo-2026'}`.toLowerCase().replace(/\s+/g, '-');
-                        await dbService.set('metrics', id, metricDoc);
-                        console.log("[Agent] Metric updated successfully with contextual linkages:", id);
-                        
-                        // Force refresh metrics list in local state
-                        metricsList = await dbService.getAll('metrics').catch(() => []);
-                    } 
-                    else if (action.type === 'create_hook') {
+                    }                    else if (action.type === 'create_hook') {
                         const newHook = {
                             title: action.payload.title,
                             category: action.payload.category || 'General',
@@ -1003,7 +948,7 @@ Cuando el usuario te pida crear un procedimiento (SOP), crear un formato creativ
 
 \`\`\`agency-action
 {
-  "type": "create_sop" | "create_format" | "create_assignment" | "update_metric" | "create_hook" | "create_client" | "update_client",
+  "type": "create_sop" | "create_format" | "create_assignment" | "create_hook" | "create_client" | "update_client",
   "payload": { ... }
 }
 \`\`\`
@@ -1024,20 +969,7 @@ Detalles del Payload según el type:
    - "client": string (Nombre de la marca o cliente, ej: "RConcept")
    - "employeeName": string (Nombre de la persona asignada)
    - "status": "Pendiente" | "En Producción" | "Revisión" | "Completado"
-4. "update_metric":
-   - "label": string (Nombre descriptivo, ej: "Rendimiento RC-01 Tizón Dorado")
-   - "value": string (Valor en porcentaje o número de la retención, ej: "74%")
-   - "type": "retention" | "conversion" | "watch-time"
-   - "clientId": string (Opcional: ID del cliente al que se vincula, ej: "tizon-dorado")
-   - "formatId": string (Opcional: ID del formato al que se vincula, ej: "rc-01")
-   - "hookId": string (Opcional: ID del hook al que se vincula, ej: "hk-01")
-   - "period": string (Período obligatorio con formato exacto "Mes YYYY", ej: "Mayo 2026")
-   - "retention": string (Opcional: Tasa de retención, ej: "74%")
-   - "views": string (Opcional: vistas totales, ej: "15400")
-   - "shares": string (Opcional: compartidos, ej: "320")
-   - "saves": string (Opcional: guardados, ej: "840")
-   - "source": "real" (Siempre establece "real" para métricas de producción ingresadas por ti)
-5. "create_hook":
+4. "create_hook":
    - "title": string (Frase literal del gancho de marketing)
    - "category": string (ej: "Problema", "Curiosidad", "Deseo")
    - "psychology": string (ej: "Curiosidad", "FOMO", "Contraria")
@@ -1045,11 +977,11 @@ Detalles del Payload según el type:
    - "avgRetention": string (Tasa promedio de retención, ej: "82%")
    - "topClient": string (ID del cliente donde más funcionó, ej: "kantel")
    - "source": "real"
-6. "create_client":
+5. "create_client":
    - "name": string (Nombre del cliente/marca)
    - "businessType": string (Industria, ej: "Salud e Higiene")
    - "description": string (Descripción estratégica general)
-7. "update_client":
+6. "update_client":
    - "clientId": string (ID del cliente a actualizar, ej: "jerez-el-caballero", "kantel", "ricos-pandeyucas", "villa-grande")
    - "description": string (Nueva descripción estratégica de marca a agregar o actualizar)
    - "assignedFormats": array de strings (ej: ["rc-01"]) - Estos formatos se fusionarán de forma segura sin sobreescribir los que ya existen.
@@ -1094,9 +1026,6 @@ ${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.cl
 
 === PROCEDIMIENTOS ESTÁNDAR (SOPs) ACTIVOS ===
 ${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de checklist registrados)`).join('\n')}
-
-=== MÉTRICAS RECIENTES VINCULADAS ===
-${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m.type} | Cliente ID: "${m.clientId || 'all'}" | Formato ID: "${m.formatId || 'all'}" | Hook ID: "${m.hookId || 'all'}" | Período: "${m.period || 'N/A'}" | Vistas: ${m.views || '0'} | Compartidos: ${m.shares || '0'} | Guardados: ${m.saves || '0'} | Origen: "${m.source || 'seed'}"`).join('\n')}
 `;
 
                 try {

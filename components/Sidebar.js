@@ -21,7 +21,6 @@ const secondaryNavItems = [
     { href: '#scripts',      icon: 'file-text',         label: 'Guiones' },
     { href: '#hooks',        icon: 'zap',               label: 'Hooks' },
     { href: '#sops',         icon: 'check-square',      label: 'SOPs' },
-    { href: '#metrics',      icon: 'bar-chart-3',       label: 'Métricas' },
     { href: '#references',   icon: 'bookmark',          label: 'Referencias' },
     { href: '#ai-assistant', icon: 'sparkles',          label: 'AI Assistant' },
     { href: '#admin',        icon: 'shield-check',      label: 'Admin', adminOnly: true },
