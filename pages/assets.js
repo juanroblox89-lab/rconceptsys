@@ -43,10 +43,37 @@ export const render = () => {
             ])
         ]);
 
+        const handleDelete = async (asset) => {
+            if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el archivo "${asset.title}" de Firebase Storage y de la base de datos?`)) return;
+
+            container.innerHTML = '<div class="loader mb-4"></div>';
+
+            try {
+                // 1. Delete from Firebase Storage if it has storagePath
+                const storagePath = asset.storagePath || `assets/${asset.client}/${asset.title}`;
+                await storageService.deleteFile(storagePath);
+
+                // 2. Delete from Firestore Database
+                if (asset.id && !asset.id.startsWith('AST-mock-')) {
+                    await dbService.delete('assets', asset.id);
+                }
+
+                // 3. Remove from local cache
+                localAssetsCache = localAssetsCache.filter(a => a.id !== asset.id);
+
+                alert("¡Asset eliminado exitosamente de Storage y Firestore!");
+            } catch (err) {
+                console.error("Error deleting asset:", err);
+                alert(`Error al eliminar asset: ${err.message}`);
+            }
+
+            loadAssets();
+        };
+
         const grid = h('div', {
             className: 'grid gap-4',
             style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }
-        }, assetsList.map(asset => createAssetCard(asset)));
+        }, assetsList.map(asset => createAssetCard(asset, isAdmin, handleDelete)));
 
         container.appendChild(header);
         container.appendChild(grid);
@@ -77,7 +104,8 @@ export const render = () => {
                 format: formatVal,
                 thumbnail: dlUrl,
                 status: 'ready',
-                url: dlUrl
+                url: dlUrl,
+                storagePath: `assets/${clientVal}/${fileInput.files[0].name}`
             };
 
             try {
@@ -116,7 +144,6 @@ export const render = () => {
             ])
         ]);
 
-        overlay.appendChild(form);
         document.body.appendChild(overlay);
     };
 
@@ -130,10 +157,10 @@ const statusMap = {
     review: { label: 'En Revisión', cls: 'badge-error' }
 };
 
-const createAssetCard = (asset) => {
+const createAssetCard = (asset, isAdmin, onDelete) => {
     const status = statusMap[asset.status] || { label: asset.status, cls: 'badge-secondary' };
 
-    return h('div', { className: 'card flex-column justify-between', style: { padding: '0', overflow: 'hidden' } }, [
+    return h('div', { className: 'card flex-column justify-between hover-border transition', style: { padding: '0', overflow: 'hidden' } }, [
         h('div', {
             style: {
                 height: '150px',
@@ -162,7 +189,7 @@ const createAssetCard = (asset) => {
         h('div', { className: 'p-4 flex-column gap-2' }, [
             h('div', { className: 'font-bold text-xs text-primary truncate' }, asset.title),
             h('div', { className: 'text-xs text-muted font-medium' }, asset.client || 'General'),
-            h('div', { className: 'flex justify-between items-center mt-2 pt-2 border-top' }, [
+            h('div', { className: 'flex justify-between items-center mt-2 pt-2 border-top flex-wrap gap-2' }, [
                 h('a', { 
                     href: asset.url !== '#' ? asset.url : asset.thumbnail, 
                     target: '_blank', 
@@ -170,12 +197,29 @@ const createAssetCard = (asset) => {
                     style: { padding: '4px 8px', textDecoration: 'none' } 
                 }, [icon('external-link', 12), h('span', { className: 'ml-1' }, 'Abrir Media')]),
                 
-                h('button', { 
-                    className: 'btn-icon text-xs', 
-                    style: { width: '26px', height: '26px' }, 
-                    title: 'Descargar Original',
-                    onClick: () => alert(`Descargando asset de Storage en alta resolución...`) 
-                }, [icon('download', 12)])
+                h('div', { className: 'flex items-center gap-1' }, [
+                    h('button', { 
+                        className: 'btn-icon text-xs', 
+                        style: { width: '26px', height: '26px' }, 
+                        title: 'Descargar Original',
+                        onClick: () => {
+                            const link = document.createElement('a');
+                            link.href = asset.url !== '#' ? asset.url : asset.thumbnail;
+                            link.target = '_blank';
+                            link.download = asset.title || 'asset';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    }, [icon('download', 12)]),
+                    
+                    isAdmin ? h('button', { 
+                        className: 'btn-icon text-error text-xs hover-bg-tertiary', 
+                        style: { width: '26px', height: '26px', color: 'var(--error)' }, 
+                        title: 'Eliminar de Storage',
+                        onClick: () => onDelete(asset)
+                    }, [icon('trash-2', 12)]) : null
+                ])
             ])
         ])
     ]);

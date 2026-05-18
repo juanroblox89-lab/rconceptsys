@@ -4,7 +4,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCbdOF_2HROLUhUbYGQdQQG_6JL2OtyCeo",
@@ -209,6 +209,18 @@ export const storageService = {
         } catch (err) {
             // Use static backup or base placeholder URL ensuring aesthetic excellence
             return null;
+        }
+    },
+
+    async deleteFile(path) {
+        try {
+            const storageRef = ref(storage, path);
+            await deleteObject(storageRef);
+            console.log(`[Storage] Deleted file successfully: ${path}`);
+            return true;
+        } catch (err) {
+            console.error(`Firebase Storage deletion error for path ${path}:`, err);
+            return false;
         }
     }
 };
