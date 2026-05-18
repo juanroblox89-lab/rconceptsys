@@ -110,11 +110,10 @@ export const render = () => {
 
             // Dynamic Chat Messaging Feed View
             const chatFeed = h('div', { 
-                className: 'flex-column gap-3 p-4 overflow-y-auto mb-2 border-radius-md',
+                className: 'flex-column gap-3 p-4 mb-2 border-radius-md',
                 style: { 
-                    flex: '1', 
-                    maxHeight: '520px', 
-                    minHeight: '400px', 
+                    height: '480px', 
+                    overflowY: 'auto',
                     background: 'var(--bg-tertiary)', 
                     border: '1px solid var(--border)',
                     borderRadius: '8px'
