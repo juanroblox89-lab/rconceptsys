@@ -33,6 +33,14 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing Anthropic API Key. Please add it to your Vercel Environment Variables.' });
         }
 
+        // Defensive validation: Ensure the key is ASCII-only and starts with 'sk-'
+        const isAscii = (str) => /^[\x00-\x7F]*$/.test(str);
+        if (!isAscii(anthropicKey) || !anthropicKey.startsWith("sk-")) {
+            return res.status(400).json({ 
+                error: "La clave API de Anthropic configurada no es válida. Asegúrate de haber copiado la clave correcta (debe empezar con 'sk-' y no contener emojis, textos de error ni espacios)." 
+            });
+        }
+
         // 1. Anthropic Compliance: Filter and slice messages so it starts STRICTLY with a 'user' role
         let apiMessages = messages.map(m => ({
             role: m.role === 'assistant' ? 'assistant' : 'user',
