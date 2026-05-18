@@ -93,12 +93,16 @@ export const CommandPalette = () => {
     };
 
     const updateResults = async () => {
+        const { user } = store.getState();
+        const isAdmin = user?.role === 'admin';
+
         const staticActions = [
-            { type: 'action', id: 'new-asg', title: 'Crear Nueva Asignación', icon: 'plus-circle', shortcut: 'A', action: () => window.location.hash = '#assignments' },
-            { type: 'action', id: 'new-inv', title: 'Reportar Nuevo Trabajo', icon: 'file-plus', shortcut: 'F', action: () => window.location.hash = '#billing' },
+            isAdmin ? { type: 'action', id: 'new-asg', title: 'Crear Nueva Asignación', icon: 'plus-circle', shortcut: 'A', action: () => window.location.hash = '#assignments' } : null,
+            { type: 'action', id: 'new-inv', title: 'Reportar Nuevo Trabajo / Cobros', icon: 'file-plus', shortcut: 'F', action: () => window.location.hash = '#billing' },
             { type: 'action', id: 'go-dashboard', title: 'Ir al Dashboard', icon: 'layout-dashboard', action: () => window.location.hash = '#dashboard' },
             { type: 'action', id: 'go-clients', title: 'Ver Directorio de Clientes', icon: 'users', action: () => window.location.hash = '#clients' },
-        ];
+            !isAdmin ? { type: 'action', id: 'go-assignments', title: 'Ver Mis Tareas Asignadas', icon: 'clipboard-list', action: () => window.location.hash = '#assignments' } : null
+        ].filter(Boolean);
 
         let dynamicResults = [];
         if (query.length > 1) {
@@ -106,8 +110,8 @@ export const CommandPalette = () => {
             // For now, let's filter from what we might have or common paths
             const clients = await dbService.getAll('clients');
             dynamicResults = clients
-                .filter(c => c.name.toLowerCase().includes(query.toLowerCase()))
-                .map(c => ({ type: 'client', id: c.id, title: `Cliente: ${c.name}`, icon: 'briefcase', action: () => window.location.hash = `#client/${c.id}` }));
+                .filter(c => (c.nombre || c.name || '').toLowerCase().includes(query.toLowerCase()))
+                .map(c => ({ type: 'client', id: c.id, title: `Cliente: ${c.nombre || c.name}`, icon: 'briefcase', action: () => window.location.hash = `#client/${c.id}` }));
         }
 
         results = query.length > 0 

@@ -13,14 +13,6 @@ export const render = async () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
     
-    if (!isAdmin) {
-        return h('div', { className: 'p-20 text-center' }, [
-            icon('lock', 40, 'text-muted mb-4'),
-            h('h2', { className: 'text-lg font-bold' }, 'Acceso Restringido'),
-            h('p', { className: 'text-sm text-muted' }, 'Solo los administradores pueden gestionar asignaciones.')
-        ]);
-    }
-
     const container = h('div', { className: 'fade-in flex-column gap-6' });
 
     const loadAndRender = async () => {
@@ -38,12 +30,136 @@ export const render = async () => {
             ]);
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
-            
             const finalClients = clients || [];
             
             container.innerHTML = '';
 
-            // Header
+            if (!isAdmin) {
+                // Regular Employee Task Management Flow
+                const myAssignments = assignments.filter(a => a.employeeId === user.uid);
+
+                // Header for Employee
+                const header = h('div', { className: 'flex justify-between items-end mb-2 w-full border-bottom pb-3' }, [
+                    h('div', {}, [
+                        h('h1', { className: 'text-xl font-bold' }, 'Mis Tareas Asignadas'),
+                        h('p', { className: 'text-xs text-muted mt-1' }, 'Listado de grabaciones y ediciones asignadas a tu cuenta.')
+                    ]),
+                    h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: ${myAssignments.length} Tareas`)
+                ]);
+
+                // Split my assignments
+                const activeMyAsgs = myAssignments.filter(a => a.status !== 'Completado');
+                const completedMyAsgs = myAssignments.filter(a => a.status === 'Completado');
+
+                // Render Task Row
+                const renderEmployeeTaskRow = (asg) => {
+                    const now = new Date();
+                    const due = new Date(asg.dueDate);
+                    const isExpired = due < now && asg.status !== 'Completado';
+                    const isToday = !isExpired && due.toDateString() === now.toDateString();
+
+                    // Status Badge styling
+                    const statusClass = asg.status === 'En Proceso' || asg.status === 'En Producción' ? 'info' : 
+                                        asg.status === 'Completado' ? 'success' : 'warning';
+
+                    return h('div', { 
+                        key: asg.id, 
+                        className: 'card p-4 flex-column gap-3 hover-border transition w-full',
+                        style: { background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }
+                    }, [
+                        h('div', { className: 'flex justify-between items-start flex-wrap gap-2' }, [
+                            h('div', { className: 'flex-column gap-1' }, [
+                                h('div', { className: 'flex items-center gap-2 flex-wrap' }, [
+                                    h('span', { className: 'badge badge-secondary text-xs font-bold' }, asg.client),
+                                    h('span', { className: `badge badge-${statusClass} text-xs font-semibold` }, asg.status),
+                                    isExpired ? h('span', { className: 'badge badge-urgent text-xs font-bold' }, '⚠️ ATRASADO') : null,
+                                    isToday ? h('span', { className: 'badge badge-today text-xs font-bold' }, '⚡ HOY') : null,
+                                ]),
+                                h('h3', { className: 'text-sm font-bold text-primary mt-1' }, asg.title)
+                            ]),
+                            h('div', { className: 'flex items-center gap-2' }, [
+                                // Action buttons
+                                asg.status === 'Pendiente' ? h('button', {
+                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                    style: { color: 'var(--info)', borderColor: 'rgba(var(--info-rgb), 0.3)' },
+                                    onClick: async () => {
+                                        await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' });
+                                        loadAndRender();
+                                    }
+                                }, [icon('play', 12), h('span', {}, 'Empezar')]) : null,
+
+                                (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? h('button', {
+                                    className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                    style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
+                                    onClick: async () => {
+                                        await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
+                                        loadAndRender();
+                                    }
+                                }, [icon('check', 12), h('span', {}, 'Completar')]) : null,
+
+                                asg.status === 'Completado' ? h('button', {
+                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
+                                    style: { color: 'var(--text-muted)', borderColor: 'var(--border)' },
+                                    onClick: async () => {
+                                        await assignmentService.saveAssignment({ ...asg, status: 'Pendiente' });
+                                        loadAndRender();
+                                    }
+                                }, [icon('rotate-ccw', 12), h('span', {}, 'Reabrir')]) : null
+                            ])
+                        ]),
+
+                        h('div', { className: 'flex-column gap-2 border-top pt-2 mt-1' }, [
+                            h('div', { className: 'flex justify-between items-center text-xs text-muted flex-wrap gap-2' }, [
+                                h('span', {}, [h('strong', {}, 'Tipo de Trabajo: '), asg.type]),
+                                h('span', {}, [
+                                    h('strong', {}, 'Fecha Límite: '), 
+                                    due.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                ])
+                            ]),
+                            asg.description ? h('p', { 
+                                className: 'text-xs text-secondary leading-relaxed p-3 bg-secondary rounded mt-1', 
+                                style: { whiteSpace: 'pre-wrap', borderLeft: '3px solid var(--border)' } 
+                            }, asg.description) : null
+                        ])
+                    ]);
+                };
+
+                const activeList = h('div', { className: 'flex-column gap-3 w-full' }, 
+                    activeMyAsgs.length === 0 
+                        ? [h('div', { className: 'p-8 text-center text-xs text-muted bg-secondary rounded border', style: { borderStyle: 'dashed', borderRadius: '6px' } }, '¡Felicidades! No tienes tareas activas pendientes.')]
+                        : activeMyAsgs.map(renderEmployeeTaskRow)
+                );
+
+                const completedList = h('div', { className: 'flex-column gap-3 w-full' }, 
+                    completedMyAsgs.length === 0 
+                        ? [h('div', { className: 'p-8 text-center text-xs text-muted bg-secondary rounded border', style: { borderStyle: 'dashed', borderRadius: '6px' } }, 'No has completado tareas en este ciclo.')]
+                        : completedMyAsgs.map(renderEmployeeTaskRow)
+                );
+
+                const employeeLayout = h('div', { className: 'flex-column gap-5 w-full mt-2' }, [
+                    h('div', { className: 'flex-column gap-3 w-full' }, [
+                        h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5' }, [
+                            icon('clock', 14, 'text-warning'),
+                            h('span', {}, `Tareas Pendientes / En Proceso (${activeMyAsgs.length})`)
+                        ]),
+                        activeList
+                    ]),
+                    h('div', { className: 'flex-column gap-3 w-full border-top pt-4' }, [
+                        h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5' }, [
+                            icon('check-circle', 14, 'text-success'),
+                            h('span', {}, `Tareas Completadas (${completedMyAsgs.length})`)
+                        ]),
+                        completedList
+                    ])
+                ]);
+
+                container.appendChild(header);
+                container.appendChild(employeeLayout);
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
+
+            // Header for Admin
             const header = h('div', { className: 'flex justify-between items-end mb-2' }, [
                 h('div', {}, [
                     h('h1', { className: 'text-xl font-bold' }, 'Gestión de Asignaciones'),
