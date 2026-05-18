@@ -25,7 +25,9 @@ export const render = () => {
                 (isAdmin ? dbService.getAll('users').catch(() => []) : Promise.resolve([]))
             ]);
 
-            const activeAssignments = assignments.filter(a => a.status !== 'Completado');
+            const activeAssignments = isAdmin
+                ? assignments.filter(a => a.status !== 'Completado')
+                : assignments.filter(a => a.employeeId === user?.uid && a.status !== 'Completado');
 
             container.innerHTML = '';
 
@@ -34,7 +36,7 @@ export const render = () => {
                 createMetricCard('Formatos Activos', `${formats.length}`, 'trending-up', 'var(--success)', 'Librería de formatos'),
                 createMetricCard('Hooks Documentados', `${hooks.length}`, 'zap', 'var(--warning)', 'Estrategias de gancho'),
                 createMetricCard('Clientes Activos', `${clients.length}`, 'users', 'var(--info)', 'Clientes registrados'),
-                createMetricCard('Asignaciones Activas', `${activeAssignments.length} Tareas`, 'clock', 'var(--info)', 'En producción actual')
+                createMetricCard('Asignaciones Activas', `${activeAssignments.length} Tareas`, 'clock', 'var(--info)', isAdmin ? 'En producción actual' : 'Mis pendientes')
             ]);
 
             // Map editor name/emails
@@ -70,7 +72,10 @@ export const render = () => {
             if (activeAssignments.length === 0) {
                 const tbody = activityTable.querySelector('tbody');
                 if (tbody) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-xs text-muted italic p-6 text-center">Sin actividades de producción en curso en este momento.</td></tr>';
+                    const noTasksMsg = isAdmin
+                        ? 'Sin actividades de producción en curso en este momento.'
+                        : '¡Excelente! No tienes tareas de producción pendientes en este ciclo.';
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-xs text-muted italic p-6 text-center">${noTasksMsg}</td></tr>`;
                 }
             }
 
@@ -84,8 +89,12 @@ export const render = () => {
                             h('span', { className: 'ml-1' }, 'para buscar rápido')
                         ])
                     ]),
-                    h('h2', { className: 'text-primary font-bold', style: { fontSize: '1.4rem', letterSpacing: '-0.03em' } }, `Hola, ${user?.nombre || 'Líder'}.`),
-                    h('p', { className: 'text-xs text-muted max-w-lg mt-1 leading-relaxed' }, 'Tu centro de mando para narrativas de alta retención. Gestiona clientes, valida facturas y controla el flujo de producción desde un solo lugar.')
+                    h('h2', { className: 'text-primary font-bold', style: { fontSize: '1.4rem', letterSpacing: '-0.03em' } }, `Hola, ${user?.nombre || 'Miembro'}.`),
+                    h('p', { className: 'text-xs text-muted max-w-lg mt-1 leading-relaxed' }, 
+                        isAdmin 
+                            ? 'Tu centro de mando para narrativas de alta retención. Gestiona clientes, valida facturas y controla el flujo de producción desde un solo lugar.'
+                            : 'Tu centro de mando para narrativas de alta retención. Revisa tus tareas pendientes, reporta tus honorarios y mantén tus entregas al día.'
+                    )
                 ]),
                 h('div', { className: 'flex gap-2' }, [
                     h('button', { 
@@ -95,35 +104,55 @@ export const render = () => {
                 ])
             ]);
 
+            // Quick actions builder based on role
+            const quickActionsList = [];
+            if (isAdmin) {
+                quickActionsList.push(
+                    createQuickAction('plus-square', 'Crear Nuevo Formato', 'Estandariza una estructura', () => {
+                        window.location.hash = '#formats';
+                    }),
+                    createQuickAction('file-text', 'Reportar Jornada / Factura', 'Control operativo de entregas', () => {
+                        window.location.hash = '#billing';
+                    }),
+                    createQuickAction('users', 'Directorio de Clientes', 'Ver estilos y videos virales', () => {
+                        window.location.hash = '#clients';
+                    }),
+                    createQuickAction('shield', 'Panel de Aprobación Admin', 'Revisar pendientes y Storage', () => {
+                        window.location.hash = '#admin';
+                    })
+                );
+            } else {
+                quickActionsList.push(
+                    createQuickAction('file-text', 'Reportar Jornada / Facturas', 'Control de mis entregas y cobros', () => {
+                        window.location.hash = '#billing';
+                    }),
+                    createQuickAction('users', 'Directorio de Clientes', 'Ver estilos y videos virales', () => {
+                        window.location.hash = '#clients';
+                    }),
+                    createQuickAction('clipboard-list', 'Mis Tareas Asignadas', 'Ver todo mi historial de producción', () => {
+                        window.location.hash = '#assignments';
+                    })
+                );
+            }
+
             const layoutGrid = h('div', { className: 'grid', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' } }, [
                 h('section', { style: { flex: '2', minWidth: '320px' } }, [
                     h('div', { className: 'flex justify-between items-center mb-3' }, [
-                        h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary' }, 'Actividad de Producción en Curso'),
+                        h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary' }, 
+                            isAdmin ? 'Actividad de Producción en Curso' : 'Mis Tareas Pendientes en Curso'
+                        ),
                         h('button', { 
                             className: 'btn btn-outline text-xs', 
                             style: { padding: '4px 8px' },
                             onClick: () => window.location.hash = '#assignments' 
-                        }, 'Gestionar Tareas')
+                        }, isAdmin ? 'Gestionar Tareas' : 'Mis Tareas')
                     ]),
                     h('div', { className: 'card p-0' }, [activityTable])
                 ]),
 
                 h('aside', { style: { flex: '1', minWidth: '260px' } }, [
                     h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary mb-3' }, 'Accesos Rápidos Funcionales'),
-                    h('div', { className: 'flex flex-column gap-2' }, [
-                        createQuickAction('plus-square', 'Crear Nuevo Formato', 'Estandariza una estructura', () => {
-                            window.location.hash = '#formats';
-                        }),
-                        createQuickAction('file-text', 'Reportar Jornada / Factura', 'Control operativo de entregas', () => {
-                            window.location.hash = '#billing';
-                        }),
-                        createQuickAction('users', 'Directorio de Clientes', 'Ver estilos y videos virales', () => {
-                            window.location.hash = '#clients';
-                        }),
-                        createQuickAction('shield', 'Panel de Aprobación Admin', 'Revisar pendientes y Storage', () => {
-                            window.location.hash = '#admin';
-                        })
-                    ])
+                    h('div', { className: 'flex flex-column gap-2' }, quickActionsList)
                 ])
             ]);
 
