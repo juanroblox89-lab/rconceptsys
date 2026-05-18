@@ -100,10 +100,34 @@ class Router {
                 
             } catch (error) {
                 console.error(`[Router] Failed to load page: ${route.module}`, error);
-                viewContainer.innerHTML = `<div class="error-state" style="padding: 40px; text-align: center; color: #ef4444;">
-                    <strong>Error cargando la página</strong><br>
-                    <code style="font-size: 0.75rem; color: #666;">${error.message}</code>
-                </div>`;
+                
+                const isImportError = error.name === 'TypeError' || 
+                                     error.message.includes('Failed to fetch') ||
+                                     error.message.includes('dynamically imported') ||
+                                     error.message.includes('importing');
+                                     
+                if (isImportError) {
+                    viewContainer.innerHTML = `
+                        <div class="error-state text-center p-10 card flex-column items-center justify-center gap-4 bg-secondary border" style="max-width: 460px; margin: 40px auto; border-radius: 12px; border: 1px solid var(--border);">
+                            <div style="background: rgba(59, 130, 246, 0.1); color: var(--accent); border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="refresh-cw" class="animate-spin" style="width: 24px; height: 24px; color: var(--accent);"></i>
+                            </div>
+                            <h3 class="text-md font-bold text-primary">Nueva Versión de Producción</h3>
+                            <p class="text-xs text-muted leading-relaxed" style="color: var(--text-secondary);">
+                                Hemos publicado actualizaciones en los módulos de la plataforma. Para asegurar que todas las marcas y herramientas creativas carguen correctamente, es necesario actualizar tu caché.
+                            </p>
+                            <button onclick="window.location.reload(true)" class="btn btn-primary text-xs font-bold py-2.5 px-6" style="border-radius: 8px; width: 100%; cursor: pointer;">
+                                Recargar y Actualizar Aplicación
+                            </button>
+                        </div>
+                    `;
+                    if (window.lucide) window.lucide.createIcons();
+                } else {
+                    viewContainer.innerHTML = `<div class="error-state" style="padding: 40px; text-align: center; color: #ef4444;">
+                        <strong>Error cargando la página</strong><br>
+                        <code style="font-size: 0.75rem; color: #666;">${error.message}</code>
+                    </div>`;
+                }
             }
         } else {
             window.location.hash = '#dashboard';
