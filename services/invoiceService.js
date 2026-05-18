@@ -1,88 +1,87 @@
 /**
  * Invoice Service - Creative Production OS
- * Handles double invoice operational tracking: Employee vs Admin side-by-side comparison.
+ * Handles single invoice operational tracking: Employee Invoice (emp-inv-{userId}) and Admin Invoice (adm-inv-{userId}).
  */
 import { dbService } from '../firebase/service.js';
 
 export const invoiceService = {
-    async getEmployeeInvoices(userId, role) {
+    // Get an employee's reported invoice
+    async getEmployeeInvoice(userId) {
         try {
-            if (role === 'admin') {
-                const list = await dbService.getAll('invoices');
-                return list || [];
-            } else {
-                const list = await dbService.getByQuery('invoices', 'employeeId', '==', userId);
-                return list || [];
-            }
+            return await dbService.get('invoices', `emp-inv-${userId}`);
         } catch (err) {
-            console.warn("Error fetching employee invoices from DB:", err);
-            return [];
-        }
-    },
-
-    async getAdminInvoiceForEmployeeInvoice(employeeInvoiceId) {
-        try {
-            const list = await dbService.getByQuery('admin_invoices', 'relatedEmployeeInvoice', '==', employeeInvoiceId);
-            if (list && list.length > 0) return list[0];
-            return null;
-        } catch (err) {
-            console.warn(`Error fetching admin invoice comparison for ${employeeInvoiceId}:`, err);
+            console.warn(`Error fetching employee invoice for user ${userId}:`, err);
             return null;
         }
     },
 
-    async saveEmployeeInvoice(data) {
+    // Save/update an employee's reported invoice
+    async saveEmployeeInvoice(userId, data) {
+        const docId = `emp-inv-${userId}`;
         const newInv = {
-            id: data.id || `EMP-INV-${Date.now().toString().slice(-4)}`,
-            employeeId: data.employeeId,
+            id: docId,
+            employeeId: userId,
             employeeName: data.employeeName || 'Empleado',
-            type: data.type, // 'Factura de Edición de Video' | 'Factura de Grabación de Video'
-            client: data.client,
+            type: data.type || 'Factura de Edición de Video', // 'Factura de Edición de Video' | 'Factura de Grabación de Video' | 'Factura Consolidada'
+            client: data.client || '',
             amount: Number(data.amount) || 0,
             observations: data.observations || '',
             createdAt: data.createdAt || new Date().toISOString(),
-            editedAt: data.id ? new Date().toISOString() : null,
             status: data.status || 'Pendiente'
         };
 
         try {
-            await dbService.set('invoices', newInv.id, newInv);
+            await dbService.set('invoices', docId, newInv);
         } catch (err) {
-            console.warn("Error saving employee invoice to DB:", err);
+            console.warn(`Error saving employee invoice ${docId}:`, err);
         }
 
         return newInv;
     },
 
-    async saveAdminInvoice(data) {
+    // Get the admin's consolidated invoice for a specific employee
+    async getAdminInvoice(userId) {
+        try {
+            return await dbService.get('admin_invoices', `adm-inv-${userId}`);
+        } catch (err) {
+            console.warn(`Error fetching admin invoice for user ${userId}:`, err);
+            return null;
+        }
+    },
+
+    // Save/update the admin's consolidated invoice for a specific employee
+    async saveAdminInvoice(userId, data) {
+        const docId = `adm-inv-${userId}`;
         const newAdmInv = {
-            id: data.id || `ADM-INV-${Date.now().toString().slice(-4)}`,
-            relatedEmployeeInvoice: data.relatedEmployeeInvoice,
-            adminObservations: data.adminObservations || '',
-            verificationStatus: data.verificationStatus || 'Pendiente', // 'Coherente' | 'Inconsistencia Detectada'
-            internalNotes: data.internalNotes || '',
-            validatedAt: new Date().toISOString()
+            id: docId,
+            employeeId: userId,
+            employeeName: data.employeeName || 'Empleado',
+            type: data.type || 'Factura Consolidada',
+            client: data.client || '',
+            amount: Number(data.amount) || 0,
+            observations: data.observations || '',
+            createdAt: data.createdAt || new Date().toISOString(),
+            status: data.status || 'Pendiente'
         };
 
         try {
-            await dbService.set('admin_invoices', newAdmInv.id, newAdmInv);
+            await dbService.set('admin_invoices', docId, newAdmInv);
         } catch (err) {
-            console.warn("Error saving admin validation invoice to DB:", err);
+            console.warn(`Error saving admin invoice ${docId}:`, err);
         }
 
         return newAdmInv;
     },
 
-    async getAllComparisonData() {
-        const employeesInvoices = await this.getEmployeeInvoices(null, 'admin');
-        const comparisonData = await Promise.all(employeesInvoices.map(async (ei) => {
-            const ai = await this.getAdminInvoiceForEmployeeInvoice(ei.id);
-            return {
-                employeeInvoice: ei,
-                adminInvoice: ai
-            };
-        }));
-        return comparisonData;
+    // Get all invoices in a collection
+    async getAllInvoices(collectionName) {
+        try {
+            const list = await dbService.getAll(collectionName);
+            return list || [];
+        } catch (err) {
+            console.warn(`Error fetching all from ${collectionName}:`, err);
+            return [];
+        }
     },
 
     exportToCsv(invoices, typeFilter) {
