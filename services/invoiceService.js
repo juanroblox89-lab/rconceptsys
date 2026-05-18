@@ -8,7 +8,7 @@ export const invoiceService = {
     // Get an employee's reported invoice
     async getEmployeeInvoice(userId) {
         try {
-            return await dbService.get('invoices', `emp-inv-${userId}`);
+            return await dbService.getById('invoices', `emp-inv-${userId}`);
         } catch (err) {
             console.warn(`Error fetching employee invoice for user ${userId}:`, err);
             return null;
@@ -42,7 +42,7 @@ export const invoiceService = {
     // Get the admin's consolidated invoice for a specific employee
     async getAdminInvoice(userId) {
         try {
-            return await dbService.get('admin_invoices', `adm-inv-${userId}`);
+            return await dbService.getById('admin_invoices', `adm-inv-${userId}`);
         } catch (err) {
             console.warn(`Error fetching admin invoice for user ${userId}:`, err);
             return null;

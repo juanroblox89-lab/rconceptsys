@@ -361,6 +361,54 @@ Cada métrica debe relacionar obligatoriamente hookId, formatId, clientId y peri
                 className: 'flex-column gap-3 card p-4', 
                 style: { width: '220px', minWidth: '200px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' } 
             }, [
+                // Admin Feedback/Metrics registration block
+                isAdmin ? h('div', { className: 'flex-column gap-2 mb-2 pb-2 border-bottom' }, [
+                    h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1' }, [
+                        icon('lightbulb', 14, 'text-warning'),
+                        h('span', {}, 'Registrar Éxito (IA)')
+                    ]),
+                    h('p', { className: 'text-muted mt-1', style: { fontSize: '0.62rem', lineHeight: 'normal' } }, 'Cuéntale a la IA sobre el rendimiento de un video o qué causó su éxito para guardarlo en la base de datos.'),
+                    h('textarea', {
+                        id: 'ai-success-feedback',
+                        className: 'form-textarea text-xs',
+                        placeholder: 'Ej: El video de Kantel con PL-01 y hook "Sabías que..." tuvo 150k vistas y 78% retención en Mayo 2026 porque mostramos el queso derretido en los primeros 2s...',
+                        rows: 3,
+                        style: { fontSize: '0.65rem', resize: 'none', background: 'var(--bg-tertiary)' }
+                    }),
+                    h('button', {
+                        type: 'button',
+                        className: 'btn btn-primary text-xs w-full py-1.5 justify-center gap-1 font-bold',
+                        disabled: isAssistantLoading,
+                        onClick: () => {
+                            const feedbackText = sidePanel.querySelector('#ai-success-feedback').value.trim();
+                            if (!feedbackText) {
+                                alert("Por favor ingresa los detalles del rendimiento antes de procesar.");
+                                return;
+                            }
+                            
+                            const promptText = `[OPERACIÓN: REGISTRAR APRENDIZAJE Y MÉTRICAS DE ÉXITO]
+Analiza la siguiente información provista por el Administrador acerca del éxito de un video.
+Tu objetivo es:
+1. Identificar el cliente (ej: Kantel, Tizón Dorado, etc.) y extraer las métricas de rendimiento mencionadas (periodo, vistas, retención, hooks, formatos, etc.).
+2. Registrar/actualizar esta métrica en la base de datos llamando a la acción "update_metric" con source: "real".
+3. Identificar el patrón de éxito (por qué funcionó mejor) y agregarlo/actualizarlo en el perfil estratégico del cliente llamando a la acción "update_client".
+4. Confirmar de manera muy ejecutiva qué métricas e insights se guardaron en Firestore.
+
+Información del Administrador:
+"${feedbackText}"`;
+                            
+                            const textInput = container.querySelector('#ai-user-message');
+                            if (textInput) {
+                                textInput.value = promptText;
+                                textInput.focus();
+                                // Click the submit button or call inputArea submit handler
+                                inputArea.requestSubmit();
+                                sidePanel.querySelector('#ai-success-feedback').value = '';
+                            }
+                        }
+                    }, [icon('sparkles', 10), h('span', {}, 'Procesar con IA')])
+                ]) : null,
+
                 h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1 border-bottom pb-2' }, [
                     icon('zap', 14, 'text-warning'),
                     h('span', {}, 'Atajos de Redacción')

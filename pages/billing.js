@@ -7,17 +7,24 @@ import { Table } from '../components/ui/Table.js';
 import { store } from '../js/store.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { userService } from '../services/userService.js';
+import { dbService } from '../firebase/service.js';
 
 export const render = () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
 
     const container = h('div', { className: 'fade-in flex-column gap-4' });
+    let clientsList = [];
 
     const loadAndRender = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
 
         try {
+            try {
+                clientsList = await dbService.getAll('clients');
+            } catch (cErr) {
+                console.warn("Error loading clients for billing:", cErr);
+            }
             if (isAdmin) {
                 // Admin Flow: Fetch approved team members and their invoices
                 const allUsers = await userService.getAllUsers();
@@ -270,7 +277,10 @@ export const render = () => {
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Cliente / Proyectos Cubiertos'),
-                    h('input', { id: 'adm-client', className: 'form-input text-xs', placeholder: 'Ej. Gimnasio Elite, RConcept B2B', value: hasInv ? currentAdmInv.client : 'General', required: true })
+                    h('select', { id: 'adm-client', className: 'form-select text-xs' }, [
+                        h('option', { value: 'General' }, '🌍 General / Otro'),
+                        ...clientsList.map(c => h('option', { value: c.nombre || c.name || c.id, selected: (hasInv ? currentAdmInv.client : 'General') === (c.nombre || c.name || c.id) }, c.nombre || c.name))
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Monto Total Autorizado (COP)'),
@@ -365,7 +375,10 @@ export const render = () => {
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Cliente / Proyecto'),
-                    h('input', { id: 'emp-client', className: 'form-input text-xs', placeholder: 'Ej. Gimnasio Elite', value: isEdit ? existingEmpInv.client : '', required: true })
+                    h('select', { id: 'emp-client', className: 'form-select text-xs' }, [
+                        h('option', { value: 'General' }, '🌍 General / Otro'),
+                        ...clientsList.map(c => h('option', { value: c.nombre || c.name || c.id, selected: isEdit && existingEmpInv.client === (c.nombre || c.name || c.id) }, c.nombre || c.name))
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Monto a Cobrar (COP)'),
