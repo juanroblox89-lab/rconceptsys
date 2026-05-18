@@ -879,3 +879,72 @@ tr:hover td { background-color: var(--bg-secondary); }
     color: white;
 }
 
+/* ================================
+   RESPONSIVE BILLING CLASSES
+   ================================ */
+.billing-main-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+@media (min-width: 769px) {
+    .billing-main-grid {
+        flex-direction: row;
+        align-items: stretch;
+    }
+}
+
+.billing-sidebar {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+}
+
+@media (min-width: 769px) {
+    .billing-sidebar {
+        width: 260px;
+        min-width: 240px;
+    }
+}
+
+.billing-formula-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    margin-top: 4px;
+}
+
+@media (min-width: 640px) {
+    .billing-formula-bar {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+    }
+}
+
+.billing-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 640px) {
+    .billing-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+

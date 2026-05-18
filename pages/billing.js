@@ -159,8 +159,7 @@ export const render = () => {
 
             // Dynamic bottom row formula display
             h('div', { 
-                className: 'p-2 bg-tertiary rounded flex justify-between items-center text-xs font-mono border mt-1',
-                style: { borderColor: 'var(--border)' }
+                className: 'billing-formula-bar text-xs font-mono w-full'
             }, [
                 h('span', { id: 'total-formula-bar', className: 'text-secondary font-bold' }, 
                     `=SUMA(Renglon_Cobros) | Monto Total de Liquidación: COP ${totalSum.toLocaleString()}`
@@ -205,7 +204,7 @@ export const render = () => {
 
         if (isAdmin) {
             // Header
-            const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-2', style: { paddingBottom: '1rem' } }, [
+            const header = h('div', { className: 'billing-header w-full' }, [
                 h('div', {}, [
                     h('h1', { style: { fontSize: '1.4rem' } }, 'Auditoría de Liquidaciones y Cobros'),
                     h('p', { className: 'text-xs text-muted mt-1' }, 'Estructura de liquidación directa de cobros y facturación administrativa de la agencia.')
@@ -221,14 +220,12 @@ export const render = () => {
 
             // Two-Column Grid Layout
             const mainGrid = h('div', { 
-                className: 'flex gap-4 w-full flex-wrap', 
-                style: { display: 'flex', flexDirection: 'row', alignItems: 'stretch' } 
+                className: 'billing-main-grid w-full' 
             });
 
             // Left Directory Sidebar
             const userDirectorySidebar = h('div', { 
-                className: 'card p-4 flex-column gap-3', 
-                style: { width: '260px', minWidth: '240px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' } 
+                className: 'card p-4 flex-column gap-3 billing-sidebar'
             }, [
                 h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1 border-bottom pb-2' }, [
                     icon('users', 14, 'text-primary'),
