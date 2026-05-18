@@ -9,7 +9,7 @@ import { assignmentService } from '../services/assignmentService.js';
 import { store } from '../js/store.js';
 
 let activeConversation = [
-    { role: 'assistant', content: '¡Hola! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso completo en tiempo real a todos los datos de la agencia (formatos, ganchos, clientes, asignaciones, SOPs y métricas). Puedes pedirme que cree SOPs, guarde hooks, asigne tareas o actualice métricas operativas con solo decírmelo. ¿En qué marca o guión trabajamos hoy?' }
+    { role: 'assistant', content: '¡Hola! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso en tiempo real a toda tu agencia. Pídeme crear SOPs, asignar tareas o actualizar métricas operativas directamente. ¿Qué marca o guión trabajamos hoy?' }
 ];
 
 export const render = () => {
@@ -341,7 +341,12 @@ export const render = () => {
                 }
 
                 // 2. Build structured Operational System prompt
-                let contextPrompt = `=== CAPACIDADES DEL AGENTE CREATIVEOS (ACCIONES DIRECTAS) ===
+                let contextPrompt = `=== TONALIDAD Y DIRECTRICES DE COMUNICACIÓN ===
+1. Sé extremadamente profesional, directo y conciso. Ve directo al grano sin rodeos, introducciones largas ni saludos repetitivos.
+2. Reduce al mínimo absoluto el uso de emojis. Usa un máximo de 1 emoji por respuesta completa. No decores cada viñeta o frase con emojis.
+3. No saludes al inicio de cada mensaje si ya estamos conversando.
+
+=== CAPACIDADES DEL AGENTE CREATIVEOS (ACCIONES DIRECTAS) ===
 Tú no eres un simple chatbot pasivo; eres un AGENTE activo de la agencia. Tienes el poder de modificar la base de datos de Firestore directamente respondiendo con un bloque estructurado en formato JSON.
 Cuando el usuario te pida crear un procedimiento (SOP), asignar una tarea, guardar un hook o actualizar métricas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
 
