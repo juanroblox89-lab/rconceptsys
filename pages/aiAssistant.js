@@ -29,9 +29,6 @@ export const render = () => {
 
             container.innerHTML = '';
 
-            // Retrieve saved Anthropic API Key from local storage if overridden
-            let localApiKey = localStorage.getItem('rconcept_anthropic_key') || '';
-
             // Header Controls
             const header = h('div', { 
                 className: 'content-header flex justify-between items-center w-full mb-3 flex-wrap gap-3',
@@ -51,13 +48,7 @@ export const render = () => {
                     }, [
                         h('option', { value: 'all' }, '🌍 Todo el Sistema'),
                         ...clients.map(c => h('option', { value: c.id }, `💼 ${c.nombre || c.name}`))
-                    ]),
-                    // API Key Settings Icon Cog
-                    h('button', {
-                        className: 'btn btn-outline text-xs flex items-center justify-center p-2',
-                        title: 'Configurar API Key de Anthropic',
-                        onClick: () => openApiKeyConfigModal()
-                    }, [icon('settings', 14)])
+                    ])
                 ])
             ]);
 
@@ -269,8 +260,7 @@ ${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.cl
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             messages: activeConversation,
-                            contextPrompt,
-                            apiKey: localApiKey
+                            contextPrompt
                         })
                     });
 
@@ -320,63 +310,7 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                 }
             };
 
-            // API Key modal manager
-            const openApiKeyConfigModal = () => {
-                const modalOverlay = h('div', { className: 'modal-overlay' });
-                const modalForm = h('form', {
-                    className: 'modal-container',
-                    onSubmit: (e) => {
-                        e.preventDefault();
-                        const keyVal = modalForm.querySelector('#api-key-input').value.trim();
-                        if (keyVal) {
-                            localStorage.setItem('rconcept_anthropic_key', keyVal);
-                            localApiKey = keyVal;
-                            alert("API Key personalizada guardada con éxito de forma local.");
-                        } else {
-                            localStorage.removeItem('rconcept_anthropic_key');
-                            localApiKey = '';
-                            alert("Clave personalizada eliminada. Se usará la clave por defecto.");
-                        }
-                        document.body.removeChild(modalOverlay);
-                    }
-                }, [
-                    h('div', { className: 'modal-header' }, [
-                        h('span', { className: 'modal-title' }, 'Clave API de Anthropic Claude'),
-                        h('button', { type: 'button', onClick: () => document.body.removeChild(modalOverlay) }, '×')
-                    ]),
-                    h('div', { className: 'modal-body flex-column gap-3' }, [
-                        h('p', { className: 'text-xs text-secondary leading-relaxed' }, 
-                            'Por defecto, la agencia utiliza su propia API Key de Anthropic. Si deseas anularla y usar tu propia clave de Claude para un mayor límite de tokens, ingrésala a continuación. Se guardará de manera 100% segura en tu almacenamiento local.'
-                        ),
-                        h('div', { className: 'form-group' }, [
-                            h('label', { className: 'form-label' }, 'API Key de Claude (sk-ant-...)'),
-                            h('input', { 
-                                id: 'api-key-input', 
-                                type: 'password', 
-                                className: 'form-input text-xs font-mono', 
-                                placeholder: 'sk-ant-api03-...',
-                                value: localApiKey 
-                            })
-                        ])
-                    ]),
-                    h('div', { className: 'modal-footer' }, [
-                        h('button', { 
-                            type: 'button', 
-                            className: 'btn btn-outline text-xs text-error', 
-                            onClick: () => {
-                                localStorage.removeItem('rconcept_anthropic_key');
-                                localApiKey = '';
-                                modalForm.querySelector('#api-key-input').value = '';
-                                alert("Clave restablecida al valor por defecto.");
-                            }
-                        }, 'Restablecer Clave'),
-                        h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Guardar Configuración')
-                    ])
-                ]);
-
-                modalOverlay.appendChild(modalForm);
-                document.body.appendChild(modalOverlay);
-            };
+            // API Key modal manager has been removed for security and simplicity as per agency requirements.
 
             // Assemble main grid layout
             const chatMainView = h('div', { 
