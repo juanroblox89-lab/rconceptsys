@@ -176,6 +176,10 @@ export const authService = {
         return await signInWithEmailAndPassword(auth, email, password);
     },
     
+    async getFreshUserDoc(uid) {
+        return await dbService.getById('users', uid);
+    },
+
     async logout() {
         return await signOut(auth);
     }

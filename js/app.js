@@ -65,7 +65,11 @@ class App {
                 
                 if (user) {
                     store.setState({ user, authLoading: false });
-                    this.renderAuthenticatedApp();
+                    if (user.approved === true) {
+                        this.renderAuthenticatedApp();
+                    } else {
+                        this.renderPendingApprovalScreen(user);
+                    }
                 } else {
                     store.setState({ user: null, authLoading: false });
                     this.renderLoginScreen();
@@ -74,6 +78,94 @@ class App {
         } catch (err) {
             console.error("[App] Init Failed:", err);
             document.body.innerHTML = `<div style="color:red; padding:20px;">CRITICAL INIT ERROR: ${err.message}</div>`;
+        }
+    }
+
+    renderPendingApprovalScreen(user) {
+        console.log("[App] Rendering Pending Approval Screen...");
+        try {
+            this.appContainer.innerHTML = '';
+            
+            const pendingContainer = document.createElement('div');
+            pendingContainer.className = 'auth-container flex items-center justify-center bg-secondary animate-fade-in';
+            pendingContainer.style.minHeight = '100vh';
+            pendingContainer.style.background = '#0a0a0a';
+            
+            pendingContainer.innerHTML = `
+                <div class="card p-10 flex-column items-center gap-6 shadow-2xl text-center" style="width: 100%; max-width: 440px; background: #121212; border-radius: 16px; color: white; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                    <div class="brand-logo flex items-center justify-center p-3 mb-2" style="background: white; border-radius: 8px; display: inline-flex;">
+                        <span style="color: #000; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.15em;">ROHLFING</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-center mb-2 animate-pulse">
+                        <div class="flex items-center gap-2" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); padding: 6px 16px; border-radius: 30px; font-size: 0.75rem; font-weight: bold;">
+                            <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
+                            Pendiente de Aprobación
+                        </div>
+                    </div>
+
+                    <div class="text-center flex-column gap-2">
+                        <h2 class="text-lg font-bold text-primary">¡Hola, ${user.nombre || 'Usuario'}!</h2>
+                        <p class="text-xs text-muted leading-relaxed" style="color: var(--text-secondary); max-width: 320px; margin: 0 auto;">
+                            Tu cuenta ha sido creada con éxito. Para proteger la información confidencial de los clientes y las métricas de la agencia, tu acceso se encuentra actualmente en estado <strong>Pendiente</strong>.
+                        </p>
+                        <p class="text-xs text-muted mt-3" style="color: var(--text-muted);">
+                            Por favor, solicita a un Administrador que apruebe tu solicitud en el panel de control.
+                        </p>
+                    </div>
+
+                    <div class="flex gap-2 w-full mt-4">
+                        <button id="check-status-btn" class="btn btn-primary flex-1 justify-center py-2.5" style="border-radius: 8px; font-weight: bold; background: var(--accent); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.75rem;">
+                            Actualizar Estado
+                        </button>
+                        <button id="pending-logout-btn" class="btn btn-outline py-2.5 px-4" style="border-radius: 8px; font-weight: bold; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; font-size: 0.75rem;">
+                            Cerrar Sesión
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            this.appContainer.appendChild(pendingContainer);
+            
+            // Check status handler (queries Firestore for update on approved state)
+            const checkStatusBtn = document.getElementById('check-status-btn');
+            if (checkStatusBtn) {
+                checkStatusBtn.addEventListener('click', async () => {
+                    checkStatusBtn.disabled = true;
+                    checkStatusBtn.textContent = 'Verificando...';
+                    
+                    try {
+                        const freshUser = await authService.getFreshUserDoc(user.uid);
+                        if (freshUser && freshUser.approved === true) {
+                            store.setState({ user: freshUser });
+                            this.renderAuthenticatedApp();
+                        } else {
+                            alert("Tu solicitud sigue pendiente. Consulta con tu administrador.");
+                            checkStatusBtn.disabled = false;
+                            checkStatusBtn.textContent = 'Actualizar Estado';
+                        }
+                    } catch (e) {
+                        console.error("[Pending] Check failed:", e);
+                        alert("Error al verificar el estado. Intenta de nuevo.");
+                        checkStatusBtn.disabled = false;
+                        checkStatusBtn.textContent = 'Actualizar Estado';
+                    }
+                });
+            }
+
+            // Logout handler
+            const logoutBtn = document.getElementById('pending-logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    try {
+                        await authService.logout();
+                    } catch (e) {
+                        console.error("[Pending] Logout failed:", e);
+                    }
+                });
+            }
+        } catch (err) {
+            console.error("[App] Render Pending Failed:", err);
         }
     }
 
