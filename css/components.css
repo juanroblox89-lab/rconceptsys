@@ -947,26 +947,58 @@ tr:hover td { background-color: var(--bg-secondary); }
     }
 }
 
-/* Table visible only on desktop/tablet */
-.billing-table-desktop {
-    display: none;
-}
-
-/* Cards visible only on mobile */
-.billing-cards-mobile {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+/* Excel spreadsheet layout wrapper for scrollable tables */
+.excel-table-wrapper {
     width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    margin-bottom: 12px;
 }
 
-@media (min-width: 769px) {
-    .billing-table-desktop {
-        display: block;
-    }
-    .billing-cards-mobile {
-        display: none;
-    }
+/* Beautiful custom thin scrollbar for Excel-like feel */
+.excel-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.excel-table-wrapper::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.excel-table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.excel-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+.excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    min-width: 720px; /* Keep tabular view readable on touch viewports */
+}
+
+.excel-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    border: 1px solid var(--border) !important;
+    padding: 8px 10px;
+}
+
+.excel-table td {
+    border: 1px solid var(--border) !important;
+    padding: 6px;
+    vertical-align: middle;
+}
+
+.excel-table tr:hover td {
+    background: var(--bg-tertiary);
 }
 
 /* ==================================

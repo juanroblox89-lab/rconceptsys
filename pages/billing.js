@@ -53,17 +53,17 @@ export const render = () => {
                 h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: COP ${totalSum.toLocaleString()}`)
             ]),
 
-            // Table Grid Container (Desktop)
-            h('div', { className: 'overflow-x-auto w-full billing-table-desktop' }, [
-                h('table', { className: 'w-full text-xs text-left', style: { borderCollapse: 'collapse', minWidth: '700px' } }, [
+            // Table Grid Container (Excel-like Horizontal Scrollable Wrapper)
+            h('div', { className: 'excel-table-wrapper w-full' }, [
+                h('table', { className: 'excel-table' }, [
                     h('thead', {}, [
-                        h('tr', { style: { borderBottom: '2px solid var(--border)', background: 'var(--bg-tertiary)' } }, [
-                            h('th', { style: { padding: '10px 8px', width: '220px', fontWeight: 600 } }, 'Servicio Realizado'),
-                            h('th', { style: { padding: '10px 8px', width: '200px', fontWeight: 600 } }, 'Cliente / Proyecto'),
-                            h('th', { style: { padding: '10px 8px', width: '140px', fontWeight: 600 } }, 'Monto (COP)'),
-                            h('th', { style: { padding: '10px 8px', width: '110px', fontWeight: 600 } }, 'Fecha'),
-                            h('th', { style: { padding: '10px 8px', fontWeight: 600 } }, 'Observaciones y Links'),
-                            isEditable ? h('th', { style: { padding: '10px 8px', width: '50px', textAlign: 'center', fontWeight: 600 } }, '') : null
+                        h('tr', {}, [
+                            h('th', { style: { width: '220px' } }, 'Servicio Realizado'),
+                            h('th', { style: { width: '200px' } }, 'Cliente / Proyecto'),
+                            h('th', { style: { width: '140px' } }, 'Monto (COP)'),
+                            h('th', { style: { width: '110px' } }, 'Fecha'),
+                            h('th', {}, 'Observaciones y Links de Entrega'),
+                            isEditable ? h('th', { style: { width: '50px', textAlign: 'center' } }, '') : null
                         ])
                     ]),
                     h('tbody', {}, itemsArray.length === 0 ? [
@@ -75,10 +75,10 @@ export const render = () => {
                             }, 'Sin cobros registrados en esta hoja de liquidación.')
                         ])
                     ] : itemsArray.map((item, idx) => {
-                        return h('tr', { key: idx, style: { borderBottom: '1px solid var(--border)' } }, [
+                        return h('tr', { key: idx }, [
                             
                             // 1. Service select/input
-                            isEditable ? h('td', { style: { padding: '6px' } }, [
+                            isEditable ? h('td', {}, [
                                 h('select', { 
                                     className: 'form-select text-xs w-full',
                                     style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)' },
@@ -88,10 +88,10 @@ export const render = () => {
                                     h('option', { value: 'Factura de Grabación de Video', selected: item.type === 'Factura de Grabación de Video' }, 'Factura de Grabación de Video'),
                                     h('option', { value: 'Factura Consolidada', selected: item.type === 'Factura Consolidada' }, 'Factura Consolidada')
                                 ])
-                            ]) : h('td', { style: { padding: '10px 8px', color: 'var(--text-primary)' } }, item.type || 'N/A'),
+                            ]) : h('td', { style: { color: 'var(--text-primary)' } }, item.type || 'N/A'),
 
                             // 2. Client select/input
-                            isEditable ? h('td', { style: { padding: '6px' } }, [
+                            isEditable ? h('td', {}, [
                                 h('select', { 
                                     className: 'form-select text-xs w-full',
                                     style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)' },
@@ -100,10 +100,10 @@ export const render = () => {
                                     h('option', { value: 'General' }, '🌍 General / Otro'),
                                     ...clientsList.map(c => h('option', { value: c.nombre || c.name || c.id, selected: item.client === (c.nombre || c.name || c.id) }, c.nombre || c.name))
                                 ])
-                            ]) : h('td', { style: { padding: '10px 8px', color: 'var(--text-primary)' } }, item.client || 'N/A'),
+                            ]) : h('td', { style: { color: 'var(--text-primary)' } }, item.client || 'N/A'),
 
                             // 3. Amount input/text
-                            isEditable ? h('td', { style: { padding: '6px' } }, [
+                            isEditable ? h('td', {}, [
                                 h('input', { 
                                     type: 'number',
                                     className: 'form-input text-xs w-full font-bold',
@@ -112,7 +112,6 @@ export const render = () => {
                                     placeholder: 'Monto',
                                     onInput: (e) => { 
                                         item.amount = Number(e.target.value) || 0; 
-                                        // Update visual totals dynamic formula header without re-drawing
                                         const totLabel = container.querySelector('#total-formula-bar');
                                         if (totLabel) {
                                             const newTotal = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
@@ -120,15 +119,15 @@ export const render = () => {
                                         }
                                     }
                                 })
-                            ]) : h('td', { style: { padding: '10px 8px', fontWeight: 'bold', color: 'var(--primary)' } }, `COP ${(item.amount || 0).toLocaleString()}`),
+                            ]) : h('td', { style: { fontWeight: 'bold', color: 'var(--primary)' } }, `COP ${(item.amount || 0).toLocaleString()}`),
 
                             // 4. Date (Always auto-calculated or stored)
-                            h('td', { style: { padding: '10px 8px', color: 'var(--text-muted)' } }, 
+                            h('td', { style: { color: 'var(--text-muted)' } }, 
                                 item.createdAt ? new Date(item.createdAt).toLocaleDateString() : new Date().toLocaleDateString()
                             ),
 
                             // 5. Observations input/text
-                            isEditable ? h('td', { style: { padding: '6px' } }, [
+                            isEditable ? h('td', {}, [
                                 h('input', { 
                                     type: 'text',
                                     className: 'form-input text-xs w-full',
@@ -137,10 +136,10 @@ export const render = () => {
                                     placeholder: 'Ej: Cantidad de piezas, links de entrega...',
                                     onInput: (e) => { item.observations = e.target.value; }
                                 })
-                            ]) : h('td', { style: { padding: '10px 8px', color: 'var(--text-secondary)' } }, item.observations || 'Sin observaciones.'),
+                            ]) : h('td', { style: { color: 'var(--text-secondary)' } }, item.observations || 'Sin observaciones.'),
 
                             // 6. Delete row action
-                            isEditable ? h('td', { style: { padding: '6px', textAlign: 'center' } }, [
+                            isEditable ? h('td', { style: { textAlign: 'center' } }, [
                                 h('button', { 
                                     type: 'button',
                                     className: 'btn btn-outline text-xs p-1 hover-bg-tertiary border-radius-sm',
@@ -156,102 +155,6 @@ export const render = () => {
                     }))
                 ])
             ]),
-
-            // Mobile Card stack fallback (Mobile)
-            h('div', { className: 'billing-cards-mobile' }, itemsArray.length === 0 ? [
-                h('div', { className: 'text-xs text-muted italic p-6 text-center bg-tertiary rounded w-full' }, 'Sin cobros registrados en esta hoja de liquidación.')
-            ] : itemsArray.map((item, idx) => {
-                if (isEditable) {
-                    return h('div', { 
-                        className: 'p-4 rounded flex-column gap-3 border w-full',
-                        style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', borderRadius: '8px' }
-                    }, [
-                        h('div', { className: 'flex justify-between items-center border-bottom pb-2' }, [
-                            h('span', { className: 'font-bold text-xs text-primary' }, `Cobro #${idx + 1}`),
-                            h('button', {
-                                type: 'button',
-                                className: 'btn btn-outline text-xs p-1 flex items-center gap-1',
-                                style: { borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--error)', minHeight: 'auto', padding: '4px 8px' },
-                                onClick: () => {
-                                    itemsArray.splice(idx, 1);
-                                    drawDOM();
-                                }
-                            }, [icon('trash', 12), h('span', {}, 'Eliminar')])
-                        ]),
-                        h('div', { className: 'form-group' }, [
-                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Servicio Realizado'),
-                            h('select', { 
-                                className: 'form-select text-xs w-full',
-                                onChange: (e) => { item.type = e.target.value; }
-                            }, [
-                                h('option', { value: 'Factura de Edición de Video', selected: item.type === 'Factura de Edición de Video' }, 'Factura de Edición de Video'),
-                                h('option', { value: 'Factura de Grabación de Video', selected: item.type === 'Factura de Grabación de Video' }, 'Factura de Grabación de Video'),
-                                h('option', { value: 'Factura Consolidada', selected: item.type === 'Factura Consolidada' }, 'Factura Consolidada')
-                            ])
-                        ]),
-                        h('div', { className: 'form-group' }, [
-                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Cliente / Proyecto'),
-                            h('select', { 
-                                className: 'form-select text-xs w-full',
-                                onChange: (e) => { item.client = e.target.value; }
-                            }, [
-                                h('option', { value: 'General' }, '🌍 General / Otro'),
-                                ...clientsList.map(c => h('option', { value: c.nombre || c.name || c.id, selected: item.client === (c.nombre || c.name || c.id) }, c.nombre || c.name))
-                            ])
-                        ]),
-                        h('div', { className: 'form-group' }, [
-                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Monto (COP)'),
-                            h('input', { 
-                                type: 'number',
-                                className: 'form-input text-xs w-full font-bold',
-                                style: { color: 'var(--primary)' },
-                                value: item.amount || '',
-                                placeholder: 'Monto',
-                                onInput: (e) => { 
-                                    item.amount = Number(e.target.value) || 0; 
-                                    const totLabel = container.querySelector('#total-formula-bar');
-                                    if (totLabel) {
-                                        const newTotal = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
-                                        totLabel.textContent = `=SUMA(Renglon_Cobros) | Monto Total de Liquidación: COP ${newTotal.toLocaleString()}`;
-                                    }
-                                }
-                            })
-                        ]),
-                        h('div', { className: 'form-group' }, [
-                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Observaciones y Links'),
-                            h('input', { 
-                                type: 'text',
-                                className: 'form-input text-xs w-full',
-                                value: item.observations || '',
-                                placeholder: 'Observaciones...',
-                                onInput: (e) => { item.observations = e.target.value; }
-                            })
-                        ])
-                    ]);
-                } else {
-                    return h('div', { 
-                        className: 'p-4 rounded flex-column gap-2 border w-full',
-                        style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', borderRadius: '8px' }
-                    }, [
-                        h('div', { className: 'flex justify-between items-center border-bottom pb-1.5' }, [
-                            h('span', { className: 'font-bold text-xs text-primary' }, item.type || 'N/A'),
-                            h('span', { className: 'badge text-xs font-mono font-bold' }, `COP ${(item.amount || 0).toLocaleString()}`)
-                        ]),
-                        h('div', { className: 'flex justify-between text-xs mt-1' }, [
-                            h('span', { className: 'text-muted' }, 'Cliente:'),
-                            h('strong', { className: 'text-secondary' }, item.client || '🌍 General')
-                        ]),
-                        h('div', { className: 'flex justify-between text-xs' }, [
-                            h('span', { className: 'text-muted' }, 'Fecha:'),
-                            h('span', { className: 'text-secondary' }, item.createdAt ? new Date(item.createdAt).toLocaleDateString() : new Date().toLocaleDateString())
-                        ]),
-                        h('div', { className: 'flex-column gap-1 mt-1 border-top pt-1.5 text-xs' }, [
-                            h('span', { className: 'text-muted font-semibold' }, 'Observaciones y Enlaces:'),
-                            h('p', { className: 'text-secondary font-medium leading-relaxed' }, item.observations || 'Sin observaciones.')
-                        ])
-                    ]);
-                }
-            })),
 
             // Dynamic bottom row formula display
             h('div', { 
