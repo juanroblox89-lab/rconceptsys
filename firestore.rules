@@ -24,7 +24,7 @@ service cloud.firestore {
 
     function isApprovedUser() {
       return request.auth != null && (
-        isMasterAdmin() ||
+        isAdmin() ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true)
       );
