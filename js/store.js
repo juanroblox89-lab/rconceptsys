@@ -18,7 +18,7 @@ class Store {
                 activeFormats: 12,
                 recentHooks: 45,
                 activeClients: 8,
-                monthlyInvoiced: 'COP 48.000.000'
+                activeAssignments: 3
             }
         };
         this.listeners = [];

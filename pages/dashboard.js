@@ -15,7 +15,7 @@ export const render = () => {
         createMetricCard('Formatos Activos', metrics?.activeFormats || 12, 'trending-up', 'var(--success)', '+2 esta semana'),
         createMetricCard('Hooks Documentados', metrics?.recentHooks || 45, 'zap', 'var(--warning)', 'Actualizado hoy'),
         createMetricCard('Clientes Activos', metrics?.activeClients || 8, 'users', 'var(--info)', '3 en grabación'),
-        createMetricCard('Presupuesto Operativo', metrics?.monthlyInvoiced || 'COP 48.000.000', 'credit-card', 'var(--text-primary)', 'Costos controlados')
+        createMetricCard('Asignaciones Activas', `${metrics?.activeAssignments || 3} Tareas`, 'clock', 'var(--info)', 'En producción')
     ]);
 
     // 2. Production Activity Table

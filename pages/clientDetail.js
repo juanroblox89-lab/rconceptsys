@@ -23,8 +23,33 @@ export const render = async (params) => {
             // Fix: Fallback to local clients for details if DB fetch fails/null
             if (!client) {
                 const localClients = [
-                    { id: 'gimnasio-elite', name: 'Gimnasio Elite', businessType: 'Salud y Deporte', description: 'Cadena de centros de acondicionamiento físico premium.' },
-                    { id: 'barberia-classic', name: 'Barbería Classic', businessType: 'Estética', description: 'Barbería tradicional.' }
+                    { 
+                        id: 'gimnasio-elite', 
+                        name: 'Gimnasio Elite', 
+                        businessType: 'Salud y Deporte', 
+                        description: 'Cadena de centros de acondicionamiento físico premium enfocada en alto rendimiento y comunidad.',
+                        logo: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=100&q=80',
+                        guionRecomendado: 'RC-01 - Recorrido POV: Mostrar la sala de fuerza, el sauna premium y los coaches.\nHK-04 - Reto 30 Días: Ofrecer un gancho directo al dolor de perder el año.',
+                        assignedFormats: ['RC-01: Recorrido Comercial', 'HK-04: Hook Impacto'],
+                        usedHooks: ['Problema-Solución', 'POV Curiosidad'],
+                        recommendedLinks: [
+                            { title: 'Carpeta de Material Bruto Drive', url: 'https://drive.google.com' },
+                            { title: 'Moodboard de Inspiración Pinterest', url: 'https://pinterest.com' }
+                        ]
+                    },
+                    { 
+                        id: 'barberia-classic', 
+                        name: 'Barbería Classic', 
+                        businessType: 'Estética y Cuidado Personal', 
+                        description: 'Barbería tradicional con enfoque en experiencia estética, cortes clásicos y cuidado de barba.',
+                        logo: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&q=80',
+                        guionRecomendado: 'ED-02 - Educativo Rápido: Mostrar cómo peinar el pompadour en casa paso a paso.',
+                        assignedFormats: ['ED-02: Educativo Rápido'],
+                        usedHooks: ['Sabías que?', 'Error común al peinar'],
+                        recommendedLinks: [
+                            { title: 'Carpeta de Assets Compartidos Drive', url: 'https://drive.google.com' }
+                        ]
+                    }
                 ];
                 client = localClients.find(c => c.id === id);
             }
@@ -76,6 +101,47 @@ export const render = async (params) => {
                         }, client.guionRecomendado || 'Documentar aquí las estructuras narrativas que mejor funcionan para este cliente...')
                     ]),
 
+                    // Links Recomendados de Referencia (Admin Dynamic List)
+                    h('section', { className: 'card p-6 flex-column gap-3' }, [
+                        h('div', { className: 'flex justify-between items-center mb-1' }, [
+                            h('div', { className: 'flex items-center gap-2' }, [
+                                icon('link', 16, 'text-warning'), 
+                                h('h3', { className: 'text-sm font-bold' }, 'Links Recomendados de Referencia')
+                            ]),
+                            isAdmin ? h('button', { 
+                                className: 'btn btn-primary text-xs',
+                                style: { padding: '4px 8px' },
+                                onClick: () => addRecommendedLink(client) 
+                            }, [icon('plus', 12), h('span', { className: 'ml-1' }, 'Añadir Link')]) : null
+                        ]),
+                        h('div', { className: 'flex-column gap-2' }, 
+                            (!client.recommendedLinks || !client.recommendedLinks.length) ? [
+                                h('div', { className: 'p-4 text-center text-xs text-muted italic bg-secondary rounded border', style: { borderStyle: 'dashed', borderRadius: '6px' } }, 'No hay links recomendados registrados aún.')
+                            ] :
+                            client.recommendedLinks.map((rl, idx) => h('div', { 
+                                key: idx, 
+                                className: 'p-3 bg-secondary rounded flex items-center justify-between border hover-bg-tertiary transition',
+                                style: { border: '1px solid var(--border)', borderRadius: '6px' }
+                            }, [
+                                h('a', { 
+                                    href: rl.url, 
+                                    target: '_blank', 
+                                    className: 'flex items-center gap-2 text-xs font-semibold text-primary hover-underline no-underline',
+                                    style: { color: 'inherit' }
+                                }, [
+                                    icon('external-link', 12, 'text-muted'),
+                                    h('span', {}, rl.title)
+                                ]),
+                                isAdmin ? h('button', { 
+                                    className: 'btn-icon text-error', 
+                                    style: { padding: '2px', width: '24px', height: '24px', borderRadius: '4px' },
+                                    title: 'Eliminar Link',
+                                    onClick: () => deleteRecommendedLink(client, idx) 
+                                }, [icon('trash-2', 12)]) : null
+                            ]))
+                        )
+                    ]),
+
                     // Connected Data: Active Assignments
                     h('section', { className: 'card p-6 flex-column gap-3' }, [
                         h('div', { className: 'flex justify-between items-center mb-1' }, [
@@ -93,7 +159,7 @@ export const render = async (params) => {
                         ]),
                         h('div', { className: 'card p-5' }, [
                             h('h4', { className: 'text-xs font-bold uppercase tracking-wider text-muted mb-3' }, 'Hooks Validados'),
-                            h('div', { className: 'flex gap-2 flex-wrap' }, (client.usedHooks || []).map(h => h('span', { className: 'badge badge-secondary text-xs' }, h)))
+                            h('div', { className: 'flex gap-2 flex-wrap' }, (client.usedHooks || []).map(hk => h('span', { className: 'badge badge-secondary text-xs' }, hk)))
                         ])
                     ])
                 ]),
@@ -192,6 +258,54 @@ export const render = async (params) => {
         ]);
         overlay.appendChild(form);
         document.body.appendChild(overlay);
+    };
+
+    const addRecommendedLink = (client) => {
+        const overlay = h('div', { className: 'modal-overlay' });
+        const form = h('form', { 
+            className: 'modal-container', 
+            onSubmit: async (e) => {
+                e.preventDefault();
+                const titleVal = form.querySelector('#link-title').value;
+                const urlVal = form.querySelector('#link-url').value;
+                
+                if (!client.recommendedLinks) client.recommendedLinks = [];
+                client.recommendedLinks.push({ title: titleVal, url: urlVal });
+                
+                await dbService.set('clients', client.id, client);
+                document.body.removeChild(overlay);
+                loadClient();
+            }
+        }, [
+            h('div', { className: 'modal-header' }, [
+                h('span', { className: 'modal-title' }, 'Añadir Link Recomendado'), 
+                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+            ]),
+            h('div', { className: 'modal-body flex-column gap-3' }, [
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Título o Nombre del Link'),
+                    h('input', { id: 'link-title', className: 'form-input', placeholder: 'Ej. Carpeta de Material Bruto Drive', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'URL del Link'),
+                    h('input', { id: 'link-url', type: 'url', className: 'form-input', placeholder: 'https://...', required: true })
+                ])
+            ]),
+            h('div', { className: 'modal-footer' }, [
+                h('button', { type: 'button', className: 'btn btn-outline', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'submit', className: 'btn btn-primary' }, 'Añadir Link')
+            ])
+        ]);
+        overlay.appendChild(form);
+        document.body.appendChild(overlay);
+    };
+
+    const deleteRecommendedLink = async (client, index) => {
+        if (confirm("¿Estás seguro de que deseas eliminar este link recomendado?")) {
+            client.recommendedLinks.splice(index, 1);
+            await dbService.set('clients', client.id, client);
+            loadClient();
+        }
     };
 
     loadClient();

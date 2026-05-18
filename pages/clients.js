@@ -23,6 +23,10 @@ let localClients = [
         assets: [
             { title: 'Logo Vectorial', url: '#', type: 'logo' },
             { title: 'Branding Guidelines', url: '#', type: 'reference' }
+        ],
+        recommendedLinks: [
+            { title: 'Carpeta de Material Bruto Drive', url: 'https://drive.google.com' },
+            { title: 'Moodboard de Inspiración Pinterest', url: 'https://pinterest.com' }
         ]
     },
     {
@@ -38,6 +42,9 @@ let localClients = [
         ],
         assets: [
             { title: 'Intro Animada', url: '#', type: 'video' }
+        ],
+        recommendedLinks: [
+            { title: 'Carpeta de Assets Compartidos Drive', url: 'https://drive.google.com' }
         ]
     }
 ];
@@ -185,7 +192,8 @@ export const render = () => {
                 usedHooks: hooksVal.length ? hooksVal : ['Problema-Solución'],
                 viralVideos: existingClient?.viralVideos || [],
                 assets: existingClient?.assets || [],
-                logo: existingClient?.logo || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=100&q=80'
+                logo: existingClient?.logo || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=100&q=80',
+                recommendedLinks: existingClient?.recommendedLinks || []
             };
 
             try {
