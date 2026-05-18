@@ -947,4 +947,27 @@ tr:hover td { background-color: var(--bg-secondary); }
     }
 }
 
+/* Table visible only on desktop/tablet */
+.billing-table-desktop {
+    display: none;
+}
+
+/* Cards visible only on mobile */
+.billing-cards-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+@media (min-width: 769px) {
+    .billing-table-desktop {
+        display: block;
+    }
+    .billing-cards-mobile {
+        display: none;
+    }
+}
+
+
 

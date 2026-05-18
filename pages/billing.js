@@ -53,8 +53,8 @@ export const render = () => {
                 h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: COP ${totalSum.toLocaleString()}`)
             ]),
 
-            // Table Grid Container
-            h('div', { className: 'overflow-x-auto w-full' }, [
+            // Table Grid Container (Desktop)
+            h('div', { className: 'overflow-x-auto w-full billing-table-desktop' }, [
                 h('table', { className: 'w-full text-xs text-left', style: { borderCollapse: 'collapse', minWidth: '700px' } }, [
                     h('thead', {}, [
                         h('tr', { style: { borderBottom: '2px solid var(--border)', background: 'var(--bg-tertiary)' } }, [
@@ -156,6 +156,102 @@ export const render = () => {
                     }))
                 ])
             ]),
+
+            // Mobile Card stack fallback (Mobile)
+            h('div', { className: 'billing-cards-mobile' }, itemsArray.length === 0 ? [
+                h('div', { className: 'text-xs text-muted italic p-6 text-center bg-tertiary rounded w-full' }, 'Sin cobros registrados en esta hoja de liquidación.')
+            ] : itemsArray.map((item, idx) => {
+                if (isEditable) {
+                    return h('div', { 
+                        className: 'p-4 rounded flex-column gap-3 border w-full',
+                        style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', borderRadius: '8px' }
+                    }, [
+                        h('div', { className: 'flex justify-between items-center border-bottom pb-2' }, [
+                            h('span', { className: 'font-bold text-xs text-primary' }, `Cobro #${idx + 1}`),
+                            h('button', {
+                                type: 'button',
+                                className: 'btn btn-outline text-xs p-1 flex items-center gap-1',
+                                style: { borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--error)', minHeight: 'auto', padding: '4px 8px' },
+                                onClick: () => {
+                                    itemsArray.splice(idx, 1);
+                                    drawDOM();
+                                }
+                            }, [icon('trash', 12), h('span', {}, 'Eliminar')])
+                        ]),
+                        h('div', { className: 'form-group' }, [
+                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Servicio Realizado'),
+                            h('select', { 
+                                className: 'form-select text-xs w-full',
+                                onChange: (e) => { item.type = e.target.value; }
+                            }, [
+                                h('option', { value: 'Factura de Edición de Video', selected: item.type === 'Factura de Edición de Video' }, 'Factura de Edición de Video'),
+                                h('option', { value: 'Factura de Grabación de Video', selected: item.type === 'Factura de Grabación de Video' }, 'Factura de Grabación de Video'),
+                                h('option', { value: 'Factura Consolidada', selected: item.type === 'Factura Consolidada' }, 'Factura Consolidada')
+                            ])
+                        ]),
+                        h('div', { className: 'form-group' }, [
+                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Cliente / Proyecto'),
+                            h('select', { 
+                                className: 'form-select text-xs w-full',
+                                onChange: (e) => { item.client = e.target.value; }
+                            }, [
+                                h('option', { value: 'General' }, '🌍 General / Otro'),
+                                ...clientsList.map(c => h('option', { value: c.nombre || c.name || c.id, selected: item.client === (c.nombre || c.name || c.id) }, c.nombre || c.name))
+                            ])
+                        ]),
+                        h('div', { className: 'form-group' }, [
+                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Monto (COP)'),
+                            h('input', { 
+                                type: 'number',
+                                className: 'form-input text-xs w-full font-bold',
+                                style: { color: 'var(--primary)' },
+                                value: item.amount || '',
+                                placeholder: 'Monto',
+                                onInput: (e) => { 
+                                    item.amount = Number(e.target.value) || 0; 
+                                    const totLabel = container.querySelector('#total-formula-bar');
+                                    if (totLabel) {
+                                        const newTotal = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+                                        totLabel.textContent = `=SUMA(Renglon_Cobros) | Monto Total de Liquidación: COP ${newTotal.toLocaleString()}`;
+                                    }
+                                }
+                            })
+                        ]),
+                        h('div', { className: 'form-group' }, [
+                            h('label', { className: 'form-label text-xs font-semibold text-secondary' }, 'Observaciones y Links'),
+                            h('input', { 
+                                type: 'text',
+                                className: 'form-input text-xs w-full',
+                                value: item.observations || '',
+                                placeholder: 'Observaciones...',
+                                onInput: (e) => { item.observations = e.target.value; }
+                            })
+                        ])
+                    ]);
+                } else {
+                    return h('div', { 
+                        className: 'p-4 rounded flex-column gap-2 border w-full',
+                        style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', borderRadius: '8px' }
+                    }, [
+                        h('div', { className: 'flex justify-between items-center border-bottom pb-1.5' }, [
+                            h('span', { className: 'font-bold text-xs text-primary' }, item.type || 'N/A'),
+                            h('span', { className: 'badge text-xs font-mono font-bold' }, `COP ${(item.amount || 0).toLocaleString()}`)
+                        ]),
+                        h('div', { className: 'flex justify-between text-xs mt-1' }, [
+                            h('span', { className: 'text-muted' }, 'Cliente:'),
+                            h('strong', { className: 'text-secondary' }, item.client || '🌍 General')
+                        ]),
+                        h('div', { className: 'flex justify-between text-xs' }, [
+                            h('span', { className: 'text-muted' }, 'Fecha:'),
+                            h('span', { className: 'text-secondary' }, item.createdAt ? new Date(item.createdAt).toLocaleDateString() : new Date().toLocaleDateString())
+                        ]),
+                        h('div', { className: 'flex-column gap-1 mt-1 border-top pt-1.5 text-xs' }, [
+                            h('span', { className: 'text-muted font-semibold' }, 'Observaciones y Enlaces:'),
+                            h('p', { className: 'text-secondary font-medium leading-relaxed' }, item.observations || 'Sin observaciones.')
+                        ])
+                    ]);
+                }
+            })),
 
             // Dynamic bottom row formula display
             h('div', { 
