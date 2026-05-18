@@ -20,15 +20,24 @@ export const render = () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
 
         try {
-            // Load complete dynamic agency context from Firestore
-            const [formats, hooks, clients, assignments, sopsList, metricsList] = await Promise.all([
+            // Load complete dynamic agency context from Firestore and user's persistent chat
+            const [formats, hooks, clients, assignments, sopsList, metricsList, savedChat] = await Promise.all([
                 dbService.getAll('formats'),
                 dbService.getAll('hooks'),
                 dbService.getAll('clients'),
                 assignmentService.getAllAssignments(),
                 dbService.getAll('sops').catch(() => []),
-                dbService.getAll('metrics').catch(() => [])
+                dbService.getAll('metrics').catch(() => []),
+                dbService.getById('chats', user?.uid).catch(() => null)
             ]);
+
+            if (savedChat && Array.isArray(savedChat.messages) && savedChat.messages.length > 0) {
+                activeConversation = savedChat.messages;
+            } else {
+                activeConversation = [
+                    { role: 'assistant', content: '¡Hola! Soy tu Copiloto Creativo AI. Ahora soy un **Agente Activo** con acceso en tiempo real a toda tu agencia. Pídeme crear SOPs, asignar tareas o actualizar métricas operativas directamente. ¿Qué marca o guión trabajamos hoy?' }
+                ];
+            }
 
             container.innerHTML = '';
 
@@ -188,6 +197,32 @@ export const render = () => {
 
                     if (!messageText) return;
 
+                    // Check daily rate limit (20 messages per day)
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    let dailyCount = 0;
+                    let lastDate = "";
+                    
+                    try {
+                        const chatSession = await dbService.getById('chats', user?.uid);
+                        if (chatSession) {
+                            dailyCount = chatSession.dailyCount || 0;
+                            lastDate = chatSession.lastMessageDate || "";
+                        }
+                    } catch (err) {
+                        console.warn("Could not check rate limit from db, using safety checks:", err);
+                    }
+
+                    if (lastDate === todayStr && dailyCount >= 20) {
+                        activeConversation.push({ role: 'user', content: messageText });
+                        activeConversation.push({
+                            role: 'assistant',
+                            content: `⚠️ **Límite diario alcanzado**: Has alcanzado tu límite de **20 mensajes diarios** para tu cuenta. Este límite se restablecerá mañana.`
+                        });
+                        textInput.value = '';
+                        renderChatFeed();
+                        return;
+                    }
+
                     textInput.value = '';
                     activeConversation.push({ role: 'user', content: messageText });
                     renderChatFeed();
@@ -216,11 +251,25 @@ export const render = () => {
                         type: 'button', 
                         className: 'btn btn-outline text-xs text-muted px-2',
                         title: 'Limpiar Conversación',
-                        onClick: () => {
+                        onClick: async () => {
                             activeConversation = [
                                 { role: 'assistant', content: 'Conversación reiniciada. Inyecta una orden o pídemelo de manera directa y comenzaremos.' }
                             ];
                             renderChatFeed();
+                            
+                            try {
+                                const chatSession = await dbService.getById('chats', user?.uid).catch(() => null);
+                                const dailyCount = chatSession ? (chatSession.dailyCount || 0) : 0;
+                                const lastDate = chatSession ? (chatSession.lastMessageDate || "") : "";
+                                await dbService.set('chats', user?.uid, {
+                                    messages: activeConversation,
+                                    dailyCount,
+                                    lastMessageDate: lastDate,
+                                    updatedAt: new Date().toISOString()
+                                });
+                            } catch(e) {
+                                console.warn("Failed to clear chat session in Firestore:", e);
+                            }
                         }
                     }, [icon('trash-2', 12)])
                 ])
@@ -230,6 +279,19 @@ export const render = () => {
             const executeAgentAction = async (action) => {
                 console.log("[Agent] Executing Action:", action);
                 try {
+                    // Check admin role for delicate actions (SOP creation and metrics modifications)
+                    if (action.type === 'create_sop' || action.type === 'update_metric') {
+                        if (user?.role !== 'admin') {
+                            console.warn("[Agent] Permission Denied: User is not an admin.");
+                            activeConversation.push({
+                                role: 'assistant',
+                                content: `⚠️ **Permiso Denegado**: Lo siento, pero no tienes permisos de administrador para crear o modificar procedimientos estándar (SOPs) o métricas. Solo los administradores pueden realizar estas operaciones.`
+                            });
+                            renderChatFeed();
+                            return;
+                        }
+                    }
+
                     if (action.type === 'create_sop') {
                         const id = `SOP-${Date.now().toString().slice(-4)}`;
                         const stepsArr = (action.payload.steps || []).map(text => ({ text, done: false }));
@@ -444,6 +506,27 @@ ${metricsList.map(m => `- Métrica: "${m.label}" | Valor: ${m.value} | Tipo: ${m
 
                     activeConversation.push({ role: 'assistant', content: text });
                     renderChatFeed();
+
+                    // Increment daily messages count and persist chat history to Firestore
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    let currentCount = 1;
+                    try {
+                        const chatSession = await dbService.getById('chats', user?.uid);
+                        if (chatSession && chatSession.lastMessageDate === todayStr) {
+                            currentCount = (chatSession.dailyCount || 0) + 1;
+                        }
+                    } catch(e) {}
+
+                    try {
+                        await dbService.set('chats', user?.uid, {
+                            messages: activeConversation,
+                            dailyCount: currentCount,
+                            lastMessageDate: todayStr,
+                            updatedAt: new Date().toISOString()
+                        });
+                    } catch (e) {
+                        console.warn("Could not save chat memory to Firestore:", e);
+                    }
 
                 } catch (err) {
                     typingIndicator.classList.add('hidden');
