@@ -76,10 +76,30 @@ DIRECTRICES OPERATIVAS PARA TUS RESPUESTAS:
 Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfocado al 100% en optimizar la producción.`;
 
         // ==========================================
-        // 4-TIER MODEL FALLBACK PIPELINE
+        // 3-TIER MODEL FALLBACK PIPELINE
         // ==========================================
         let response;
         let lastErrorText = "";
+
+        const isModelError = (status, errorText) => {
+            const msg = errorText?.toLowerCase() || "";
+            return status === 404 || msg.includes("model") || msg.includes("not_found") || msg.includes("unsupported");
+        };
+
+        const extractErrorText = async (res) => {
+            try {
+                const clone = res.clone();
+                const errData = await clone.json();
+                return errData.error?.message || "";
+            } catch (e) {
+                try {
+                    const text = await res.clone().text();
+                    return text || res.statusText || "";
+                } catch (err) {
+                    return res.statusText || "";
+                }
+            }
+        };
 
         // Tier 1: Claude 3.5 Sonnet v2 (Ideal)
         console.log("Attempting Tier 1: Claude 3.5 Sonnet v2...");
@@ -100,100 +120,58 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
 
         // Tier 2: Claude 3.5 Sonnet v1
         if (!response.ok) {
-            const errClone = response.clone();
-            try {
-                const errData = await errClone.json();
-                lastErrorText = errData.error?.message || "";
-                console.warn("Tier 1 (Sonnet v2) failed. Reason:", lastErrorText);
+            lastErrorText = await extractErrorText(response);
+            console.warn("Tier 1 (Sonnet v2) failed. Reason:", lastErrorText);
 
-                if (lastErrorText.includes("model") || response.status === 404 || response.status === 400) {
-                    console.log("Attempting Tier 2: Claude 3.5 Sonnet v1...");
-                    response = await fetch("https://api.anthropic.com/v1/messages", {
-                        method: "POST",
-                        headers: {
-                            "x-api-key": anthropicKey,
-                            "anthropic-version": "2023-06-01",
-                            "content-type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            model: "claude-3-5-sonnet-20240620",
-                            max_tokens: 3000,
-                            system: systemPrompt,
-                            messages: apiMessages
-                        })
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to parse Tier 1 error:", e);
+            if (isModelError(response.status, lastErrorText)) {
+                console.log("Attempting Tier 2: Claude 3.5 Sonnet v1...");
+                response = await fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST",
+                    headers: {
+                        "x-api-key": anthropicKey,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "claude-3-5-sonnet-20240620",
+                        max_tokens: 3000,
+                        system: systemPrompt,
+                        messages: apiMessages
+                    })
+                });
             }
         }
 
         // Tier 3: Claude 3.5 Haiku (Affordable and highly active)
         if (!response.ok) {
-            const errClone = response.clone();
-            try {
-                const errData = await errClone.json();
-                lastErrorText = errData.error?.message || "";
-                console.warn("Tier 2 (Sonnet v1) failed. Reason:", lastErrorText);
+            lastErrorText = await extractErrorText(response);
+            console.warn("Previous tier failed. Reason:", lastErrorText);
 
-                if (lastErrorText.includes("model") || response.status === 404 || response.status === 400) {
-                    console.log("Attempting Tier 3: Claude 3.5 Haiku...");
-                    response = await fetch("https://api.anthropic.com/v1/messages", {
-                        method: "POST",
-                        headers: {
-                            "x-api-key": anthropicKey,
-                            "anthropic-version": "2023-06-01",
-                            "content-type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            model: "claude-3-5-haiku-20241022",
-                            max_tokens: 3000,
-                            system: systemPrompt,
-                            messages: apiMessages
-                        })
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to parse Tier 2 error:", e);
-            }
-        }
-
-        // Tier 4: Claude 3 Haiku (Universally enabled on all tiers including free)
-        if (!response.ok) {
-            const errClone = response.clone();
-            try {
-                const errData = await errClone.json();
-                lastErrorText = errData.error?.message || "";
-                console.warn("Tier 3 (Claude 3.5 Haiku) failed. Reason:", lastErrorText);
-
-                if (lastErrorText.includes("model") || response.status === 404 || response.status === 400) {
-                    console.log("Attempting Tier 4: Claude 3 Haiku...");
-                    response = await fetch("https://api.anthropic.com/v1/messages", {
-                        method: "POST",
-                        headers: {
-                            "x-api-key": anthropicKey,
-                            "anthropic-version": "2023-06-01",
-                            "content-type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            model: "claude-3-haiku-20240307",
-                            max_tokens: 3000,
-                            system: systemPrompt,
-                            messages: apiMessages
-                        })
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to parse Tier 3 error:", e);
+            if (isModelError(response.status, lastErrorText)) {
+                console.log("Attempting Tier 3: Claude 3.5 Haiku...");
+                response = await fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST",
+                    headers: {
+                        "x-api-key": anthropicKey,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "claude-3-5-haiku-20241022",
+                        max_tokens: 3000,
+                        system: systemPrompt,
+                        messages: apiMessages
+                    })
+                });
             }
         }
 
         // Final response handling with error translator
         if (!response.ok) {
-            const errData = await response.json();
-            console.error("Anthropic API Pipeline Final Failure:", errData);
+            lastErrorText = await extractErrorText(response);
+            console.error("Anthropic API Pipeline Final Failure:", lastErrorText);
             
-            let errMsg = errData.error?.message || 'Error al comunicarse con la API de Claude.';
+            let errMsg = lastErrorText || 'Error al comunicarse con la API de Claude.';
 
             // User-friendly credit balance check
             if (errMsg.includes("credit_balance_zero") || errMsg.includes("billing") || errMsg.includes("credit") || errMsg.includes("balance")) {
