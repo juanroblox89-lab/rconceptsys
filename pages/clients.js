@@ -52,32 +52,73 @@ export const render = () => {
             return;
         }
 
-        // 2. Clients Grid Layout
-        const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' } }, 
+        // 2. Clients Horizontal Layout
+        const grid = h('div', { className: 'flex-column gap-2 w-full mt-2' }, 
             clientsList.map(c => {
-                return h('div', { key: c.id, className: 'card flex-column gap-3 p-5 relative' }, [
-                    // Top identity header
-                    h('div', { className: 'flex items-start justify-between gap-3 border-bottom pb-3' }, [
-                        h('div', { className: 'flex items-center gap-3' }, [
-                            c.logo ? h('img', { src: c.logo, style: { width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border)' } }) :
-                            h('div', { className: 'glass flex items-center justify-center font-bold text-accent text-sm', style: { width: '48px', height: '48px', borderRadius: '8px' } }, c.name.slice(0,2).toUpperCase()),
-                            h('div', {}, [
-                                h('h3', { className: 'text-sm font-bold text-primary' }, c.name),
-                                h('span', { className: 'badge badge-secondary text-xs mt-1', style: { fontSize: '0.65rem' } }, c.businessType || 'General')
-                            ])
-                        ]),
-                        isAdmin ? h('div', { className: 'flex gap-1' }, [
+                return h('div', { 
+                    key: c.id, 
+                    className: 'card hover-bg-secondary transition relative flex gap-3 items-center justify-between p-3 flex-wrap', 
+                    style: { 
+                        display: 'flex',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '10px 16px',
+                        gap: '16px'
+                    }
+                }, [
+                    // Identity section (left)
+                    h('div', { className: 'flex items-center gap-3', style: { flex: '1 1 200px', minWidth: '180px' } }, [
+                        c.logo ? h('img', { src: c.logo, style: { width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--border)' } }) :
+                        h('div', { className: 'glass flex items-center justify-center font-bold text-accent text-xs', style: { width: '36px', height: '36px', borderRadius: '6px' } }, c.name.slice(0,2).toUpperCase()),
+                        h('div', { className: 'flex-column' }, [
+                            h('h3', { className: 'text-xs font-bold text-primary', style: { margin: 0 } }, c.name),
+                            h('span', { className: 'text-muted mt-0.5', style: { fontSize: '0.65rem', fontWeight: '500' } }, c.businessType || 'General')
+                        ])
+                    ]),
+
+                    // Strategy/Description section (middle)
+                    h('div', { className: 'flex items-center gap-4', style: { flex: '2 1 300px', minWidth: '240px', justifyContent: 'space-between' } }, [
+                        h('p', { 
+                            className: 'text-xs text-muted', 
+                            style: { 
+                                margin: 0, 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis', 
+                                whiteSpace: 'nowrap', 
+                                maxWidth: '300px' 
+                            } 
+                        }, c.description || 'Sin descripción estratégica.'),
+                        
+                        h('div', { className: 'flex gap-1.5' }, [
+                            h('span', { className: 'badge badge-info text-xs font-normal', style: { fontSize: '0.6rem', padding: '2px 6px' } }, `${c.assignedFormats?.length || 0} Formatos`),
+                            h('span', { className: 'badge badge-secondary text-xs font-normal', style: { fontSize: '0.6rem', padding: '2px 6px' } }, `${c.usedHooks?.length || 0} Hooks`)
+                        ])
+                    ]),
+
+                    // Actions section (right)
+                    h('div', { className: 'flex items-center gap-2', style: { flex: '0 0 auto' } }, [
+                        h('button', { 
+                            className: 'btn btn-outline text-xs flex items-center gap-1',
+                            style: { padding: '4px 8px', height: '28px' },
+                            onClick: () => window.location.hash = `#client/${c.id}`
+                        }, [icon('external-link', 11), h('span', {}, 'Estrategia')]),
+                        
+                        isAdmin ? h('div', { className: 'flex gap-0.5' }, [
                             h('button', { 
-                                className: 'btn-icon text-xs', 
-                                style: { width: '28px', height: '28px' }, 
+                                className: 'btn-icon text-accent', 
+                                style: { width: '26px', height: '26px', padding: '3px' }, 
                                 title: 'Editar Cliente',
                                 onClick: () => openCreateClientModal(c) 
-                            }, [icon('edit', 14)]),
+                            }, [icon('edit-3', 11)]),
                             h('button', { 
-                                className: 'btn-icon text-xs text-error', 
-                                style: { width: '28px', height: '28px' }, 
+                                className: 'btn-icon text-error', 
+                                style: { width: '26px', height: '26px', padding: '3px' }, 
                                 title: 'Eliminar Cliente',
-                                onClick: async () => {
+                                onClick: async (e) => {
+                                    e.stopPropagation();
                                     if (confirm(`¿Estás seguro de eliminar a ${c.name}?`)) {
                                         try {
                                             await dbService.delete('clients', c.id);
@@ -87,72 +128,9 @@ export const render = () => {
                                         }
                                     }
                                 } 
-                            }, [icon('trash-2', 14)])
+                            }, [icon('trash-2', 11)])
                         ]) : null
-                    ]),
-
-                    // Description
-                    h('p', { className: 'text-xs text-muted leading-relaxed' }, c.description || 'Sin descripción estratégica disponible.'),
-
-                    // Formats & Hooks Badges
-                    h('div', { className: 'flex-column gap-1 mt-1' }, [
-                        h('span', { className: 'text-xs font-semibold text-secondary' }, 'Formatos Asignados:'),
-                        h('div', { className: 'flex gap-1 flex-wrap mt-1' }, (c.assignedFormats || []).map(f => h('span', { className: 'badge badge-info text-xs font-normal' }, f)))
-                    ]),
-
-                    h('div', { className: 'flex-column gap-1' }, [
-                        h('span', { className: 'text-xs font-semibold text-secondary' }, 'Hooks Documentados:'),
-                        h('div', { className: 'flex gap-1 flex-wrap mt-1' }, (c.usedHooks || []).map(hk => h('span', { className: 'badge badge-secondary text-xs font-normal' }, hk)))
-                    ]),
-
-                    // Viral Videos embeds section (Admin manual insert logic support)
-                    h('div', { className: 'flex-column gap-2 mt-2 pt-2 border-top' }, [
-                        h('div', { className: 'flex justify-between items-center' }, [
-                            h('span', { className: 'text-xs font-bold text-primary flex items-center gap-1' }, [icon('trending-up', 14, 'text-success'), h('span', {}, 'Videos Virales Registrados:')]),
-                            isAdmin ? h('button', { 
-                                className: 'text-xs text-info font-bold flex items-center gap-1',
-                                title: 'Añadir Enlace Viral',
-                                onClick: () => openAddViralVideoModal(c) 
-                            }, '+ Añadir Link') : null
-                        ]),
-                        h('div', { className: 'flex-column gap-1 mt-1' }, 
-                            (!c.viralVideos || !c.viralVideos.length) ? [h('span', { className: 'text-xs text-muted italic' }, 'Sin videos virales insertados aún.')] :
-                            c.viralVideos.map((vv, idx) => h('a', { 
-                                key: idx, 
-                                href: vv.url, 
-                                target: '_blank', 
-                                className: 'p-2 bg-secondary border-radius-sm flex items-center justify-between text-xs hover-bg-tertiary transition', 
-                                style: { border: '1px solid var(--border)', borderRadius: '4px', textDecoration: 'none', color: 'inherit' } 
-                            }, [
-                                h('div', { className: 'flex items-center gap-2' }, [
-                                    h('span', { className: `badge ${vv.platform === 'TikTok' ? 'badge-error' : (vv.platform === 'Instagram' ? 'badge-warning' : 'badge-info')} text-xs`, style: { fontSize: '0.55rem' } }, vv.platform),
-                                    h('span', { className: 'text-xs font-medium text-primary', style: { maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, vv.title)
-                                    ]),
-                                icon('external-link', 12, 'text-muted')
-                            ]))
-                        )
-                    ]),
-
-                    // Storage Connected Assets Box
-                    h('div', { className: 'flex-column gap-2 mt-1 pt-2 border-top' }, [
-                        h('div', { className: 'flex justify-between items-center' }, [
-                            h('span', { className: 'text-xs font-bold text-secondary flex items-center gap-1' }, [icon('hard-drive', 14), h('span', {}, 'Assets en Storage:')]),
-                            isAdmin ? h('button', { 
-                                className: 'text-xs text-accent font-bold',
-                                onClick: () => alert("Sube assets directamente desde el apartado 'Subida Dinámica a Storage' en el Panel Admin.") 
-                            }, 'Gestionar') : null
-                        ]),
-                        h('div', { className: 'flex gap-1 flex-wrap mt-1' }, 
-                            (!c.assets || !c.assets.length) ? [h('span', { className: 'text-xs text-muted italic' }, 'Sin assets guardados en Storage.')] :
-                            c.assets.map((as, idx) => h('span', { key: idx, className: 'badge badge-secondary text-xs font-normal flex items-center gap-1' }, [icon(as.type === 'video' ? 'video' : 'image', 10), h('span', {}, as.title)]))
-                        )
-                    ]),
-
-                    // Link to Detail View
-                    h('button', { 
-                        className: 'btn btn-outline w-full mt-2 text-xs py-2',
-                        onClick: () => window.location.hash = `#client/${c.id}`
-                    }, [icon('external-link', 12), h('span', {}, 'Ver Estrategia Detallada')])
+                    ])
                 ]);
             })
         );

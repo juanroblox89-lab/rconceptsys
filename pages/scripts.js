@@ -1,7 +1,7 @@
 /**
  * Scripts Page - Creative Production OS
  * Notion Light UI presenting recommended scripts/copies, search filters, and copy controls.
- * Only editable by Admins.
+ * Only editable by Admins. Simplified: Only uses Client, Script and Recommendations fields.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
@@ -10,24 +10,21 @@ import { store } from '../js/store.js';
 let localScriptsCache = [
     { 
         id: 'SCR-001', 
-        title: 'Gancho de Curiosidad - Producto Físico', 
-        category: 'Ganchos', 
+        client: 'Gimnasio Elite', 
         script: '[0-3s] Gancho: "El mayor error al lavar tu rostro por las mañanas..."\n\n[3-10s] Desarrollo: "La mayoría usa jabón común que reseca la piel. Mira lo que pasa cuando usas este serum hidratante premium..."\n\n[10-15s] CTA: "Consigue el tuyo con 15% de descuento en el link de abajo."', 
-        notes: 'Grabar tomas macro del producto y la textura del serum. Subtítulos dinámicos de color amarillo y blanco.' 
+        recommendations: 'Grabar tomas macro del producto y la textura del serum. Subtítulos dinámicos de color amarillo y blanco.' 
     },
     { 
         id: 'SCR-002', 
-        title: 'Comparativa Directa - Marca Personal', 
-        category: 'Comparativas', 
+        client: 'Barbería Classic', 
         script: '[0-3s] Gancho: "No compres un curso de edición de video sin antes saber esto..."\n\n[3-10s] Desarrollo: "La mayoría te enseña herramientas aburridas. Nosotros te enseñamos retención psicológica real y cómo cobrar $1,000 USD al mes..."\n\n[10-15s] CTA: "Haz clic abajo y regístrate a la clase gratuita."', 
-        notes: 'Grabar cara a cámara con buena iluminación. Usar zoom-in/zoom-out rápidos para mantener dinamismo.' 
+        recommendations: 'Grabar cara a cámara con buena iluminación. Usar zoom-in/zoom-out rápidos para mantener dinamismo.' 
     },
     { 
         id: 'SCR-003', 
-        title: 'POV Descriptivo - Lanzamiento de App', 
-        category: 'Orgánicos', 
+        client: 'App Móvil Organízate', 
         script: '[0-3s] Gancho: "POV: Encontraste la app que organiza tu día en 5 minutos..."\n\n[3-10s] Desarrollo: "Ya no uso agendas aburridas. Esta app sincroniza mis tareas y me premia por completarlas..."\n\n[10-15s] CTA: "Descarga gratis con el enlace de mi perfil."', 
-        notes: 'Tomas naturales de una persona usando el celular en la cama o el escritorio. Música ambiental y relajada.' 
+        recommendations: 'Tomas naturales de una persona usando el celular en la cama o el escritorio. Música ambiental y relajada.' 
     }
 ];
 
@@ -36,7 +33,6 @@ export const render = () => {
     const isAdmin = user?.role === 'admin';
     const container = h('div', { className: 'fade-in flex-column gap-4' });
 
-    let activeFilter = 'Todos';
     let searchQuery = '';
     let scriptsList = [];
 
@@ -60,7 +56,7 @@ export const render = () => {
         // 1. Header
         const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
             h('div', {}, [
-                h('h1', {}, 'Biblioteca de Guiones Recomendados'),
+                h('h1', {}, 'Guiones Recomendados'),
                 h('p', { className: 'text-xs text-muted mt-1' }, 'Copies ganadores y estructuras narrativas virales validadas, listos para duplicar y adaptar.')
             ]),
             h('div', { className: 'flex gap-2' }, [
@@ -71,41 +67,28 @@ export const render = () => {
             ])
         ]);
 
-        // 2. Search & Category Filters Row
+        // 2. Search Box
         const searchInput = h('input', {
             type: 'text',
             className: 'form-input text-xs',
-            placeholder: 'Buscar por título, contenido o notas...',
+            placeholder: 'Buscar por cliente, guión o recomendaciones...',
             value: searchQuery,
-            style: { maxWidth: '280px', height: '36px' },
+            style: { maxWidth: '320px', height: '36px' },
             onInput: (e) => {
                 searchQuery = e.target.value.toLowerCase();
                 applyFiltersAndRenderGrid();
             }
         });
 
-        const categories = ['Todos', 'Ganchos', 'Comparativas', 'Orgánicos', 'Educativos', 'Pauta'];
-        const filterBar = h('div', { className: 'flex gap-1 flex-wrap' }, categories.map(cat => {
-            const isActive = cat === activeFilter;
-            return h('button', {
-                className: `btn text-xs ${isActive ? 'btn-primary' : 'btn-outline'}`,
-                style: { padding: '6px 12px', height: '36px' },
-                onClick: () => {
-                    activeFilter = cat;
-                    applyFiltersAndRenderGrid();
-                }
-            }, cat);
-        }));
-
         const controlsRow = h('div', { 
             className: 'flex justify-between items-center gap-3 mb-4 w-full flex-wrap',
             style: { padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }
         }, [
-            h('div', { className: 'flex items-center gap-2' }, [
+            h('div', { className: 'flex items-center gap-2', style: { flex: 1 } }, [
                 icon('search', 14, 'text-muted'),
                 searchInput
             ]),
-            filterBar
+            h('span', { className: 'text-xs text-muted font-medium' }, 'Solo editables por administradores')
         ]);
 
         // Grid Container Placeholder
@@ -126,18 +109,17 @@ export const render = () => {
 
         // Filter and Search logic
         const filtered = scriptsList.filter(s => {
-            const matchesCat = activeFilter === 'Todos' || s.category === activeFilter;
             const matchesSearch = !searchQuery || 
-                (s.title || '').toLowerCase().includes(searchQuery) || 
+                (s.client || '').toLowerCase().includes(searchQuery) || 
                 (s.script || '').toLowerCase().includes(searchQuery) ||
-                (s.notes || '').toLowerCase().includes(searchQuery);
-            return matchesCat && matchesSearch;
+                (s.recommendations || '').toLowerCase().includes(searchQuery);
+            return matchesSearch;
         });
 
         if (filtered.length === 0) {
             gridContainer.appendChild(h('div', { className: 'text-center p-10 card flex-column items-center justify-center gap-3', style: { border: '1px dashed var(--border)' } }, [
                 icon('file-text', 28, 'text-muted'),
-                h('span', { className: 'text-xs font-bold text-muted' }, 'No se encontraron guiones que coincidan con los filtros actuales.')
+                h('span', { className: 'text-xs font-bold text-muted' }, 'No se encontraron guiones que coincidan con la búsqueda.')
             ]));
             return;
         }
@@ -156,8 +138,8 @@ export const render = () => {
             // Top Bar
             h('div', { className: 'flex justify-between items-center' }, [
                 h('div', { className: 'flex items-center gap-1.5' }, [
-                    h('span', { className: 'badge badge-info text-xs font-bold' }, s.id),
-                    h('span', { className: 'badge badge-secondary text-xs font-normal' }, s.category || 'General')
+                    h('span', { className: 'badge badge-info text-xs font-bold' }, s.id || 'SCR'),
+                    h('span', { className: 'badge badge-secondary text-xs font-normal' }, 'Estrategia Recomendada')
                 ]),
                 isAdmin ? h('div', { className: 'flex gap-1' }, [
                     h('button', { 
@@ -175,7 +157,8 @@ export const render = () => {
 
             // Content
             h('div', { className: 'flex-column gap-1' }, [
-                h('h3', { className: 'text-sm font-bold text-primary truncate' }, s.title),
+                h('div', { className: 'text-xs text-muted uppercase tracking-wider font-semibold', style: { fontSize: '0.6rem' } }, 'Cliente'),
+                h('h3', { className: 'text-sm font-bold text-primary mb-1' }, s.client),
                 
                 // Script Code Container
                 h('div', { 
@@ -205,13 +188,16 @@ export const render = () => {
                 ])
             ]),
 
-            // Footer Tips
-            s.notes ? h('div', { 
+            // Footer Recommendations
+            s.recommendations ? h('div', { 
                 className: 'p-3 bg-secondary flex gap-2 items-start mt-1', 
                 style: { borderRadius: '4px', borderLeft: '3px solid var(--accent)' } 
             }, [
                 icon('info', 13, 'text-accent mt-0.5'),
-                h('p', { className: 'text-xs text-muted leading-relaxed italic m-0', style: { fontSize: '0.7rem' } }, s.notes)
+                h('div', { className: 'flex-column gap-0.5' }, [
+                    h('span', { className: 'text-xs uppercase tracking-wider font-bold text-primary', style: { fontSize: '0.55rem', color: 'var(--text-secondary)' } }, 'Recomendaciones'),
+                    h('p', { className: 'text-xs text-muted leading-relaxed italic m-0', style: { fontSize: '0.7rem' } }, s.recommendations)
+                ])
             ]) : null
         ]);
     };
@@ -221,22 +207,21 @@ export const render = () => {
         
         const saveScriptFlow = async (e) => {
             e.preventDefault();
-            const idVal = form.querySelector('#sc-id').value.trim();
-            const titleVal = form.querySelector('#sc-title').value.trim();
-            const catVal = form.querySelector('#sc-cat').value;
+            const clientVal = form.querySelector('#sc-client').value.trim();
             const scriptVal = form.querySelector('#sc-script').value.trim();
-            const notesVal = form.querySelector('#sc-notes').value.trim();
+            const recVal = form.querySelector('#sc-rec').value.trim();
+
+            const scriptId = editingScript ? editingScript.id : `SCR-${Date.now().toString().slice(-3)}`;
 
             const newScript = {
-                id: idVal,
-                title: titleVal,
-                category: catVal,
+                id: scriptId,
+                client: clientVal,
                 script: scriptVal,
-                notes: notesVal
+                recommendations: recVal
             };
 
             try {
-                await dbService.set('scripts', idVal, newScript);
+                await dbService.set('scripts', scriptId, newScript);
             } catch (err) {
                 console.warn("Failed to write to Firestore, applying to local cache:", err);
             }
@@ -257,53 +242,34 @@ export const render = () => {
                 h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
-                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
-                    h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label' }, 'Código / ID'),
-                        h('input', { 
-                            id: 'sc-id', 
-                            className: 'form-input', 
-                            placeholder: 'Ej. SCR-004', 
-                            required: true,
-                            value: editingScript ? editingScript.id : `SCR-${Date.now().toString().slice(-3)}`,
-                            disabled: !!editingScript
-                        })
-                    ]),
-                    h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label' }, 'Categoría'),
-                        h('select', { id: 'sc-cat', className: 'form-input', style: { height: '38px' } }, [
-                            'Ganchos', 'Comparativas', 'Orgánicos', 'Educativos', 'Pauta'
-                        ].map(cat => h('option', { value: cat, selected: editingScript?.category === cat }, cat)))
-                    ])
-                ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Título descriptivo'),
+                    h('label', { className: 'form-label' }, 'Cliente'),
                     h('input', { 
-                        id: 'sc-title', 
+                        id: 'sc-client', 
                         className: 'form-input', 
-                        placeholder: 'Ej. Gancho de Retención para Infoproductos', 
+                        placeholder: 'Ej. Gimnasio Elite', 
                         required: true,
-                        value: editingScript ? editingScript.title : ''
+                        value: editingScript ? editingScript.client : ''
                     })
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Estructura / Cuerpo del Guión'),
+                    h('label', { className: 'form-label' }, 'Guión (Cuerpo del Copy)'),
                     h('textarea', { 
                         id: 'sc-script', 
                         className: 'form-textarea font-mono text-xs', 
                         placeholder: '[0-3s] Gancho: "..."\n[3-10s] Desarrollo: "..."\n[10-15s] CTA: "..."', 
                         required: true, 
-                        rows: 6
+                        rows: 7
                     }, editingScript ? editingScript.script : '')
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Consejos de Edición o Grabación'),
+                    h('label', { className: 'form-label' }, 'Recomendaciones de Grabación y Edición'),
                     h('textarea', { 
-                        id: 'sc-notes', 
+                        id: 'sc-rec', 
                         className: 'form-textarea text-xs', 
-                        placeholder: 'Ej. Usar transiciones rápidas de zoom, incluir efectos de sonido...', 
-                        rows: 3
-                    }, editingScript ? editingScript.notes : '')
+                        placeholder: 'Ej. Tomas en primer plano, efectos de sonido de impacto, ritmo dinámico...', 
+                        rows: 4
+                    }, editingScript ? editingScript.recommendations : '')
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
@@ -318,7 +284,7 @@ export const render = () => {
     };
 
     const deleteScriptFlow = async (s) => {
-        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el guión "${s.title}"?`)) return;
+        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el guión de "${s.client}"?`)) return;
 
         try {
             await dbService.delete('scripts', s.id);
