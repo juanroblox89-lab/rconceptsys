@@ -242,18 +242,29 @@ export const render = () => {
                     h('h4', { className: 'text-xs font-bold text-accent' }, s.title || 'Guión General'),
                     h('span', { className: 'text-muted', style: { fontSize: '0.6rem' } }, `ID: ${s.id || 'SCR'}`)
                 ]),
-                isAdmin ? h('div', { className: 'flex gap-1' }, [
+                h('div', { className: 'flex gap-1 items-center' }, [
                     h('button', { 
+                        className: 'btn-icon text-muted', 
+                        style: { width: '20px', height: '20px', title: 'Copiar Guión' },
+                        onClick: (e) => {
+                            navigator.clipboard.writeText(s.content || s.script || '');
+                            const btn = e.currentTarget;
+                            const originalHTML = btn.innerHTML;
+                            btn.innerHTML = icon('check', 11).outerHTML;
+                            setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
+                        }
+                    }, [icon('copy', 11)]),
+                    isAdmin ? h('button', { 
                         className: 'btn-icon text-accent', 
                         style: { width: '20px', height: '20px' },
                         onClick: () => openScriptModal(s, { clients: clientsList })
-                    }, [icon('edit-3', 11)]),
-                    h('button', { 
+                    }, [icon('edit-3', 11)]) : null,
+                    isAdmin ? h('button', { 
                         className: 'btn-icon text-error', 
                         style: { width: '20px', height: '20px' },
                         onClick: () => deleteScriptFlow(s)
-                    }, [icon('trash-2', 11)])
-                ]) : null
+                    }, [icon('trash-2', 11)]) : null
+                ].filter(Boolean))
             ]),
 
             // Copy box
@@ -261,20 +272,10 @@ export const render = () => {
                 className: 'p-3 bg-tertiary rounded relative flex-column mt-1', 
                 style: { border: '1px solid var(--border)', borderRadius: '4px' } 
             }, [
-                h('button', {
-                    className: 'btn btn-outline text-xs',
-                    style: { position: 'absolute', top: '6px', right: '6px', padding: '3px 6px', fontSize: '0.65rem' },
-                    onClick: (e) => {
-                        navigator.clipboard.writeText(s.script);
-                        const btn = e.currentTarget;
-                        btn.innerHTML = '¡Copiado!';
-                        setTimeout(() => { btn.innerHTML = 'Copiar'; }, 1500);
-                    }
-                }, 'Copiar'),
                 h('pre', { 
                     className: 'text-xs font-mono text-secondary leading-relaxed',
-                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '120px', overflowY: 'auto' }
-                }, s.script)
+                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }
+                }, s.content || s.script || 'Sin contenido')
             ]),
 
             // Recs box
@@ -295,9 +296,22 @@ export const render = () => {
 
         return h('div', { className: 'card p-4 flex-column gap-2 hover-border transition bg-secondary relative' }, [
             h('div', { className: 'flex justify-between items-start flex-wrap gap-1' }, [
-                h('div', {}, [
-                    h('h4', { className: 'text-xs font-bold text-primary' }, asg.title),
-                    h('span', { className: `badge badge-${statusClass} mt-1 text-xs`, style: { fontSize: '0.55rem', padding: '1px 5px' } }, asg.status)
+                h('div', { className: 'flex items-center gap-2' }, [
+                    h('div', {}, [
+                        h('h4', { className: 'text-xs font-bold text-primary' }, asg.title),
+                        h('span', { className: `badge badge-${statusClass} mt-1 text-xs`, style: { fontSize: '0.55rem', padding: '1px 5px' } }, asg.status)
+                    ]),
+                    h('button', { 
+                        className: 'btn-icon text-muted', 
+                        style: { width: '20px', height: '20px', title: 'Copiar Tarea' },
+                        onClick: (e) => {
+                            navigator.clipboard.writeText(asg.linkedScript || asg.description || '');
+                            const btn = e.currentTarget;
+                            const originalHTML = btn.innerHTML;
+                            btn.innerHTML = icon('check', 11).outerHTML;
+                            setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
+                        }
+                    }, [icon('copy', 11)])
                 ]),
                 h('div', { className: 'text-right' }, [
                     h('span', { className: 'text-muted block', style: { fontSize: '0.65rem' } }, `Encargado: ${empName}`),
@@ -310,19 +324,9 @@ export const render = () => {
                 className: 'p-3 bg-tertiary rounded relative flex-column mt-1', 
                 style: { border: '1px solid var(--border)', borderRadius: '4px' } 
             }, [
-                h('button', {
-                    className: 'btn btn-outline text-xs',
-                    style: { position: 'absolute', top: '6px', right: '6px', padding: '3px 6px', fontSize: '0.65rem' },
-                    onClick: (e) => {
-                        navigator.clipboard.writeText(asg.linkedScript || asg.description);
-                        const btn = e.currentTarget;
-                        btn.innerHTML = '¡Copiado!';
-                        setTimeout(() => { btn.innerHTML = 'Copiar'; }, 1500);
-                    }
-                }, 'Copiar'),
                 h('pre', { 
                     className: 'text-xs font-mono text-secondary leading-relaxed',
-                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '100px', overflowY: 'auto' }
+                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '100px', overflowY: 'auto', paddingRight: '4px' }
                 }, asg.linkedScript || asg.description)
             ]) : null,
 

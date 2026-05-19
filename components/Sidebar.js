@@ -23,7 +23,7 @@ const secondaryNavItems = [
     { href: '#sops',         icon: 'check-square',      label: 'SOPs' },
     { href: '#references',   icon: 'bookmark',          label: 'Referencias' },
     { href: '#ai-assistant', icon: 'sparkles',          label: 'AI Assistant' },
-    { href: '#admin',        icon: 'shield-check',      label: 'Admin', adminOnly: true },
+    { href: '#admin',        icon: 'users-cog',      label: 'Workers', adminOnly: true },
 ];
 
 const createNavItem = ({ href, icon: iconName, label, adminOnly }) => {

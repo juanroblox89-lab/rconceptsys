@@ -112,16 +112,17 @@ export const render = async (params) => {
                         h('p', { className: 'text-sm text-muted leading-relaxed' }, client.description || 'Sin descripción detallada.')
                     ]),
 
-                    // Guión Recomendado (Admin Editable)
+                    // Guión Recomendado → Redirect to Scripts page
                     h('section', { className: 'card p-6 flex-column gap-3' }, [
                         h('div', { className: 'flex justify-between items-center mb-1' }, [
-                            h('div', { className: 'flex items-center gap-2' }, [icon('file-text', 16, 'text-success'), h('h3', { className: 'text-sm font-bold' }, 'Guión Recomendado')]),
-                            isAdmin ? h('span', { className: 'text-xs text-info font-bold cursor-pointer', onClick: () => editGuion(client) }, 'Editar') : null
+                            h('div', { className: 'flex items-center gap-2' }, [icon('file-text', 16, 'text-success'), h('h3', { className: 'text-sm font-bold' }, 'Guiones Recomendados')]),
+                            h('a', { 
+                                href: '#scripts', 
+                                className: 'btn btn-outline text-xs flex items-center gap-1',
+                                style: { textDecoration: 'none', padding: '4px 10px' }
+                            }, [icon('external-link', 12), h('span', {}, 'Ver en Guiones')])
                         ]),
-                        h('div', { 
-                            className: 'p-4 bg-secondary border-radius-sm text-sm italic text-muted leading-relaxed',
-                            style: { borderLeft: '3px solid var(--bg-accent)', whiteSpace: 'pre-wrap' }
-                        }, client.guionRecomendado || 'Documentar aquí las estructuras narrativas que mejor funcionan para este cliente...')
+                        h('p', { className: 'text-xs text-muted italic' }, 'Los guiones de este cliente se gestionan desde la sección de Guiones. Haz clic en "Ver en Guiones" para ver, crear o editar los guiones recomendados.')
                     ]),
 
                     // Links Recomendados de Referencia (Admin Dynamic List)
@@ -251,6 +252,9 @@ export const render = async (params) => {
                     }
                 }
             }, 50);
+
+            // Initialize Lucide icons
+            if (window.lucide) window.lucide.createIcons();
 
         } catch (err) {
             container.innerHTML = `<div class="p-10 text-center text-error">${err.message}</div>`;

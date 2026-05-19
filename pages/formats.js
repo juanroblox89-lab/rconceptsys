@@ -29,7 +29,7 @@ export const render = () => {
         const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
             h('div', {}, [
                 h('h1', {}, 'Librería Operativa de Formatos de Video'),
-                h('p', { className: 'text-xs text-muted mt-1' }, 'Estructuras narrativas estandarizadas para maximizar la retención y conversión en pauta o contenido orgánico.')
+                h('p', { className: 'text-xs text-muted mt-1' }, 'Estructuras narrativas estandarizadas para producción de contenido orgánico.')
             ]),
             isAdmin ? h('button', { 
                 className: 'btn btn-primary text-xs',
@@ -59,7 +59,7 @@ export const render = () => {
                 h('div', { className: 'flex justify-between items-start' }, [
                     h('span', { className: 'badge badge-info text-xs font-bold' }, f.id || 'NUEVO'),
                     h('div', { className: 'flex items-center gap-2' }, [
-                        h('span', { className: 'text-xs text-muted font-semibold mr-1' }, f.kpis || 'Retención > 45%'),
+
                         isAdmin ? h('button', {
                             className: 'btn-icon text-accent',
                             style: { padding: '2px', width: '22px', height: '22px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
@@ -127,7 +127,6 @@ export const render = () => {
                 const nameVal = form.querySelector('#fmt-name').value.trim();
                 const objVal = form.querySelector('#fmt-objective').value.trim();
                 const structVal = form.querySelector('#fmt-structure').value.trim();
-                const kpiVal = form.querySelector('#fmt-kpi').value.trim();
                 const scriptVal = form.querySelector('#fmt-script').value.trim();
                 const hooksVal = form.querySelector('#fmt-hooks').value.split(',').map(s=>s.trim()).filter(Boolean);
 
@@ -136,7 +135,6 @@ export const render = () => {
                     name: nameVal,
                     objective: objVal,
                     structure: structVal,
-                    kpis: kpiVal,
                     exampleScript: scriptVal,
                     hooks: hooksVal.length ? hooksVal : ['Problema-Solución']
                 };
@@ -210,16 +208,7 @@ export const render = () => {
                     }, editingFormat ? (editingFormat.exampleScript || '') : '')
                 ]),
                 h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
-                    h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label' }, 'KPI de Retención'),
-                        h('input', { 
-                            id: 'fmt-kpi', 
-                            className: 'form-input', 
-                            placeholder: 'Ej. Retención > 50%', 
-                            required: true,
-                            value: editingFormat ? (editingFormat.kpis || '') : ''
-                        })
-                    ]),
+
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Hooks Recomendados (Separados por coma)'),
                         h('input', { 

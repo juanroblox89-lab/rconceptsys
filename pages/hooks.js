@@ -157,7 +157,7 @@ export const render = () => {
                     h('input', { id: 'hk-category', className: 'form-input', placeholder: 'Ej. Problema', required: true })
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Psicología Detrás (Retención)'),
+                    h('label', { className: 'form-label' }, 'Psicología Detrás (Por qué funciona)'),
                     h('textarea', { id: 'hk-psych', className: 'form-textarea', placeholder: 'Explica por qué detiene el scroll (miedo a perder, curiosidad)...', required: true })
                 ])
             ]),

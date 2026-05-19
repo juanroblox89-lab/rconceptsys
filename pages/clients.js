@@ -156,8 +156,7 @@ export const render = () => {
             const nameVal = form.querySelector('#cli-name').value;
             const typeVal = form.querySelector('#cli-type').value;
             const descVal = form.querySelector('#cli-desc').value;
-            const formatsVal = form.querySelector('#cli-formats').value.split(',').map(s=>s.trim()).filter(Boolean);
-            const hooksVal = form.querySelector('#cli-hooks').value.split(',').map(s=>s.trim()).filter(Boolean);
+            // Formats & hooks are managed by the AI agent, not manually
             const logoUrlVal = form.querySelector('#cli-logo-url').value.trim();
             const logoFile = form.querySelector('#cli-logo-file').files[0];
 
@@ -182,8 +181,8 @@ export const render = () => {
                 name: nameVal,
                 businessType: typeVal,
                 description: descVal,
-                assignedFormats: formatsVal.length ? formatsVal : ['RC-01: Recorrido Comercial'],
-                usedHooks: hooksVal.length ? hooksVal : ['Problema-Solución'],
+                assignedFormats: existingClient?.assignedFormats || [],
+                usedHooks: existingClient?.usedHooks || [],
                 viralVideos: existingClient?.viralVideos || [],
                 assets: existingClient?.assets || [],
                 logo: logoUrl,
@@ -226,14 +225,7 @@ export const render = () => {
                     h('label', { className: 'form-label' }, 'O, Enlace a Foto de Perfil (URL)'),
                     h('input', { id: 'cli-logo-url', className: 'form-input', value: existingClient?.logo || '', placeholder: 'Ej. https://images.unsplash.com/...' })
                 ]),
-                h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Formatos Asignados (Separados por coma)'),
-                    h('input', { id: 'cli-formats', className: 'form-input', value: (existingClient?.assignedFormats || []).join(', '), placeholder: 'RC-01: Recorrido, ED-02: Educativo' })
-                ]),
-                h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Hooks Documentados (Separados por coma)'),
-                    h('input', { id: 'cli-hooks', className: 'form-input', value: (existingClient?.usedHooks || []).join(', '), placeholder: 'Problema-Solución, Sabías que?' })
-                ])
+
             ]),
             h('div', { className: 'modal-footer' }, [
                 h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
