@@ -586,7 +586,7 @@ Información del Administrador:
                         }
                     }, [
                         h('div', { className: 'dot-flashing', style: { width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: 'dotFlashing 1s infinite alternate' } }),
-                        h('span', { className: 'text-muted' }, 'Claude está analizando la solicitud y ejecutando acciones...')
+                        h('span', { className: 'text-muted' }, 'Copiloto está analizando la solicitud y ejecutando acciones...')
                     ]);
 
                     const row = h('div', { 
@@ -1088,7 +1088,7 @@ ${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de che
 
                     if (!response.ok) {
                         const err = await response.json();
-                        throw new Error(err.error || 'Fallo de API al consultar a Claude proxy.');
+                        throw new Error(err.error || 'Fallo de API al consultar al Agente proxy.');
                     }
 
                     const data = await response.json();
@@ -1164,7 +1164,7 @@ ${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de che
                     console.error("Assistant prompt relay error:", err);
                     activeConversation.push({ 
                         role: 'assistant', 
-                        content: `⚠️ **Error de Conectividad con Claude:** ${err.message || 'No se pudo recibir respuesta del proxy Vercel API.'}\n\n*Por favor, verifica que tu Vercel Serverless Function esté en producción.*` 
+                        content: `⚠️ **Error de Conectividad:** ${err.message || 'No se pudo recibir respuesta del proxy Vercel API.'}\n\n*Por favor, verifica que tu Vercel Serverless Function esté en producción.*` 
                     });
                 } finally {
                     isAssistantLoading = false;

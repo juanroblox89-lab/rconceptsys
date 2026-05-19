@@ -219,7 +219,7 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
             lastErrorText = await extractErrorText(response);
             console.error("Anthropic API Pipeline Final Failure:", lastErrorText);
             
-            let errMsg = lastErrorText || 'Error al comunicarse con la API de Claude.';
+            let errMsg = lastErrorText || 'Error al comunicarse con la API de Inteligencia Artificial.';
 
             // User-friendly credit balance check
             if (errMsg.includes("credit_balance_zero") || errMsg.includes("billing") || errMsg.includes("credit") || errMsg.includes("balance")) {
