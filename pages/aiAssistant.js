@@ -32,6 +32,7 @@ export const render = () => {
             }
             let assignments = await assignmentService.getAllAssignments().catch(() => []);
             let sopsList = await dbService.getAll('sops').catch(() => []);
+            let scripts = await dbService.getAll('scripts').catch(() => []);
             let metricsList = [];
             let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => []);
             let systemRules = await dbService.getAll('system_rules').catch(() => []);
@@ -450,6 +451,10 @@ Información del Administrador:
                     h('div', { className: 'flex justify-between items-center' }, [
                         h('span', {}, 'Guías SOPs Activas:'),
                         h('span', { className: 'font-bold text-primary' }, `${sopsList.length}`)
+                    ]),
+                    h('div', { className: 'flex justify-between items-center' }, [
+                        h('span', {}, 'Guiones en Sistema:'),
+                        h('span', { className: 'font-bold text-primary' }, `${scripts.length}`)
                     ])
                 ])
             ]);
@@ -782,9 +787,13 @@ Información del Administrador:
                         formats = await dbService.getAll('formats').catch(() => []);
                     }
                     else if (action.type === 'create_assignment') {
+                        let resolvedClientName = action.payload.client || 'General';
+                        const foundC = clients.find(c => c.id === resolvedClientName || c.nombre === resolvedClientName || c.name === resolvedClientName);
+                        if (foundC) resolvedClientName = foundC.nombre || foundC.name;
+
                         const newAsg = {
                             title: action.payload.title,
-                            client: action.payload.client || 'General',
+                            client: resolvedClientName,
                             employeeName: action.payload.employeeName || '@equipo',
                             status: action.payload.status || 'Pendiente',
                             description: action.payload.description || 'Creado automáticamente por el Copiloto de IA',
@@ -807,9 +816,13 @@ Información del Administrador:
                         console.log("[Agent] Hook saved successfully with metrics.");
                     }
                     else if (action.type === 'create_script') {
+                        let resolvedClientName = action.payload.client || 'General';
+                        const foundC = clients.find(c => c.id === resolvedClientName || c.nombre === resolvedClientName || c.name === resolvedClientName);
+                        if (foundC) resolvedClientName = foundC.nombre || foundC.name;
+
                         const newScript = {
                             title: action.payload.title || 'Nuevo Guión',
-                            client: action.payload.client || 'General',
+                            client: resolvedClientName,
                             content: action.payload.content || 'Sin contenido',
                             recommendedFormat: action.payload.recommendedFormat || '',
                             recommendedHook: action.payload.recommendedHook || '',
@@ -818,6 +831,9 @@ Información del Administrador:
                         const id = `script-${Date.now().toString().slice(-6)}`;
                         await dbService.set('scripts', id, newScript);
                         console.log("[Agent] Script created successfully.");
+                        
+                        // Force refresh main scripts list
+                        scripts = await dbService.getAll('scripts').catch(() => []);
                     }
                     else if (action.type === 'update_script') {
                         if (!action.payload.scriptId) throw new Error("Falta el ID del guión (scriptId) para actualizar.");
@@ -898,18 +914,25 @@ Información del Administrador:
             // Silent Sidebar context counters refresh to avoid rendering loaders
             const refreshSidebarCounters = async () => {
                 try {
-                    let [f, hks, c, a, s, m] = await Promise.all([
+                    let [f, hks, c, a, s, m, scrs] = await Promise.all([
                         dbService.getAll('formats'),
                         dbService.getAll('hooks'),
                         dbService.getAll('clients'),
                         assignmentService.getAllAssignments(),
                         dbService.getAll('sops').catch(() => []),
-                        dbService.getAll('metrics').catch(() => [])
+                        dbService.getAll('metrics').catch(() => []),
+                        dbService.getAll('scripts').catch(() => [])
                     ]);
                     
                     if (user?.role !== 'admin' && user?.allowedClients) {
                         c = c.filter(client => user.allowedClients.includes(client.id));
+                        scrs = scrs.filter(scr => {
+                            const match = c.find(cl => cl.nombre === scr.client || cl.name === scr.client);
+                            return !!match;
+                        });
                     }
+                    
+                    scripts = scrs;
                     const countBlock = sidePanel.querySelector('.mt-3');
                     if (countBlock) {
                         countBlock.innerHTML = `
@@ -937,6 +960,10 @@ Información del Administrador:
                             <div class="flex justify-between items-center">
                                 <span>Métricas Operativas:</span>
                                 <span class="font-bold text-primary">${m.length}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Guiones en Sistema:</span>
+                                <span class="font-bold text-primary">${scrs.length}</span>
                             </div>
                         `;
                     }
@@ -1034,6 +1061,15 @@ Detalles del Payload según el type:
    - "content": string (Opcional - Nuevo contenido)
    - "recommendedFormat": string (Opcional)
    - "recommendedHook": string (Opcional)
+
+=== GUÍA DE CREACIÓN Y ASIGNACIÓN DE GUIONES (OBLIGATORIO) ===
+1. CREACIÓN DEL GUIÓN: Usa SIEMPRE la acción "create_script" para guardar el guión con todo su texto en la colección de "Guiones". NUNCA pongas el texto completo del guión dentro de una asignación.
+2. CREACIÓN DE LA TAREA: Después de usar "create_script", puedes usar "create_assignment" para crear la tarea de producción en el Kanban. En la descripción de la asignación, solo pon instrucciones breves.
+3. SEPARACIÓN: Los guiones son los recursos intelectuales (create_script). Las asignaciones son las tareas del equipo (create_assignment). Sepáralos.
+4. EDICIÓN: Si el usuario te pide corregir un guión, usa "update_script" pasando el "scriptId" que debes haber leído en tu contexto o que el usuario te indique.
+
+=== LISTA DE GUIONES RECOMENDADOS ACTUALES EN EL SISTEMA ===
+${scripts.length > 0 ? scripts.map(s => `- Guión: "${s.title}" (ID: "${s.id}" | Cliente: "${s.client}")`).join('\n') : 'No hay guiones registrados aún.'}
 
 `;
 
