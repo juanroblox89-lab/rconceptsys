@@ -132,43 +132,6 @@ Cuando el usuario te entregue mucha información o copies de marcas:
                 systemRules = defaultRules;
             }
 
-            // AUTO-SEEDING DEFAULTS IF EMPTY (Ensures the agency has elite real-world templates loaded immediately)
-            if (formats.length === 0 && user?.role === 'admin') {
-                const defaultFormats = [
-                    { id: 'rc-01', name: 'RC-01: Recorrido Comercial Narrado', structure: 'Hook + Presentación + Productos/Servicios + Experiencia + Ambiente + Ubicación + Cierre', usedFor: 'Presentar negocio físico mediante recorrido narrado', exampleHooks: ['hk-03'], clients: ['tizon-dorado'], createdAt: new Date().toISOString() },
-                    { id: 'pl-01', name: 'PL-01: Presentación/Listado de Productos', structure: 'Producto 1 + Producto 2 + Producto 3 + CTA ligero', usedFor: 'Mostrar múltiples productos o platos rápidamente. Ideal para combos, catálogos y promociones.', exampleHooks: ['hk-01', 'hk-02'], clients: ['ricos-pandeyucas'], createdAt: new Date().toISOString() },
-                    { id: 'fe-01', name: 'FE-01: Formato Evento/Fecha Especial', structure: 'Hook Contextual Temporal + Variación de Recorrido Comercial (RC-01) adaptada a celebración + CTA de reserva/invitación', usedFor: 'Aprovechar contexto temporal/social (fechas especiales, fines de semana, celebraciones familiares).', exampleHooks: ['hk-01'], clients: ['jerez-el-caballero'], createdAt: new Date().toISOString() },
-                    { id: 'ub-01', name: 'UB-01: Descubrimiento por Ubicación', structure: 'Hook de Proximidad ("Si estás en..." / "A 5 minutos de...") + Activación de descubrimiento local + CTA de visita inmediata', usedFor: 'Activar descubrimiento local y proximidad. Muy útil para carretera, turismo local y negocios físicos.', exampleHooks: ['hk-02'], clients: ['villa-grande'], createdAt: new Date().toISOString() }
-                ];
-                for (const fmt of defaultFormats) {
-                    await dbService.set('formats', fmt.id, fmt);
-                }
-                formats = defaultFormats;
-            }
-
-            if (hooks.length === 0 && user?.role === 'admin') {
-                const defaultHooks = [
-                    { id: 'hk-01', title: 'La mayoría de la gente hace esto mal...', category: 'Error común', psychology: 'Curiosidad / Desafío', timesUsed: 14, avgRetention: '82%', topClient: 'kantel', source: 'seed', createdAt: new Date().toISOString() },
-                    { id: 'hk-02', title: 'Tuve que gastar más de 100 dólares para descubrir esto...', category: 'Secreto de Valor', psychology: 'Autoridad / FOMO', timesUsed: 8, avgRetention: '79%', topClient: 'jerez-el-caballero', source: 'seed', createdAt: new Date().toISOString() },
-                    { id: 'hk-03', title: 'Si tienes este tipo de negocio y no estás haciendo esto, estás perdiendo dinero...', category: 'Dolor Directo', psychology: 'Pérdida / Urgencia', timesUsed: 22, avgRetention: '85%', topClient: 'tizon-dorado', source: 'seed', createdAt: new Date().toISOString() }
-                ];
-                for (const hk of defaultHooks) {
-                    await dbService.set('hooks', hk.id, hk);
-                }
-                hooks = defaultHooks;
-            }
-
-            if (sopsList.length === 0 && user?.role === 'admin') {
-                const defaultSops = [
-                    { id: 'SOP-01', title: 'Grabación de Reels y TikToks de Alto Impacto', iconName: 'video', steps: [{ text: 'Limpiar el lente de la cámara principal', done: false }, { text: 'Configurar a 4K 60fps con buena iluminación frontal', done: false }, { text: 'Grabar el Hook visual por triplicado con diferentes expresiones', done: false }, { text: 'Mantener tomas dinámicas de máximo 3 segundos de duración', done: false }] },
-                    { id: 'SOP-02', title: 'Edición Ágil para Retención en Redes', iconName: 'scissors', steps: [{ text: 'Eliminar espacios vacíos y respiraciones del audio', done: false }, { text: 'Añadir subtítulos automáticos animados en la zona central', done: false }, { text: 'Insertar Sound Effects (SFX) tipo Pop/Woosh en cada corte', done: false }, { text: 'Mantener música de fondo en volumen bajo (-20db)', done: false }] }
-                ];
-                for (const sop of defaultSops) {
-                    await dbService.set('sops', sop.id, sop);
-                }
-                sopsList = defaultSops;
-            }
-
             // Ensure our default clients have formatted IDs & initial formats/hooks setup if they don't have them
             clients.forEach(c => {
                 if (!c.assignedFormats) c.assignedFormats = [];
@@ -992,22 +955,49 @@ Información del Administrador:
                     activeClientFocus = clients.find(c => c.id === focusClientId);
                 }
 
-                // 2. Build structured Operational System prompt with Personal Name and role context
+                // 2. Build structured Operational System prompt with complete project architecture
                 let contextPrompt = `=== TONALIDAD Y DIRECTRICES DE COMUNICACIÓN ===
 1. Sé extremadamente profesional, directo y conciso. Ve directo al grano sin rodeos, introducciones largas ni saludos repetitivos.
 2. Reduce al mínimo absoluto el uso de emojis. Usa un máximo de 1 emoji por respuesta completa. No decores cada viñeta o frase con emojis.
 3. No saludes al inicio de cada mensaje si ya estamos conversando.
 4. MUY IMPORTANTE: Dirígete al usuario por su nombre (${user?.nombre || 'Usuario'}) de forma natural y profesional en tu respuesta para que sepa que lo reconoces individualmente.
 5. Toda actualización estratégica que hagas a un cliente o formato se almacena inmediatamente en Firestore, lo que significa que el sistema te la inyectará automáticamente en tu contexto en futuros chats. ¡Tienes memoria viva permanente!
+6. NUNCA muestres procesos internos, JSONs crudos ni detalles técnicos al usuario. Tu respuesta visible debe ser solo el resultado profesional y limpio. Los bloques agency-action van al final de tu respuesta y el sistema los oculta visualmente para el usuario.
+7. Puedes incluir MÚLTIPLES bloques agency-action en una sola respuesta. El sistema los ejecutará todos secuencialmente.
 
 === INFORMACIÓN DEL USUARIO ACTIVO ===
 Nombre del Usuario: ${user?.nombre || 'Usuario'}
 Correo del Usuario: ${user?.email || 'General'}
 Rol en la Agencia: ${user?.role || 'viewer'}
 
+=== ARQUITECTURA COMPLETA DEL SISTEMA CREATIVEOS ===
+Este es un sistema operativo de producción creativa para la agencia RConcept. Los datos se guardan en Firebase Firestore.
+Las páginas del sistema y sus colecciones de Firestore son:
+
+1. **Dashboard** (#dashboard) — Vista general con métricas rápidas y accesos directos. Lee de: clients, assignments.
+2. **Asignaciones** (#assignments) — Tablero Kanban de tareas de producción. Colección: "assignments". Campos: title, client, employeeName, employeeId, status ("Pendiente"|"En Producción"|"Revisión"|"Completado"), type, description, dueDate, linkedScript, createdAt.
+3. **Clientes** (#clients) — Directorio de marcas/clientes. Colección: "clients". Campos: id (slug), name, businessType, description, logo (URL), assignedFormats (array), usedHooks (array), viralVideos (array de {platform, title, url}), assets (array), recommendedLinks (array de {title, url}).
+4. **Detalle de Cliente** (#clients/:id) — Perfil completo de un cliente. Lee de: clients, assignments. "Guiones Recomendados" redirige a #scripts.
+5. **Pagos/Facturación** (#billing) — Hojas de cobro estilo Excel. Colecciones: "invoices" (reportes del empleado) y "admin_invoices" (liquidación oficial del admin). Campos: employeeId, employeeName, type, client, amount, observations, items (array de líneas), status, createdAt.
+6. **Assets** (#assets) — Librería multimedia en Firebase Storage. Colección: "assets". Campos: id, title, type (video|thumbnail), client, format, thumbnail (URL), url (URL de descarga), storagePath, status (ready|editing|review), createdAt.
+7. **Formatos** (#formats) — Plantillas de estructura narrativa de video. Colección: "formats". Campos: id (código como "rc-01"), name, objective, structure, exampleScript, hooks (array), usedFor, createdAt.
+8. **Guiones** (#scripts) — Guiones de contenido recomendados agrupados por cliente. Colección: "scripts". Campos: id, title, client (nombre exacto del cliente), content (texto completo del guión), recommendedFormat, recommendedHook, createdAt.
+9. **Hooks** (#hooks) — Ganchos de retención verbal/visual. Colección: "hooks". Campos: id, title, category, psychology, examples (array de {label, url}), createdAt.
+10. **SOPs** (#sops) — Procedimientos estándar de calidad. Colección: "sops". Campos: id, title, iconName, steps (array de {text, done}).
+11. **Referencias** (#references) — Biblioteca visual de benchmarks. Colección: "references". Campos: id, title, url, style, category, createdAt.
+12. **Workers** (#admin) — Panel de gestión de equipo (solo admin). Colección: "users". Campos: uid, email, nombre, role (admin|collaborator|viewer), approved (boolean), allowedClients (array de IDs de cliente).
+13. **AI Assistant** (#ai-assistant) — Este chat. Colección: "chats" (hilos de conversación), "chats_limit" (límite diario), "system_rules" (reglas operativas vivas).
+
+=== REGLAS DE NOMENCLATURA Y VINCULACIÓN ===
+- El campo "client" en scripts y assignments DEBE ser el NOMBRE exacto del cliente (ej: "Tizón Dorado"), NO el ID (ej: "tizon-dorado"). El sistema resolverá automáticamente si pasas el ID.
+- El campo "employeeName" en assignments es el nombre visible de la persona asignada (ej: "Juan Esteban"). Si no se sabe, usar "@equipo".
+- Los IDs de formatos usan el patrón: "rc-01", "pl-01", "fe-01", "ub-01".
+- Los IDs de hooks usan el patrón: "hk-01", "hk-02".
+- Los IDs de scripts se generan automáticamente.
+
 === CAPACIDADES DEL AGENTE CREATIVEOS (ACCIONES DIRECTAS) ===
 Tú no eres un simple chatbot pasivo; eres un AGENTE activo de la agencia. Tienes el poder de modificar la base de datos de Firestore directamente respondiendo con un bloque estructurado en formato JSON.
-Cuando el usuario te pida crear un procedimiento (SOP), crear un formato creativo, asignar una tarea, guardar un hook, registrar/actualizar la descripción de un cliente, crear o editar un guión, o actualizar métricas vinculadas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
+Cuando el usuario te pida crear o editar cualquier recurso, debes escribir una respuesta profesional describiendo lo que hiciste, y al final de tu respuesta DEBES incluir el/los bloques agency-action correspondientes. Puedes incluir MÚLTIPLES bloques en una sola respuesta.
 
 \`\`\`agency-action
 {
@@ -1018,57 +1008,56 @@ Cuando el usuario te pida crear un procedimiento (SOP), crear un formato creativ
 
 Detalles del Payload según el type:
 1. "create_sop":
-   - "title": string (Título del procedimiento operativo de checklist, ej: "Grabación en Exteriores")
+   - "title": string (Título del procedimiento)
    - "iconName": "check-square" | "video" | "scissors" | "mic" | "sparkles"
-   - "steps": array de strings (pasos de la lista de verificación, ej: ["Limpiar lente", "Comprobar volumen del lavalier"])
+   - "steps": array de strings (pasos del checklist)
 2. "create_format":
-   - "name": string (Nombre de la plantilla de formato, ej: "RC-01: Recorrido Comercial Narrado")
-   - "structure": string (Estructura paso a paso, ej: "Gancho + Recorrido por Local + Demo + CTA")
-   - "usedFor": string (Propósito, ej: "E-commerce de Ropa")
-   - "exampleHooks": array de strings (ej: ["hk-01", "hk-03"])
-   - "clients": array de strings (ej: ["tizon-dorado"])
+   - "name": string (Nombre completo del formato, ej: "RC-01: Recorrido Comercial Narrado")
+   - "structure": string (Estructura paso a paso)
+   - "usedFor": string (Propósito del formato)
+   - "exampleHooks": array de strings (IDs de hooks relacionados)
+   - "clients": array de strings (IDs de clientes que lo usan)
 3. "create_assignment":
-   - "title": string (Título de la tarea)
-   - "client": string (Nombre de la marca o cliente, ej: "RConcept")
-   - "employeeName": string (Nombre de la persona asignada)
+   - "title": string (Título de la tarea de producción)
+   - "client": string (Nombre exacto del cliente)
+   - "employeeName": string (Nombre de la persona asignada, o "@equipo")
    - "status": "Pendiente" | "En Producción" | "Revisión" | "Completado"
+   - "description": string (Instrucciones breves, NO el guión completo)
+   - "dueDate": string (Fecha límite ISO, ej: "2026-05-31")
 4. "create_hook":
-   - "title": string (Frase literal del gancho de marketing)
-   - "category": string (ej: "Problema", "Curiosidad", "Deseo")
-   - "psychology": string (ej: "Curiosidad", "FOMO", "Contraria")
-   - "timesUsed": number (Cantidad de veces usado, ej: 14)
-   - "avgRetention": string (Tasa promedio de retención, ej: "82%")
-   - "topClient": string (ID del cliente donde más funcionó, ej: "kantel")
-   - "source": "real"
+   - "title": string (Frase literal del gancho)
+   - "category": string (ej: "Problema", "Curiosidad", "Deseo", "Descubrimiento")
+   - "psychology": string (Por qué funciona psicológicamente)
+   - "examples": array de {label, url} (opcional, enlaces a videos de referencia)
 5. "create_client":
    - "name": string (Nombre del cliente/marca)
-   - "businessType": string (Industria, ej: "Salud e Higiene")
-   - "description": string (Descripción estratégica general)
+   - "businessType": string (Industria)
+   - "description": string (Descripción estratégica)
 6. "update_client":
-   - "clientId": string (ID del cliente a actualizar, ej: "jerez-el-caballero", "kantel", "ricos-pandeyucas", "villa-grande")
-   - "description": string (Nueva descripción estratégica de marca a agregar o actualizar)
-   - "assignedFormats": array de strings (ej: ["rc-01"]) - Estos formatos se fusionarán de forma segura sin sobreescribir los que ya existen.
-   - "usedHooks": array de strings (ej: ["hk-01"]) - Estos hooks se fusionarán de forma segura sin sobreescribir los que ya existen.
+   - "clientId": string (ID slug del cliente, ej: "jerez-el-caballero")
+   - "description": string (Nueva descripción estratégica)
+   - "assignedFormats": array de strings (se fusionan sin sobrescribir)
+   - "usedHooks": array de strings (se fusionan sin sobrescribir)
 7. "create_script":
    - "title": string (Título del guión, ej: "RC-01 Tour Apertura")
-   - "client": string (ID o nombre exacto del cliente)
-   - "content": string (Texto completo del guión con Hook, Cuerpo, CTA)
-   - "recommendedFormat": string (ID del formato asociado, ej: "rc-01")
-   - "recommendedHook": string (ID del hook asociado, ej: "hk-03")
+   - "client": string (ID o nombre del cliente)
+   - "content": string (Texto COMPLETO del guión: Hook + Cuerpo + CTA con indicaciones visuales)
+   - "recommendedFormat": string (ID del formato, ej: "rc-01")
+   - "recommendedHook": string (ID del hook, ej: "hk-03")
 8. "update_script":
-   - "scriptId": string (ID del guión a actualizar)
-   - "title": string (Opcional - Nuevo título)
-   - "content": string (Opcional - Nuevo contenido)
+   - "scriptId": string (ID del guión existente)
+   - "title": string (Opcional)
+   - "content": string (Opcional - nuevo contenido completo)
    - "recommendedFormat": string (Opcional)
    - "recommendedHook": string (Opcional)
 
 === GUÍA DE CREACIÓN Y ASIGNACIÓN DE GUIONES (OBLIGATORIO) ===
-1. CREACIÓN DEL GUIÓN: Usa SIEMPRE la acción "create_script" para guardar el guión con todo su texto en la colección de "Guiones". NUNCA pongas el texto completo del guión dentro de una asignación.
-2. CREACIÓN DE LA TAREA: Después de usar "create_script", puedes usar "create_assignment" para crear la tarea de producción en el Kanban. En la descripción de la asignación, solo pon instrucciones breves.
-3. SEPARACIÓN: Los guiones son los recursos intelectuales (create_script). Las asignaciones son las tareas del equipo (create_assignment). Sepáralos.
-4. EDICIÓN: Si el usuario te pide corregir un guión, usa "update_script" pasando el "scriptId" que debes haber leído en tu contexto o que el usuario te indique.
+1. CREACIÓN DEL GUIÓN: Usa SIEMPRE "create_script" para guardar el guión con todo su texto. NUNCA pongas el texto completo dentro de una asignación.
+2. CREACIÓN DE LA TAREA: Después de "create_script", usa "create_assignment" para la tarea del Kanban. En description, solo instrucciones breves.
+3. SEPARACIÓN ESTRICTA: Los guiones son recursos intelectuales (create_script). Las asignaciones son tareas del equipo (create_assignment). Sepáralos siempre.
+4. EDICIÓN: Para corregir un guión, usa "update_script" con el scriptId que aparece en tu contexto.
 
-=== LISTA DE GUIONES RECOMENDADOS ACTUALES EN EL SISTEMA ===
+=== LISTA DE GUIONES ACTUALES EN EL SISTEMA ===
 ${scripts.length > 0 ? scripts.map(s => `- Guión: "${s.title}" (ID: "${s.id}" | Cliente: "${s.client}")`).join('\n') : 'No hay guiones registrados aún.'}
 
 `;
@@ -1089,27 +1078,26 @@ Giro del Negocio / Tipo: ${activeClientFocus.businessType || 'Marketing Creativo
 Descripción Estratégica General: ${activeClientFocus.description || 'Sin descripción estratégica registrada'}
 Formatos Asignados a esta Marca: ${(activeClientFocus.assignedFormats || []).join(', ')}
 Hooks Utilizados por esta Marca: ${(activeClientFocus.usedHooks || []).join(', ')}
-Guiones e Ideas Recomendados: ${JSON.stringify(activeClientFocus.recommendedScripts || [])}
 
 `;
                 } else {
                     contextPrompt += `=== RESUMEN GLOBAL DE LA AGENCIA ===
 Lista de Clientes Registrados:
-${clients.map(c => `- Cliente: "${c.nombre || c.name}" | ID: "${c.id}" | Industria: "${c.businessType || 'General'}" | Descripción: "${c.description || 'Sin descripción'}" | Formatos Asignados: [${(c.assignedFormats || []).join(', ')}] | Hooks Utilizados: [${(c.usedHooks || []).join(', ')}]`).join('\n')}
+${clients.map(c => `- Cliente: "${c.nombre || c.name}" | ID: "${c.id}" | Industria: "${c.businessType || 'General'}" | Descripción: "${c.description || 'Sin descripción'}" | Formatos: [${(c.assignedFormats || []).join(', ')}]`).join('\n')}
 `;
                 }
 
                 contextPrompt += `=== FORMATOS AUTORIZADOS ===
 ${formats.map(f => `- Formato: ${f.name} (ID: "${f.id}" | Estructura: ${f.structure || 'Hook + Storytelling + CTA'} | Objetivo: ${f.usedFor || 'General'})`).join('\n')}
 
-=== HOOKS DE RETENCIÓN DISPONIBLES (CON MÉTRICAS) ===
-${hooks.map(h => `- Hook: "${h.title}" (ID: "${h.id}" | Categoría: ${h.category || 'Problema'} | Retención Promedio: ${h.avgRetention || '0%'} | Veces Usado: ${h.timesUsed || 0} | Mejor Cliente: "${h.topClient || 'N/A'}" | Origen: "${h.source || 'seed'}")`).join('\n')}
+=== HOOKS DISPONIBLES ===
+${hooks.map(h => `- Hook: "${h.title}" (ID: "${h.id}" | Categoría: ${h.category || 'General'} | Psicología: ${h.psychology || 'N/A'})`).join('\n')}
 
 === LISTA DE TAREAS EN CURSO ===
-${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.client} | Tarea: ${a.title} | Responsable: ${a.employeeName || '@equipo'}`).join('\n')}
+${assignments.filter(a => a.status !== 'Completado').map(a => `- Cliente: ${a.client} | Tarea: ${a.title} | Responsable: ${a.employeeName || '@equipo'} | Estado: ${a.status}`).join('\n')}
 
 === PROCEDIMIENTOS ESTÁNDAR (SOPs) ACTIVOS ===
-${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de checklist registrados)`).join('\n')}
+${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos)`).join('\n')}
 `;
 
                 try {

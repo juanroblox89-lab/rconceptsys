@@ -6,11 +6,7 @@ import { h, icon } from '../utils/dom.js';
 import { dbService, storageService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 
-let localAssetsCache = [
-    { id: 'AST-001', title: 'Reel Gancho - Gimnasio Elite', type: 'video', client: 'Gimnasio Elite', format: 'RC-01', thumbnail: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80', status: 'ready', url: '#' },
-    { id: 'AST-002', title: 'POV Recorrido - Local', type: 'video', client: 'Barbería Classic', format: 'HK-04', thumbnail: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&q=80', status: 'editing', url: '#' },
-    { id: 'AST-003', title: 'Educativo - Tips Gym', type: 'video', client: 'Gimnasio Elite', format: 'ED-02', thumbnail: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&q=80', status: 'ready', url: '#' },
-];
+let localAssetsCache = [];
 
 export const render = () => {
     const { user } = store.getState();
@@ -22,10 +18,10 @@ export const render = () => {
         
         let assetsList = [];
         try {
-            const list = await dbService.getAll('assets');
-            assetsList = list.length ? list : localAssetsCache;
+            assetsList = await dbService.getAll('assets');
         } catch (err) {
-            assetsList = localAssetsCache;
+            console.warn("Error fetching assets:", err);
+            assetsList = [];
         }
 
         container.innerHTML = '';
