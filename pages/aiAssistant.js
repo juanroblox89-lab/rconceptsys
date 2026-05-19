@@ -1130,17 +1130,19 @@ ${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos de che
                     const data = await response.json();
                     const text = data.text || "";
 
-                    // Action parser detector
-                    const actionRegex = /```agency-action([\s\S]*?)```/i;
-                    const match = text.match(actionRegex);
-                    if (match) {
-                        try {
-                            const actionObj = JSON.parse(match[1].trim());
-                            await executeAgentAction(actionObj);
-                            await refreshSidebarCounters();
-                        } catch (e) {
-                            console.error("[Agent] Action parse/execution failure:", e);
+                    // Action parser detector (support multiple actions in one response)
+                    const actionRegex = /```agency-action([\s\S]*?)```/gi;
+                    const matches = [...text.matchAll(actionRegex)];
+                    if (matches.length > 0) {
+                        for (const match of matches) {
+                            try {
+                                const actionObj = JSON.parse(match[1].trim());
+                                await executeAgentAction(actionObj);
+                            } catch (e) {
+                                console.error("[Agent] Action parse/execution failure:", e);
+                            }
                         }
+                        await refreshSidebarCounters();
                     }
 
                     activeConversation.push({ role: 'assistant', content: text });
@@ -1270,6 +1272,11 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
         // Escape HTML tags to prevent custom execution
         html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         
+        // Ensure unclosed agency-action blocks at the end are closed to prevent rendering issues
+        if (html.includes('```agency-action') && html.lastIndexOf('```') === html.lastIndexOf('```agency-action')) {
+            html += '\n```';
+        }
+
         // Parse agency action code blocks as a beautiful, premium visual card instead of a raw JSON code block!
         html = html.replace(/```agency-action([\s\S]*?)```/g, (match, jsonText) => {
             try {
@@ -1314,12 +1321,22 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                     details = `**Nombre**: ${action.payload.name}<br>**Industria**: ${action.payload.businessType}<br>**Descripción**: ${action.payload.description}`;
                     iconName = "users";
                     colorClass = "#10b981"; // Success Green
+                } else if (action.type === 'create_script') {
+                    title = "Acción: Crear Guión";
+                    details = `**Título**: ${action.payload.title}<br>**Cliente**: ${action.payload.client}`;
+                    iconName = "file-text";
+                    colorClass = "#10b981"; // Success Green
+                } else if (action.type === 'update_script') {
+                    title = "Acción: Actualizar Guión";
+                    details = `**Guión ID**: ${action.payload.scriptId}`;
+                    iconName = "edit-3";
+                    colorClass = "#3b82f6"; // Info Blue
                 }
 
                 return `
                 <div class="card p-3 my-2 border-radius-sm border flex-column gap-1 bg-secondary" style="border-left: 4px solid ${colorClass}; max-width: 100%; border-radius: 4px;">
                     <div class="flex items-center gap-2 font-bold text-xs" style="color: ${colorClass};">
-                        ${icon(iconName, 12)}
+                        ${icon(iconName, 12).outerHTML}
                         <span>${title}</span>
                         <span class="text-success text-xs font-semibold ml-auto flex items-center gap-1" style="color: #10b981;">
                             ✓ Ejecutado en Firestore

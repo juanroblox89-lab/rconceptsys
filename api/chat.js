@@ -112,7 +112,7 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
             },
             body: JSON.stringify({
                 model: "claude-sonnet-4-6",
-                max_tokens: 3000,
+                max_tokens: 8192,
                 system: systemPrompt,
                 messages: apiMessages
             })
@@ -134,7 +134,7 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
                     },
                     body: JSON.stringify({
                         model: "claude-3-5-sonnet-20241022",
-                        max_tokens: 3000,
+                        max_tokens: 8192,
                         system: systemPrompt,
                         messages: apiMessages
                     })
