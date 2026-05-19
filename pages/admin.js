@@ -6,7 +6,7 @@
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { userService } from '../services/userService.js';
-import { storageService } from '../firebase/service.js';
+import { storageService, dbService } from '../firebase/service.js';
 
 export const render = () => {
     const { user } = store.getState();
@@ -55,7 +55,10 @@ export const render = () => {
         }, 10000);
 
         try {
-            const allUsers = await userService.getAllUsers();
+            const [allUsers, clientsList] = await Promise.all([
+                userService.getAllUsers(),
+                dbService.getAll('clients').catch(() => [])
+            ]);
             const pendingUsers = allUsers.filter(u => !u.approved);
             const approvedUsers = allUsers.filter(u => u.approved);
 
@@ -107,7 +110,7 @@ export const render = () => {
                                 h('th', {}, 'Acciones')
                             ])),
                             h('tbody', {}, approvedUsers.map(u =>
-                                renderTeamRow(u, user, loadAdminDashboard, showFeedback)
+                                renderTeamRow(u, user, loadAdminDashboard, showFeedback, clientsList)
                             ))
                         ])
                     ])
@@ -201,7 +204,7 @@ function renderPendingCard(pu, reload) {
 }
 
 // ── Team Row ─────────────────────────────────────────────────
-function renderTeamRow(u, currentUser, reload, showFeedback) {
+function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
     const isCurrentUser = u.uid === currentUser.uid;
     const isAdmin = u.role === 'admin';
 
@@ -220,6 +223,15 @@ function renderTeamRow(u, currentUser, reload, showFeedback) {
 
     if (isCurrentUser) {
         actions.push(h('span', { className: 'badge badge-secondary text-xs' }, 'Tú'));
+    }
+
+    if (!isAdmin && !isCurrentUser) {
+        // Client Access Modal Button
+        actions.push(h('button', {
+            className: 'btn btn-outline text-xs',
+            style: { padding: '3px 8px', fontSize: '0.68rem', borderColor: 'var(--accent)', color: 'var(--accent)' },
+            onClick: () => openClientAccessModal(u, clientsList, reload)
+        }, [icon('eye', 11), h('span', { style: { marginLeft: '3px' } }, 'Accesos')]));
     }
 
     if (!isAdmin && !isCurrentUser) {
@@ -352,3 +364,118 @@ function renderUploadSection() {
         ])
     ]);
 }
+
+// ── Client Access Modal ──────────────────────────────────────
+function openClientAccessModal(user, clients, reload) {
+    let currentAllowed = user.allowedClients || [];
+    
+    const overlay = h('div', {
+        style: {
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, padding: '20px'
+        }
+    });
+
+    const modal = h('div', {
+        className: 'card fade-in flex-column',
+        style: { width: '100%', maxWidth: '400px', maxHeight: '80vh', overflow: 'hidden', backgroundColor: 'var(--bg-primary)' }
+    });
+
+    const header = h('div', { className: 'flex justify-between items-center p-4 border-bottom' }, [
+        h('h3', { className: 'font-bold' }, `Accesos de ${user.nombre || user.email}`),
+        h('button', {
+            className: 'btn btn-outline', style: { border: 'none', padding: '4px' },
+            onClick: () => overlay.remove()
+        }, icon('x', 16))
+    ]);
+
+    const content = h('div', { className: 'p-4 flex-column gap-3', style: { overflowY: 'auto' } });
+    
+    if (clients.length === 0) {
+        content.appendChild(h('div', { className: 'text-xs text-muted text-center' }, 'No hay clientes registrados.'));
+    } else {
+        content.appendChild(h('p', { className: 'text-xs text-muted mb-2' }, 'Selecciona los clientes que este trabajador puede ver. Si desactivas todos, no verá ningún cliente.'));
+        
+        clients.forEach(c => {
+            const isAllowed = currentAllowed.includes(c.id);
+            const toggleId = `toggle-${c.id}`;
+            
+            const checkbox = h('input', {
+                type: 'checkbox',
+                id: toggleId,
+                className: 'toggle-checkbox',
+                checked: isAllowed,
+                style: { display: 'none' }
+            });
+            
+            const label = h('label', {
+                htmlFor: toggleId,
+                className: 'toggle-label',
+                style: {
+                    position: 'relative', display: 'inline-block', width: '36px', height: '20px',
+                    backgroundColor: isAllowed ? 'var(--success)' : 'var(--bg-tertiary)',
+                    borderRadius: '20px', cursor: 'pointer', transition: 'background-color 0.3s'
+                }
+            });
+            const knob = h('span', {
+                style: {
+                    position: 'absolute', top: '2px', left: isAllowed ? '18px' : '2px',
+                    width: '16px', height: '16px', backgroundColor: '#fff', borderRadius: '50%',
+                    transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }
+            });
+            label.appendChild(knob);
+            
+            checkbox.addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                label.style.backgroundColor = checked ? 'var(--success)' : 'var(--bg-tertiary)';
+                knob.style.left = checked ? '18px' : '2px';
+                
+                if (checked) {
+                    currentAllowed.push(c.id);
+                } else {
+                    currentAllowed = currentAllowed.filter(id => id !== c.id);
+                }
+            });
+
+            const row = h('div', { className: 'flex justify-between items-center py-2 border-bottom' }, [
+                h('div', { className: 'flex items-center gap-2' }, [
+                    h('span', { className: 'font-semibold text-sm' }, c.nombre || c.name),
+                    h('span', { className: 'badge badge-secondary text-xs' }, c.businessType || 'General')
+                ]),
+                h('div', { className: 'flex items-center' }, [checkbox, label])
+            ]);
+            content.appendChild(row);
+        });
+    }
+
+    const footer = h('div', { className: 'p-4 border-top flex justify-end gap-2 bg-secondary' }, [
+        h('button', { className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
+        h('button', { 
+            className: 'btn btn-primary text-xs',
+            onClick: async (e) => {
+                e.currentTarget.disabled = true;
+                e.currentTarget.textContent = 'Guardando...';
+                try {
+                    await dbService.update('users', user.uid, { allowedClients: currentAllowed });
+                    overlay.remove();
+                    reload();
+                } catch (err) {
+                    console.error('Error updating allowed clients:', err);
+                    alert('Error al guardar accesos');
+                    e.currentTarget.disabled = false;
+                    e.currentTarget.textContent = 'Guardar Accesos';
+                }
+            }
+        }, 'Guardar Accesos')
+    ]);
+
+    modal.appendChild(header);
+    modal.appendChild(content);
+    modal.appendChild(footer);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+

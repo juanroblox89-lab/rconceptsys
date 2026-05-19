@@ -537,6 +537,10 @@ export const render = () => {
                     assignmentService.getAllAssignments().catch(() => [])
                 ]);
 
+                if (!isAdmin && user.allowedClients) {
+                    clientsList = clientsList.filter(c => user.allowedClients.includes(c.id));
+                }
+
                 approvedUsers = allUsers.filter(u => u.approved && u.role !== 'admin');
 
                 if (isAdmin) {

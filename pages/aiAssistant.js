@@ -27,6 +27,9 @@ export const render = () => {
             let formats = await dbService.getAll('formats').catch(() => []);
             let hooks = await dbService.getAll('hooks').catch(() => []);
             let clients = await dbService.getAll('clients').catch(() => []);
+            if (user?.role !== 'admin' && user?.allowedClients) {
+                clients = clients.filter(c => user.allowedClients.includes(c.id));
+            }
             let assignments = await assignmentService.getAllAssignments().catch(() => []);
             let sopsList = await dbService.getAll('sops').catch(() => []);
             let metricsList = [];
@@ -831,6 +834,9 @@ Información del Administrador:
                             
                             // Force refresh main clients list in local state
                             clients = await dbService.getAll('clients').catch(() => []);
+                            if (user?.role !== 'admin' && user?.allowedClients) {
+                                clients = clients.filter(c => user.allowedClients.includes(c.id));
+                            }
                             renderBrandFocusSummary();
                         } else {
                             throw new Error(`Client with ID ${action.payload.clientId} not found`);
@@ -855,6 +861,9 @@ Información del Administrador:
                         
                         // Force refresh main clients list in local state
                         clients = await dbService.getAll('clients').catch(() => []);
+                        if (user?.role !== 'admin' && user?.allowedClients) {
+                            clients = clients.filter(c => user.allowedClients.includes(c.id));
+                        }
                     }
                 } catch (err) {
                     console.error("[Agent] Error executing database operation:", err);
@@ -865,7 +874,7 @@ Información del Administrador:
             // Silent Sidebar context counters refresh to avoid rendering loaders
             const refreshSidebarCounters = async () => {
                 try {
-                    const [f, hks, c, a, s, m] = await Promise.all([
+                    let [f, hks, c, a, s, m] = await Promise.all([
                         dbService.getAll('formats'),
                         dbService.getAll('hooks'),
                         dbService.getAll('clients'),
@@ -874,6 +883,9 @@ Información del Administrador:
                         dbService.getAll('metrics').catch(() => [])
                     ]);
                     
+                    if (user?.role !== 'admin' && user?.allowedClients) {
+                        c = c.filter(client => user.allowedClients.includes(client.id));
+                    }
                     const countBlock = sidePanel.querySelector('.mt-3');
                     if (countBlock) {
                         countBlock.innerHTML = `

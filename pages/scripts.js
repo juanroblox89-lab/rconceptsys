@@ -36,6 +36,9 @@ export const render = () => {
             scriptsList = list.length ? list : localScriptsCache;
             assignmentsList = assignments || [];
             clientsList = clients || [];
+            if (!isAdmin && user.allowedClients) {
+                clientsList = clientsList.filter(c => user.allowedClients.includes(c.id));
+            }
             usersList = users || [];
         } catch (err) {
             console.warn("Error fetching scripts/assignments, using local cache:", err);

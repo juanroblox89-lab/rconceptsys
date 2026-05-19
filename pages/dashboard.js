@@ -17,13 +17,17 @@ export const render = () => {
 
         try {
             const isAdmin = user?.role === 'admin';
-            const [formats, hooks, clients, assignments, usersList] = await Promise.all([
+            let [formats, hooks, clients, assignments, usersList] = await Promise.all([
                 dbService.getAll('formats').catch(() => []),
                 dbService.getAll('hooks').catch(() => []),
                 dbService.getAll('clients').catch(() => []),
                 assignmentService.getAllAssignments().catch(() => []),
                 (isAdmin ? dbService.getAll('users').catch(() => []) : Promise.resolve([]))
             ]);
+
+            if (!isAdmin && user.allowedClients) {
+                clients = clients.filter(c => user.allowedClients.includes(c.id));
+            }
 
             const activeAssignments = isAdmin
                 ? assignments.filter(a => a.status !== 'Completado')

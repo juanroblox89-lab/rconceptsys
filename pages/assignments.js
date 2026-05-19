@@ -32,7 +32,10 @@ export const render = async () => {
             ]);
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
-            const finalClients = clients || [];
+            let finalClients = clients || [];
+            if (!isAdmin && user.allowedClients) {
+                finalClients = finalClients.filter(c => user.allowedClients.includes(c.id));
+            }
             
             container.innerHTML = '';
 

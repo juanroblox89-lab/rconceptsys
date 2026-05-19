@@ -17,6 +17,9 @@ export const render = () => {
         let clientsList = [];
         try {
             clientsList = await dbService.getAll('clients');
+            if (!isAdmin && user.allowedClients) {
+                clientsList = clientsList.filter(c => user.allowedClients.includes(c.id));
+            }
         } catch (err) {
             console.warn("Error fetching real clients from DB:", err);
             clientsList = [];
