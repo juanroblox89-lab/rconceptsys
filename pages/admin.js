@@ -399,24 +399,25 @@ function openClientAccessModal(user, clients, reload) {
         content.appendChild(h('p', { className: 'text-xs text-muted mb-2' }, 'Selecciona los clientes que este trabajador puede ver. Si desactivas todos, no verá ningún cliente.'));
         
         clients.forEach(c => {
-            const isAllowed = currentAllowed.includes(c.id);
-            const toggleId = `toggle-${c.id}`;
+            let isAllowed = currentAllowed.includes(c.id);
             
-            const checkbox = h('input', {
-                type: 'checkbox',
-                id: toggleId,
-                className: 'toggle-checkbox',
-                checked: isAllowed,
-                style: { display: 'none' }
-            });
-            
-            const label = h('label', {
-                htmlFor: toggleId,
-                className: 'toggle-label',
+            const label = h('div', {
+                className: 'toggle-label flex items-center',
                 style: {
                     position: 'relative', display: 'inline-block', width: '36px', height: '20px',
                     backgroundColor: isAllowed ? 'var(--success)' : 'var(--bg-tertiary)',
                     borderRadius: '20px', cursor: 'pointer', transition: 'background-color 0.3s'
+                },
+                onClick: () => {
+                    isAllowed = !isAllowed;
+                    label.style.backgroundColor = isAllowed ? 'var(--success)' : 'var(--bg-tertiary)';
+                    knob.style.left = isAllowed ? '18px' : '2px';
+                    
+                    if (isAllowed) {
+                        currentAllowed.push(c.id);
+                    } else {
+                        currentAllowed = currentAllowed.filter(id => id !== c.id);
+                    }
                 }
             });
             const knob = h('span', {
@@ -427,25 +428,13 @@ function openClientAccessModal(user, clients, reload) {
                 }
             });
             label.appendChild(knob);
-            
-            checkbox.addEventListener('change', (e) => {
-                const checked = e.target.checked;
-                label.style.backgroundColor = checked ? 'var(--success)' : 'var(--bg-tertiary)';
-                knob.style.left = checked ? '18px' : '2px';
-                
-                if (checked) {
-                    currentAllowed.push(c.id);
-                } else {
-                    currentAllowed = currentAllowed.filter(id => id !== c.id);
-                }
-            });
 
             const row = h('div', { className: 'flex justify-between items-center py-2 border-bottom' }, [
                 h('div', { className: 'flex items-center gap-2' }, [
                     h('span', { className: 'font-semibold text-sm' }, c.nombre || c.name),
                     h('span', { className: 'badge badge-secondary text-xs' }, c.businessType || 'General')
                 ]),
-                h('div', { className: 'flex items-center' }, [checkbox, label])
+                h('div', { className: 'flex items-center' }, [label])
             ]);
             content.appendChild(row);
         });
