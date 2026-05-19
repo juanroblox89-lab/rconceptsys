@@ -806,6 +806,30 @@ Información del Administrador:
                         await dbService.add('hooks', newHook);
                         console.log("[Agent] Hook saved successfully with metrics.");
                     }
+                    else if (action.type === 'create_script') {
+                        const newScript = {
+                            title: action.payload.title || 'Nuevo Guión',
+                            client: action.payload.client || 'General',
+                            content: action.payload.content || 'Sin contenido',
+                            recommendedFormat: action.payload.recommendedFormat || '',
+                            recommendedHook: action.payload.recommendedHook || '',
+                            createdAt: new Date().toISOString()
+                        };
+                        const id = `script-${Date.now().toString().slice(-6)}`;
+                        await dbService.set('scripts', id, newScript);
+                        console.log("[Agent] Script created successfully.");
+                    }
+                    else if (action.type === 'update_script') {
+                        if (!action.payload.scriptId) throw new Error("Falta el ID del guión (scriptId) para actualizar.");
+                        const updates = {};
+                        if (action.payload.title) updates.title = action.payload.title;
+                        if (action.payload.content) updates.content = action.payload.content;
+                        if (action.payload.recommendedFormat) updates.recommendedFormat = action.payload.recommendedFormat;
+                        if (action.payload.recommendedHook) updates.recommendedHook = action.payload.recommendedHook;
+                        
+                        await dbService.update('scripts', action.payload.scriptId, updates);
+                        console.log("[Agent] Script updated successfully.");
+                    }
                     else if (action.type === 'update_client') {
                         const clientDoc = await dbService.getById('clients', action.payload.clientId);
                         if (clientDoc) {
@@ -956,11 +980,11 @@ Rol en la Agencia: ${user?.role || 'viewer'}
 
 === CAPACIDADES DEL AGENTE CREATIVEOS (ACCIONES DIRECTAS) ===
 Tú no eres un simple chatbot pasivo; eres un AGENTE activo de la agencia. Tienes el poder de modificar la base de datos de Firestore directamente respondiendo con un bloque estructurado en formato JSON.
-Cuando el usuario te pida crear un procedimiento (SOP), crear un formato creativo, asignar una tarea, guardar un hook, registrar/actualizar la descripción de un cliente, o actualizar métricas vinculadas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
+Cuando el usuario te pida crear un procedimiento (SOP), crear un formato creativo, asignar una tarea, guardar un hook, registrar/actualizar la descripción de un cliente, crear o editar un guión, o actualizar métricas vinculadas, debes escribir una respuesta amigable describiendo la acción, y al final de tu respuesta (o en una línea separada) DEBES incluir obligatoriamente el siguiente bloque markdown exacto con los datos para que el sistema lo ejecute:
 
 \`\`\`agency-action
 {
-  "type": "create_sop" | "create_format" | "create_assignment" | "create_hook" | "create_client" | "update_client",
+  "type": "create_sop" | "create_format" | "create_assignment" | "create_hook" | "create_client" | "update_client" | "create_script" | "update_script",
   "payload": { ... }
 }
 \`\`\`
@@ -998,6 +1022,18 @@ Detalles del Payload según el type:
    - "description": string (Nueva descripción estratégica de marca a agregar o actualizar)
    - "assignedFormats": array de strings (ej: ["rc-01"]) - Estos formatos se fusionarán de forma segura sin sobreescribir los que ya existen.
    - "usedHooks": array de strings (ej: ["hk-01"]) - Estos hooks se fusionarán de forma segura sin sobreescribir los que ya existen.
+7. "create_script":
+   - "title": string (Título del guión, ej: "RC-01 Tour Apertura")
+   - "client": string (ID o nombre exacto del cliente)
+   - "content": string (Texto completo del guión con Hook, Cuerpo, CTA)
+   - "recommendedFormat": string (ID del formato asociado, ej: "rc-01")
+   - "recommendedHook": string (ID del hook asociado, ej: "hk-03")
+8. "update_script":
+   - "scriptId": string (ID del guión a actualizar)
+   - "title": string (Opcional - Nuevo título)
+   - "content": string (Opcional - Nuevo contenido)
+   - "recommendedFormat": string (Opcional)
+   - "recommendedHook": string (Opcional)
 
 `;
 
