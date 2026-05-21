@@ -208,11 +208,30 @@ export const render = () => {
                     h('h1', { style: { fontSize: '1.4rem' } }, 'Auditoría de Liquidaciones y Cobros'),
                     h('p', { className: 'text-xs text-muted mt-1' }, 'Estructura de liquidación directa de cobros y facturación administrativa de la agencia.')
                 ]),
-                h('button', { 
-                    className: 'btn btn-outline text-xs', 
-                    title: 'Exportar Facturas Consolidadas Admin',
-                    onClick: () => invoiceService.exportToCsv(admInvoices, '') 
-                }, [icon('file-spreadsheet', 14), h('span', {}, 'Exportar CSV')])
+                h('div', { className: 'flex gap-2 flex-wrap' }, [
+                    h('button', { 
+                        className: 'btn btn-outline text-xs', 
+                        title: 'Exportar todas las facturas a CSV',
+                        onClick: () => invoiceService.exportToCsv([...empInvoices, ...admInvoices], '') 
+                    }, [icon('file-spreadsheet', 14), h('span', {}, 'Exportar CSV')]),
+                    h('button', { 
+                        className: 'btn btn-outline text-xs',
+                        style: { borderColor: 'rgba(239,68,68,0.3)', color: 'var(--error)' },
+                        title: 'Eliminar TODAS las facturas de empleados y admin para iniciar nuevo ciclo',
+                        onClick: async () => {
+                            if (!confirm('⚠️ ¿Reiniciar el mes de facturación?\n\nEsto ELIMINARÁ PERMANENTEMENTE todas las facturas de todos los trabajadores (empleado y admin).\n\nEsta acción NO se puede deshacer. ¿Continuar?')) return;
+                            if (!confirm('CONFIRMACIÓN FINAL: ¿Estás seguro? Se borrarán todas las liquidaciones.')) return;
+                            container.innerHTML = '<div class="loader mb-4"></div>';
+                            try {
+                                const result = await invoiceService.resetAllInvoices();
+                                alert(`Mes reiniciado. Se eliminaron ${result.deleted} facturas.`);
+                            } catch (err) {
+                                alert(`Error: ${err.message}`);
+                            }
+                            loadAndRender(true);
+                        }
+                    }, [icon('refresh-cw', 14), h('span', {}, 'Reiniciar Mes')])
+                ])
             ]);
 
             container.appendChild(header);

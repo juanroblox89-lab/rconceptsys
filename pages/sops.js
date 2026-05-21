@@ -1,216 +1,387 @@
 /**
  * SOPs Page - Creative Production OS
- * Standard Operating Procedures presented in clean Notion Light UI with functional procedural viewing flows.
+ * Admin: Notion-style SOP builder with per-role targeting, gallery images, links, text fields.
+ * User: Fill in their own SOPs, mark steps done, redirect to billing at the end.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
 import { store } from '../js/store.js';
+
+const ICONS = ['check-square', 'video', 'scissors', 'mic', 'pen-tool', 'monitor', 'camera', 'file-text', 'layers', 'zap'];
+const ROLES = ['all', 'editor', 'camarógrafo', 'estratega', 'diseñador', 'administración digital'];
+const ROLE_LABELS = { all: 'Todos los Roles', editor: 'Editor de Video', camarógrafo: 'Camarógrafo', estratega: 'Estratega Creativo', diseñador: 'Diseñador Gráfico', 'administración digital': 'Administración Digital' };
 
 export const render = () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
     const container = h('div', { className: 'fade-in flex-column gap-4' });
 
-    const loadSops = async () => {
+    const load = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
-        
         let sopsList = [];
-        try {
-            sopsList = await dbService.getAll('sops');
-        } catch (err) {
-            console.warn("Error fetching SOPs from Firestore:", err);
-            sopsList = [];
-        }
-
+        try { sopsList = await dbService.getAll('sops'); } catch (e) { sopsList = []; }
         container.innerHTML = '';
 
-        const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
-            h('div', {}, [
-                h('h1', {}, 'Procedimientos Operativos Estándar (SOPs)'),
-                h('p', { className: 'text-xs text-muted mt-1' }, 'Listas de verificación de cumplimiento de calidad para estandarizar entregas en rodaje y edición.')
-            ]),
-            isAdmin ? h('button', { 
-                className: 'btn btn-primary text-xs',
-                onClick: () => openCreateSopModal()
-            }, [icon('plus', 14), h('span', {}, 'Nueva Guía')]) : null
-        ]);
+        const userRole = user?.role || '';
+        // Filter SOPs visible to this user
+        const visibleSops = isAdmin
+            ? sopsList
+            : sopsList.filter(s => s.active !== false && (!s.targetRole || s.targetRole === 'all' || s.targetRole === userRole));
 
-        if (sopsList.length === 0) {
-            const emptyState = h('div', { className: 'text-center p-20 card flex-column items-center justify-center gap-4' }, [
-                icon('check-square', 40, 'text-muted mb-2'),
-                h('h3', { className: 'text-md font-bold' }, 'Librería de SOPs Vacía'),
-                h('p', { className: 'text-xs text-muted max-w-xs' }, 'No has registrado ninguna guía SOP de cumplimiento de calidad en tu base de datos actualmente.'),
-                isAdmin ? h('button', { 
-                    className: 'btn btn-primary text-xs mt-2',
-                    onClick: () => openCreateSopModal() 
-                }, [icon('plus', 14), h('span', {}, 'Crear Primer SOP')]) : null
-            ]);
-            container.appendChild(header);
-            container.appendChild(emptyState);
+        // Header
+        container.appendChild(h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
+            h('div', {}, [
+                h('h1', {}, isAdmin ? 'Constructor de SOPs' : 'Mis Procedimientos (SOPs)'),
+                h('p', { className: 'text-xs text-muted mt-1' }, isAdmin
+                    ? 'Crea y gestiona SOPs por rol. Cada SOP puede tener imagen, link o texto que el trabajador llena.'
+                    : 'Completa cada paso de tus procedimientos estándar de calidad.')
+            ]),
+            isAdmin ? h('button', {
+                className: 'btn btn-primary text-xs',
+                onClick: () => openAdminSopBuilder(null, load)
+            }, [icon('plus', 13), h('span', {}, 'Crear SOP')]) : null
+        ]));
+
+        if (visibleSops.length === 0) {
+            container.appendChild(h('div', { className: 'card p-12 text-center flex-column items-center gap-3' }, [
+                icon('check-square', 36, 'text-muted'),
+                h('h3', { className: 'font-bold text-sm' }, 'Sin SOPs todavía'),
+                h('p', { className: 'text-xs text-muted' }, isAdmin ? 'Crea el primer SOP con el botón de arriba.' : 'El administrador aún no ha creado procedimientos para tu rol.'),
+                isAdmin ? h('button', { className: 'btn btn-primary text-xs mt-2', onClick: () => openAdminSopBuilder(null, load) }, 'Crear Primer SOP') : null
+            ]));
             if (window.lucide) window.lucide.createIcons();
             return;
         }
 
-        const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } }, 
-            sopsList.map(sop => h('div', { key: sop.id || sop.title, className: 'card flex-column justify-between p-5' }, [
-                h('div', {}, [
-                    h('div', { className: 'flex items-center justify-between gap-3 mb-3 border-bottom pb-3' }, [
-                        h('div', { className: 'flex items-center gap-3' }, [
-                            h('div', { className: 'btn-icon flex items-center justify-center font-bold text-accent', style: { width: '36px', height: '36px', borderRadius: '6px', background: 'var(--bg-tertiary)', flexShrink: 0 } }, [
-                                icon(sop.iconName || 'check-square', 18)
-                            ]),
-                            h('h4', { className: 'font-bold text-sm text-primary truncate', style: { maxWidth: '180px' } }, sop.title || sop.name)
-                        ]),
-                        isAdmin ? h('button', {
-                            className: 'btn-icon text-error',
-                            style: { width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-                            title: 'Eliminar SOP',
-                            onClick: async () => {
-                                if (confirm('¿Eliminar este SOP y todo su progreso?')) {
-                                    try {
-                                        await dbService.delete('sops', sop.id);
-                                    } catch (err) {
-                                        console.warn("Error deleting SOP:", err);
-                                    }
-                                    loadSops();
-                                }
-                            }
-                        }, [icon('trash-2', 13)]) : null
-                    ]),
-                    
-                    h('ul', { className: 'flex-column gap-2 mt-2', style: { listStyle: 'none' } }, 
-                        (sop.steps || [{ text: sop.objective || 'Cumplir lineamiento', done: true }]).map((st, i) => h('li', { key: i, className: 'flex items-center gap-2 text-xs text-secondary' }, [
-                            icon(st.done ? 'check-circle-2' : 'circle', 14, st.done ? 'text-success' : 'text-muted'),
-                            h('span', { className: st.done ? 'font-medium text-primary' : '' }, st.text)
-                        ]))
-                    )
-                ]),
-
-                h('button', { 
-                    className: 'btn btn-outline text-xs w-full justify-center mt-4',
-                    onClick: () => openSopDetailModal(sop) 
-                }, 'Auditar / Ver Detalle Completo')
-            ]))
-        );
-
-        container.appendChild(header);
+        const grid = h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' } });
+        visibleSops.forEach(sop => grid.appendChild(renderSopCard(sop, isAdmin, user, load)));
         container.appendChild(grid);
         if (window.lucide) window.lucide.createIcons();
     };
 
-    const openCreateSopModal = () => {
-        const overlay = h('div', { className: 'modal-overlay' });
-        const form = h('form', {
-            className: 'modal-container',
-            onSubmit: async (e) => {
-                e.preventDefault();
-                const titleVal = form.querySelector('#sop-title').value.trim();
-                const iconVal = form.querySelector('#sop-icon').value.trim();
-                const stepsText = form.querySelector('#sop-steps').value.trim();
+    load();
+    return container;
+};
 
-                const stepsArr = stepsText.split('\n')
-                    .map(s => s.trim())
-                    .filter(Boolean)
-                    .map(text => ({ text, done: false }));
+// ── SOP Card ─────────────────────────────────────────────────────────────────
+function renderSopCard(sop, isAdmin, user, reload) {
+    const steps = sop.steps || [];
+    const doneCount = steps.filter(s => s.done).length;
+    const allDone = steps.length > 0 && doneCount === steps.length;
+    const pct = steps.length > 0 ? Math.round((doneCount / steps.length) * 100) : 0;
+    const roleLabel = ROLE_LABELS[sop.targetRole] || sop.targetRole || 'Todos';
 
-                const id = `SOP-${Date.now().toString().slice(-4)}`;
-                const newSop = {
-                    id,
-                    title: titleVal,
-                    iconName: iconVal || 'check-square',
-                    steps: stepsArr.length ? stepsArr : [{ text: 'Primer paso procedimental', done: false }]
-                };
-
-                try {
-                    await dbService.set('sops', id, newSop);
-                } catch (err) {
-                    console.warn("Error saving SOP:", err);
-                }
-
-                document.body.removeChild(overlay);
-                loadSops();
-            }
-        }, [
-            h('div', { className: 'modal-header' }, [
-                h('span', { className: 'modal-title' }, 'Crear Nuevo Procedimiento SOP'),
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
-            ]),
-            h('div', { className: 'modal-body flex-column gap-3' }, [
-                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '2fr 1fr' } }, [
-                    h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label' }, 'Título de la Guía SOP'),
-                        h('input', { id: 'sop-title', className: 'form-input', placeholder: 'Ej. Control de Audio', required: true })
+    return h('div', {
+        className: 'card p-0 flex-column hover-border transition',
+        style: { overflow: 'hidden', opacity: sop.active === false ? 0.5 : 1 }
+    }, [
+        // Top bar with progress color
+        h('div', { style: { height: '3px', background: `linear-gradient(90deg, #3b82f6 ${pct}%, var(--bg-tertiary) ${pct}%)` } }),
+        h('div', { className: 'p-4 flex-column gap-3' }, [
+            // Header row
+            h('div', { className: 'flex justify-between items-start' }, [
+                h('div', { className: 'flex items-center gap-2' }, [
+                    h('div', { className: 'flex items-center justify-center', style: { width: '32px', height: '32px', borderRadius: '6px', background: 'var(--bg-tertiary)', flexShrink: 0 } }, [
+                        icon(sop.iconName || 'check-square', 16)
                     ]),
-                    h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label' }, 'Icono Lucide'),
-                        h('select', { id: 'sop-icon', className: 'form-select text-xs', required: true }, [
-                            h('option', { value: 'check-square' }, 'Square Check'),
-                            h('option', { value: 'video' }, 'Video/Cámara'),
-                            h('option', { value: 'scissors' }, 'Scissors/Editor'),
-                            h('option', { value: 'mic' }, 'Mic/Audio'),
-                            h('option', { value: 'sparkles' }, 'Sparkles/AI')
-                        ])
+                    h('div', { className: 'flex-column gap-0.5' }, [
+                        h('h4', { className: 'font-bold text-sm text-primary', style: { margin: 0 } }, sop.title),
+                        h('span', { className: 'badge badge-secondary', style: { fontSize: '0.55rem', padding: '1px 5px', width: 'fit-content' } }, roleLabel)
                     ])
                 ]),
-                h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Puntos de la Lista de Verificación (Uno por línea)'),
-                    h('textarea', { id: 'sop-steps', className: 'form-textarea', placeholder: 'Paso 1: Limpieza de audio\nPaso 2: Compresión multibanda\nPaso 3: Nivelar a -14 LUFS', style: { minHeight: '120px' }, required: true })
+                h('div', { className: 'flex items-center gap-1' }, [
+                    // Active/inactive badge
+                    sop.active === false
+                        ? h('span', { className: 'badge badge-warning', style: { fontSize: '0.55rem' } }, 'Inactivo')
+                        : h('span', { className: 'badge badge-success', style: { fontSize: '0.55rem' } }, 'Activo'),
+                    isAdmin ? h('button', { className: 'btn-icon text-muted', onClick: () => openAdminSopBuilder(sop, reload) }, [icon('edit-3', 13)]) : null,
+                    isAdmin ? h('button', {
+                        className: 'btn-icon text-error',
+                        onClick: async () => {
+                            if (confirm(`¿Eliminar SOP "${sop.title}"?`)) {
+                                await dbService.delete('sops', sop.id);
+                                reload();
+                            }
+                        }
+                    }, [icon('trash-2', 13)]) : null
                 ])
             ]),
-            h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
-                h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Crear SOP')
-            ])
-        ]);
-        overlay.appendChild(form);
-        document.body.appendChild(overlay);
-        
-        setTimeout(() => {
-            if (window.lucide) window.lucide.createIcons();
-        }, 50);
-    };
 
-    const openSopDetailModal = (sopItem) => {
-        const overlay = h('div', { className: 'modal-overlay' });
-        const panel = h('div', { className: 'modal-container p-6 flex-column gap-3' }, [
-            h('div', { className: 'flex justify-between items-center border-bottom pb-2' }, [
-                h('h3', { className: 'font-bold text-sm text-primary flex items-center gap-2' }, [
-                    icon(sopItem.iconName || 'check-square', 18),
-                    h('span', {}, `SOP: ${sopItem.title || sopItem.name}`)
+            // Progress bar
+            h('div', {}, [
+                h('div', { className: 'flex justify-between text-xs text-muted mb-1' }, [
+                    h('span', {}, `${doneCount}/${steps.length} pasos`),
+                    h('span', { className: allDone ? 'text-success font-bold' : '' }, `${pct}%`)
                 ]),
-                h('button', { className: 'btn-icon text-xs', style: { width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }, onClick: () => document.body.removeChild(overlay) }, '×')
+                h('div', { style: { height: '4px', background: 'var(--bg-tertiary)', borderRadius: '2px', overflow: 'hidden' } }, [
+                    h('div', { style: { height: '100%', width: `${pct}%`, background: allDone ? '#10b981' : '#3b82f6', transition: 'width 0.4s ease', borderRadius: '2px' } })
+                ])
             ]),
-            h('p', { className: 'text-xs text-muted' }, 'Guía procedimental y validación paso a paso de producción. Todos los miembros del equipo deben verificar el cumplimiento de cada punto antes de la renderización final.'),
-            
-            h('div', { className: 'flex-column gap-2 mt-2 p-3 bg-secondary border-radius-sm' }, 
-                (sopItem.steps || [{ text: sopItem.objective || 'Verificación en curso', done: true }]).map((st, idx) => h('div', { key: idx, className: 'flex items-center gap-2 text-xs cursor-pointer' }, [
-                    h('input', { 
-                        type: 'checkbox', 
-                        checked: st.done,
-                        onChange: async (e) => {
-                            st.done = e.target.checked;
-                            try {
-                                await dbService.set('sops', sopItem.id, sopItem);
-                            } catch (err) {
-                                console.warn("Error updating SOP:", err);
-                            }
-                            loadSops();
-                        }
-                    }),
-                    h('span', { className: st.done ? 'text-primary font-medium' : 'text-muted' }, st.text)
-                ]))
+
+            // Gallery image if set
+            sop.galleryImage ? h('img', { src: sop.galleryImage, style: { width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' } }) : null,
+
+            // Steps list
+            h('div', { className: 'flex-column gap-2' },
+                steps.map((step, idx) => renderStep(step, idx, sop, user, isAdmin, reload))
             ),
 
-            h('div', { className: 'flex justify-end mt-2 pt-2 border-top' }, [
-                h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Entendido y Validado')
+            // Bottom actions
+            h('div', { className: 'flex gap-2 border-top pt-3 mt-1' }, [
+                allDone
+                    ? h('a', {
+                        href: '#billing',
+                        className: 'btn btn-primary text-xs flex-1 text-center',
+                        style: { textDecoration: 'none', textAlign: 'center' }
+                    }, [icon('credit-card', 12), h('span', { style: { marginLeft: '4px' } }, 'Anotar en Factura →')])
+                    : h('button', {
+                        className: 'btn btn-outline text-xs flex-1',
+                        onClick: () => openSopFullView(sop, user, isAdmin, reload)
+                    }, 'Ver Detalle Completo')
             ])
-        ]);
+        ])
+    ]);
+}
 
-        overlay.appendChild(panel);
-        document.body.appendChild(overlay);
+// ── Individual Step ───────────────────────────────────────────────────────────
+function renderStep(step, idx, sop, user, isAdmin, reload) {
+    const isUserFillable = step.type === 'link' || step.type === 'text';
+
+    const saveStep = async (updates) => {
+        sop.steps[idx] = { ...sop.steps[idx], ...updates };
+        await dbService.set('sops', sop.id, sop);
+        reload();
+    };
+
+    const checkbox = h('input', {
+        type: 'checkbox',
+        checked: step.done || false,
+        style: { cursor: 'pointer', accentColor: '#3b82f6', flexShrink: 0 },
+        onChange: async (e) => saveStep({ done: e.target.checked })
+    });
+
+    let inputEl = null;
+    if (step.type === 'link' && !isAdmin) {
+        inputEl = h('input', {
+            type: 'url',
+            className: 'form-input text-xs mt-1',
+            placeholder: step.linkPlaceholder || 'Pega el enlace aquí...',
+            value: step.userValue || '',
+            style: { fontSize: '0.7rem', height: '30px' },
+            onChange: (e) => saveStep({ userValue: e.target.value })
+        });
+    } else if (step.type === 'text' && !isAdmin) {
+        inputEl = h('textarea', {
+            className: 'form-textarea text-xs mt-1',
+            placeholder: step.textDescription || 'Escribe aquí...',
+            value: step.userValue || '',
+            rows: 2,
+            style: { fontSize: '0.7rem', minHeight: '50px' },
+            onChange: (e) => saveStep({ userValue: e.target.value })
+        });
+    }
+
+    return h('div', { className: 'flex-column gap-1 p-2 rounded', style: { borderRadius: '4px', background: step.done ? 'rgba(16,185,129,0.05)' : 'var(--bg-tertiary)' } }, [
+        h('div', { className: 'flex items-start gap-2' }, [
+            checkbox,
+            h('div', { className: 'flex-column gap-0.5', style: { flex: 1 } }, [
+                h('span', { className: `text-xs ${step.done ? 'text-success font-medium line-through' : 'text-secondary'}` }, step.text),
+                step.type === 'link' ? h('span', { className: 'text-xs text-muted', style: { fontSize: '0.6rem' } }, `🔗 ${step.linkPlaceholder || 'Link requerido'}`) : null,
+                step.type === 'text' ? h('span', { className: 'text-xs text-muted', style: { fontSize: '0.6rem' } }, `📝 ${step.textDescription || 'Texto requerido'}`) : null
+            ])
+        ]),
+        inputEl
+    ]);
+}
+
+// ── Full SOP View Modal ───────────────────────────────────────────────────────
+function openSopFullView(sop, user, isAdmin, reload) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    const steps = sop.steps || [];
+
+    const modal = h('div', { className: 'modal-container', style: { maxWidth: '580px' } }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, sop.title),
+            h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
+        ]),
+        h('div', { className: 'modal-body flex-column gap-3', style: { maxHeight: '60vh', overflowY: 'auto' } }, [
+            sop.galleryImage ? h('img', { src: sop.galleryImage, style: { width: '100%', height: '160px', objectFit: 'cover', borderRadius: '6px' } }) : null,
+            h('div', { className: 'flex-column gap-2' },
+                steps.map((step, idx) => renderStep(step, idx, sop, user, isAdmin, () => { overlay.remove(); reload(); }))
+            )
+        ]),
+        h('div', { className: 'modal-footer' }, [
+            h('button', { className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cerrar'),
+            h('a', { href: '#billing', className: 'btn btn-primary text-xs', style: { textDecoration: 'none' }, onClick: () => overlay.remove() }, [icon('credit-card', 12), h('span', { style: { marginLeft: '4px' } }, 'Ir a Factura')])
+        ])
+    ]);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+}
+
+// ── Admin SOP Builder Modal ───────────────────────────────────────────────────
+function openAdminSopBuilder(existing, reload) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    const stepsData = existing ? JSON.parse(JSON.stringify(existing.steps || [])) : [];
+    let galleryImageUrl = existing?.galleryImage || '';
+
+    const stepsContainer = h('div', { className: 'flex-column gap-2' });
+
+    const renderAdminStepRow = (step, idx) => {
+        const row = h('div', { className: 'card p-3 flex-column gap-2', style: { border: '1px solid var(--border)' } }, [
+            // Step text (admin sets this)
+            h('div', { className: 'flex items-center gap-2' }, [
+                h('span', { className: 'text-xs text-muted font-bold', style: { flexShrink: 0 } }, `${idx + 1}.`),
+                h('input', {
+                    className: 'form-input text-xs', style: { flex: 1, height: '30px' },
+                    placeholder: 'Texto del paso (solo editable por admin)...',
+                    value: step.text || '',
+                    onInput: (e) => { stepsData[idx].text = e.target.value; }
+                }),
+                h('button', {
+                    className: 'btn-icon text-error', style: { width: '22px', height: '22px', flexShrink: 0 },
+                    onClick: () => { stepsData.splice(idx, 1); rebuildSteps(); }
+                }, [icon('trash-2', 12)])
+            ]),
+            // Step type selector
+            h('div', { className: 'flex gap-2 items-center' }, [
+                h('label', { className: 'text-xs text-muted', style: { flexShrink: 0 } }, 'Tipo de campo:'),
+                h('select', {
+                    className: 'form-select text-xs', style: { height: '28px', flex: 1 },
+                    onChange: (e) => { stepsData[idx].type = e.target.value; rebuildSteps(); }
+                }, [
+                    h('option', { value: 'check', selected: step.type === 'check' || !step.type }, 'Solo Checkbox'),
+                    h('option', { value: 'link', selected: step.type === 'link' }, '🔗 Link (usuario pone su link)'),
+                    h('option', { value: 'text', selected: step.type === 'text' }, '📝 Texto (usuario escribe)')
+                ]),
+                // Active toggle
+                h('label', { className: 'flex items-center gap-1 text-xs cursor-pointer' }, [
+                    h('input', {
+                        type: 'checkbox', checked: step.active !== false,
+                        onChange: (e) => { stepsData[idx].active = e.target.checked; }
+                    }),
+                    h('span', {}, 'Activo')
+                ])
+            ]),
+            // Link placeholder (only if type === link)
+            step.type === 'link' ? h('input', {
+                className: 'form-input text-xs', style: { height: '28px' },
+                placeholder: 'Texto guía del link (ej: "Pega el link del drive aquí")',
+                value: step.linkPlaceholder || '',
+                onInput: (e) => { stepsData[idx].linkPlaceholder = e.target.value; }
+            }) : null,
+            // Text description (only if type === text)
+            step.type === 'text' ? h('input', {
+                className: 'form-input text-xs', style: { height: '28px' },
+                placeholder: 'Mini descripción del texto que debe poner (solo editable por admin)',
+                value: step.textDescription || '',
+                onInput: (e) => { stepsData[idx].textDescription = e.target.value; }
+            }) : null
+        ]);
+        return row;
+    };
+
+    const rebuildSteps = () => {
+        stepsContainer.innerHTML = '';
+        stepsData.forEach((step, idx) => stepsContainer.appendChild(renderAdminStepRow(step, idx)));
         if (window.lucide) window.lucide.createIcons();
     };
 
-    loadSops();
-    return container;
-};
+    const addStep = () => {
+        stepsData.push({ text: '', type: 'check', done: false, active: true });
+        rebuildSteps();
+    };
+
+    rebuildSteps();
+
+    const form = h('form', {
+        className: 'modal-container', style: { maxWidth: '600px' },
+        onSubmit: async (e) => {
+            e.preventDefault();
+            const titleVal = form.querySelector('#sop-title').value.trim();
+            const iconVal = form.querySelector('#sop-icon').value;
+            const roleVal = form.querySelector('#sop-role').value;
+            const activeVal = form.querySelector('#sop-active').checked;
+            const galleryVal = form.querySelector('#sop-gallery').value.trim();
+
+            const id = existing?.id || `SOP-${Date.now().toString().slice(-5)}`;
+            const newSop = {
+                id, title: titleVal, iconName: iconVal,
+                targetRole: roleVal, active: activeVal,
+                galleryImage: galleryVal || '',
+                steps: stepsData.filter(s => s.text?.trim())
+            };
+
+            // Add default last step: "Anotar en factura" if not present
+            const hasDefault = newSop.steps.some(s => s.isDefault);
+            if (!hasDefault) {
+                newSop.steps.push({ text: '✅ Anotar en la factura y registrar el trabajo completado', type: 'check', done: false, isDefault: true });
+            }
+
+            await dbService.set('sops', id, newSop);
+            overlay.remove();
+            reload();
+        }
+    }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, existing ? `Editar SOP: ${existing.title}` : 'Crear Nuevo SOP'),
+            h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
+        ]),
+        h('div', { className: 'modal-body flex-column gap-3', style: { maxHeight: '70vh', overflowY: 'auto' } }, [
+            // Title + icon + role
+            h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr auto auto' } }, [
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Título del SOP'),
+                    h('input', { id: 'sop-title', className: 'form-input text-xs', required: true, value: existing?.title || '', placeholder: 'Ej. Control de Audio en Grabación' })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Icono'),
+                    h('select', { id: 'sop-icon', className: 'form-select text-xs', style: { height: '38px' } },
+                        ICONS.map(ic => h('option', { value: ic, selected: existing?.iconName === ic }, ic))
+                    )
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label flex items-center gap-1' }, [
+                        h('input', { id: 'sop-active', type: 'checkbox', checked: existing?.active !== false }),
+                        h('span', {}, 'Activo')
+                    ]),
+                    h('div', {})
+                ])
+            ]),
+            // Role target
+            h('div', { className: 'form-group' }, [
+                h('label', { className: 'form-label' }, 'Rol Objetivo'),
+                h('select', { id: 'sop-role', className: 'form-select text-xs', style: { height: '38px' } },
+                    ROLES.map(r => h('option', { value: r, selected: existing?.targetRole === r }, ROLE_LABELS[r] || r))
+                )
+            ]),
+            // Gallery image URL
+            h('div', { className: 'form-group' }, [
+                h('label', { className: 'form-label' }, 'URL de Imagen de Galería (opcional)'),
+                h('input', { id: 'sop-gallery', className: 'form-input text-xs', placeholder: 'https://...imagen de referencia visual...', value: existing?.galleryImage || '' })
+            ]),
+            // Steps
+            h('div', { className: 'flex-column gap-2' }, [
+                h('div', { className: 'flex justify-between items-center' }, [
+                    h('label', { className: 'form-label', style: { margin: 0 } }, `Pasos del SOP (${stepsData.length})`),
+                    h('button', {
+                        type: 'button', className: 'btn btn-outline text-xs', style: { padding: '3px 8px' },
+                        onClick: addStep
+                    }, [icon('plus', 11), h('span', {}, 'Añadir Paso')])
+                ]),
+                stepsContainer,
+                h('p', { className: 'text-xs text-muted italic' }, '💡 Al final se añade automáticamente el paso "Anotar en factura" redirigiendo a Pagos.')
+            ])
+        ]),
+        h('div', { className: 'modal-footer' }, [
+            h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
+            h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, existing ? 'Guardar Cambios' : 'Crear SOP')
+        ])
+    ]);
+
+    overlay.appendChild(form);
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+}

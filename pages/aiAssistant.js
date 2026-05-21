@@ -1041,21 +1041,24 @@ Detalles del Payload según el type:
 7. "create_script":
    - "title": string (Título del guión, ej: "RC-01 Tour Apertura")
    - "client": string (ID o nombre del cliente)
-   - "content": string (Texto COMPLETO del guión: Hook + Cuerpo + CTA con indicaciones visuales)
+   - "content": string (Texto COMPLETO del guión: Hook + Cuerpo + CTA)
+   - "sceneDirections": string (OBLIGATORIO - Puesta en escena detallada paso a paso, ej: "• [0-3s] Plano cerrado de los platos, cámara a 45°\n• [3-8s] El dueño habla a cámara diciendo el hook\n• [8-15s] Recorrido POV del local")
    - "recommendedFormat": string (ID del formato, ej: "rc-01")
    - "recommendedHook": string (ID del hook, ej: "hk-03")
 8. "update_script":
    - "scriptId": string (ID del guión existente)
    - "title": string (Opcional)
    - "content": string (Opcional - nuevo contenido completo)
+   - "sceneDirections": string (Opcional - nuevas indicaciones de puesta en escena)
    - "recommendedFormat": string (Opcional)
    - "recommendedHook": string (Opcional)
 
 === GUÍA DE CREACIÓN Y ASIGNACIÓN DE GUIONES (OBLIGATORIO) ===
 1. CREACIÓN DEL GUIÓN: Usa SIEMPRE "create_script" para guardar el guión con todo su texto. NUNCA pongas el texto completo dentro de una asignación.
-2. CREACIÓN DE LA TAREA: Después de "create_script", usa "create_assignment" para la tarea del Kanban. En description, solo instrucciones breves.
-3. SEPARACIÓN ESTRICTA: Los guiones son recursos intelectuales (create_script). Las asignaciones son tareas del equipo (create_assignment). Sepáralos siempre.
-4. EDICIÓN: Para corregir un guión, usa "update_script" con el scriptId que aparece en tu contexto.
+2. PUESTA EN ESCENA: SIEMPRE incluye "sceneDirections" con indicaciones visuales detalladas segundo a segundo: qué grabar, cómo enfocar, quién habla, qué plano usar. Esto es FUNDAMENTAL para el equipo de grabación.
+3. CREACIÓN DE LA TAREA: Después de "create_script", usa "create_assignment" para la tarea del Kanban. En description, solo instrucciones breves.
+4. SEPARACIÓN ESTRICTA: Los guiones son recursos intelectuales (create_script). Las asignaciones son tareas del equipo (create_assignment). Sepáralos siempre.
+5. EDICIÓN: Para corregir un guión, usa "update_script" con el scriptId que aparece en tu contexto.
 
 === LISTA DE GUIONES ACTUALES EN EL SISTEMA ===
 ${scripts.length > 0 ? scripts.map(s => `- Guión: "${s.title}" (ID: "${s.id}" | Cliente: "${s.client}")`).join('\n') : 'No hay guiones registrados aún.'}

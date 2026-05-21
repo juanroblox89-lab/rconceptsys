@@ -55,9 +55,10 @@ export const render = () => {
         }, 10000);
 
         try {
-            const [allUsers, clientsList] = await Promise.all([
+            const [allUsers, clientsList, rolesList] = await Promise.all([
                 userService.getAllUsers(),
-                dbService.getAll('clients').catch(() => [])
+                dbService.getAll('clients').catch(() => []),
+                dbService.getAll('roles').catch(() => [])
             ]);
             const pendingUsers = allUsers.filter(u => !u.approved);
             const approvedUsers = allUsers.filter(u => u.approved);
@@ -92,7 +93,7 @@ export const render = () => {
                     ? h('div', { className: 'card p-5 text-center text-xs text-muted' },
                         '✅ No hay usuarios pendientes en este momento.')
                     : h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' } },
-                        pendingUsers.map(pu => renderPendingCard(pu, loadAdminDashboard)))
+                        pendingUsers.map(pu => renderPendingCard(pu, loadAdminDashboard, rolesList)))
             ]);
             container.appendChild(pendingSection);
 
@@ -117,7 +118,10 @@ export const render = () => {
             ]);
             container.appendChild(teamSection);
 
-            // ── 4. Visual Identity (logo upload) ────────────
+            // ── 4. Roles Management ─────────────────────────
+            container.appendChild(renderRolesSection(rolesList, loadAdminDashboard));
+
+            // ── 5. Visual Identity (logo upload) ────────────
             container.appendChild(renderUploadSection());
 
             // Hydrate icons
@@ -145,7 +149,7 @@ export const render = () => {
 };
 
 // ── Pending User Card ────────────────────────────────────────
-function renderPendingCard(pu, reload) {
+function renderPendingCard(pu, reload, rolesList = []) {
     const avatar = pu.photoURL
         ? h('img', { src: pu.photoURL, style: { width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0 } })
         : h('div', {
@@ -156,12 +160,21 @@ function renderPendingCard(pu, reload) {
             }
         }, (pu.nombre || pu.email || 'US').slice(0, 2).toUpperCase());
 
-    const roleSelect = h('select', { className: 'form-select text-xs' }, [
-        h('option', { value: 'editor' }, 'Editor de Video'),
-        h('option', { value: 'camarógrafo' }, 'Camarógrafo'),
-        h('option', { value: 'estratega' }, 'Estratega Creativo'),
-        h('option', { value: 'diseñador' }, 'Diseñador Gráfico'),
-    ]);
+    // Build options from Firestore roles, fallback to defaults
+    const defaultRoles = [
+        { id: 'editor', label: 'Editor de Video' },
+        { id: 'camarógrafo', label: 'Camarógrafo' },
+        { id: 'estratega', label: 'Estratega Creativo' },
+        { id: 'diseñador', label: 'Diseñador Gráfico' },
+        { id: 'administración digital', label: 'Administración Digital' }
+    ];
+    const roleOptions = rolesList.length > 0
+        ? rolesList.filter(r => r.active !== false).map(r => ({ id: r.id, label: r.label }))
+        : defaultRoles;
+
+    const roleSelect = h('select', { className: 'form-select text-xs' },
+        roleOptions.map(r => h('option', { value: r.id }, r.label))
+    );
 
     return h('div', { className: 'card flex-column gap-3' }, [
         h('div', { className: 'flex items-center gap-3' }, [

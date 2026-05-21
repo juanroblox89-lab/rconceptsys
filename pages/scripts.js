@@ -1,16 +1,12 @@
 /**
  * Scripts Page - Creative Production OS
- * Notion Light UI presenting recommended scripts grouped by client,
- * alongside active monthly production scripts (assignments).
- * Only editable by Admins.
+ * Redesigned: expandable detail view, scene directions, cross-references to formats/hooks.
  */
 import { h, icon } from '../utils/dom.js';
 import { dbService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
-
-let localScriptsCache = [];
 
 export const render = () => {
     const { user } = store.getState();
@@ -22,322 +18,281 @@ export const render = () => {
     let assignmentsList = [];
     let clientsList = [];
     let usersList = [];
+    let formatsList = [];
+    let hooksList = [];
 
     const loadScripts = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
-        
         try {
-            const [list, assignments, clients, users] = await Promise.all([
+            const [list, assignments, clients, users, formats, hooks] = await Promise.all([
                 dbService.getAll('scripts'),
                 assignmentService.getAllAssignments(),
                 dbService.getAll('clients'),
-                userService.getAllUsers()
+                userService.getAllUsers(),
+                dbService.getAll('formats').catch(() => []),
+                dbService.getAll('hooks').catch(() => [])
             ]);
-            scriptsList = list.length ? list : localScriptsCache;
+            scriptsList = list || [];
             assignmentsList = assignments || [];
             clientsList = clients || [];
             if (!isAdmin && user.allowedClients) {
                 clientsList = clientsList.filter(c => user.allowedClients.includes(c.id));
             }
             usersList = users || [];
+            formatsList = formats || [];
+            hooksList = hooks || [];
         } catch (err) {
-            console.warn("Error fetching scripts/assignments, using local cache:", err);
-            scriptsList = localScriptsCache;
+            console.warn("Error fetching scripts:", err);
         }
-
         renderUI();
     };
 
     const renderUI = () => {
         container.innerHTML = '';
 
-        // 1. Header
         const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
             h('div', {}, [
                 h('h1', {}, 'Control de Guiones y Producción Mensual'),
-                h('p', { className: 'text-xs text-muted mt-1' }, 'Planificación de copies y guiones a trabajar este mes, agrupados por cliente.')
+                h('p', { className: 'text-xs text-muted mt-1' }, 'Guiones agrupados por cliente. Toca cualquier guión para ver el detalle completo.')
             ]),
             h('div', { className: 'flex gap-2' }, [
                 isAdmin ? h('button', { 
                     className: 'btn btn-primary text-xs',
                     onClick: () => openScriptModal(null, { clients: clientsList }) 
-                }, [icon('plus', 14), h('span', {}, 'Nuevo Guión Recomendado')]) : null
+                }, [icon('plus', 14), h('span', {}, 'Nuevo Guión')]) : null
             ])
         ]);
 
-        // 2. Search Box
         const searchInput = h('input', {
-            type: 'text',
-            className: 'form-input text-xs',
-            placeholder: 'Buscar por cliente, título, guión o tarea...',
-            value: searchQuery,
-            style: { maxWidth: '320px', height: '36px' },
-            onInput: (e) => {
-                searchQuery = e.target.value.toLowerCase();
-                applyFiltersAndRenderGrid();
-            }
+            type: 'text', className: 'form-input text-xs',
+            placeholder: 'Buscar por cliente, título o contenido...',
+            value: searchQuery, style: { maxWidth: '320px', height: '36px' },
+            onInput: (e) => { searchQuery = e.target.value.toLowerCase(); applyFiltersAndRenderGrid(); }
         });
 
         const controlsRow = h('div', { 
             className: 'flex justify-between items-center gap-3 mb-4 w-full flex-wrap',
             style: { padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }
         }, [
-            h('div', { className: 'flex items-center gap-2', style: { flex: 1 } }, [
-                icon('search', 14, 'text-muted'),
-                searchInput
-            ]),
-            h('span', { className: 'text-xs text-muted font-medium' }, 'Filtrando plan de producción actual')
+            h('div', { className: 'flex items-center gap-2', style: { flex: 1 } }, [icon('search', 14, 'text-muted'), searchInput]),
+            h('span', { className: 'text-xs text-muted font-medium' }, `${scriptsList.length} guiones en sistema`)
         ]);
 
-        // Grouped Container Placeholder
         const groupedContainer = h('div', { id: 'scripts-grouped-container', className: 'flex-column gap-5 w-full' });
 
         container.appendChild(header);
         container.appendChild(controlsRow);
         container.appendChild(groupedContainer);
-
         applyFiltersAndRenderGrid();
     };
 
     const applyFiltersAndRenderGrid = () => {
         const groupedContainer = container.querySelector('#scripts-grouped-container');
         if (!groupedContainer) return;
-
         groupedContainer.innerHTML = '';
 
         const now = new Date();
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth();
 
-        // Construct client map
         const clientMap = {};
-
-        // 1. Group recommended scripts
         scriptsList.forEach(s => {
-            const clientName = s.client || 'General';
-            if (!clientMap[clientName]) {
-                clientMap[clientName] = { name: clientName, recommended: [], activeMonthly: [] };
-            }
-            clientMap[clientName].recommended.push(s);
+            const cn = s.client || 'General';
+            if (!clientMap[cn]) clientMap[cn] = { name: cn, recommended: [], activeMonthly: [] };
+            clientMap[cn].recommended.push(s);
         });
-
-        // 2. Group current month's active assignments
         assignmentsList.forEach(asg => {
-            const dueDateVal = asg.dueDate ? new Date(asg.dueDate) : null;
-            const isThisMonth = dueDateVal && dueDateVal.getFullYear() === currentYear && dueDateVal.getMonth() === currentMonth;
-            
-            if (isThisMonth) {
-                const clientName = asg.client || 'General';
-                if (!clientMap[clientName]) {
-                    clientMap[clientName] = { name: clientName, recommended: [], activeMonthly: [] };
-                }
-                clientMap[clientName].activeMonthly.push(asg);
+            const d = asg.dueDate ? new Date(asg.dueDate) : null;
+            if (d && d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+                const cn = asg.client || 'General';
+                if (!clientMap[cn]) clientMap[cn] = { name: cn, recommended: [], activeMonthly: [] };
+                clientMap[cn].activeMonthly.push(asg);
             }
         });
-
-        // 3. Make sure all registered clients appear
         clientsList.forEach(c => {
-            const name = c.name;
-            if (name && !clientMap[name]) {
-                clientMap[name] = { name, recommended: [], activeMonthly: [] };
-            }
+            if (c.name && !clientMap[c.name]) clientMap[c.name] = { name: c.name, recommended: [], activeMonthly: [] };
         });
 
-        // Filter keys by search query
-        const filteredClientNames = Object.keys(clientMap).filter(clientName => {
+        const filtered = Object.keys(clientMap).filter(cn => {
             if (!searchQuery) return true;
-            
-            const info = clientMap[clientName];
-            const matchesClientName = clientName.toLowerCase().includes(searchQuery);
-            const matchesRecommended = info.recommended.some(s => 
-                (s.title || '').toLowerCase().includes(searchQuery) ||
-                (s.script || '').toLowerCase().includes(searchQuery) ||
-                (s.recommendations || '').toLowerCase().includes(searchQuery)
-            );
-            const matchesActive = info.activeMonthly.some(a => 
-                (a.title || '').toLowerCase().includes(searchQuery) ||
-                (a.description || '').toLowerCase().includes(searchQuery) ||
-                (a.linkedScript || '').toLowerCase().includes(searchQuery)
-            );
-            
-            return matchesClientName || matchesRecommended || matchesActive;
+            const info = clientMap[cn];
+            return cn.toLowerCase().includes(searchQuery) ||
+                info.recommended.some(s => (s.title||'').toLowerCase().includes(searchQuery) || (s.content||s.script||'').toLowerCase().includes(searchQuery)) ||
+                info.activeMonthly.some(a => (a.title||'').toLowerCase().includes(searchQuery));
         });
 
-        if (filteredClientNames.length === 0) {
+        if (filtered.length === 0) {
             groupedContainer.appendChild(h('div', { className: 'text-center p-10 card flex-column items-center justify-center gap-3', style: { border: '1px dashed var(--border)' } }, [
                 icon('file-text', 28, 'text-muted'),
-                h('span', { className: 'text-xs font-bold text-muted' }, 'No se encontraron clientes ni guiones que coincidan con la búsqueda.')
+                h('span', { className: 'text-xs font-bold text-muted' }, 'No se encontraron guiones.')
             ]));
             return;
         }
 
-        // Render each client block
-        filteredClientNames.forEach(clientName => {
+        filtered.forEach(clientName => {
             const data = clientMap[clientName];
-            
+            const clientObj = clientsList.find(c => c.name === clientName);
+
             const clientSection = h('div', { 
                 className: 'card flex-column gap-3 p-5', 
                 style: { border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg-secondary)' } 
             }, [
-                // Header
                 h('div', { className: 'flex justify-between items-center border-bottom pb-2' }, [
                     h('div', { className: 'flex items-center gap-2' }, [
-                        h('div', { className: 'glass flex items-center justify-center font-bold text-accent text-xs', style: { width: '28px', height: '28px', borderRadius: '50%' } }, clientName.slice(0,2).toUpperCase()),
+                        clientObj?.logo 
+                            ? h('img', { src: clientObj.logo, style: { width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' } })
+                            : h('div', { className: 'glass flex items-center justify-center font-bold text-accent text-xs', style: { width: '28px', height: '28px', borderRadius: '50%' } }, clientName.slice(0,2).toUpperCase()),
                         h('h2', { className: 'text-sm font-bold text-primary', style: { margin: 0 } }, clientName),
-                        h('span', { className: 'badge badge-secondary text-xs', style: { fontSize: '0.65rem' } }, `${data.recommended.length} biblioteca • ${data.activeMonthly.length} este mes`)
+                        h('span', { className: 'badge badge-secondary text-xs', style: { fontSize: '0.65rem' } }, `${data.recommended.length} guiones`)
                     ]),
-                    isAdmin ? h('button', {
-                        className: 'btn btn-outline text-xs',
-                        style: { padding: '4px 8px' },
-                        onClick: () => openScriptModal(null, { clients: clientsList, preselectedClient: clientName })
-                    }, '+ Añadir a Biblioteca') : null
+                    h('div', { className: 'flex gap-2' }, [
+                        clientObj ? h('a', { href: `#clients/${clientObj.id}`, className: 'btn-icon text-muted', title: 'Ver cliente', style: { width: '24px', height: '24px' } }, [icon('external-link', 12)]) : null,
+                        isAdmin ? h('button', { className: 'btn btn-outline text-xs', style: { padding: '4px 8px' }, onClick: () => openScriptModal(null, { clients: clientsList, preselectedClient: clientName }) }, '+ Añadir') : null
+                    ].filter(Boolean))
                 ]),
 
-                // Columns Grid
-                h('div', { 
-                    className: 'grid gap-4 mt-2', 
-                    style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } 
-                }, [
-                    // Column 1: Biblioteca de Guiones
-                    h('div', { 
-                        className: 'flex-column gap-3 p-4 bg-tertiary rounded', 
-                        style: { background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: '6px' } 
-                    }, [
-                        h('h3', { className: 'text-xs font-bold text-secondary uppercase tracking-wider mb-2 flex items-center gap-1.5' }, [
-                            icon('book-open', 13, 'text-accent'),
-                            h('span', {}, 'Biblioteca de Guiones Recomendados')
-                        ]),
-                        data.recommended.length === 0 
-                            ? h('div', { className: 'text-center p-6 text-xs text-muted italic' }, 'Sin guiones recomendados en biblioteca.')
-                            : h('div', { className: 'flex-column gap-3' }, data.recommended.map(script => createScriptSubCard(script)))
-                    ]),
-
-                    // Column 2: Producción Activa del Mes
-                    h('div', { 
-                        className: 'flex-column gap-3 p-4 bg-secondary rounded', 
-                        style: { border: '1px solid var(--border)', borderRadius: '6px', background: 'rgba(var(--info-rgb), 0.02)' } 
-                    }, [
-                        h('h3', { className: 'text-xs font-bold text-secondary uppercase tracking-wider mb-2 flex items-center gap-1.5' }, [
-                            icon('film', 13, 'text-info'),
-                            h('span', {}, `Trabajos en Producción (Este Mes)`)
-                        ]),
-                        data.activeMonthly.length === 0 
-                            ? h('div', { className: 'text-center p-6 text-xs text-muted italic' }, 'Sin trabajos de producción agendados este mes.')
-                            : h('div', { className: 'flex-column gap-3' }, data.activeMonthly.map(asg => createAssignmentSubCard(asg)))
-                    ])
-                ])
+                // Scripts grid
+                h('div', { className: 'grid gap-3 mt-2', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' } },
+                    data.recommended.length === 0 && data.activeMonthly.length === 0
+                        ? [h('div', { className: 'text-center p-6 text-xs text-muted italic' }, 'Sin guiones para este cliente.')]
+                        : [
+                            ...data.recommended.map(s => createScriptCard(s)),
+                            ...data.activeMonthly.map(a => createAssignmentCard(a))
+                        ]
+                )
             ]);
-
             groupedContainer.appendChild(clientSection);
         });
 
         if (window.lucide) window.lucide.createIcons();
     };
 
-    // Recommended Script card element
-    const createScriptSubCard = (s) => {
-        return h('div', { className: 'card p-4 flex-column gap-2 hover-border transition bg-secondary relative' }, [
-            h('div', { className: 'flex justify-between items-start' }, [
-                h('div', {}, [
-                    h('h4', { className: 'text-xs font-bold text-accent' }, s.title || 'Guión General'),
-                    h('span', { className: 'text-muted', style: { fontSize: '0.6rem' } }, `ID: ${s.id || 'SCR'}`)
+    // --- Script Card (redesigned) ---
+    const createScriptCard = (s) => {
+        const content = s.content || s.script || '';
+        const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+        const fmt = formatsList.find(f => f.id === s.recommendedFormat);
+        const hk = hooksList.find(h => h.id === s.recommendedHook);
+
+        return h('div', { 
+            className: 'card p-0 flex-column hover-border transition bg-secondary cursor-pointer',
+            style: { overflow: 'hidden' },
+            onClick: (e) => { if (!e.target.closest('button')) openDetailModal(s); }
+        }, [
+            // Color top bar
+            h('div', { style: { height: '3px', background: 'linear-gradient(90deg, var(--accent), #10b981)' } }),
+            h('div', { className: 'p-4 flex-column gap-2' }, [
+                // Header row
+                h('div', { className: 'flex justify-between items-start' }, [
+                    h('div', { className: 'flex-column gap-1', style: { flex: 1 } }, [
+                        h('h4', { className: 'text-xs font-bold text-primary' }, s.title || 'Guión'),
+                        h('div', { className: 'flex gap-1 flex-wrap mt-1' }, [
+                            fmt ? h('span', { className: 'badge badge-info', style: { fontSize: '0.55rem', padding: '1px 5px' } }, fmt.name?.split(':')[0] || fmt.id) : null,
+                            hk ? h('span', { className: 'badge badge-accent', style: { fontSize: '0.55rem', padding: '1px 5px' } }, `🎯 ${hk.title?.substring(0, 25)}...`) : null,
+                            h('span', { className: 'badge badge-success', style: { fontSize: '0.55rem', padding: '1px 5px' } }, 'Biblioteca')
+                        ].filter(Boolean))
+                    ]),
+                    h('div', { className: 'flex gap-1' }, [
+                        h('button', { 
+                            className: 'btn-icon text-muted', style: { width: '20px', height: '20px' },
+                            onClick: (e) => { e.stopPropagation(); navigator.clipboard.writeText(content); const b = e.currentTarget; b.innerHTML = icon('check',11).outerHTML; setTimeout(()=>{b.innerHTML=icon('copy',11).outerHTML;},1500); }
+                        }, [icon('copy', 11)]),
+                        isAdmin ? h('button', { className: 'btn-icon text-accent', style: { width: '20px', height: '20px' }, onClick: (e) => { e.stopPropagation(); openScriptModal(s, { clients: clientsList }); } }, [icon('edit-3', 11)]) : null,
+                        isAdmin ? h('button', { className: 'btn-icon text-error', style: { width: '20px', height: '20px' }, onClick: (e) => { e.stopPropagation(); deleteScriptFlow(s); } }, [icon('trash-2', 11)]) : null
+                    ].filter(Boolean))
                 ]),
-                h('div', { className: 'flex gap-1 items-center' }, [
-                    h('button', { 
-                        className: 'btn-icon text-muted', 
-                        style: { width: '20px', height: '20px', title: 'Copiar Guión' },
-                        onClick: (e) => {
-                            navigator.clipboard.writeText(s.content || s.script || '');
-                            const btn = e.currentTarget;
-                            const originalHTML = btn.innerHTML;
-                            btn.innerHTML = icon('check', 11).outerHTML;
-                            setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
-                        }
-                    }, [icon('copy', 11)]),
-                    isAdmin ? h('button', { 
-                        className: 'btn-icon text-accent', 
-                        style: { width: '20px', height: '20px' },
-                        onClick: () => openScriptModal(s, { clients: clientsList })
-                    }, [icon('edit-3', 11)]) : null,
-                    isAdmin ? h('button', { 
-                        className: 'btn-icon text-error', 
-                        style: { width: '20px', height: '20px' },
-                        onClick: () => deleteScriptFlow(s)
-                    }, [icon('trash-2', 11)]) : null
-                ].filter(Boolean))
-            ]),
-
-            // Copy box
-            h('div', { 
-                className: 'p-3 bg-tertiary rounded relative flex-column mt-1', 
-                style: { border: '1px solid var(--border)', borderRadius: '4px' } 
-            }, [
-                h('pre', { 
-                    className: 'text-xs font-mono text-secondary leading-relaxed',
-                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }
-                }, s.content || s.script || 'Sin contenido')
-            ]),
-
-            // Recs box
-            s.recommendations ? h('div', { className: 'flex gap-1.5 items-start mt-1 bg-tertiary p-2 rounded', style: { borderLeft: '3px solid var(--accent)' } }, [
-                icon('info', 11, 'text-accent mt-0.5'),
-                h('p', { className: 'text-xs text-muted leading-relaxed italic m-0', style: { fontSize: '0.65rem' } }, s.recommendations)
-            ]) : null
+                // Preview
+                h('p', { className: 'text-xs text-muted leading-relaxed', style: { margin: 0 } }, preview || 'Sin contenido'),
+                // Scene directions preview
+                s.sceneDirections ? h('div', { className: 'flex items-center gap-1 mt-1', style: { borderTop: '1px solid var(--border)', paddingTop: '6px' } }, [
+                    icon('clapperboard', 10, 'text-warning'),
+                    h('span', { className: 'text-xs text-warning font-medium', style: { fontSize: '0.6rem' } }, 'Incluye puesta en escena')
+                ]) : null,
+                // Tap to expand hint
+                h('div', { className: 'flex items-center gap-1 mt-1 justify-end' }, [
+                    h('span', { className: 'text-muted', style: { fontSize: '0.55rem' } }, 'Toca para ver detalle'),
+                    icon('chevron-right', 10, 'text-muted')
+                ])
+            ])
         ]);
     };
 
-    // Assignment Sub Card element
-    const createAssignmentSubCard = (asg) => {
+    // --- Assignment Card ---
+    const createAssignmentCard = (asg) => {
         const emp = usersList.find(u => u.uid === asg.employeeId);
         const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin asignar';
-        
-        const due = new Date(asg.dueDate);
-        const statusClass = asg.status === 'Completado' ? 'success' : (asg.status === 'En Proceso' || asg.status === 'En Producción' ? 'info' : 'warning');
+        const statusClass = asg.status === 'Completado' ? 'success' : (asg.status === 'En Producción' ? 'info' : 'warning');
 
-        return h('div', { className: 'card p-4 flex-column gap-2 hover-border transition bg-secondary relative' }, [
-            h('div', { className: 'flex justify-between items-start flex-wrap gap-1' }, [
-                h('div', { className: 'flex items-center gap-2' }, [
-                    h('div', {}, [
-                        h('h4', { className: 'text-xs font-bold text-primary' }, asg.title),
-                        h('span', { className: `badge badge-${statusClass} mt-1 text-xs`, style: { fontSize: '0.55rem', padding: '1px 5px' } }, asg.status)
-                    ]),
-                    h('button', { 
-                        className: 'btn-icon text-muted', 
-                        style: { width: '20px', height: '20px', title: 'Copiar Tarea' },
-                        onClick: (e) => {
-                            navigator.clipboard.writeText(asg.linkedScript || asg.description || '');
-                            const btn = e.currentTarget;
-                            const originalHTML = btn.innerHTML;
-                            btn.innerHTML = icon('check', 11).outerHTML;
-                            setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
-                        }
-                    }, [icon('copy', 11)])
+        return h('div', { className: 'card p-4 flex-column gap-2 hover-border transition bg-secondary' }, [
+            h('div', { className: 'flex justify-between items-start' }, [
+                h('div', { className: 'flex-column gap-1' }, [
+                    h('h4', { className: 'text-xs font-bold text-primary' }, asg.title),
+                    h('div', { className: 'flex gap-1 mt-1' }, [
+                        h('span', { className: `badge badge-${statusClass}`, style: { fontSize: '0.55rem', padding: '1px 5px' } }, asg.status),
+                        h('span', { className: 'badge badge-outline', style: { fontSize: '0.55rem', padding: '1px 5px' } }, `📋 ${empName}`)
+                    ])
                 ]),
-                h('div', { className: 'text-right' }, [
-                    h('span', { className: 'text-muted block', style: { fontSize: '0.65rem' } }, `Encargado: ${empName}`),
-                    h('span', { className: 'text-muted block mt-0.5', style: { fontSize: '0.6rem' } }, `Límite: ${due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`)
-                ])
+                h('a', { href: '#assignments', className: 'btn-icon text-muted', title: 'Ver en Kanban', style: { width: '20px', height: '20px' } }, [icon('external-link', 11)])
             ]),
-
-            // Body script/copy box if linked
-            (asg.linkedScript || asg.description) ? h('div', { 
-                className: 'p-3 bg-tertiary rounded relative flex-column mt-1', 
-                style: { border: '1px solid var(--border)', borderRadius: '4px' } 
-            }, [
-                h('pre', { 
-                    className: 'text-xs font-mono text-secondary leading-relaxed',
-                    style: { whiteSpace: 'pre-wrap', margin: 0, maxHeight: '100px', overflowY: 'auto', paddingRight: '4px' }
-                }, asg.linkedScript || asg.description)
-            ]) : null,
-
-            // Linked Asset Reference link if present
-            asg.linkedAsset ? h('div', { className: 'flex items-center justify-between mt-1 bg-tertiary p-2 rounded' }, [
-                h('span', { className: 'text-xs text-muted font-medium', style: { fontSize: '0.65rem' } }, '🖼️ Asset Referenciado:'),
-                h('a', { href: asg.linkedAsset, target: '_blank', className: 'text-xs text-info font-bold' }, 'Ver Referencia')
-            ]) : null
+            asg.description ? h('p', { className: 'text-xs text-muted', style: { margin: 0 } }, asg.description.substring(0, 80)) : null
         ]);
     };
 
+    // --- Detail Modal (full script view for ALL users) ---
+    const openDetailModal = (s) => {
+        const overlay = h('div', { className: 'modal-overlay' });
+        const content = s.content || s.script || 'Sin contenido';
+        const fmt = formatsList.find(f => f.id === s.recommendedFormat);
+        const hk = hooksList.find(h => h.id === s.recommendedHook);
+
+        const modal = h('div', { className: 'modal-container', style: { maxWidth: '650px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }, [
+            h('div', { className: 'modal-header' }, [
+                h('div', { className: 'flex-column gap-1' }, [
+                    h('span', { className: 'modal-title' }, s.title || 'Guión'),
+                    h('span', { className: 'text-xs text-muted' }, `Cliente: ${s.client || 'General'}`)
+                ]),
+                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
+            ]),
+            h('div', { className: 'modal-body flex-column gap-3', style: { overflowY: 'auto', flex: 1 } }, [
+                // Tags
+                h('div', { className: 'flex gap-2 flex-wrap' }, [
+                    fmt ? h('a', { href: '#formats', className: 'badge badge-info text-xs no-underline', style: { cursor: 'pointer' } }, `📐 Formato: ${fmt.name?.split(':')[0] || fmt.id}`) : null,
+                    hk ? h('a', { href: '#hooks', className: 'badge badge-accent text-xs no-underline', style: { cursor: 'pointer' } }, `🎯 Hook: ${hk.title?.substring(0, 30)}`) : null
+                ].filter(Boolean)),
+                // Full Script
+                h('div', { className: 'flex-column gap-1' }, [
+                    h('label', { className: 'text-xs font-bold text-secondary uppercase' }, 'Guión Completo'),
+                    h('div', { className: 'p-4 bg-tertiary rounded', style: { border: '1px solid var(--border)', borderRadius: '6px' } }, [
+                        h('pre', { className: 'text-xs font-mono text-primary leading-relaxed', style: { whiteSpace: 'pre-wrap', margin: 0 } }, content)
+                    ])
+                ]),
+                // Scene directions
+                s.sceneDirections ? h('div', { className: 'flex-column gap-1' }, [
+                    h('label', { className: 'text-xs font-bold text-warning uppercase flex items-center gap-1' }, [icon('clapperboard', 12), h('span', {}, 'Puesta en Escena')]),
+                    h('div', { className: 'p-4 bg-tertiary rounded', style: { border: '1px solid var(--border)', borderLeft: '3px solid var(--warning)', borderRadius: '6px' } }, [
+                        h('pre', { className: 'text-xs text-secondary leading-relaxed', style: { whiteSpace: 'pre-wrap', margin: 0 } }, s.sceneDirections)
+                    ])
+                ]) : null,
+                // Recommendations
+                s.recommendations ? h('div', { className: 'flex-column gap-1' }, [
+                    h('label', { className: 'text-xs font-bold text-accent uppercase' }, 'Recomendaciones de Edición'),
+                    h('div', { className: 'p-3 bg-tertiary rounded', style: { borderLeft: '3px solid var(--accent)' } }, [
+                        h('p', { className: 'text-xs text-muted leading-relaxed italic', style: { margin: 0 } }, s.recommendations)
+                    ])
+                ]) : null
+            ]),
+            h('div', { className: 'modal-footer flex gap-2' }, [
+                h('button', { type: 'button', className: 'btn btn-outline text-xs flex items-center gap-1', onClick: () => { navigator.clipboard.writeText(content); alert('¡Guión copiado!'); } }, [icon('copy', 12), h('span', {}, 'Copiar Guión')]),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cerrar')
+            ])
+        ]);
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    // --- Script Modal (create/edit with cross-reference selectors) ---
     const openScriptModal = (editingScript = null, context = {}) => {
         const overlay = h('div', { className: 'modal-overlay' });
         
@@ -346,74 +301,67 @@ export const render = () => {
             const titleVal = form.querySelector('#sc-title').value.trim();
             const clientVal = form.querySelector('#sc-client').value;
             const scriptVal = form.querySelector('#sc-script').value.trim();
+            const sceneVal = form.querySelector('#sc-scene').value.trim();
             const recVal = form.querySelector('#sc-rec').value.trim();
+            const fmtVal = form.querySelector('#sc-format').value;
+            const hookVal = form.querySelector('#sc-hook').value;
 
-            const scriptId = editingScript ? editingScript.id : `SCR-${Date.now().toString().slice(-3)}`;
-
+            const scriptId = editingScript ? editingScript.id : `SCR-${Date.now().toString().slice(-6)}`;
             const newScript = {
-                id: scriptId,
-                title: titleVal,
-                client: clientVal,
-                script: scriptVal,
-                recommendations: recVal
+                id: scriptId, title: titleVal, client: clientVal,
+                content: scriptVal, script: scriptVal,
+                sceneDirections: sceneVal, recommendations: recVal,
+                recommendedFormat: fmtVal || '', recommendedHook: hookVal || ''
             };
 
-            try {
-                await dbService.set('scripts', scriptId, newScript);
-            } catch (err) {
-                console.warn("Failed to write to Firestore, applying to local cache:", err);
-            }
-
-            if (editingScript) {
-                localScriptsCache = localScriptsCache.map(sc => sc.id === editingScript.id ? newScript : sc);
-            } else {
-                localScriptsCache.push(newScript);
-            }
-
+            try { await dbService.set('scripts', scriptId, newScript); } catch (err) { console.warn("Save error:", err); }
             document.body.removeChild(overlay);
             loadScripts();
         };
 
-        const form = h('form', { className: 'modal-container', onSubmit: saveScriptFlow }, [
+        const form = h('form', { className: 'modal-container', style: { maxWidth: '600px' }, onSubmit: saveScriptFlow }, [
             h('div', { className: 'modal-header' }, [
-                h('span', { className: 'modal-title text-sm' }, editingScript ? 'Editar Guión Recomendado' : 'Crear Nuevo Guión Recomendado'),
+                h('span', { className: 'modal-title text-sm' }, editingScript ? 'Editar Guión' : 'Crear Nuevo Guión'),
                 h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
             ]),
-            h('div', { className: 'modal-body flex-column gap-3' }, [
+            h('div', { className: 'modal-body flex-column gap-3', style: { maxHeight: '65vh', overflowY: 'auto' } }, [
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Título del Guión'),
-                    h('input', { 
-                        id: 'sc-title', 
-                        className: 'form-input', 
-                        placeholder: 'Ej. Gancho de Curiosidad para Reels', 
-                        required: true,
-                        value: editingScript ? editingScript.title : ''
-                    })
+                    h('input', { id: 'sc-title', className: 'form-input', placeholder: 'Ej. Recorrido Apertura Restaurante', required: true, value: editingScript?.title || '' })
+                ]),
+                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Cliente'),
+                        h('select', { id: 'sc-client', className: 'form-select text-xs', style: { height: '38px' }, required: true }, 
+                            (context.clients || []).map(c => h('option', { value: c.name, selected: editingScript?.client === c.name || c.name === context.preselectedClient }, c.name))
+                        )
+                    ]),
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label flex items-center gap-1' }, [h('span', {}, 'Formato'), h('a', { href: '#formats', className: 'text-info', style: { fontSize: '0.6rem' } }, '(ver todos)')]),
+                        h('select', { id: 'sc-format', className: 'form-select text-xs', style: { height: '38px' } }, [
+                            h('option', { value: '' }, '— Ninguno —'),
+                            ...formatsList.map(f => h('option', { value: f.id, selected: editingScript?.recommendedFormat === f.id }, f.name || f.id))
+                        ])
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Cliente Asignado'),
-                    h('select', { id: 'sc-client', className: 'form-select text-xs', style: { height: '38px' }, required: true }, 
-                        (context.clients || []).map(c => h('option', { value: c.name, selected: editingScript?.client === c.name || c.name === context.preselectedClient }, c.name))
-                    )
+                    h('label', { className: 'form-label flex items-center gap-1' }, [h('span', {}, 'Hook Asociado'), h('a', { href: '#hooks', className: 'text-info', style: { fontSize: '0.6rem' } }, '(ver todos)')]),
+                    h('select', { id: 'sc-hook', className: 'form-select text-xs', style: { height: '38px' } }, [
+                        h('option', { value: '' }, '— Ninguno —'),
+                        ...hooksList.map(hk => h('option', { value: hk.id, selected: editingScript?.recommendedHook === hk.id }, `${hk.title?.substring(0,50)}`))
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Guión (Cuerpo del Copy)'),
-                    h('textarea', { 
-                        id: 'sc-script', 
-                        className: 'form-textarea font-mono text-xs', 
-                        placeholder: '[0-3s] Gancho: "..."\n[3-10s] Desarrollo: "..."\n[10-15s] CTA: "..."', 
-                        required: true, 
-                        rows: 7
-                    }, editingScript ? editingScript.script : '')
+                    h('label', { className: 'form-label' }, 'Guión (Texto Completo)'),
+                    h('textarea', { id: 'sc-script', className: 'form-textarea font-mono text-xs', placeholder: '[0-3s] Hook: "..."\n[3-15s] Desarrollo: "..."\n[15-30s] CTA: "..."', required: true, rows: 7 }, editingScript ? (editingScript.content || editingScript.script || '') : '')
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Recomendaciones de Grabación y Edición'),
-                    h('textarea', { 
-                        id: 'sc-rec', 
-                        className: 'form-textarea text-xs', 
-                        placeholder: 'Ej. Tomas en primer plano, efectos de sonido de impacto, ritmo dinámico...', 
-                        rows: 4
-                    }, editingScript ? editingScript.recommendations : '')
+                    h('label', { className: 'form-label flex items-center gap-1' }, [icon('clapperboard', 12, 'text-warning'), h('span', {}, 'Puesta en Escena (Indicaciones de Grabación)')]),
+                    h('textarea', { id: 'sc-scene', className: 'form-textarea text-xs', placeholder: 'Ej:\n• [0-3s] Plano cerrado de los platos, cámara a 45°\n• [3-8s] El dueño habla a cámara diciendo el hook\n• [8-15s] Recorrido POV del local con tomas dinámicas\n• [15-20s] Mostrar clientes satisfechos, tomas espontáneas', rows: 5 }, editingScript?.sceneDirections || '')
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Notas de Edición (Opcional)'),
+                    h('textarea', { id: 'sc-rec', className: 'form-textarea text-xs', placeholder: 'Ej. Subtítulos animados, SFX en cortes, música energética...', rows: 3 }, editingScript?.recommendations || '')
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
@@ -428,15 +376,8 @@ export const render = () => {
     };
 
     const deleteScriptFlow = async (s) => {
-        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el guión "${s.title}"?`)) return;
-
-        try {
-            await dbService.delete('scripts', s.id);
-        } catch (err) {
-            console.warn("Failed to delete from Firestore, updating local cache:", err);
-        }
-
-        localScriptsCache = localScriptsCache.filter(sc => sc.id !== s.id);
+        if (!confirm(`¿Eliminar permanentemente "${s.title}"?`)) return;
+        try { await dbService.delete('scripts', s.id); } catch (err) { console.warn("Delete error:", err); }
         loadScripts();
     };
 
