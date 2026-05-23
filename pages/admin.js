@@ -340,6 +340,143 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
     ]);
 }
 
+// ── Roles Management Section ──────────────────────────────────
+function renderRolesSection(rolesList = [], reload) {
+    const defaultRoles = [
+        { id: 'editor', label: 'Editor de Video', active: true },
+        { id: 'camarógrafo', label: 'Camarógrafo', active: true },
+        { id: 'estratega', label: 'Estratega Creativo', active: true },
+        { id: 'diseñador', label: 'Diseñador Gráfico', active: true },
+        { id: 'administración digital', label: 'Administración Digital', active: true }
+    ];
+
+    const listToRender = rolesList.length > 0 ? rolesList : defaultRoles;
+
+    const container = h('section', { className: 'flex-column gap-3' }, [
+        h('h3', { className: 'section-label' }, 'Roles de Producción'),
+        h('div', { className: 'card flex-column gap-3 bg-secondary' }, [
+            h('div', { className: 'flex justify-between items-center', style: { flexWrap: 'wrap', gap: '8px' } }, [
+                h('div', { className: 'flex-column gap-1' }, [
+                    h('span', { className: 'font-bold text-xs' }, 'Configuración de Roles'),
+                    h('p', { className: 'text-xs text-muted' }, 'Administra los roles disponibles para la asignación de tareas en el equipo.')
+                ]),
+                rolesList.length === 0 ? h('button', {
+                    className: 'btn btn-outline text-xs',
+                    style: { padding: '4px 10px', fontSize: '0.68rem' },
+                    onClick: async (e) => {
+                        if (!confirm('¿Inicializar los 5 roles predeterminados en Firestore?')) return;
+                        e.currentTarget.disabled = true;
+                        e.currentTarget.textContent = 'Inicializando...';
+                        try {
+                            await Promise.all(defaultRoles.map(r => dbService.set('roles', r.id, r)));
+                            alert('✅ Roles base inicializados en Firestore con éxito.');
+                            reload();
+                        } catch (err) {
+                            alert(`Error al inicializar: ${err.message}`);
+                            e.currentTarget.disabled = false;
+                            e.currentTarget.textContent = 'Inicializar Roles Base';
+                        }
+                    }
+                }, [icon('settings-2', 11), h('span', { style: { marginLeft: '4px' } }, 'Inicializar Roles Base')]) : null
+            ]),
+
+            // Add Custom Role Form inline
+            h('div', { className: 'flex gap-2 mt-2', style: { flexWrap: 'wrap' } }, [
+                h('input', {
+                    type: 'text',
+                    id: 'new-role-label',
+                    className: 'form-input text-xs',
+                    placeholder: 'Ej. Copiloto de IA, Diseñador 3D...',
+                    style: { flex: 1, minWidth: '160px' }
+                }),
+                h('button', {
+                    className: 'btn btn-primary text-xs',
+                    style: { flexShrink: 0 },
+                    onClick: async (e) => {
+                        const input = document.getElementById('new-role-label');
+                        const label = input?.value?.trim();
+                        if (!label) {
+                            alert('Ingresa el nombre del rol.');
+                            return;
+                        }
+                        const id = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                        if (!id) {
+                            alert('El nombre del rol contiene caracteres no permitidos.');
+                            return;
+                        }
+                        e.currentTarget.disabled = true;
+                        e.currentTarget.textContent = 'Guardando...';
+                        try {
+                            await dbService.set('roles', id, { id, label, active: true });
+                            input.value = '';
+                            alert('✅ Rol creado en Firestore exitosamente.');
+                            reload();
+                        } catch (err) {
+                            alert(`Error al guardar: ${err.message}`);
+                            e.currentTarget.disabled = false;
+                            e.currentTarget.textContent = 'Agregar Rol';
+                        }
+                    }
+                }, [icon('plus', 13), h('span', { style: { marginLeft: '4px' } }, 'Agregar Rol')])
+            ]),
+
+            // List of roles
+            h('div', { className: 'flex-column gap-2 mt-2', style: { borderTop: '1px solid var(--border)', paddingTop: '12px' } }, 
+                listToRender.map(role => {
+                    const isActive = role.active !== false;
+                    return h('div', {
+                        className: 'flex justify-between items-center p-2 rounded',
+                        style: { background: 'var(--bg-tertiary)', borderRadius: '4px', border: '1px solid var(--border)', padding: '8px 12px' }
+                    }, [
+                        h('div', { className: 'flex items-center gap-2' }, [
+                            icon(isActive ? 'check-circle' : 'circle', 14, isActive ? 'text-success' : 'text-muted'),
+                            h('span', { className: 'text-xs font-semibold text-primary' }, role.label),
+                            h('span', { className: `badge badge-${isActive ? 'success' : 'secondary'} text-xs`, style: { fontSize: '0.65rem' } }, 
+                                isActive ? 'Activo' : 'Inactivo'
+                            )
+                        ]),
+                        h('div', { className: 'flex gap-2' }, [
+                            // Toggle active status
+                            h('button', {
+                                className: 'btn btn-outline text-xs',
+                                style: { padding: '3px 8px', fontSize: '0.65rem' },
+                                onClick: async (e) => {
+                                    e.currentTarget.disabled = true;
+                                    try {
+                                        await dbService.update('roles', role.id, { active: !isActive });
+                                        reload();
+                                    } catch (err) {
+                                        alert(`Error al cambiar estado: ${err.message}`);
+                                        e.currentTarget.disabled = false;
+                                    }
+                                }
+                            }, isActive ? 'Desactivar' : 'Activar'),
+                            // Delete button (visible only if roles are stored in database)
+                            rolesList.length > 0 ? h('button', {
+                                className: 'btn btn-outline text-xs',
+                                style: { padding: '3px 8px', fontSize: '0.65rem', color: 'var(--error)', borderColor: 'var(--error)' },
+                                onClick: async (e) => {
+                                    if (!confirm(`¿Eliminar de forma permanente el rol "${role.label}"?`)) return;
+                                    e.currentTarget.disabled = true;
+                                    try {
+                                        await dbService.delete('roles', role.id);
+                                        reload();
+                                    } catch (err) {
+                                        alert(`Error al eliminar: ${err.message}`);
+                                        e.currentTarget.disabled = false;
+                                    }
+                                }
+                            }, 'Eliminar') : null
+                        ])
+                    ]);
+                })
+            )
+        ])
+    ]);
+
+    return container;
+}
+
 // ── Logo Upload Section ──────────────────────────────────────
 function renderUploadSection() {
     return h('section', { className: 'flex-column gap-3' }, [
