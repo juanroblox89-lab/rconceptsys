@@ -196,8 +196,9 @@ function renderPendingCard(pu, reload, rolesList = []) {
                 className: 'btn btn-outline text-xs flex-1',
                 style: { color: 'var(--error)', borderColor: 'var(--error)', padding: '6px' },
                 onClick: async (e) => {
-                    e.currentTarget.disabled = true;
-                    e.currentTarget.textContent = 'Rechazando...';
+                    const btn = e.currentTarget;
+                    btn.disabled = true;
+                    btn.textContent = 'Rechazando...';
                     await userService.rejectUser(pu.uid);
                     reload();
                 }
@@ -206,8 +207,9 @@ function renderPendingCard(pu, reload, rolesList = []) {
                 className: 'btn btn-primary text-xs flex-1',
                 style: { padding: '6px' },
                 onClick: async (e) => {
-                    e.currentTarget.disabled = true;
-                    e.currentTarget.textContent = 'Aprobando...';
+                    const btn = e.currentTarget;
+                    btn.disabled = true;
+                    btn.textContent = 'Aprobando...';
                     await userService.approveUser(pu.uid, roleSelect.value);
                     reload();
                 }
@@ -254,16 +256,15 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
             style: { padding: '3px 8px', fontSize: '0.68rem' },
             onClick: async (e) => {
                 if (!window.confirm(`¿Promover a ${u.nombre || u.email} como Administrador?`)) return;
-                e.currentTarget.disabled = true;
-                e.currentTarget.textContent = '...';
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                btn.textContent = '...';
                 try {
                     await userService.approveUser(u.uid, 'admin');
-                    showFeedback(e.currentTarget, '✓ Promovido');
+                    if (btn) showFeedback(btn, '✓ Promovido');
                     setTimeout(() => reload(), 1200);
                 } catch (err) {
-                    showFeedback(e.currentTarget, '✗ Error', 'error');
-                    e.currentTarget.disabled = false;
-                    e.currentTarget.textContent = 'Hacer Admin';
+                    if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; btn.textContent = 'Hacer Admin'; }
                 }
             }
         }, [icon('shield-check', 11), h('span', { style: { marginLeft: '3px' } }, 'Hacer Admin')]));
@@ -276,15 +277,15 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
             style: { padding: '3px 8px', fontSize: '0.68rem', color: 'var(--error)', borderColor: 'var(--error)' },
             onClick: async (e) => {
                 if (!window.confirm(`¿Quitar permisos Admin a ${u.nombre || u.email}?`)) return;
-                e.currentTarget.disabled = true;
-                e.currentTarget.textContent = '...';
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                btn.textContent = '...';
                 try {
                     await userService.approveUser(u.uid, 'editor');
-                    showFeedback(e.currentTarget, '✓ Revocado');
+                    if (btn) showFeedback(btn, '✓ Revocado');
                     setTimeout(() => reload(), 1200);
                 } catch (err) {
-                    showFeedback(e.currentTarget, '✗ Error', 'error');
-                    e.currentTarget.disabled = false;
+                    if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
                 }
             }
         }, [icon('user-minus', 11), h('span', { style: { marginLeft: '3px' } }, 'Quitar Admin')]));
@@ -298,7 +299,8 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
             onClick: async (e) => {
                 if (!window.confirm(`⚠️ CEDER ADMIN: Perderás tus permisos de administrador. ¿Continuar?`)) return;
                 if (!window.confirm(`Confirmar: ¿Ceder el control total a ${u.nombre || u.email}?`)) return;
-                e.currentTarget.disabled = true;
+                const btn = e.currentTarget;
+                btn.disabled = true;
                 await userService.delegateAdminRole(u.uid, currentUser.uid);
                 window.location.reload();
             }
@@ -312,7 +314,8 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
             style: { padding: '3px 8px', fontSize: '0.68rem', color: 'var(--error)', borderColor: 'var(--error)' },
             onClick: async (e) => {
                 if (!window.confirm(`¿Eliminar a ${u.nombre || u.email} del equipo permanentemente?`)) return;
-                e.currentTarget.disabled = true;
+                const btn = e.currentTarget;
+                btn.disabled = true;
                 await userService.rejectUser(u.uid);
                 reload();
             }
@@ -365,16 +368,16 @@ function renderRolesSection(rolesList = [], reload) {
                     style: { padding: '4px 10px', fontSize: '0.68rem' },
                     onClick: async (e) => {
                         if (!confirm('¿Inicializar los 5 roles predeterminados en Firestore?')) return;
-                        e.currentTarget.disabled = true;
-                        e.currentTarget.textContent = 'Inicializando...';
+                        const btn = e.currentTarget;
+                        btn.disabled = true;
+                        btn.textContent = 'Inicializando...';
                         try {
                             await Promise.all(defaultRoles.map(r => dbService.set('roles', r.id, r)));
                             alert('✅ Roles base inicializados en Firestore con éxito.');
                             reload();
                         } catch (err) {
                             alert(`Error al inicializar: ${err.message}`);
-                            e.currentTarget.disabled = false;
-                            e.currentTarget.textContent = 'Inicializar Roles Base';
+                            if (btn) { btn.disabled = false; btn.textContent = 'Inicializar Roles Base'; }
                         }
                     }
                 }, [icon('settings-2', 11), h('span', { style: { marginLeft: '4px' } }, 'Inicializar Roles Base')]) : null
@@ -404,8 +407,9 @@ function renderRolesSection(rolesList = [], reload) {
                             alert('El nombre del rol contiene caracteres no permitidos.');
                             return;
                         }
-                        e.currentTarget.disabled = true;
-                        e.currentTarget.textContent = 'Guardando...';
+                        const btn = e.currentTarget;
+                        btn.disabled = true;
+                        btn.textContent = 'Guardando...';
                         try {
                             await dbService.set('roles', id, { id, label, active: true });
                             input.value = '';
@@ -413,8 +417,7 @@ function renderRolesSection(rolesList = [], reload) {
                             reload();
                         } catch (err) {
                             alert(`Error al guardar: ${err.message}`);
-                            e.currentTarget.disabled = false;
-                            e.currentTarget.textContent = 'Agregar Rol';
+                            if (btn) { btn.disabled = false; btn.textContent = 'Agregar Rol'; }
                         }
                     }
                 }, [icon('plus', 13), h('span', { style: { marginLeft: '4px' } }, 'Agregar Rol')])
@@ -436,18 +439,19 @@ function renderRolesSection(rolesList = [], reload) {
                             )
                         ]),
                         h('div', { className: 'flex gap-2' }, [
-                            // Toggle active status
+                            // Toggle active status — uses set+merge so it works even if doc doesn't exist yet
                             h('button', {
                                 className: 'btn btn-outline text-xs',
                                 style: { padding: '3px 8px', fontSize: '0.65rem' },
                                 onClick: async (e) => {
-                                    e.currentTarget.disabled = true;
+                                    const btn = e.currentTarget;
+                                    btn.disabled = true;
                                     try {
-                                        await dbService.update('roles', role.id, { active: !isActive });
+                                        await dbService.set('roles', role.id, { ...role, active: !isActive });
                                         reload();
                                     } catch (err) {
                                         alert(`Error al cambiar estado: ${err.message}`);
-                                        e.currentTarget.disabled = false;
+                                        if (btn) btn.disabled = false;
                                     }
                                 }
                             }, isActive ? 'Desactivar' : 'Activar'),
@@ -457,13 +461,14 @@ function renderRolesSection(rolesList = [], reload) {
                                 style: { padding: '3px 8px', fontSize: '0.65rem', color: 'var(--error)', borderColor: 'var(--error)' },
                                 onClick: async (e) => {
                                     if (!confirm(`¿Eliminar de forma permanente el rol "${role.label}"?`)) return;
-                                    e.currentTarget.disabled = true;
+                                    const btn = e.currentTarget;
+                                    btn.disabled = true;
                                     try {
                                         await dbService.delete('roles', role.id);
                                         reload();
                                     } catch (err) {
                                         alert(`Error al eliminar: ${err.message}`);
-                                        e.currentTarget.disabled = false;
+                                        if (btn) btn.disabled = false;
                                     }
                                 }
                             }, 'Eliminar') : null
@@ -497,16 +502,16 @@ function renderUploadSection() {
                             alert('Selecciona un archivo primero.');
                             return;
                         }
-                        e.currentTarget.disabled = true;
-                        e.currentTarget.textContent = 'Subiendo...';
+                        const btn = e.currentTarget;
+                        btn.disabled = true;
+                        btn.textContent = 'Subiendo...';
                         try {
                             await storageService.uploadFile('logos/rohlfing-concept-logo.jpg', fileInput.files[0]);
                             alert('✅ Logo actualizado correctamente. La página se recargará.');
                             window.location.reload();
                         } catch (err) {
                             alert(`Error al subir: ${err.message}`);
-                            e.currentTarget.disabled = false;
-                            e.currentTarget.textContent = 'Subir Logo';
+                            if (btn) { btn.disabled = false; btn.textContent = 'Subir Logo'; }
                         }
                     }
                 }, [icon('upload', 13), h('span', { style: { marginLeft: '4px' } }, 'Subir Logo')])
@@ -595,8 +600,9 @@ function openClientAccessModal(user, clients, reload) {
         h('button', { 
             className: 'btn btn-primary text-xs',
             onClick: async (e) => {
-                e.currentTarget.disabled = true;
-                e.currentTarget.textContent = 'Guardando...';
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                btn.textContent = 'Guardando...';
                 try {
                     await dbService.update('users', user.uid, { allowedClients: currentAllowed });
                     overlay.remove();
@@ -604,8 +610,7 @@ function openClientAccessModal(user, clients, reload) {
                 } catch (err) {
                     console.error('Error updating allowed clients:', err);
                     alert('Error al guardar accesos');
-                    e.currentTarget.disabled = false;
-                    e.currentTarget.textContent = 'Guardar Accesos';
+                    if (btn) { btn.disabled = false; btn.textContent = 'Guardar Accesos'; }
                 }
             }
         }, 'Guardar Accesos')

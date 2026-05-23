@@ -243,7 +243,8 @@ function openChangeRoleModal(w, reload) {
             h('button', {
                 className: 'btn btn-primary text-xs',
                 onClick: async (e) => {
-                    e.currentTarget.disabled = true;
+                    const btn = e.currentTarget;
+                    btn.disabled = true;
                     await dbService.update('users', w.uid, { role: select.value });
                     overlay.remove();
                     reload();
