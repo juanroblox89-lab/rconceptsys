@@ -35,32 +35,36 @@ service cloud.firestore {
       // Any authenticated user can create their own profile document
       allow create: if request.auth != null && request.auth.uid == userId;
       
-      // Users can always read their own document (no circular dependency)
-      // Admins can read all user documents
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // All authenticated team members can read user profiles to list workers and assignments
+      allow read: if request.auth != null;
       
-      // Only admins can update/delete other user documents
-      // Users can update their own non-sensitive fields
+      // Only admins or the user themselves can update their profile. Only admins can delete.
       allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
     // ── INVOICES Collection ───────────────────────────────────
     match /invoices/{invoiceId} {
-      allow create: if isApprovedUser() && request.resource.data.employeeId == request.auth.uid;
-      allow read, update, delete: if isAdmin() ||
-        (isApprovedUser() && resource.data.employeeId == request.auth.uid);
+      // Standard approved employees can create/update their own invoice report, keeping their own employeeId
+      allow create, update: if isApprovedUser() && request.resource.data.employeeId == request.auth.uid && (invoiceId == 'emp-inv-' + request.auth.uid);
+      // Employees and admins can read/delete. Safe for non-existent reads.
+      allow read, delete: if isAdmin() || (isApprovedUser() && (resource == null || resource.data.employeeId == request.auth.uid || invoiceId == 'emp-inv-' + request.auth.uid));
     }
 
     // ── ADMIN_INVOICES Collection ─────────────────────────────
     match /admin_invoices/{adminInvoiceId} {
-      allow read, write: if isAdmin();
+      // Approved standard users can read their official consolidations. Safe for non-existent reads.
+      allow read: if isAdmin() || (isApprovedUser() && (resource == null || resource.data.employeeId == request.auth.uid || adminInvoiceId == 'adm-inv-' + request.auth.uid));
+      allow write: if isAdmin();
     }
 
     // ── ASSIGNMENTS Collection ───────────────────────────────
     match /assignments/{asgId} {
       allow read: if isApprovedUser();
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      // Approved workers can update their own assignments (e.g. status)
+      allow update: if isAdmin() || (isApprovedUser() && (resource != null && resource.data.employeeId == request.auth.uid));
+      allow delete: if isAdmin();
     }
 
     // ── GENERAL Collections ──
@@ -77,6 +81,7 @@ service cloud.firestore {
     match /scripts/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
     match /system_rules/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
     match /roles/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
+    match /metrics/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
 
     // ── CHATS and CHATS_LIMIT Collections ────────────────────
     match /chats/{chatId} {
