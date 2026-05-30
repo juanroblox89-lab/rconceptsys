@@ -44,12 +44,14 @@ export const render = () => {
             ]);
 
             // Map editor name/emails
-            const getUserDisplayName = (uid) => {
-                const found = usersList.find(u => u.uid === uid);
-                if (found) {
-                    return found.nombre || found.email.split('@')[0];
+            const getUserDisplayName = (uid, assignment) => {
+                if (usersList.length > 0) {
+                    const found = usersList.find(u => u.uid === uid);
+                    if (found) {
+                        return found.nombre || found.email.split('@')[0];
+                    }
                 }
-                return '@equipo';
+                return assignment?.employeeName || '@equipo';
             };
 
             // 2. Production Activity Table (Active Assignments)
@@ -67,7 +69,7 @@ export const render = () => {
                         h('td', {}, [
                             h('span', { className: `badge badge-${getStatusClass(asg.status)} text-xs` }, asg.status)
                         ]),
-                        h('td', { className: 'text-xs text-muted font-medium' }, getUserDisplayName(asg.employeeId))
+                        h('td', { className: 'text-xs text-muted font-medium' }, getUserDisplayName(asg.employeeId, asg))
                     ]);
                 }
             });

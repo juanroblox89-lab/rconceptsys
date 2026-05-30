@@ -2,11 +2,15 @@ import { h, icon } from '../../utils/dom.js';
 import { store } from '../../js/store.js';
 import { dbService } from '../../firebase/service.js';
 
+let hasGlobalListener = false;
+let globalClientsCache = null;
+
 export const CommandPalette = () => {
     let isOpen = false;
     let query = '';
     let results = [];
     let selectedIndex = 0;
+    let debounceTimer = null;
     
     const overlay = h('div', { 
         id: 'command-palette-overlay',
@@ -41,15 +45,21 @@ export const CommandPalette = () => {
         onKeyDown: (e) => {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                selectedIndex = (selectedIndex + 1) % results.length;
-                renderResults();
+                if (results.length > 0) {
+                    selectedIndex = (selectedIndex + 1) % results.length;
+                    renderResults();
+                }
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                selectedIndex = (selectedIndex - 1 + results.length) % results.length;
-                renderResults();
+                if (results.length > 0) {
+                    selectedIndex = (selectedIndex - 1 + results.length) % results.length;
+                    renderResults();
+                }
             } else if (e.key === 'Enter') {
                 e.preventDefault();
-                if (results[selectedIndex]) executeAction(results[selectedIndex]);
+                if (results.length > 0 && results[selectedIndex] && typeof results[selectedIndex].action === 'function') {
+                    executeAction(results[selectedIndex]);
+                }
             } else if (e.key === 'Escape') {
                 close();
             }
@@ -83,6 +93,7 @@ export const CommandPalette = () => {
         overlay.style.display = 'flex';
         input.value = '';
         query = '';
+        clearTimeout(debounceTimer);
         updateResults();
         setTimeout(() => input.focus(), 10);
     };
@@ -92,35 +103,38 @@ export const CommandPalette = () => {
         overlay.style.display = 'none';
     };
 
-    const updateResults = async () => {
-        const { user } = store.getState();
-        const isAdmin = user?.role === 'admin';
+    const updateResults = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            const { user } = store.getState();
+            const isAdmin = user?.role === 'admin';
 
-        const staticActions = [
-            isAdmin ? { type: 'action', id: 'new-asg', title: 'Crear Nueva Asignación', icon: 'plus-circle', shortcut: 'A', action: () => window.location.hash = '#assignments' } : null,
-            { type: 'action', id: 'new-inv', title: 'Reportar Nuevo Trabajo / Cobros', icon: 'file-plus', shortcut: 'F', action: () => window.location.hash = '#billing' },
-            { type: 'action', id: 'go-dashboard', title: 'Ir al Dashboard', icon: 'layout-dashboard', action: () => window.location.hash = '#dashboard' },
-            { type: 'action', id: 'go-clients', title: 'Ver Directorio de Clientes', icon: 'users', action: () => window.location.hash = '#clients' },
-            { type: 'action', id: 'go-scripts', title: 'Ver Guiones Recomendados', icon: 'file-text', action: () => window.location.hash = '#scripts' },
-            !isAdmin ? { type: 'action', id: 'go-assignments', title: 'Ver Mis Tareas Asignadas', icon: 'clipboard-list', action: () => window.location.hash = '#assignments' } : null
-        ].filter(Boolean);
+            const staticActions = [
+                isAdmin ? { type: 'action', id: 'new-asg', title: 'Crear Nueva Asignación', icon: 'plus-circle', shortcut: 'A', action: () => window.location.hash = '#assignments' } : null,
+                { type: 'action', id: 'new-inv', title: 'Reportar Nuevo Trabajo / Cobros', icon: 'file-plus', shortcut: 'F', action: () => window.location.hash = '#billing' },
+                { type: 'action', id: 'go-dashboard', title: 'Ir al Dashboard', icon: 'layout-dashboard', action: () => window.location.hash = '#dashboard' },
+                { type: 'action', id: 'go-clients', title: 'Ver Directorio de Clientes', icon: 'users', action: () => window.location.hash = '#clients' },
+                { type: 'action', id: 'go-scripts', title: 'Ver Guiones Recomendados', icon: 'file-text', action: () => window.location.hash = '#scripts' },
+                !isAdmin ? { type: 'action', id: 'go-assignments', title: 'Ver Mis Tareas Asignadas', icon: 'clipboard-list', action: () => window.location.hash = '#assignments' } : null
+            ].filter(Boolean);
 
-        let dynamicResults = [];
-        if (query.length > 1) {
-            // In a real app, we'd fetch or filter a global search index
-            // For now, let's filter from what we might have or common paths
-            const clients = await dbService.getAll('clients');
-            dynamicResults = clients
-                .filter(c => (c.nombre || c.name || '').toLowerCase().includes(query.toLowerCase()))
-                .map(c => ({ type: 'client', id: c.id, title: `Cliente: ${c.nombre || c.name}`, icon: 'briefcase', action: () => window.location.hash = `#client/${c.id}` }));
-        }
+            let dynamicResults = [];
+            if (query.length > 1) {
+                if (!globalClientsCache) {
+                    globalClientsCache = await dbService.getAll('clients') || [];
+                }
+                dynamicResults = globalClientsCache
+                    .filter(c => (c.nombre || c.name || '').toLowerCase().includes(query.toLowerCase()))
+                    .map(c => ({ type: 'client', id: c.id, title: `Cliente: ${c.nombre || c.name}`, icon: 'briefcase', action: () => window.location.hash = `#client/${c.id}` }));
+            }
 
-        results = query.length > 0 
-            ? [...staticActions.filter(a => a.title.toLowerCase().includes(query.toLowerCase())), ...dynamicResults]
-            : staticActions;
-            
-        selectedIndex = 0;
-        renderResults();
+            results = query.length > 0 
+                ? [...staticActions.filter(a => a.title.toLowerCase().includes(query.toLowerCase())), ...dynamicResults]
+                : staticActions;
+                
+            selectedIndex = 0;
+            renderResults();
+        }, 200);
     };
 
     const renderResults = () => {
@@ -151,13 +165,19 @@ export const CommandPalette = () => {
         close();
     };
 
-    // Listen for global shortcut
-    window.addEventListener('keydown', (e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-            e.preventDefault();
-            if (isOpen) close(); else open();
-        }
-    });
+    // Listen for global shortcut (Only bind once globally)
+    if (!hasGlobalListener) {
+        hasGlobalListener = true;
+        window.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                // Since this runs globally, it triggers the last created palette instance if there are multiple,
+                // but the old instances are unreachable due to re-renders. 
+                // To be perfectly robust, we'd dispatch a custom event, but this is a quick fix.
+                if (isOpen) close(); else open();
+            }
+        });
+    }
 
     return overlay;
 };

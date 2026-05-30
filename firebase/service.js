@@ -118,8 +118,9 @@ export const authService = {
     onAuthChange(callback) {
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // Master hardcoded initial admin email (Strictly juanroblox as requested)
-                const isMasterAdmin = user.email?.toLowerCase().includes('juanroblox89');
+                // Master hardcoded initial admin email (Strict exact matching to prevent privilege escalation)
+                const normalizedEmail = user.email?.toLowerCase() || '';
+                const isMasterAdmin = normalizedEmail === 'juanroblox89@gmail.com' || normalizedEmail === 'juanroblox89@rohlfing.com';
                 
                 try {
                     const userDoc = await dbService.getById('users', user.uid);
@@ -196,8 +197,7 @@ export const storageService = {
             return await getDownloadURL(snapshot.ref);
         } catch (err) {
             console.error("Firebase Storage upload error:", err);
-            // Return placeholder fallback URL to guarantee UX operates offline/gracefully
-            return `https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&q=80`;
+            throw new Error("No se pudo subir el archivo: " + err.message);
         }
     },
 

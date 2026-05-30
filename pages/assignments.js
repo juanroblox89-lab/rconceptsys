@@ -275,7 +275,7 @@ export const render = async () => {
 
         } catch (err) {
             console.error("Assignments render failed:", err);
-            container.innerHTML = `<div class="error-state text-sm p-10">${err.message}</div>`;
+            container.innerHTML = `<div class="error-state text-sm p-10">${err.message.replace(/</g, "&lt;")}</div>`;
         }
     };
 
@@ -284,13 +284,19 @@ export const render = async () => {
         
         const submit = async (e) => {
             e.preventDefault();
+            const descVal = form.querySelector('#asg-desc').value.trim();
+            if (descVal.split(/\s+/).length < 5) {
+                alert("La guía / descripción debe contener al menos 5 palabras para dar suficiente contexto al equipo (Ej: En la parte 'Eventos especiales' poner clip de niños).");
+                return;
+            }
+
             const formData = {
                 id: existing?.id,
                 employeeId: form.querySelector('#asg-emp').value,
                 type: form.querySelector('#asg-type').value,
                 client: form.querySelector('#asg-client').value,
                 title: form.querySelector('#asg-title').value,
-                description: form.querySelector('#asg-desc').value,
+                description: descVal,
                 dueDate: form.querySelector('#asg-due').value,
                 status: existing?.status || 'Pendiente',
                 createdBy: user.uid,
@@ -382,8 +388,8 @@ export const render = async () => {
                     h('input', { id: 'asg-due', type: 'datetime-local', className: 'form-input', value: existing?.dueDate ? existing.dueDate.slice(0, 16) : '', required: true })
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Descripción / Observaciones'),
-                    h('textarea', { id: 'asg-desc', className: 'form-textarea', placeholder: 'Detalles específicos del requerimiento...' }, existing?.description || '')
+                    h('label', { className: 'form-label text-error font-bold' }, 'Guía / Observaciones (Obligatorio, mín. 5 palabras)'),
+                    h('textarea', { id: 'asg-desc', className: 'form-textarea', placeholder: 'Detalles específicos del requerimiento...', required: true }, existing?.description || '')
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [

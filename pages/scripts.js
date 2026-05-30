@@ -306,7 +306,7 @@ export const render = () => {
             const fmtVal = form.querySelector('#sc-format').value;
             const hookVal = form.querySelector('#sc-hook').value;
 
-            const scriptId = editingScript ? editingScript.id : `SCR-${Date.now().toString().slice(-6)}`;
+            const scriptId = editingScript ? editingScript.id : `SCR-${crypto.randomUUID().split('-')[0]}`;
             const newScript = {
                 id: scriptId, title: titleVal, client: clientVal,
                 content: scriptVal, script: scriptVal,

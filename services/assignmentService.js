@@ -38,7 +38,7 @@ export const assignmentService = {
 
     async saveAssignment(data) {
         const newAsg = {
-            id: data.id || `ASG-${Date.now().toString().slice(-4)}`,
+            id: data.id || `ASG-${crypto.randomUUID().split('-')[0]}`,
             employeeId: data.employeeId,
             type: data.type || 'Edición', // 'Grabación' | 'Edición' | 'Creador 360°'
             client: data.client || 'General',
@@ -79,6 +79,7 @@ export const assignmentService = {
         const all = await this.getAllAssignments();
         const toDelete = all.filter(asg => {
             if (!asg.dueDate) return false;
+            if (asg.status !== 'Completado') return false;
             const deadline = new Date(asg.dueDate);
             return (now - deadline) > twoDaysMs;
         });

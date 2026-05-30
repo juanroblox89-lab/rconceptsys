@@ -160,7 +160,7 @@ export const render = () => {
             const logoUrlVal = form.querySelector('#cli-logo-url').value.trim();
             const logoFile = form.querySelector('#cli-logo-file').files[0];
 
-            const clientId = existingClient?.id || nameVal.toLowerCase().replace(/\s+/g, '-');
+            const clientId = existingClient?.id || `CLI-${crypto.randomUUID().split('-')[0]}`;
             let logoUrl = logoUrlVal || existingClient?.logo || '';
 
             if (logoFile) {

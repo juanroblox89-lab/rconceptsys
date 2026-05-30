@@ -29,11 +29,15 @@ class Store {
     }
 
     setState(newState) {
-        // Deep merge for UI state
-        if (newState.ui) {
-            newState.ui = { ...this.state.ui, ...newState.ui };
+        const nextState = { ...this.state };
+        for (const key in newState) {
+            if (newState[key] && typeof newState[key] === 'object' && !Array.isArray(newState[key]) && this.state[key]) {
+                nextState[key] = { ...this.state[key], ...newState[key] };
+            } else {
+                nextState[key] = newState[key];
+            }
         }
-        this.state = { ...this.state, ...newState };
+        this.state = nextState;
         this.notify();
     }
 

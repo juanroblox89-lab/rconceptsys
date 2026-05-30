@@ -98,17 +98,41 @@ export const render = () => {
             container.appendChild(pendingSection);
 
             // ── 3. Team Table ───────────────────────────────
-            const teamSection = h('section', { className: 'flex-column gap-3' }, [
-                h('h3', { className: 'section-label' }, `Equipo Activo Aprobado (${approvedUsers.length})`),
+            const teamSection = h('section', { className: 'flex-column gap-3 card p-5', style: { border: '1px solid var(--border)' } }, [
+                h('div', { className: 'flex justify-between items-center flex-wrap gap-2 mb-2' }, [
+                    h('h3', { className: 'section-label flex items-center gap-2 m-0', style: { marginBottom: 0 } }, [
+                        icon('users', 18, 'text-accent'),
+                        h('span', {}, `Equipo Activo Aprobado (${approvedUsers.length})`)
+                    ]),
+                    h('div', { className: 'relative' }, [
+                        h('span', { className: 'absolute', style: { left: '8px', top: '7px', color: 'var(--text-muted)' } }, icon('search', 14)),
+                        h('input', { 
+                            type: 'text', 
+                            className: 'form-input text-xs', 
+                            placeholder: 'Buscar usuario...',
+                            style: { width: '220px', paddingLeft: '28px', borderRadius: '20px' },
+                            onInput: (e) => {
+                                const term = e.target.value.toLowerCase();
+                                const tbody = teamSection.querySelector('tbody');
+                                if (tbody) {
+                                    Array.from(tbody.children).forEach(row => {
+                                        const txt = row.textContent.toLowerCase();
+                                        row.style.display = txt.includes(term) ? '' : 'none';
+                                    });
+                                }
+                            }
+                        })
+                    ])
+                ]),
                 approvedUsers.length === 0
                     ? h('div', { className: 'card p-5 text-center text-xs text-muted' }, 'No hay miembros aprobados todavía.')
-                    : h('div', { className: 'table-container' }, [
-                        h('table', {}, [
-                            h('thead', {}, h('tr', {}, [
-                                h('th', {}, 'Usuario'),
-                                h('th', {}, 'Rol'),
-                                h('th', {}, 'Estado'),
-                                h('th', {}, 'Acciones')
+                    : h('div', { className: 'table-container', style: { borderRadius: '8px', overflow: 'hidden' } }, [
+                        h('table', { style: { width: '100%', borderCollapse: 'collapse' } }, [
+                            h('thead', { style: { background: 'var(--bg-tertiary)' } }, h('tr', {}, [
+                                h('th', { style: { padding: '12px' } }, 'Usuario'),
+                                h('th', { style: { padding: '12px' } }, 'Rol'),
+                                h('th', { style: { padding: '12px' } }, 'Estado'),
+                                h('th', { style: { padding: '12px' } }, 'Acciones')
                             ])),
                             h('tbody', {}, approvedUsers.map(u =>
                                 renderTeamRow(u, user, loadAdminDashboard, showFeedback, clientsList)

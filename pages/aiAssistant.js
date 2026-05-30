@@ -218,6 +218,14 @@ Cuando el usuario te entregue mucha información o copies de marcas:
                 style: { width: '220px', minWidth: '200px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }
             }, [
                 h('button', {
+                    className: 'btn w-full flex items-center justify-center gap-2 py-2 text-xs font-bold',
+                    style: { background: 'var(--text-primary)', color: 'var(--bg-primary)' },
+                    onClick: () => {
+                        if (isAssistantLoading) return;
+                        openScriptReviewModal();
+                    }
+                }, [icon('search', 12), h('span', {}, 'Auditar Guión')]),
+                h('button', {
                     className: 'btn btn-primary w-full flex items-center justify-center gap-2 py-2 text-xs font-bold',
                     onClick: async () => {
                         if (isAssistantLoading) return;
@@ -659,8 +667,11 @@ Información del Administrador:
                     required: true,
                     onKeydown: (e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            if (!isAssistantLoading) inputArea.requestSubmit();
+                            const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
+                            if (!isMobile) {
+                                e.preventDefault();
+                                if (!isAssistantLoading) inputArea.requestSubmit();
+                            }
                         }
                     }
                 }),
@@ -1350,21 +1361,26 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
         html = html.replace(/`([^`]+)`/g, '<code class="bg-tertiary px-1 rounded font-mono text-xs text-accent">$1</code>');
         
         // Bold
-        html = html.replace(/\*\*([^*]+)\*\"/g, '<strong>$1</strong>');
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
         
         // Headers (###, ##, #)
         html = html.replace(/### (.*$)/gim, '<h4 class="font-bold text-xs text-primary mt-3 mb-1">$1</h4>');
         html = html.replace(/## (.*$)/gim, '<h3 class="font-bold text-sm text-primary mt-4 mb-2 border-bottom pb-1">$1</h3>');
         html = html.replace(/# (.*$)/gim, '<h2 class="font-bold text-md text-primary mt-4 mb-2">$1</h2>');
         
-        // Lists
-        html = html.replace(/^\s*-\s+(.*$)/gim, '<li class="text-xs text-secondary list-disc ml-4 my-1">$1</li>');
-        html = html.replace(/^\s*\*\s+(.*$)/gim, '<li class="text-xs text-secondary list-disc ml-4 my-1">$1</li>');
-        html = html.replace(/^\s*\d+\.\s+(.*$)/gim, '<li class="text-xs text-secondary list-decimal ml-4 my-1">$1</li>');
+        // Lists — convert to <li> first, then wrap groups in <ul>/<ol>
+        html = html.replace(/^\s*-\s+(.*$)/gim, '<li class="text-xs text-secondary ml-4 my-1" data-list="ul">$1</li>');
+        html = html.replace(/^\s*\*\s+(.*$)/gim, '<li class="text-xs text-secondary ml-4 my-1" data-list="ul">$1</li>');
+        html = html.replace(/^\s*\d+\.\s+(.*$)/gim, '<li class="text-xs text-secondary ml-4 my-1" data-list="ol">$1</li>');
         
+        // Wrap consecutive <li> elements in proper <ul> or <ol> containers
+        html = html.replace(/((?:<li[^>]*data-list="ul">[^]*?<\/li>\s*)+)/gi, '<ul class="list-disc pl-4 my-2">$1</ul>');
+        html = html.replace(/((?:<li[^>]*data-list="ol">[^]*?<\/li>\s*)+)/gi, '<ol class="list-decimal pl-4 my-2">$1</ol>');
+        html = html.replace(/ data-list="(?:ul|ol)"/g, '');
+
         // Line breaks (graceful paragraph breaks)
         html = html.split('\n').map(line => {
-            if (line.trim().startsWith('<h') || line.trim().startsWith('<pre') || line.trim().startsWith('<li') || line.trim().startsWith('<div') || line.trim().startsWith('</div') || line.trim().startsWith('</pre>')) {
+            if (line.trim().startsWith('<h') || line.trim().startsWith('<pre') || line.trim().startsWith('<li') || line.trim().startsWith('<ul') || line.trim().startsWith('<ol') || line.trim().startsWith('</ul') || line.trim().startsWith('</ol') || line.trim().startsWith('<div') || line.trim().startsWith('</div') || line.trim().startsWith('</pre>')) {
                 return line;
             }
             return line + '<br>';

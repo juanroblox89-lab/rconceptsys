@@ -64,11 +64,14 @@ export const render = () => {
                 h('td', {}, [
                     h('div', { className: 'flex-column gap-1' }, 
                         (!hk.examples || !hk.examples.length) ? [h('span', { className: 'text-xs text-muted italic' }, 'Sin ejemplos')] :
-                        hk.examples.map(ex => h('a', { 
-                            href: ex.url, 
-                            target: '_blank', 
-                            className: 'text-xs text-info no-underline hover-underline flex items-center gap-1' 
-                        }, [icon('external-link', 10), h('span', {}, ex.label || 'Ver Video')]))
+                        hk.examples.map(ex => h('div', { className: 'flex-column mb-1', style: { gap: '2px' } }, [
+                            h('a', { 
+                                href: ex.url, 
+                                target: '_blank', 
+                                className: 'text-xs text-info no-underline hover-underline flex items-center gap-1' 
+                            }, [icon('external-link', 10), h('span', {}, ex.label || 'Ver Video')]),
+                            ex.stats ? h('span', { className: 'text-[10px] text-success font-semibold flex items-center gap-1 mt-1' }, [icon('trending-up', 10), h('span', {}, ex.stats)]) : null
+                        ]))
                     ),
                     isAdmin ? h('button', { 
                         className: 'text-xs text-accent mt-2 font-bold',
@@ -190,7 +193,8 @@ export const render = () => {
                         }, [
                             h('div', { className: 'flex-column gap-1' }, [
                                 h('span', { className: 'text-xs font-semibold text-primary' }, ex.label),
-                                h('a', { href: ex.url, target: '_blank', className: 'text-xs text-info hover-underline' }, ex.url)
+                                h('a', { href: ex.url, target: '_blank', className: 'text-xs text-info hover-underline' }, ex.url),
+                                ex.stats ? h('span', { className: 'text-[10px] text-success font-bold mt-1' }, `📈 ${ex.stats}`) : null
                             ]),
                             h('button', { 
                                 className: 'btn-icon text-error', 
@@ -217,9 +221,10 @@ export const render = () => {
                         e.preventDefault();
                         const labelVal = addForm.querySelector('#ex-label').value.trim();
                         const urlVal = addForm.querySelector('#ex-url').value.trim();
+                        const statsVal = addForm.querySelector('#ex-stats').value.trim();
 
                         if (!hk.examples) hk.examples = [];
-                        hk.examples.push({ label: labelVal, url: urlVal });
+                        hk.examples.push({ label: labelVal, url: urlVal, stats: statsVal });
 
                         try {
                             await dbService.set('hooks', hk.id || hk.title, hk);
@@ -232,7 +237,7 @@ export const render = () => {
                         if (window.lucide) window.lucide.createIcons();
                     }
                 }, [
-                    h('div', { className: 'grid gap-2 mb-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'grid gap-2 mb-2', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
                         h('div', { className: 'form-group' }, [
                             h('label', { className: 'form-label' }, 'Etiqueta'),
                             h('input', { id: 'ex-label', className: 'form-input text-xs', placeholder: 'Referencia YouTube/TikTok', required: true })
@@ -241,6 +246,10 @@ export const render = () => {
                             h('label', { className: 'form-label' }, 'URL del Video'),
                             h('input', { id: 'ex-url', className: 'form-input text-xs', placeholder: 'https://...', required: true })
                         ])
+                    ]),
+                    h('div', { className: 'form-group mb-3' }, [
+                        h('label', { className: 'form-label' }, 'Resultados / Estadísticas (Opcional)'),
+                        h('input', { id: 'ex-stats', className: 'form-input text-xs', placeholder: 'Ej. 1.2M Vistas, 60% Retención...' })
                     ]),
                     h('button', { type: 'submit', className: 'btn btn-primary text-xs w-full justify-center mb-2' }, [icon('plus', 12), h('span', {}, 'Añadir Nuevo Ejemplo')])
                 ]);

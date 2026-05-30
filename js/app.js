@@ -9,6 +9,16 @@ import { Sidebar } from '../components/Sidebar.js';
 import { Header } from '../components/layout/Header.js';
 import { CommandPalette } from '../components/ui/CommandPalette.js';
 
+const escapeHTML = (str) => String(str || '').replace(/[&<>'"]/g, 
+    tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag])
+);
+
 // Debugging helper for headless testing
 window.debugLog = [];
 const originalLog = console.log;
@@ -77,7 +87,7 @@ class App {
             });
         } catch (err) {
             console.error("[App] Init Failed:", err);
-            document.body.innerHTML = `<div style="color:red; padding:20px;">CRITICAL INIT ERROR: ${err.message}</div>`;
+            document.body.innerHTML = `<div style="color:red; padding:20px;">CRITICAL INIT ERROR: ${escapeHTML(err.message)}</div>`;
         }
     }
 
@@ -105,7 +115,7 @@ class App {
                     </div>
 
                     <div class="text-center flex-column gap-2">
-                        <h2 class="text-lg font-bold text-primary">¡Hola, ${user.nombre || 'Usuario'}!</h2>
+                        <h2 class="text-lg font-bold text-primary">¡Hola, ${escapeHTML(user.nombre || 'Usuario')}!</h2>
                         <p class="text-xs text-muted leading-relaxed" style="color: var(--text-secondary); max-width: 320px; margin: 0 auto;">
                             Tu cuenta ha sido creada con éxito. Para proteger la información confidencial de los clientes y las métricas de la agencia, tu acceso se encuentra actualmente en estado <strong>Pendiente</strong>.
                         </p>
@@ -261,7 +271,7 @@ class App {
             }, 100);
         } catch (err) {
             console.error("[App] Render Authenticated Failed:", err);
-            this.appContainer.innerHTML += `<div style="color:red; padding:10px;">Layout Error: ${err.message}</div>`;
+            this.appContainer.innerHTML += `<div style="color:red; padding:10px;">Layout Error: ${escapeHTML(err.message)}</div>`;
         }
     }
 }

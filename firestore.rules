@@ -69,19 +69,19 @@ service cloud.firestore {
 
     // ── GENERAL Collections ──
     match /clients/{docId} { 
-      allow read: if request.auth != null; 
+      allow read: if isApprovedUser(); 
       // Only Admin can create/update/delete client profiles and special fields
       allow write: if isAdmin(); 
     }
-    match /formats/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /hooks/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /assets/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /sops/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /references/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /scripts/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /system_rules/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /roles/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
-    match /metrics/{docId} { allow read: if request.auth != null; allow write: if isAdmin(); }
+    match /formats/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /hooks/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /assets/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /sops/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /references/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /scripts/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /system_rules/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /roles/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
+    match /metrics/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
 
     // ── CHATS and CHATS_LIMIT Collections ────────────────────
     match /chats/{chatId} {

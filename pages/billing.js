@@ -603,7 +603,7 @@ export const render = () => {
                 }
             } catch (err) {
                 console.error("Billing Load Failed:", err);
-                container.innerHTML = `<div class="error-state text-sm p-10">${err.message}</div>`;
+                container.innerHTML = `<div class="error-state text-sm p-10">${err.message.replace(/</g, "&lt;")}</div>`;
                 return;
             }
         }

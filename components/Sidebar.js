@@ -174,8 +174,12 @@ export const Sidebar = () => {
         ])
     ]);
 
+    // ─── Clean up previous instances to avoid memory leaks ───
+    if (window._sidebarUnsubscribe) window._sidebarUnsubscribe();
+    if (window._sidebarHashHandler) window.removeEventListener('hashchange', window._sidebarHashHandler);
+
     // ─── Store subscription: reactivity ───────────────────
-    store.subscribe(({ ui: nextUi }) => {
+    window._sidebarUnsubscribe = store.subscribe(({ ui: nextUi }) => {
         sidebar.classList.toggle('open', nextUi.sidebarOpen);
         overlay.classList.toggle('visible', nextUi.sidebarOpen);
     });
@@ -194,6 +198,7 @@ export const Sidebar = () => {
             link.classList.toggle('active', hash === href || hash.startsWith(href + '/'));
         });
     };
+    window._sidebarHashHandler = updateActive;
     window.addEventListener('hashchange', updateActive);
 
     // Wrap all together in a fragment-like div we discard from DOM (we inject separately)
