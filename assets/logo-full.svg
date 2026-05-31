@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 150" width="100%" height="100%">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8e2de2" />
+      <stop offset="100%" stop-color="#4a00e0" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6c5ce7" />
+      <stop offset="100%" stop-color="#a29bfe" />
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(20, 25)">
+    <!-- Camera Body -->
+    <rect x="0" y="15" width="120" height="85" rx="16" fill="none" stroke="currentColor" stroke-width="6" />
+    <!-- Top Bump -->
+    <path d="M 35 15 L 45 0 L 75 0 L 85 15 Z" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round" />
+    <!-- Flash -->
+    <circle cx="100" cy="35" r="5" fill="currentColor" />
+    <!-- Lens -->
+    <circle cx="60" cy="55" r="28" fill="none" stroke="url(#brandGrad)" stroke-width="6" />
+    <!-- Play Button inside Lens -->
+    <polygon points="53,45 53,65 72,55" fill="url(#brandGrad)" />
+  </g>
+
+  <!-- Typography -->
+  <g transform="translate(160, 75)">
+    <!-- Rohlfing Concept -->
+    <text x="0" y="0" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="900" fill="currentColor" letter-spacing="-0.5">
+      Rohlfing Concept
+    </text>
+
+    <!-- AGENCIA DE EDICIÓN -->
+    <text x="5" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="currentColor" letter-spacing="4" opacity="0.7">
+      AGENCIA DE EDICIÓN
+    </text>
+    
+    <g transform="translate(250, 15) scale(0.6)">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="url(#brandGrad)" stroke-width="4" />
+      <path d="M 12 22 L 12 28 M 8 26 L 16 26" stroke="url(#brandGrad)" stroke-width="4" stroke-linecap="round" />
+      <path d="M 12 7 L 12 12" stroke="url(#brandGrad)" stroke-width="4" stroke-linecap="round" />
+    </g>
+  </g>
+</svg>

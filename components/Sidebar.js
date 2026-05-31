@@ -65,20 +65,13 @@ export const Sidebar = () => {
     // ─── Logo ──────────────────────────────────────────────
     const logoEl = h('div', {
         className: 'w-full mb-3 flex items-center justify-center',
-        style: { minHeight: '44px' }
+        style: { minHeight: '60px' }
     }, [
-        h('div', {
-            className: 'text-xs font-bold text-center tracking-widest uppercase',
-            style: { 
-                border: '1.5px solid var(--border)', 
-                padding: '6px 14px', 
-                borderRadius: '8px', 
-                letterSpacing: '0.15em',
-                background: 'white',
-                color: '#000',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
-            }
-        }, 'ROHLFING CONCEPT')
+        h('img', {
+            src: 'assets/logo-full.svg',
+            alt: 'Rohlfing Concept',
+            style: { width: '85%', height: 'auto', display: 'block', margin: '0 auto' }
+        })
     ]);
 
     // Async: load logo from storage
@@ -101,11 +94,7 @@ export const Sidebar = () => {
         className: `sidebar${ui.sidebarOpen ? ' open' : ''}`
     }, [
         h('div', { className: 'sidebar-logo flex-column items-start w-full' }, [
-            logoEl,
-            h('span', {
-                className: 'text-xs text-muted text-center w-full mt-1 font-semibold uppercase tracking-wider',
-                style: { fontSize: '0.6rem' }
-            }, 'Agencia de Edición')
+            logoEl
         ]),
 
         h('nav', { className: 'sidebar-nav' }, [

@@ -52,7 +52,7 @@ export const render = async (params) => {
                             style: { width: '44px', height: '44px', borderRadius: '8px', border: '1px solid var(--border)' } 
                         }, [
                             h('img', { 
-                                src: client.logo || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&q=80', 
+                                src: client.logo || 'assets/logo-icon.svg', 
                                 style: { width: '100%', height: '100%', objectFit: 'cover' } 
                             }),
                             isAdmin ? h('label', { 
