@@ -65,7 +65,7 @@ export const render = async () => {
 
                     // Status Badge styling
                     const statusClass = asg.status === 'En Proceso' || asg.status === 'En Producción' ? 'info' : 
-                                        asg.status === 'Completado' ? 'success' : 'warning';
+                                        asg.status === 'Completado' ? 'success' : asg.status === 'Cancelado' ? 'error' : 'warning';
 
                     return h('div', { 
                         key: asg.id, 
@@ -116,7 +116,7 @@ export const render = async () => {
                                     }
                                 }, [icon('check', 12), h('span', {}, 'Completar')]) : null,
 
-                                asg.status === 'Completado' ? h('button', {
+                                asg.status === 'Completado' || asg.status === 'Cancelado' ? h('button', {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
                                     style: { color: 'var(--text-muted)', borderColor: 'var(--border)' },
                                     onClick: async (e) => {
@@ -130,7 +130,25 @@ export const render = async () => {
                                             alert("Error al actualizar la tarea.");
                                         }
                                     }
-                                }, [icon('rotate-ccw', 12), h('span', {}, 'Reabrir')]) : null
+                                }, [icon('rotate-ccw', 12), h('span', {}, 'Reabrir')]) : null,
+
+                                asg.status !== 'Completado' && asg.status !== 'Cancelado' ? h('button', {
+                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
+                                    style: { color: 'var(--error)', borderColor: 'rgba(var(--error-rgb), 0.3)' },
+                                    onClick: async (e) => {
+                                        if (confirm('¿Estás seguro de que deseas cancelar esta asignación?')) {
+                                            const btn = e.currentTarget;
+                                            btn.disabled = true;
+                                            try {
+                                                await assignmentService.saveAssignment({ ...asg, status: 'Cancelado' });
+                                                loadAndRender();
+                                            } catch(err) {
+                                                btn.disabled = false;
+                                                alert("Error al cancelar la tarea.");
+                                            }
+                                        }
+                                    }
+                                }, [icon('x-circle', 12), h('span', {}, 'Cancelar')]) : null
                             ])
                         ]),
 
@@ -579,7 +597,15 @@ export const render = async () => {
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { 
+                    type: 'button', 
+                    className: 'btn btn-outline text-xs', 
+                    onClick: () => {
+                        if (confirm('¿Estás seguro de que deseas cancelar? Se perderán los datos no guardados.')) {
+                            document.body.removeChild(overlay);
+                        }
+                    } 
+                }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Asignar Trabajo')
             ])
         ]);
