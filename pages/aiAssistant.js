@@ -578,6 +578,9 @@ Información del Administrador:
                 }, 50);
             };
 
+            const initialPrompt = localStorage.getItem('ria_prefill') || '';
+            if (initialPrompt) localStorage.removeItem('ria_prefill');
+
             // Form message controls
             const inputArea = h('form', {
                 className: 'flex gap-2 w-full',
@@ -663,6 +666,7 @@ Información del Administrador:
                     className: 'form-textarea text-xs flex-1', 
                     placeholder: 'Pídeme crear un Formato Creativo, asignar tareas, vincular un hook a una marca o actualizar métricas vinculadas...', 
                     rows: 2, 
+                    value: initialPrompt,
                     style: { resize: 'none', borderRadius: '8px', minHeight: '44px', maxHeight: '100px' },
                     required: true,
                     onKeydown: (e) => {

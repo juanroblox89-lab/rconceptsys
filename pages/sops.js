@@ -4,7 +4,7 @@
  * User: Fill in their own SOPs, mark steps done, redirect to billing at the end.
  */
 import { h, icon } from '../utils/dom.js';
-import { dbService } from '../firebase/service.js';
+import { dbService, storageService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 
 const ICONS = ['check-square', 'video', 'scissors', 'mic', 'pen-tool', 'monitor', 'camera', 'file-text', 'layers', 'zap'];
@@ -63,10 +63,20 @@ export const render = () => {
                         : 'Completa cada paso de tus procedimientos estándar de calidad.')
                 ])
             ]),
-            isAdmin ? h('button', {
-                className: 'btn btn-primary text-xs',
-                onClick: () => openAdminSopBuilder(null, load)
-            }, [icon('plus', 13), h('span', {}, 'Crear SOP')]) : null
+            h('div', { className: 'flex gap-2' }, [
+                h('button', { 
+                    className: 'btn btn-outline text-xs flex items-center gap-1 font-bold text-accent', 
+                    style: { borderColor: 'var(--accent)', color: 'var(--accent)' },
+                    onClick: () => {
+                        localStorage.setItem('ria_prefill', 'Créame un SOP detallado paso a paso para [INSERTAR MOTIVO] que sea profesional, claro y cumpla con nuestros estándares: ');
+                        window.location.hash = '#ai-assistant';
+                    }
+                }, [icon('sparkles', 13), h('span', {}, 'Ayuda de RIA')]),
+                isAdmin ? h('button', {
+                    className: 'btn btn-primary text-xs',
+                    onClick: () => openAdminSopBuilder(null, load)
+                }, [icon('plus', 13), h('span', {}, 'Crear SOP')]) : null
+            ])
         ]));
 
         if (visibleSops.length === 0) {
@@ -367,7 +377,7 @@ function openAdminSopBuilder(existing, reload) {
             const newSop = {
                 id, title: titleVal, iconName: iconVal,
                 targetRole: roleVal, active: activeVal,
-                galleryImage: galleryVal || '',
+                galleryImage: galleryImageUrl || '',
                 steps: stepsData.filter(s => s.text?.trim())
             };
 
@@ -414,10 +424,79 @@ function openAdminSopBuilder(existing, reload) {
                     ROLES.map(r => h('option', { value: r, selected: existing?.targetRole === r }, ROLE_LABELS[r] || r))
                 )
             ]),
-            // Gallery image URL
+            // Gallery image upload
             h('div', { className: 'form-group' }, [
-                h('label', { className: 'form-label' }, 'URL de Imagen de Galería (opcional)'),
-                h('input', { id: 'sop-gallery', className: 'form-input text-xs', placeholder: 'https://...imagen de referencia visual...', value: existing?.galleryImage || '' })
+                h('label', { className: 'form-label' }, 'Imagen de Galería (opcional)'),
+                h('div', { className: 'flex gap-2 items-center' }, [
+                    h('input', { 
+                        type: 'file', 
+                        id: 'sop-gallery-upload',
+                        style: { display: 'none' },
+                        accept: 'image/*',
+                        onChange: async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const btn = document.getElementById('sop-upload-btn');
+                            const originalText = btn.innerHTML;
+                            btn.innerHTML = 'Subiendo...';
+                            btn.disabled = true;
+                            try {
+                                const url = await storageService.uploadAsset(file, 'sops/' + Date.now() + '_' + file.name);
+                                galleryImageUrl = url;
+                                
+                                const { user } = store.getState();
+                                await dbService.add('assets', {
+                                    title: `SOP Imagen: ${file.name}`,
+                                    type: 'image',
+                                    url: url,
+                                    uploadedBy: user?.uid || 'admin',
+                                    createdAt: new Date().toISOString()
+                                });
+
+                                const imgPreview = document.getElementById('sop-img-preview');
+                                if (imgPreview) {
+                                    imgPreview.src = url;
+                                    imgPreview.style.display = 'block';
+                                }
+                                btn.innerHTML = '¡Subido!';
+                                setTimeout(() => { btn.innerHTML = 'Cambiar Imagen'; }, 2000);
+                            } catch(err) {
+                                console.error(err);
+                                alert("Error al subir imagen");
+                                btn.innerHTML = originalText;
+                            } finally {
+                                btn.disabled = false;
+                            }
+                        }
+                    }),
+                    h('button', { 
+                        type: 'button', 
+                        id: 'sop-upload-btn',
+                        className: 'btn btn-outline text-xs',
+                        onClick: () => form.querySelector('#sop-gallery-upload').click()
+                    }, galleryImageUrl ? 'Cambiar Imagen' : 'Subir Imagen'),
+                    
+                    h('button', {
+                        type: 'button',
+                        id: 'sop-delete-img-btn',
+                        className: 'btn-icon text-error',
+                        title: 'Eliminar imagen',
+                        style: { display: galleryImageUrl ? 'flex' : 'none' },
+                        onClick: () => {
+                            galleryImageUrl = '';
+                            const imgPreview = document.getElementById('sop-img-preview');
+                            if (imgPreview) imgPreview.style.display = 'none';
+                            const btn = document.getElementById('sop-upload-btn');
+                            if (btn) btn.innerHTML = 'Subir Imagen';
+                            document.getElementById('sop-delete-img-btn').style.display = 'none';
+                        }
+                    }, [icon('trash-2', 14)])
+                ]),
+                h('img', { 
+                    id: 'sop-img-preview', 
+                    src: galleryImageUrl || '', 
+                    style: { width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '6px', marginTop: '8px', display: galleryImageUrl ? 'block' : 'none' } 
+                })
             ]),
             // Steps
             h('div', { className: 'flex-column gap-2' }, [

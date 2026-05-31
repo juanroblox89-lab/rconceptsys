@@ -56,6 +56,14 @@ export const render = () => {
                 h('p', { className: 'text-xs text-muted mt-1' }, 'Guiones agrupados por cliente. Toca cualquier guión para ver el detalle completo.')
             ]),
             h('div', { className: 'flex gap-2' }, [
+                h('button', { 
+                    className: 'btn btn-outline text-xs flex items-center gap-1 font-bold text-accent', 
+                    style: { borderColor: 'var(--accent)', color: 'var(--accent)' },
+                    onClick: () => {
+                        localStorage.setItem('ria_prefill', 'Redacta un guion corto y persuasivo para [INSERTAR TEMA/PRODUCTO], que incluya un hook potente y un llamado a la acción claro: ');
+                        window.location.hash = '#ai-assistant';
+                    }
+                }, [icon('sparkles', 13), h('span', {}, 'Ayuda de RIA')]),
                 isAdmin ? h('button', { 
                     className: 'btn btn-primary text-xs',
                     onClick: () => openScriptModal(null, { clients: clientsList }) 

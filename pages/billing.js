@@ -244,8 +244,15 @@ export const render = () => {
                         style: { borderColor: 'rgba(239,68,68,0.3)', color: 'var(--error)' },
                         title: 'Eliminar TODAS las facturas de empleados y admin para iniciar nuevo ciclo',
                         onClick: async () => {
-                            if (!confirm('⚠️ ¿Reiniciar el mes de facturación?\n\nEsto ELIMINARÁ PERMANENTEMENTE todas las facturas de todos los trabajadores (empleado y admin).\n\nEsta acción NO se puede deshacer. ¿Continuar?')) return;
-                            if (!confirm('CONFIRMACIÓN FINAL: ¿Estás seguro? Se borrarán todas las liquidaciones.')) return;
+                            const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+                            const userInput = prompt(`⚠️ ATENCIÓN: Esta acción ELIMINARÁ PERMANENTEMENTE todas las facturas de todos los trabajadores.\n\nPara confirmar que no es un error, escribe exactamente este código de seguridad: ${code}`);
+                            if (userInput !== code) {
+                                if (userInput !== null) alert("Código incorrecto. Operación cancelada.");
+                                return;
+                            }
+                            
+                            if (!confirm('🚨 ÚLTIMA ADVERTENCIA: ¿Estás 100% seguro? NO HAY VUELTA ATRÁS.')) return;
+                            
                             container.innerHTML = '<div class="loader mb-4"></div>';
                             try {
                                 const result = await invoiceService.resetAllInvoices();

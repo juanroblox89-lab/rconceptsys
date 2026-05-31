@@ -9,7 +9,7 @@ import { authService, storageService, dbService } from '../firebase/service.js';
 // Primary nav (shown in sidebar AND bottom nav)
 const primaryNavItems = [
     { href: '#dashboard',    icon: 'layout-dashboard', label: 'Dashboard' },
-    { href: '#assignments',  icon: 'list-todo',        label: 'Asignaciones', adminOnly: true },
+    { href: '#assignments',  icon: 'briefcase',        label: 'Mi Trabajo', adminLabel: 'Asignaciones' },
     { href: '#clients',      icon: 'users',             label: 'Clientes' },
     { href: '#billing',      icon: 'credit-card',       label: 'Pagos Pendientes' },
     { href: '#assets',       icon: 'video',             label: 'Assets' },
@@ -27,31 +27,37 @@ const secondaryNavItems = [
     { href: '#admin',        icon: 'shield',            label: 'Admin', adminOnly: true },
 ];
 
-const createNavItem = ({ href, icon: iconName, label, adminOnly }) => {
+const createNavItem = ({ href, icon: iconName, label, adminOnly, adminLabel }) => {
     const { user } = store.getState();
     if (adminOnly && user?.role !== 'admin') return null;
 
     const currentHash = window.location.hash || '#dashboard';
     const isActive = currentHash === href || currentHash.startsWith(href + '/');
+    const finalLabel = (user?.role === 'admin' && adminLabel) ? adminLabel : label;
+    const finalIcon = (user?.role === 'admin' && href === '#assignments') ? 'list-todo' : iconName;
+    
     return h('a', { href, className: `nav-item${isActive ? ' active' : ''}` }, [
-        icon(iconName, 17),
-        h('span', {}, label)
+        icon(finalIcon, 17),
+        h('span', {}, finalLabel)
     ]);
 };
 
-const createBottomNavItem = ({ href, icon: iconName, label, adminOnly }) => {
+const createBottomNavItem = ({ href, icon: iconName, label, adminOnly, adminLabel }) => {
     const { user } = store.getState();
     if (adminOnly && user?.role !== 'admin') return null;
 
     const currentHash = window.location.hash || '#dashboard';
     const isActive = currentHash === href || currentHash.startsWith(href + '/');
+    const finalLabel = (user?.role === 'admin' && adminLabel) ? adminLabel : label;
+    const finalIcon = (user?.role === 'admin' && href === '#assignments') ? 'list-todo' : iconName;
+    
     return h('a', {
         href,
         className: `bottom-nav-item${isActive ? ' active' : ''}`,
-        'aria-label': label
+        'aria-label': finalLabel
     }, [
-        icon(iconName, 22),
-        h('span', {}, label)
+        icon(finalIcon, 22),
+        h('span', {}, finalLabel)
     ]);
 };
 

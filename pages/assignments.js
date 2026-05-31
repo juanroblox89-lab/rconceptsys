@@ -24,12 +24,14 @@ export const render = async () => {
             await assignmentService.cleanupAssignments();
 
             // 1. Load Data
-            const [users, assignments, clients, scripts, assets] = await Promise.all([
+            const [users, assignments, clients, scripts, assets, sops, mySopSubmissions] = await Promise.all([
                 userService.getAllUsers(),
                 assignmentService.getAllAssignments(),
-                dbService.getAll('clients'),
-                dbService.getAll('scripts'),
-                dbService.getAll('assets')
+                dbService.getAll('clients').catch(() => []),
+                dbService.getAll('scripts').catch(() => []),
+                dbService.getAll('assets').catch(() => []),
+                dbService.getAll('sops').catch(() => []),
+                (!isAdmin && user) ? dbService.query('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([])
             ]);
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
@@ -47,8 +49,8 @@ export const render = async () => {
                 // Header for Employee
                 const header = h('div', { className: 'flex justify-between items-end mb-2 w-full border-bottom pb-3' }, [
                     h('div', {}, [
-                        h('h1', { className: 'text-xl font-bold' }, 'Mis Tareas Asignadas'),
-                        h('p', { className: 'text-xs text-muted mt-1' }, 'Listado de grabaciones y ediciones asignadas a tu cuenta.')
+                        h('h1', { className: 'text-xl font-bold' }, 'Mi Espacio de Trabajo'),
+                        h('p', { className: 'text-xs text-muted mt-1' }, 'Listado de tareas y SOPs asignados a tu cuenta.')
                     ]),
                     h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: ${myAssignments.length} Tareas`)
                 ]);
@@ -101,21 +103,36 @@ export const render = async () => {
                                     }
                                 }, [icon('play', 12), h('span', {}, 'Empezar')]) : null,
 
-                                (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? h('button', {
-                                    className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                    style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
-                                    onClick: async (e) => {
-                                        const btn = e.currentTarget;
-                                        btn.disabled = true;
-                                        try {
-                                            await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
-                                            loadAndRender();
-                                        } catch(err) {
-                                            btn.disabled = false;
-                                            alert("Error al actualizar la tarea.");
-                                        }
+                                (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? (() => {
+                                    const hasSop = !!asg.sopId;
+                                    const sopObj = hasSop ? sops.find(s => s.id === asg.sopId) : null;
+                                    const sopSub = hasSop ? mySopSubmissions.find(sub => sub.sopId === asg.sopId && sub.assignmentId === asg.id) : null;
+                                    const sopCompleted = sopSub?.status === 'completed';
+
+                                    if (hasSop && sopObj && !sopCompleted) {
+                                        return h('button', {
+                                            className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                            style: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
+                                            onClick: () => openSopViewerModal(sopObj, asg, sopSub, loadAndRender)
+                                        }, [icon('check-square', 12), h('span', {}, 'Llenar SOP')]);
+                                    } else {
+                                        return h('button', {
+                                            className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                            style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
+                                            onClick: async (e) => {
+                                                const btn = e.currentTarget;
+                                                btn.disabled = true;
+                                                try {
+                                                    await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
+                                                    loadAndRender();
+                                                } catch(err) {
+                                                    btn.disabled = false;
+                                                    alert("Error al actualizar la tarea.");
+                                                }
+                                            }
+                                        }, [icon('check', 12), h('span', {}, 'Completar')]);
                                     }
-                                }, [icon('check', 12), h('span', {}, 'Completar')]) : null,
+                                })() : null,
 
                                 asg.status === 'Completado' && !asg.billed ? h('button', {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
@@ -285,7 +302,7 @@ export const render = async () => {
                 h('div', { className: 'flex gap-2' }, [
                     h('button', { 
                         className: 'btn btn-primary text-xs',
-                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] })
+                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
                     }, [icon('plus', 14), h('span', {}, 'Nueva Asignación')])
                 ])
             ]);
@@ -331,7 +348,7 @@ export const render = async () => {
                                             h('span', { className: `text-xs ${isExpired ? 'text-error font-bold' : 'text-muted'}` }, 
                                                 isToday ? 'Hoy' : due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
                                             ),
-                                            h('button', { className: 'action-btn', style: { padding: '2px' }, onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] }) }, [icon('edit-3', 10)])
+                                            h('button', { className: 'action-btn', style: { padding: '2px' }, onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] }) }, [icon('edit-3', 10)])
                                         ])
                                     ]);
                             })
@@ -346,7 +363,7 @@ export const render = async () => {
                             ]),
                             h('button', { 
                                 className: 'btn btn-outline py-1 px-3 text-xs',
-                                onClick: () => openAssignmentModal(null, { users: [emp], clients: finalClients, preselectedUser: emp.uid, scripts: scripts || [], assets: assets || [] })
+                                onClick: () => openAssignmentModal(null, { users: [emp], clients: finalClients, preselectedUser: emp.uid, scripts: scripts || [], assets: assets || [], sops: sops || [] })
                             }, '+ Asignar')
                         ])
                     ]);
@@ -522,7 +539,8 @@ export const render = async () => {
                 status: existing?.status || 'Pendiente',
                 createdBy: user.uid,
                 linkedScript: form.querySelector('#asg-link-script').value,
-                linkedAsset: form.querySelector('#asg-link-asset').value
+                linkedAsset: form.querySelector('#asg-link-asset').value,
+                sopId: form.querySelector('#asg-sop')?.value || null
             };
 
             try {
@@ -572,7 +590,7 @@ export const render = async () => {
                         context.clients.map(c => h('option', { value: c.name, selected: existing?.client === c.name }, c.name))
                     )
                 ]),
-                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
+                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' } }, [
                     h('div', { className: 'form-group' }, [
                         h('div', { className: 'flex justify-between items-center w-full mb-1' }, [
                             h('label', { className: 'form-label m-0' }, 'Vincular Guión'),
@@ -625,6 +643,17 @@ export const render = async () => {
                         }, [
                             h('option', { value: '' }, '-- Sin Vincular --'),
                             ...(context.assets || []).map(a => h('option', { value: a.url || a.thumbnail, selected: existing?.linkedAsset === (a.url || a.thumbnail) }, `[${a.client}] ${a.title}`))
+                        ])
+                    ]),
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label mb-1' }, 'SOP Recomendado'),
+                        h('select', { 
+                            id: 'asg-sop', 
+                            className: 'form-select text-xs',
+                            style: { height: '38px' }
+                        }, [
+                            h('option', { value: '' }, '-- Sin Vincular --'),
+                            ...(context.sops || []).map(s => h('option', { value: s.id, selected: existing?.sopId === s.id }, s.title))
                         ])
                     ])
                 ]),
@@ -680,7 +709,7 @@ export const render = async () => {
                             className: 'btn-icon text-muted', 
                             onClick: () => {
                                 if (document.body.contains(overlay)) document.body.removeChild(overlay);
-                                openAssignmentModal(asg, { users: [emp], clients: context.clients, scripts: context.scripts || [], assets: context.assets || [] });
+                                openAssignmentModal(asg, { users: [emp], clients: context.clients, scripts: context.scripts || [], assets: context.assets || [], sops: context.sops || [] });
                             }
                         }, [icon('edit', 14)]),
                         h('button', { 
@@ -712,3 +741,87 @@ export const render = async () => {
     loadAndRender();
     return container;
 };
+
+// --- SOP Viewer Modal ---
+function openSopViewerModal(sop, asg, currentSub, reload) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    let stepsData = currentSub?.steps || sop.steps.map(s => ({ done: false, userValue: '' }));
+    const { user } = store.getState();
+
+    const updateStep = async (idx, done, val) => {
+        stepsData[idx] = { done, userValue: val };
+        const isAllDone = stepsData.every(s => s.done);
+        
+        let subId = currentSub?.id || `sub-${sop.id}-${asg.id}`;
+        
+        const submissionData = {
+            id: subId,
+            sopId: sop.id,
+            assignmentId: asg.id,
+            userId: user.uid,
+            status: isAllDone ? 'completed' : 'active',
+            steps: stepsData,
+            lastUpdated: new Date().toISOString(),
+            completedAt: isAllDone ? new Date().toISOString() : null
+        };
+        
+        await dbService.set('sop_submissions', subId, submissionData);
+
+        if (isAllDone) {
+            await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
+            overlay.remove();
+            reload();
+        } else {
+            renderSteps();
+        }
+    };
+
+    const stepsContainer = h('div', { className: 'flex-column gap-2' });
+    const renderSteps = () => {
+        stepsContainer.innerHTML = '';
+        sop.steps.forEach((step, idx) => {
+            const subData = stepsData[idx] || { done: false, userValue: '' };
+            const row = h('div', { className: 'card p-3 flex-column gap-2', style: { border: '1px solid var(--border)' } }, [
+                h('div', { className: 'flex gap-2 items-start' }, [
+                    h('input', {
+                        type: 'checkbox',
+                        checked: subData.done,
+                        style: { marginTop: '3px' },
+                        onChange: (e) => updateStep(idx, e.target.checked, subData.userValue)
+                    }),
+                    h('span', { className: 'text-xs', style: { textDecoration: subData.done ? 'line-through' : 'none', opacity: subData.done ? 0.6 : 1 } }, step.text)
+                ]),
+                step.type === 'link' || step.type === 'text' ? h('input', {
+                    type: 'text',
+                    className: 'form-input text-xs mt-1',
+                    placeholder: step.type === 'link' ? (step.linkPlaceholder || 'Ingresa el enlace aquí...') : (step.textDescription || 'Ingresa tu respuesta aquí...'),
+                    value: subData.userValue,
+                    onBlur: (e) => {
+                        if (e.target.value !== subData.userValue) {
+                            updateStep(idx, subData.done, e.target.value);
+                        }
+                    }
+                }) : null
+            ]);
+            stepsContainer.appendChild(row);
+        });
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    renderSteps();
+
+    const modal = h('div', { className: 'modal-container', style: { maxWidth: '600px' } }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, `SOP: ${sop.title} - ${asg.client}`),
+            h('button', { onClick: () => overlay.remove() }, '×')
+        ]),
+        h('div', { className: 'modal-body flex-column gap-3', style: { maxHeight: '70vh', overflowY: 'auto' } }, [
+            sop.galleryImage ? h('img', { src: sop.galleryImage, style: { width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '6px' } }) : null,
+            stepsContainer
+        ])
+    ]);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+}

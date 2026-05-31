@@ -52,7 +52,7 @@ export const render = () => {
             h('div', { className: 'flex gap-2' }, [
                 h('button', {
                     className: 'btn btn-primary text-xs',
-                    onClick: () => openAssignmentModal(null, { users: workers, clients, assignments, reload: load })
+                    onClick: () => openAssignmentModal(null, { users: workers, clients, assignments, reload: load, sops })
                 }, [icon('plus', 13), h('span', {}, 'Nueva Asignación')])
             ])
         ]));
@@ -156,7 +156,7 @@ function renderWorkerCard(w, assignments, clients, sops, roles, reload) {
                 h('button', {
                     className: 'btn btn-outline text-xs flex-1',
                     style: { fontSize: '0.65rem' },
-                    onClick: () => openAssignmentModal(null, { users: [w], preselectedUser: w.uid, clients, assignments: myAsgs, reload })
+                    onClick: () => openAssignmentModal(null, { users: [w], preselectedUser: w.uid, clients, assignments: myAsgs, reload, sops })
                 }, [icon('plus', 11), h('span', {}, 'Asignar')]),
                 h('button', {
                     className: 'btn btn-outline text-xs flex-1',
