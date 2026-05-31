@@ -68,7 +68,7 @@ export const Sidebar = () => {
         style: { minHeight: '60px' }
     }, [
         h('img', {
-            src: 'assets/logo-full.svg',
+            src: '/logo-full.svg',
             alt: 'Rohlfing Concept',
             style: { width: '85%', height: 'auto', display: 'block', margin: '0 auto' }
         })
@@ -81,7 +81,11 @@ export const Sidebar = () => {
             logoEl.appendChild(h('img', {
                 src: url,
                 alt: 'Rohlfing Concept',
-                style: { maxHeight: '44px', width: 'auto', display: 'block', margin: '0 auto' }
+                style: { maxHeight: '60px', width: 'auto', display: 'block', margin: '0 auto' },
+                onerror: (e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/logo-full.svg';
+                }
             }));
         }
     }).catch(err => {

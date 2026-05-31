@@ -75,7 +75,7 @@ export const render = () => {
                     // Identity section (left)
                     h('div', { className: 'flex items-center gap-3', style: { flex: '1 1 200px', minWidth: '180px' } }, [
                         c.logo ? h('img', { src: c.logo, style: { width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--border)' } }) :
-                        h('img', { src: 'assets/logo-icon.svg', style: { width: '36px', height: '36px', borderRadius: '6px', objectFit: 'contain', background: 'var(--bg-tertiary)', padding: '4px', border: '1px solid var(--border)' } }),
+                        h('img', { src: '/logo-icon.svg', style: { width: '36px', height: '36px', borderRadius: '6px', objectFit: 'contain', background: 'var(--bg-tertiary)', padding: '4px', border: '1px solid var(--border)' } }),
                         h('div', { className: 'flex-column' }, [
                             h('h3', { className: 'text-xs font-bold text-primary', style: { margin: 0 } }, c.name),
                             h('span', { className: 'text-muted mt-0.5', style: { fontSize: '0.65rem', fontWeight: '500' } }, c.businessType || 'General')
