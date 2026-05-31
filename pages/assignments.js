@@ -8,6 +8,7 @@ import { store } from '../js/store.js';
 import { dbService, storageService } from '../firebase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
+import { invoiceService } from '../services/invoiceService.js';
 
 export const render = async () => {
     const { user } = store.getState();
@@ -115,6 +116,50 @@ export const render = async () => {
                                         }
                                     }
                                 }, [icon('check', 12), h('span', {}, 'Completar')]) : null,
+
+                                asg.status === 'Completado' && !asg.billed ? h('button', {
+                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                    style: { color: 'var(--success)', borderColor: 'rgba(var(--success-rgb), 0.3)' },
+                                    onClick: async (e) => {
+                                        const priceStr = prompt(`Ingresa el monto a cobrar por la tarea "${asg.title}" (Dejar vacío o 0 si no aplica):`);
+                                        if (priceStr === null) return; // User cancelled
+                                        const price = Number(priceStr.replace(/[^0-9.-]+/g,"")) || 0;
+                                        
+                                        const btn = e.currentTarget;
+                                        btn.disabled = true;
+                                        try {
+                                            let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
+                                            if (!currentInv) {
+                                                currentInv = { items: [] };
+                                            } else if (!currentInv.items) {
+                                                currentInv.items = [];
+                                            }
+                                            
+                                            const newItem = {
+                                                id: `item-${Date.now()}`,
+                                                type: asg.type,
+                                                client: asg.client,
+                                                amount: price,
+                                                createdAt: new Date().toISOString(),
+                                                observations: `Cobro por tarea: ${asg.title}`
+                                            };
+                                            
+                                            currentInv.items.push(newItem);
+                                            currentInv.amount = currentInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+                                            
+                                            await invoiceService.saveEmployeeInvoice(user.uid, currentInv);
+                                            await assignmentService.saveAssignment({ ...asg, billed: true });
+                                            loadAndRender();
+                                            alert("¡Tarea agregada a tu factura exitosamente!");
+                                        } catch(err) {
+                                            btn.disabled = false;
+                                            alert("Error al añadir a factura.");
+                                            console.error(err);
+                                        }
+                                    }
+                                }, [icon('file-text', 12), h('span', {}, 'Cobrar Tarea')]) : null,
+                                
+                                asg.billed ? h('span', { className: 'badge badge-success text-xs flex items-center gap-1 font-bold', style: { padding: '4px 8px' } }, [icon('check-circle', 12), h('span', {}, 'Facturado')]) : null,
 
                                 asg.status === 'Completado' || asg.status === 'Cancelado' ? h('button', {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
