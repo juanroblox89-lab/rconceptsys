@@ -75,13 +75,12 @@ export const Sidebar = () => {
 
     // ─── Logo ──────────────────────────────────────────────
     const logoEl = h('div', {
-        className: 'w-full mb-3 flex items-center justify-center',
-        style: { minHeight: '60px' }
+        className: 'w-full mb-3 flex items-center justify-center sidebar-logo-container'
     }, [
         h('img', {
             src: '/logo-full.svg',
             alt: 'Rohlfing Concept',
-            style: { width: '85%', height: 'auto', display: 'block', margin: '0 auto' }
+            className: 'sidebar-logo-img'
         })
     ]);
 
@@ -92,7 +91,7 @@ export const Sidebar = () => {
             logoEl.appendChild(h('img', {
                 src: url,
                 alt: 'Rohlfing Concept',
-                style: { maxHeight: '60px', width: 'auto', display: 'block', margin: '0 auto' },
+                className: 'sidebar-logo-img loaded',
                 onerror: (e) => {
                     e.target.onerror = null;
                     e.target.src = '/logo-full.svg';
@@ -123,25 +122,21 @@ export const Sidebar = () => {
         h('div', { className: 'sidebar-footer flex-column gap-2' }, [
             user
                 ? h('div', {
-                    className: 'flex items-center gap-2',
-                    style: { padding: '8px 6px', borderRadius: '6px', background: 'var(--bg-tertiary)' }
+                    className: 'flex items-center gap-2 sidebar-user-card'
                 }, [
                     user.photoURL
-                        ? h('img', { src: user.photoURL, style: { width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0 } })
-                        : h('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: 'var(--bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } }, [icon('user', 14)]),
-                    h('div', { className: 'flex-column', style: { flex: 1, minWidth: 0 } }, [
+                        ? h('img', { src: user.photoURL, className: 'sidebar-user-avatar' })
+                        : h('div', { className: 'sidebar-user-avatar-fallback' }, [icon('user', 14)]),
+                    h('div', { className: 'flex-column sidebar-user-info' }, [
                         h('span', {
-                            className: 'text-xs font-semibold',
-                            style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                            className: 'text-sm font-semibold truncate'
                         }, user.nombre || user.email?.split('@')[0]),
                         h('span', {
-                            className: `badge ${user.role === 'admin' ? 'badge-success' : 'badge-warning'} text-xs`,
-                            style: { fontSize: '0.55rem', padding: '1px 4px', marginTop: '2px' }
+                            className: `badge ${user.role === 'admin' ? 'badge-success' : 'badge-warning'} text-xs mt-1`
                         }, user.role === 'admin' ? 'ADMIN' : (user.approved ? user.role?.toUpperCase() : 'PENDIENTE'))
                     ]),
                     h('button', {
-                        className: 'btn-icon',
-                        style: { width: '28px', height: '28px', flexShrink: 0 },
+                        className: 'btn-icon sidebar-logout-btn',
                         title: 'Cerrar Sesión',
                         onClick: async () => {
                             await authService.logout();
