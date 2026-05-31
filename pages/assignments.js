@@ -61,15 +61,57 @@ export const render = async () => {
                 container.appendChild(header);
 
                 // Workflow Guide for Employee
-                container.appendChild(
-                    h('div', { className: 'card p-4 flex-column gap-2 mb-4 w-full', style: { borderLeft: '4px solid var(--accent)', background: 'var(--bg-tertiary)' } }, [
-                        h('h3', { className: 'text-sm font-bold flex items-center gap-2' }, [icon('info', 16, 'text-accent'), h('span', {}, 'Guía de Trabajo Diaria')]),
-                        h('ol', { className: 'text-xs text-muted pl-4', style: { margin: 0, paddingLeft: '24px', display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+                const getRoleSpecificGuide = (roleName) => {
+                    const r = (roleName || '').toLowerCase();
+                    if (r.includes('marketing') || r.includes('venta')) {
+                        return [
+                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Prospectar: '), 'Sal a buscar clientes. Por cada 10 prospectos visitados, recibes un bono.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Registrar Visitas: '), 'Entra a la pestaña "Ventas y Marketing" y registra cada visita para llevar la cuenta.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Cerrar Clientes: '), 'Cuando consigas un cliente, márcalo como "Cerrado" en la misma pestaña para cobrar tu gran comisión.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Ve a "Pagos Pendientes" para ver cómo se acumulan tus bonos y comisiones.'])
+                        ];
+                    } else if (r.includes('camarógrafo') || r.includes('grabador')) {
+                        return [
+                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Preparación: '), 'Revisa tus tareas pendientes. Verifica el cliente, el día y lee el Guion asignado.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Confirmación: '), 'Recuerda confirmar la asistencia con el cliente el día antes por el grupo de WhatsApp.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Grabación y Subida: '), 'Ve al lugar, sácate el guion del cerebro y graba. Al terminar, sube los archivos crudos al Drive.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Notificar y Cobrar: '), 'Avisa al equipo que el crudo está listo, dale a "Cobrar Tarea" e ingresa los minutos que grabaste.'])
+                        ];
+                    } else if (r.includes('editor')) {
+                        return [
+                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Recepción: '), 'Revisa tu tarea. El líder te habrá notificado que los crudos están en Drive junto al Guion.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Edición: '), 'Descarga los crudos, edita el video aplicando formatos virales y exporta el archivo final.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Entrega: '), 'Sube el video final al Drive y manda el link por WhatsApp para revisión.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Marca la tarea como completada y dale a "Cobrar Tarea" para añadir tu pago a la factura.'])
+                        ];
+                    } else if (r.includes('estratega') || r.includes('lider') || r.includes('admin')) {
+                        return [
+                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Creación de Cliente: '), 'Anota el nuevo cliente en la pestaña "Clientes" y asígnale su paquete de videos (4, 6 u 8).']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Estrategia: '), 'Redacta los guiones utilizando la pestaña de Formatos y Hooks.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Asignar Grabación: '), 'Crea una tarea para el Camarógrafo adjuntando el guion y el cliente.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Asignar Edición: '), 'Cuando los crudos estén en Drive, asígnale la tarea de edición al Editor, y revisa el progreso del paquete.'])
+                        ];
+                    } else {
+                        // Default Guide
+                        return [
                             h('li', {}, [h('span', { className: 'font-bold' }, '1. Revisa tu Tarea: '), 'Abre tu tarea pendiente y revisa las instrucciones, el Guion y el Asset de muestra.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '2. Ejecuta y Llenar SOP: '), 'Haz clic en "Llenar SOP" para abrir tu lista de verificación y entregar los enlaces o archivos requeridos.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '3. Completar: '), 'Al terminar todos los pasos del SOP, la tarea se marcará como Completada automáticamente.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Las tareas completadas y su monto se sumarán a tu factura, que podrás revisar en "Pagos Pendientes".'])
-                        ])
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Dale a "Cobrar Tarea" para sumar el pago a tu factura en "Pagos Pendientes".'])
+                        ];
+                    }
+                };
+
+                const roleNameDisplay = (user.role && user.role !== 'admin' && user.role !== 'viewer') 
+                    ? user.role.charAt(0).toUpperCase() + user.role.slice(1) 
+                    : 'Miembro del Equipo';
+
+                container.appendChild(
+                    h('div', { className: 'card p-4 flex-column gap-2 mb-4 w-full', style: { borderLeft: '4px solid var(--accent)', background: 'var(--bg-tertiary)' } }, [
+                        h('h3', { className: 'text-sm font-bold flex items-center gap-2' }, [icon('info', 16, 'text-accent'), h('span', {}, `Guía de Flujo Operativo: ${roleNameDisplay}`)]),
+                        h('ol', { className: 'text-xs text-muted pl-4', style: { margin: 0, paddingLeft: '24px', display: 'flex', flexDirection: 'column', gap: '4px' } }, 
+                            getRoleSpecificGuide(user.role)
+                        )
                     ])
                 );
 
