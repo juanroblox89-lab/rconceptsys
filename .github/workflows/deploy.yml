@@ -29,6 +29,6 @@ jobs:
       - name: 🚀 Deploy to Firebase
         uses: w9jds/firebase-action@v2.2.0
         with:
-          args: deploy
+          args: deploy --project agencia-rconcept
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGENCIA_RCONCEPT }}
