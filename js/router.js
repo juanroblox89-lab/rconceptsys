@@ -17,7 +17,8 @@ export const routes = [
     { path: 'assets', module: 'assets', title: "Assets", subtitle: "Gestión de producción" },
     { path: 'references', module: 'references', title: "Referencias", subtitle: "Inspiración curada" },
     { path: 'ai-assistant', module: 'aiAssistant', title: "AI Assistant", subtitle: "Inteligencia generativa y análisis" },
-    { path: 'admin', module: 'admin', title: "Panel de Administración", subtitle: "Aprobación de usuarios y control integral" }
+    { path: 'admin', module: 'admin', title: "Panel de Administración", subtitle: "Aprobación de usuarios y control integral" },
+    { path: 'workers', module: 'workers', title: "Equipo y Productividad", subtitle: "Asignaciones y SOPs del personal" }
 ];
 
 class Router {
@@ -74,7 +75,8 @@ class Router {
                     assets: () => import('../pages/assets.js'),
                     references: () => import('../pages/references.js'),
                     aiAssistant: () => import('../pages/aiAssistant.js'),
-                    admin: () => import('../pages/admin.js')
+                    admin: () => import('../pages/admin.js'),
+                    workers: () => import('../pages/workers.js')
                 };
 
                 const loadPage = pages[route.module];
