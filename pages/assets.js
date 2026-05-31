@@ -138,6 +138,7 @@ export const render = () => {
             h('div', { className: 'modal-footer' }, [
                 h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Subir y Almacenar')
+            ])
         ]);
 
         overlay.appendChild(form);
