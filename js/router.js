@@ -54,6 +54,33 @@ class Router {
         if (match) {
             const { route, params } = match;
             
+            // --- Permisos ---
+            const { user, roles } = store.getState();
+            let hasPermission = true;
+            if (user?.role !== 'admin') {
+                const currentRole = (roles || []).find(r => r.id === user?.role);
+                const defaultModules = ['dashboard', 'assignments', 'sops', 'ai-assistant'];
+                const allowedModules = currentRole?.allowedModules || defaultModules;
+                
+                let requiredModule = route.module;
+                if (requiredModule === 'clientDetail') requiredModule = 'clients';
+                
+                hasPermission = allowedModules.includes(requiredModule);
+            }
+
+            if (!hasPermission) {
+                viewContainer.innerHTML = `
+                    <div class="card p-8 text-center flex-column items-center gap-3" style="max-width: 400px; margin: 40px auto;">
+                        <span style="font-size:3rem">🔒</span>
+                        <h3>Acceso Denegado</h3>
+                        <p class="text-xs text-muted">Tu rol (${user?.role}) no tiene permisos para ver "${route.title}".</p>
+                        <button class="btn btn-primary mt-2 text-xs" onclick="window.location.hash='#dashboard'">Ir al Dashboard</button>
+                    </div>`;
+                if (titleElement) titleElement.textContent = "Acceso Restringido";
+                if (subtitleElement) subtitleElement.textContent = "";
+                return;
+            }
+            
             if (titleElement) titleElement.textContent = route.title || "CreativeOS";
             if (subtitleElement) subtitleElement.textContent = route.subtitle || "";
             

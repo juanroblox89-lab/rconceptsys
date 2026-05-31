@@ -9,8 +9,8 @@ import { authService, storageService, dbService } from '../firebase/service.js';
 // Primary nav (shown in sidebar AND bottom nav)
 const primaryNavItems = [
     { href: '#dashboard',    icon: 'layout-dashboard', label: 'Dashboard' },
-    { href: '#assignments',  icon: 'briefcase',        label: 'Mi Trabajo', employeeOnly: true },
-    { href: '#workers',      icon: 'users',            label: 'Workers', adminOnly: true },
+    { href: '#assignments',  icon: 'briefcase',        label: 'Mi Trabajo' },
+    { href: '#workers',      icon: 'users',            label: 'Workers' },
     { href: '#clients',      icon: 'users',             label: 'Clientes' },
     { href: '#marketing',    icon: 'trending-up',       label: 'Ventas / Marketing' },
     { href: '#billing',      icon: 'credit-card',       label: 'Pagos Pendientes' },
@@ -25,13 +25,25 @@ const secondaryNavItems = [
     { href: '#sops',         icon: 'check-square',      label: 'SOPs' },
     { href: '#references',   icon: 'bookmark',          label: 'Referencias' },
     { href: '#ai-assistant', icon: 'sparkles',          label: 'AI Assistant' },
-    { href: '#admin',        icon: 'shield',            label: 'Admin', adminOnly: true },
+    { href: '#admin',        icon: 'shield',            label: 'Admin' },
 ];
 
-const createNavItem = ({ href, icon: iconName, label, adminOnly, employeeOnly }) => {
-    const { user } = store.getState();
-    if (adminOnly && user?.role !== 'admin') return null;
-    if (employeeOnly && user?.role === 'admin') return null;
+const checkPermission = (href) => {
+    const { user, roles } = store.getState();
+    if (user?.role === 'admin') return true;
+    
+    const moduleId = href.replace('#', '');
+    
+    // Find role permissions
+    const currentRole = (roles || []).find(r => r.id === user?.role);
+    const defaultModules = ['dashboard', 'assignments', 'sops', 'ai-assistant'];
+    const allowedModules = currentRole?.allowedModules || defaultModules;
+    
+    return allowedModules.includes(moduleId);
+};
+
+const createNavItem = ({ href, icon: iconName, label }) => {
+    if (!checkPermission(href)) return null;
 
     const currentHash = window.location.hash || '#dashboard';
     const isActive = currentHash === href || currentHash.startsWith(href + '/');
@@ -42,10 +54,8 @@ const createNavItem = ({ href, icon: iconName, label, adminOnly, employeeOnly })
     ]);
 };
 
-const createBottomNavItem = ({ href, icon: iconName, label, adminOnly, employeeOnly }) => {
-    const { user } = store.getState();
-    if (adminOnly && user?.role !== 'admin') return null;
-    if (employeeOnly && user?.role === 'admin') return null;
+const createBottomNavItem = ({ href, icon: iconName, label }) => {
+    if (!checkPermission(href)) return null;
 
     const currentHash = window.location.hash || '#dashboard';
     const isActive = currentHash === href || currentHash.startsWith(href + '/');

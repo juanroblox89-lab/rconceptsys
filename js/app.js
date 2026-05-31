@@ -4,7 +4,7 @@
  */
 import { store } from './store.js';
 import { router } from './router.js';
-import { authService } from '../firebase/service.js';
+import { authService, dbService } from '../firebase/service.js';
 import { Sidebar } from '../components/Sidebar.js';
 import { Header } from '../components/layout/Header.js';
 import { CommandPalette } from '../components/ui/CommandPalette.js';
@@ -71,10 +71,18 @@ class App {
 
             // 2. Auth Listener
             if (this.unsubscribeAuth) this.unsubscribeAuth();
-            this.unsubscribeAuth = authService.onAuthChange((user) => {
+            this.unsubscribeAuth = authService.onAuthChange(async (user) => {
                 console.log("[CreativeOS] Auth State Changed:", user ? user.email : "Logged Out");
                 
                 if (user) {
+                    try {
+                        const roles = await dbService.getAll('roles');
+                        store.setState({ roles });
+                    } catch(err) {
+                        console.error("Failed to load roles globally", err);
+                        store.setState({ roles: [] });
+                    }
+                    
                     store.setState({ user, authLoading: false });
                     if (user.approved === true) {
                         this.renderAuthenticatedApp();

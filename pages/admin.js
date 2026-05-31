@@ -382,6 +382,82 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
     ]);
 }
 
+// ── Role Permissions Modal ──────────────────────────────────────
+function openRoleConfigModal(role, reload) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    
+    // Lista de todos los módulos disponibles en el sistema
+    const systemModules = [
+        { id: 'dashboard', label: 'Dashboard' },
+        { id: 'assignments', label: 'Mi Trabajo' },
+        { id: 'workers', label: 'Workers (Asignar tareas)' },
+        { id: 'clients', label: 'Clientes' },
+        { id: 'billing', label: 'Pagos Pendientes' },
+        { id: 'marketing', label: 'Ventas y Marketing' },
+        { id: 'assets', label: 'Assets' },
+        { id: 'formats', label: 'Formatos' },
+        { id: 'scripts', label: 'Guiones' },
+        { id: 'hooks', label: 'Hooks' },
+        { id: 'sops', label: 'SOPs' },
+        { id: 'references', label: 'Referencias' },
+        { id: 'ai-assistant', label: 'AI Assistant' }
+    ];
+
+    // Módulos por defecto si el rol es nuevo y no tiene arreglo
+    const defaultModules = ['dashboard', 'assignments', 'sops', 'ai-assistant'];
+    const currentModules = role.allowedModules || defaultModules;
+
+    const checkboxes = systemModules.map(mod => {
+        return h('label', { className: 'flex items-center gap-2 cursor-pointer p-2 hover-bg-secondary rounded' }, [
+            h('input', { 
+                type: 'checkbox', 
+                value: mod.id, 
+                checked: currentModules.includes(mod.id),
+                className: 'form-checkbox'
+            }),
+            h('span', { className: 'text-sm' }, mod.label)
+        ]);
+    });
+
+    const submit = async (e) => {
+        e.preventDefault();
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'Guardando...';
+
+        const checkedInputs = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'));
+        const allowedModules = checkedInputs.map(input => input.value);
+
+        try {
+            await dbService.set('roles', role.id, { ...role, allowedModules });
+            document.body.removeChild(overlay);
+            reload();
+        } catch (err) {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = 'Guardar Permisos';
+            alert("Error al guardar permisos: " + err.message);
+        }
+    };
+
+    const form = h('form', { className: 'modal-container', onSubmit: submit }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, `Configurar Permisos: ${role.label}`),
+            h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+        ]),
+        h('div', { className: 'modal-body flex-column gap-2', style: { maxHeight: '60vh', overflowY: 'auto' } }, [
+            h('p', { className: 'text-xs text-muted mb-2' }, 'Selecciona a qué secciones del sistema puede acceder este rol. (El Administrador siempre tiene acceso a todo).'),
+            ...checkboxes
+        ]),
+        h('div', { className: 'modal-footer' }, [
+            h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+            h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Guardar Permisos')
+        ])
+    ]);
+
+    overlay.appendChild(form);
+    document.body.appendChild(overlay);
+}
+
 // ── Roles Management Section ──────────────────────────────────
 function renderRolesSection(rolesList = [], reload) {
     const defaultRoles = [
@@ -446,6 +522,12 @@ function renderRolesSection(rolesList = [], reload) {
                             )
                         ]),
                         h('div', { className: 'flex gap-2' }, [
+                            h('button', {
+                                className: 'btn btn-outline text-xs',
+                                style: { padding: '3px 8px', fontSize: '0.65rem' },
+                                onClick: () => openRoleConfigModal(role, reload)
+                            }, [icon('settings', 12), h('span', { style: { marginLeft: '4px' } }, 'Configurar Permisos')]),
+                            
                             // Toggle active status — uses set+merge so it works even if doc doesn't exist yet
                             h('button', {
                                 className: 'btn btn-outline text-xs',
