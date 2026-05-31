@@ -31,7 +31,7 @@ export const render = async () => {
                 dbService.getAll('scripts').catch(() => []),
                 dbService.getAll('assets').catch(() => []),
                 dbService.getAll('sops').catch(() => []),
-                (!isAdmin && user) ? dbService.query('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([])
+                (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([])
             ]);
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
