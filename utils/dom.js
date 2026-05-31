@@ -26,6 +26,9 @@ export const h = (tag, attrs = {}, children = []) => {
             Object.assign(el.dataset, value);
         } else if (key === 'key') {
             // React-like key prop - skip as HTML attr, just used internally
+        } else if (key === 'value') {
+            el.value = value;
+            el.setAttribute(key, value);
         } else {
             el.setAttribute(key, value);
         }
