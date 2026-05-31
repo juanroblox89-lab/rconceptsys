@@ -5,7 +5,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { dbService } from '../firebase/service.js';
+import { dbService, storageService } from '../firebase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
 
@@ -301,7 +301,140 @@ export const render = async () => {
     };
 
     const openAssignmentModal = (existing = null, context = {}) => {
-        const overlay = h('div', { className: 'modal-overlay' });
+        const overlay = h('div', { className: 'modal-overlay', style: { zIndex: 1000 } });
+        let form; // Define form here so helpers can access it early
+        
+        const showMiniModal = (title, fields, onSubmit) => {
+            const miniOverlay = h('div', { className: 'modal-overlay', style: { zIndex: 10000 } });
+            const btnSubmit = h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Guardar');
+            
+            const mForm = h('form', { 
+                className: 'modal-container card fade-in', 
+                style: { maxWidth: '350px' },
+                onSubmit: async (e) => {
+                    e.preventDefault();
+                    btnSubmit.disabled = true;
+                    btnSubmit.textContent = 'Guardando...';
+                    const data = {};
+                    fields.forEach(f => {
+                        data[f.id] = mForm.querySelector(`#mini-${f.id}`).value;
+                    });
+                    try {
+                        await onSubmit(data);
+                        if (document.body.contains(miniOverlay)) document.body.removeChild(miniOverlay);
+                    } catch (err) {
+                        alert("Error: " + err.message);
+                        btnSubmit.disabled = false;
+                        btnSubmit.textContent = 'Guardar';
+                    }
+                }
+            }, [
+                h('div', { className: 'modal-header' }, [
+                    h('span', { className: 'modal-title' }, title),
+                    h('button', { type: 'button', onClick: () => document.body.removeChild(miniOverlay) }, '×')
+                ]),
+                h('div', { className: 'modal-body flex-column gap-3' }, fields.map(f => h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, f.label),
+                    f.type === 'textarea' 
+                        ? h('textarea', { id: `mini-${f.id}`, className: 'form-textarea text-xs', placeholder: f.placeholder, required: true, style: { minHeight: '100px' } })
+                        : h('input', { id: `mini-${f.id}`, type: f.type || 'text', className: 'form-input text-xs', placeholder: f.placeholder, required: true })
+                ]))),
+                h('div', { className: 'modal-footer' }, [
+                    h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(miniOverlay) }, 'Cancelar'),
+                    btnSubmit
+                ])
+            ]);
+            miniOverlay.appendChild(mForm);
+            document.body.appendChild(miniOverlay);
+            setTimeout(() => {
+                const firstInput = mForm.querySelector('input, textarea');
+                if (firstInput) firstInput.focus();
+            }, 50);
+        };
+
+        const handleCreateClient = () => {
+            showMiniModal('Nuevo Cliente', [
+                { id: 'name', label: 'Nombre del Cliente', placeholder: 'Ej. Villa Grande' }
+            ], async (data) => {
+                const id = data.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                await dbService.set('clients', id, { id, name: data.name, active: true });
+                
+                const sel = form.querySelector('#asg-client');
+                const opt = document.createElement('option');
+                opt.value = data.name;
+                opt.text = data.name;
+                opt.selected = true;
+                sel.appendChild(opt);
+                if(!context.clients) context.clients = [];
+                context.clients.push({ id, name: data.name });
+            });
+        };
+
+        const handleCreateScript = () => {
+            const currentClient = form.querySelector('#asg-client')?.value || 'General';
+            showMiniModal('Nuevo Guión', [
+                { id: 'title', label: 'Título', placeholder: 'Ej. Video Promocional' },
+                { id: 'script', label: 'Contenido del Guión', placeholder: 'Texto...', type: 'textarea' }
+            ], async (data) => {
+                const id = 'scr_' + Date.now();
+                const doc = {
+                    id, client: currentClient, title: data.title, script: data.script,
+                    createdBy: user.uid, createdAt: new Date().toISOString()
+                };
+                await dbService.set('scripts', id, doc);
+                
+                const sel = form.querySelector('#asg-link-script');
+                const opt = document.createElement('option');
+                opt.value = data.script;
+                opt.text = `[${currentClient}] ${data.title}`;
+                opt.selected = true;
+                sel.appendChild(opt);
+                if(!context.scripts) context.scripts = [];
+                context.scripts.push(doc);
+                
+                const textarea = form.querySelector('#asg-desc');
+                if (textarea) textarea.value = (textarea.value ? textarea.value + '\n\n' : '') + data.script;
+            });
+        };
+
+        const handleUploadAsset = () => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*,video/*';
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const currentClient = form.querySelector('#asg-client')?.value || 'General';
+                showMiniModal('Detalles del Asset', [
+                    { id: 'title', label: 'Título / Descripción', placeholder: 'Ej. Referencia de color' }
+                ], async (data) => {
+                    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                    const path = `assets/${currentClient.replace(/\s+/g, '-')}/${Date.now()}_${safeName}`;
+                    
+                    const url = await storageService.uploadFile(path, file);
+                    const assetDoc = {
+                        id: 'ast_' + Date.now(), client: currentClient, title: data.title,
+                        url: url, type: file.type.startsWith('video') ? 'video' : 'image',
+                        uploadedBy: user.uid, createdAt: new Date().toISOString()
+                    };
+                    await dbService.set('assets', assetDoc.id, assetDoc);
+                    
+                    const sel = form.querySelector('#asg-link-asset');
+                    const opt = document.createElement('option');
+                    opt.value = url;
+                    opt.text = `[${currentClient}] ${data.title}`;
+                    opt.selected = true;
+                    sel.appendChild(opt);
+                    if(!context.assets) context.assets = [];
+                    context.assets.push(assetDoc);
+                    
+                    const textarea = form.querySelector('#asg-desc');
+                    if (textarea) textarea.value = (textarea.value ? textarea.value + '\n\n' : '') + `Referencia de Galería: ${url}`;
+                });
+            };
+            fileInput.click();
+        };
         
         const submit = async (e) => {
             e.preventDefault();
@@ -341,7 +474,7 @@ export const render = async () => {
             }
         };
 
-        const form = h('form', { className: 'modal-container', onSubmit: submit }, [
+        form = h('form', { className: 'modal-container', onSubmit: submit }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title' }, existing ? 'Editar Asignación' : 'Nueva Asignación'),
                 h('button', { type: 'button', onClick: () => document.body.contains(overlay) && document.body.removeChild(overlay) }, '×')
@@ -364,14 +497,28 @@ export const render = async () => {
                     ])
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Cliente'),
+                    h('div', { className: 'flex justify-between items-center w-full mb-1' }, [
+                        h('label', { className: 'form-label m-0' }, 'Cliente'),
+                        h('button', { 
+                            type: 'button', 
+                            className: 'text-xs text-accent hover-underline flex items-center gap-1 font-bold',
+                            onClick: handleCreateClient
+                        }, [icon('plus', 10), h('span', {}, 'Crear Nuevo')])
+                    ]),
                     h('select', { id: 'asg-client', className: 'form-select text-xs', required: true }, 
                         context.clients.map(c => h('option', { value: c.name, selected: existing?.client === c.name }, c.name))
                     )
                 ]),
                 h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
                     h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label' }, 'Vincular Guión Recomendado'),
+                        h('div', { className: 'flex justify-between items-center w-full mb-1' }, [
+                            h('label', { className: 'form-label m-0' }, 'Vincular Guión'),
+                            h('button', { 
+                                type: 'button', 
+                                className: 'text-xs text-accent hover-underline flex items-center gap-1 font-bold',
+                                onClick: handleCreateScript
+                            }, [icon('plus', 10), h('span', {}, 'Escribir Nuevo')])
+                        ]),
                         h('select', { 
                             id: 'asg-link-script', 
                             className: 'form-select text-xs',
@@ -391,7 +538,14 @@ export const render = async () => {
                         ])
                     ]),
                     h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label' }, 'Vincular Asset de Galería'),
+                        h('div', { className: 'flex justify-between items-center w-full mb-1' }, [
+                            h('label', { className: 'form-label m-0' }, 'Asset de Galería'),
+                            h('button', { 
+                                type: 'button', 
+                                className: 'text-xs text-accent hover-underline flex items-center gap-1 font-bold',
+                                onClick: handleUploadAsset
+                            }, [icon('upload-cloud', 10), h('span', {}, 'Subir Nuevo')])
+                        ]),
                         h('select', { 
                             id: 'asg-link-asset', 
                             className: 'form-select text-xs',

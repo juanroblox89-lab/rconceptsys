@@ -592,7 +592,7 @@ export const render = () => {
                     dbService.getAll('clients').catch(() => []),
                     userService.getAllUsers().catch(() => []),
                     assignmentService.getAllAssignments().catch(() => []),
-                    dbService.get('settings', 'billing').catch(() => null)
+                    dbService.getById('settings', 'billing').catch(() => null)
                 ]);
                 
                 if (settingsBillingData) {

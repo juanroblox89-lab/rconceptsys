@@ -73,6 +73,7 @@ export const render = () => {
 
         container.appendChild(header);
         container.appendChild(grid);
+        if (window.lucide) window.lucide.createIcons();
     };
 
     const openAssetUploadModal = () => {
@@ -137,13 +138,19 @@ export const render = () => {
             h('div', { className: 'modal-footer' }, [
                 h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Subir y Almacenar')
-            ])
         ]);
 
+        overlay.appendChild(form);
         document.body.appendChild(overlay);
     };
 
     loadAssets();
+    
+    // Auto-refresh icons observer since assets are dynamic
+    setTimeout(() => {
+        if (window.lucide) window.lucide.createIcons();
+    }, 100);
+    
     return container;
 };
 
