@@ -12,6 +12,7 @@ const primaryNavItems = [
     { href: '#assignments',  icon: 'briefcase',        label: 'Mi Trabajo', employeeOnly: true },
     { href: '#workers',      icon: 'users',            label: 'Workers', adminOnly: true },
     { href: '#clients',      icon: 'users',             label: 'Clientes' },
+    { href: '#marketing',    icon: 'trending-up',       label: 'Ventas / Marketing' },
     { href: '#billing',      icon: 'credit-card',       label: 'Pagos Pendientes' },
     { href: '#assets',       icon: 'video',             label: 'Assets' },
 ];

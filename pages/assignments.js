@@ -154,9 +154,28 @@ export const render = async () => {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
                                     style: { color: 'var(--success)', borderColor: 'rgba(var(--success-rgb), 0.3)' },
                                     onClick: async (e) => {
-                                        const priceStr = prompt(`Ingresa el monto a cobrar por la tarea "${asg.title}" (Dejar vacío o 0 si no aplica):`);
-                                        if (priceStr === null) return; // User cancelled
-                                        const price = Number(priceStr.replace(/[^0-9.-]+/g,"")) || 0;
+                                        let price = 0;
+                                        let obs = `Cobro por tarea: ${asg.title}`;
+
+                                        if (asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)') {
+                                            const minStr = prompt(`¿Cuántos minutos duró la GRABACIÓN para "${asg.title}"?\n\n(Se multiplicará automáticamente por $200)`);
+                                            if (minStr === null) return;
+                                            const mins = Number(minStr.replace(/[^0-9.-]+/g,"")) || 0;
+                                            price = mins * 200;
+                                            obs = `Cobro por grabación (${mins} minutos a $200): ${asg.title}`;
+
+                                            if (asg.type === 'Creador 360° (Grabación + Edición)') {
+                                                const editPriceStr = prompt(`Ingresa el monto a cobrar extra por la parte de EDICIÓN de "${asg.title}":`);
+                                                if (editPriceStr === null) return;
+                                                const editPrice = Number(editPriceStr.replace(/[^0-9.-]+/g,"")) || 0;
+                                                price += editPrice;
+                                                obs += ` + Edición ($${editPrice})`;
+                                            }
+                                        } else {
+                                            const priceStr = prompt(`Ingresa el monto a cobrar por la tarea "${asg.title}" (Dejar vacío o 0 si no aplica):`);
+                                            if (priceStr === null) return;
+                                            price = Number(priceStr.replace(/[^0-9.-]+/g,"")) || 0;
+                                        }
                                         
                                         const btn = e.currentTarget;
                                         btn.disabled = true;
@@ -174,7 +193,7 @@ export const render = async () => {
                                                 client: asg.client,
                                                 amount: price,
                                                 createdAt: new Date().toISOString(),
-                                                observations: `Cobro por tarea: ${asg.title}`
+                                                observations: obs
                                             };
                                             
                                             currentInv.items.push(newItem);

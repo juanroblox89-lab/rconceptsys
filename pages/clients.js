@@ -95,9 +95,37 @@ export const render = () => {
                             } 
                         }, c.description || 'Sin descripción estratégica.'),
                         
-                        h('div', { className: 'flex gap-1.5' }, [
+                        h('div', { className: 'flex gap-1.5 flex-wrap' }, [
                             h('span', { className: 'badge badge-info text-xs font-normal', style: { fontSize: '0.6rem', padding: '2px 6px' } }, `${c.assignedFormats?.length || 0} Formatos`),
-                            h('span', { className: 'badge badge-secondary text-xs font-normal', style: { fontSize: '0.6rem', padding: '2px 6px' } }, `${c.usedHooks?.length || 0} Hooks`)
+                            h('span', { className: 'badge badge-secondary text-xs font-normal', style: { fontSize: '0.6rem', padding: '2px 6px' } }, `${c.usedHooks?.length || 0} Hooks`),
+                            
+                            // Progreso del Paquete
+                            c.packageLimit ? h('div', { className: 'flex items-center gap-2 mt-1 w-full' }, [
+                                h('span', { className: 'text-xs text-muted font-bold', style: { fontSize: '0.6rem' } }, `Paquete Mensual:`),
+                                h('div', { className: 'flex items-center gap-1 bg-secondary rounded', style: { padding: '2px 6px' } }, [
+                                    h('button', {
+                                        className: 'text-muted hover-text-primary',
+                                        style: { padding: '0 4px', cursor: 'pointer', background: 'none', border: 'none' },
+                                        onClick: async (e) => {
+                                            e.stopPropagation();
+                                            const newVal = Math.max(0, (c.videosCompleted || 0) - 1);
+                                            await dbService.update('clients', c.id, { videosCompleted: newVal });
+                                            loadAndRenderClients();
+                                        }
+                                    }, '-'),
+                                    h('span', { className: 'text-xs font-bold text-accent' }, `${c.videosCompleted || 0} / ${c.packageLimit}`),
+                                    h('button', {
+                                        className: 'text-muted hover-text-primary',
+                                        style: { padding: '0 4px', cursor: 'pointer', background: 'none', border: 'none' },
+                                        onClick: async (e) => {
+                                            e.stopPropagation();
+                                            const newVal = (c.videosCompleted || 0) + 1;
+                                            await dbService.update('clients', c.id, { videosCompleted: newVal });
+                                            loadAndRenderClients();
+                                        }
+                                    }, '+')
+                                ])
+                            ]) : h('span', { className: 'badge badge-warning text-xs font-normal', style: { fontSize: '0.6rem', padding: '2px 6px' } }, 'Sin Paquete')
                         ])
                     ]),
 
@@ -186,7 +214,9 @@ export const render = () => {
                 viralVideos: existingClient?.viralVideos || [],
                 assets: existingClient?.assets || [],
                 logo: logoUrl,
-                recommendedLinks: existingClient?.recommendedLinks || []
+                recommendedLinks: existingClient?.recommendedLinks || [],
+                packageLimit: form.querySelector('#cli-package').value === 'Personalizado' ? Number(form.querySelector('#cli-custom-limit').value || 0) : Number(form.querySelector('#cli-package').value || 0),
+                videosCompleted: existingClient?.videosCompleted || 0
             };
 
             try {
@@ -212,6 +242,32 @@ export const render = () => {
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Tipo de Industria / Negocio'),
                     h('input', { id: 'cli-type', className: 'form-input', value: existingClient?.businessType || '', placeholder: 'Ej. Salud y Odontología', required: true })
+                ]),
+                h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Paquete Mensual (Videos)'),
+                        h('select', { 
+                            id: 'cli-package', 
+                            className: 'form-select',
+                            onchange: (e) => {
+                                const customInput = form.querySelector('#cli-custom-limit-container');
+                                if (customInput) customInput.style.display = e.target.value === 'Personalizado' ? 'block' : 'none';
+                            }
+                        }, [
+                            h('option', { value: '4', selected: existingClient?.packageLimit === 4 }, '4 Videos'),
+                            h('option', { value: '6', selected: existingClient?.packageLimit === 6 }, '6 Videos'),
+                            h('option', { value: '8', selected: existingClient?.packageLimit === 8 }, '8 Videos'),
+                            h('option', { value: 'Personalizado', selected: existingClient?.packageLimit && ![4,6,8].includes(existingClient.packageLimit) }, 'Personalizado...')
+                        ])
+                    ]),
+                    h('div', { 
+                        id: 'cli-custom-limit-container', 
+                        className: 'form-group', 
+                        style: { display: (existingClient?.packageLimit && ![4,6,8].includes(existingClient.packageLimit)) ? 'block' : 'none' } 
+                    }, [
+                        h('label', { className: 'form-label' }, 'Nº Personalizado'),
+                        h('input', { id: 'cli-custom-limit', type: 'number', className: 'form-input', value: existingClient?.packageLimit || 0, placeholder: 'Ej. 12' })
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Descripción Estratégica General'),
