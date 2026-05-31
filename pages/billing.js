@@ -226,11 +226,12 @@ export const render = () => {
                             btn.disabled = true;
                             const newVal = !globalBillingConfig.showAdminInvoiceToWorkers;
                             try {
-                                await dbService.set('settings', 'billing', { showAdminInvoiceToWorkers: newVal });
+                                await dbService.set('system_rules', 'billing', { showAdminInvoiceToWorkers: newVal });
                                 globalBillingConfig.showAdminInvoiceToWorkers = newVal;
                                 loadAndRender(false);
                             } catch (err) {
-                                alert("Error al guardar la configuración.");
+                                console.error(err);
+                                alert("Error al guardar la configuración. (Revisa tus reglas de Firebase)");
                                 btn.disabled = false;
                             }
                         }
@@ -260,14 +261,16 @@ export const render = () => {
 
             container.appendChild(header);
 
-            // Two-Column Grid Layout
+            // Two-Column Layout (Flexbox to prevent cutoff on mobile)
             const mainGrid = h('div', { 
-                className: 'billing-main-grid w-full' 
+                className: 'w-full',
+                style: { display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }
             });
 
             // Left Directory Sidebar
             const userDirectorySidebar = h('div', { 
-                className: 'card p-4 flex-column gap-3 billing-sidebar'
+                className: 'card p-4 flex-column gap-3',
+                style: { flex: '1', minWidth: '280px', maxWidth: '350px', background: 'var(--bg-secondary)' }
             }, [
                 h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1 border-bottom pb-2' }, [
                     icon('users', 14, 'text-primary'),
@@ -279,18 +282,18 @@ export const render = () => {
                     const empTotal = empInvoices.find(i => i.employeeId === member.uid)?.amount || 0;
                     const admTotal = admInvoices.find(i => i.employeeId === member.uid)?.amount || 0;
 
-                    return h('div', {
-                        className: `flex-column p-2 rounded cursor-pointer transition-all ${isSelected ? 'active-user-row shadow-sm' : 'hover-bg-tertiary'}`,
+                    return h('button', {
+                        className: `flex-column p-2 rounded cursor-pointer transition-all w-full text-left`,
                         style: {
                             border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
-                            background: isSelected ? 'rgba(var(--primary-rgb), 0.08)' : 'transparent',
-                            borderRadius: '6px',
-                            padding: '10px'
+                            background: isSelected ? 'var(--primary)' : 'var(--bg-tertiary)',
+                            color: isSelected ? '#fff' : 'var(--text-primary)',
+                            borderRadius: '8px',
+                            padding: '12px'
                         },
                         onClick: async () => {
                             selectedUserId = member.uid;
                             const userAdmInv = admInvoices.find(i => i.employeeId === member.uid);
-                            // JSON.parse/stringify ensures deep copy to avoid mutating the global admInvoices state prematurely
                             currentAdmItems = JSON.parse(JSON.stringify(userAdmInv?.items || [
                                 {
                                     type: userAdmInv?.type || 'Factura Consolidada',
@@ -305,20 +308,20 @@ export const render = () => {
                     }, [
                         h('div', { className: 'flex items-center gap-2 mb-1.5' }, [
                             member.photoURL 
-                                ? h('img', { src: member.photoURL, style: { width: '20px', height: '20px', borderRadius: '50%' } })
+                                ? h('img', { src: member.photoURL, style: { width: '24px', height: '24px', borderRadius: '50%', border: isSelected ? '2px solid rgba(255,255,255,0.5)' : 'none' } })
                                 : h('div', { 
                                     style: { 
-                                        width: '20px', height: '20px', borderRadius: '50%', background: 'var(--bg-tertiary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 'bold' 
+                                        width: '24px', height: '24px', borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--bg-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' 
                                     } 
                                   }, (member.nombre || member.email).slice(0,2).toUpperCase()),
                             h('span', { className: 'font-bold text-xs flex-1 truncate' }, member.nombre || member.email)
                         ]),
-                        h('div', { className: 'flex justify-between items-center text-muted', style: { fontSize: '0.65rem' } }, [
+                        h('div', { className: 'flex justify-between items-center', style: { fontSize: '0.65rem', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)' } }, [
                             h('span', {}, 'Reportado:'),
-                            h('span', { className: 'font-bold text-secondary' }, `COP ${empTotal.toLocaleString()}`)
+                            h('span', { className: 'font-bold' }, `COP ${empTotal.toLocaleString()}`)
                         ]),
-                        h('div', { className: 'flex justify-between items-center mt-0.5 text-primary', style: { fontSize: '0.65rem' } }, [
+                        h('div', { className: 'flex justify-between items-center mt-0.5', style: { fontSize: '0.65rem', color: isSelected ? '#fff' : 'var(--primary)' } }, [
                             h('span', {}, 'Admin:'),
                             h('span', { className: 'font-bold' }, `COP ${admTotal.toLocaleString()}`)
                         ])
@@ -327,7 +330,7 @@ export const render = () => {
             ]);
 
             // Right Detail Panel
-            const portalViewContainer = h('div', { className: 'flex-column gap-3 flex-1', style: { minWidth: '320px' } });
+            const portalViewContainer = h('div', { className: 'flex-column gap-3 flex-1', style: { minWidth: '320px', width: '100%' } });
 
             if (selectedUserId) {
                 const selectedUser = approvedUsers.find(u => u.uid === selectedUserId);
@@ -592,7 +595,7 @@ export const render = () => {
                     dbService.getAll('clients').catch(() => []),
                     userService.getAllUsers().catch(() => []),
                     assignmentService.getAllAssignments().catch(() => []),
-                    dbService.getById('settings', 'billing').catch(() => null)
+                    dbService.getById('system_rules', 'billing').catch(() => null)
                 ]);
                 
                 if (settingsBillingData) {
