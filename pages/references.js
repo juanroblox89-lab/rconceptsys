@@ -58,12 +58,14 @@ export const render = () => {
             refs.map((refItem) => h('div', { key: refItem.id, className: 'card flex-column justify-between p-0 overflow-hidden hover-border transition' }, [
                 h('div', { 
                     className: 'flex items-center justify-center relative overflow-hidden', 
+                    onClick: () => openDetailModal(refItem),
                     style: { 
                         aspectRatio: '16/9', 
                         borderBottom: '1px solid var(--border)',
-                        backgroundImage: `url(${refItem.cover || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80'})`,
+                        backgroundImage: `url('${refItem.cover || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80'}')`,
                         backgroundSize: 'cover',
-                        backgroundPosition: 'center'
+                        backgroundPosition: 'center',
+                        cursor: 'pointer'
                     } 
                 }, [
                     h('div', { 
@@ -73,6 +75,12 @@ export const render = () => {
                             background: 'linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.65))' 
                         } 
                     }),
+                    h('div', {
+                        className: 'absolute inset-0 flex items-center justify-center opacity-0 hover-opacity-100 transition-opacity',
+                        style: { background: 'rgba(0,0,0,0.3)' }
+                    }, [
+                        icon('zoom-in', 24, 'text-white')
+                    ]),
                     h('span', { 
                         className: 'absolute top-2 left-2 badge badge-info text-xs flex items-center gap-1',
                         style: { fontSize: '0.6rem', background: 'rgba(59, 130, 246, 0.85)', backdropFilter: 'blur(4px)', color: 'white', border: 'none' }
