@@ -70,7 +70,8 @@ class App {
             }
 
             // 2. Auth Listener
-            authService.onAuthChange((user) => {
+            if (this.unsubscribeAuth) this.unsubscribeAuth();
+            this.unsubscribeAuth = authService.onAuthChange((user) => {
                 console.log("[CreativeOS] Auth State Changed:", user ? user.email : "Logged Out");
                 
                 if (user) {
@@ -92,6 +93,7 @@ class App {
     }
 
     renderPendingApprovalScreen(user) {
+        if (!this.appContainer) return;
         console.log("[App] Rendering Pending Approval Screen...");
         try {
             this.appContainer.innerHTML = '';
@@ -180,6 +182,7 @@ class App {
     }
 
     renderLoginScreen() {
+        if (!this.appContainer) return;
         console.log("[App] Rendering Login Screen...");
         try {
             this.appContainer.innerHTML = '';
@@ -224,6 +227,7 @@ class App {
     }
 
     renderAuthenticatedApp() {
+        if (!this.appContainer) return;
         console.log("[App] Rendering Authenticated Layout...");
         try {
             // 1. Build Shell if not present

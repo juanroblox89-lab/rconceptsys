@@ -19,22 +19,49 @@ export const render = () => {
     const load = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
         let sopsList = [];
-        try { sopsList = await dbService.getAll('sops'); } catch (e) { sopsList = []; }
+        let myActiveSubmissions = [];
+        try { 
+            sopsList = await dbService.getAll('sops'); 
+            if (user) {
+                const allMySubs = await dbService.query('sop_submissions', 'userId', '==', user.uid);
+                myActiveSubmissions = allMySubs.filter(s => s.status === 'active');
+            }
+        } catch (e) { sopsList = []; }
         container.innerHTML = '';
 
         const userRole = user?.role || '';
         // Filter SOPs visible to this user
-        const visibleSops = isAdmin
+        let visibleSops = isAdmin
             ? sopsList
             : sopsList.filter(s => s.active !== false && (!s.targetRole || s.targetRole === 'all' || s.targetRole === userRole));
 
+        // Merge active submissions to reflect user's current progress
+        visibleSops = visibleSops.map(sopTemplate => {
+            const activeSub = myActiveSubmissions.find(s => s.sopId === sopTemplate.id);
+            if (activeSub) {
+                const mergedSteps = (sopTemplate.steps || []).map((st, i) => {
+                    const subStep = activeSub.steps?.[i] || {};
+                    return { ...st, done: subStep.done || false, userValue: subStep.userValue || '' };
+                });
+                return { ...sopTemplate, steps: mergedSteps, activeSubmissionId: activeSub.id };
+            }
+            // No active submission: ensure template steps are reset to 0% locally
+            const resetSteps = (sopTemplate.steps || []).map(st => ({ ...st, done: false, userValue: '' }));
+            return { ...sopTemplate, steps: resetSteps };
+        });
+
         // Header
         container.appendChild(h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
-            h('div', {}, [
-                h('h1', {}, isAdmin ? 'Constructor de SOPs' : 'Mis Procedimientos (SOPs)'),
-                h('p', { className: 'text-xs text-muted mt-1' }, isAdmin
-                    ? 'Crea y gestiona SOPs por rol. Cada SOP puede tener imagen, link o texto que el trabajador llena.'
-                    : 'Completa cada paso de tus procedimientos estándar de calidad.')
+            h('div', { className: 'flex items-center gap-3' }, [
+                h('div', { className: 'icon-wrapper bg-accent-soft p-2 rounded' }, [
+                    icon('layers', 24, 'text-accent')
+                ]),
+                h('div', {}, [
+                    h('h1', {}, isAdmin ? 'Constructor de SOPs' : 'Mis Procedimientos (SOPs)'),
+                    h('p', { className: 'text-xs text-muted mt-1' }, isAdmin
+                        ? 'Crea y gestiona SOPs por rol. Revisa el historial de entregas de tu equipo.'
+                        : 'Completa cada paso de tus procedimientos estándar de calidad.')
+                ])
             ]),
             isAdmin ? h('button', {
                 className: 'btn btn-primary text-xs',
@@ -94,6 +121,7 @@ function renderSopCard(sop, isAdmin, user, reload) {
                     sop.active === false
                         ? h('span', { className: 'badge badge-warning', style: { fontSize: '0.55rem' } }, 'Inactivo')
                         : h('span', { className: 'badge badge-success', style: { fontSize: '0.55rem' } }, 'Activo'),
+                    isAdmin ? h('button', { className: 'btn-icon text-info', onClick: () => openSopHistory(sop) }, [icon('clock', 13)]) : null,
                     isAdmin ? h('button', { className: 'btn-icon text-muted', onClick: () => openAdminSopBuilder(sop, reload) }, [icon('edit-3', 13)]) : null,
                     isAdmin ? h('button', {
                         className: 'btn-icon text-error',
@@ -129,11 +157,21 @@ function renderSopCard(sop, isAdmin, user, reload) {
             // Bottom actions
             h('div', { className: 'flex gap-2 border-top pt-3 mt-1' }, [
                 allDone
-                    ? h('a', {
-                        href: '#billing',
-                        className: 'btn btn-primary text-xs flex-1 text-center',
-                        style: { textDecoration: 'none', textAlign: 'center' }
-                    }, [icon('credit-card', 12), h('span', { style: { marginLeft: '4px' } }, 'Anotar en Factura →')])
+                    ? h('button', {
+                        className: 'btn btn-primary text-xs flex-1 text-center flex justify-center items-center',
+                        onClick: async (e) => {
+                            if (!sop.activeSubmissionId) return;
+                            const btn = e.currentTarget;
+                            btn.disabled = true;
+                            btn.innerHTML = 'Guardando...';
+                            await dbService.update('sop_submissions', sop.activeSubmissionId, { 
+                                status: 'completed', 
+                                completedAt: new Date().toISOString() 
+                            });
+                            // Go to billing
+                            window.location.hash = '#billing';
+                        }
+                    }, [icon('check-circle', 12), h('span', { style: { marginLeft: '4px' } }, 'Anotar en Factura →')])
                     : h('button', {
                         className: 'btn btn-outline text-xs flex-1',
                         onClick: () => openSopFullView(sop, user, isAdmin, reload)
@@ -148,8 +186,27 @@ function renderStep(step, idx, sop, user, isAdmin, reload) {
     const isUserFillable = step.type === 'link' || step.type === 'text';
 
     const saveStep = async (updates) => {
-        sop.steps[idx] = { ...sop.steps[idx], ...updates };
-        await dbService.set('sops', sop.id, sop);
+        const currentSteps = sop.steps;
+        currentSteps[idx] = { ...currentSteps[idx], ...updates };
+        
+        let subId = sop.activeSubmissionId;
+        if (!subId) {
+            subId = `sub-${sop.id}-${Date.now()}`;
+            sop.activeSubmissionId = subId;
+        }
+
+        const submissionData = {
+            id: subId,
+            sopId: sop.id,
+            sopTitle: sop.title,
+            userId: user.uid,
+            userName: user.nombre || user.email,
+            status: 'active',
+            steps: currentSteps.map(s => ({ done: s.done || false, userValue: s.userValue || '' })),
+            updatedAt: new Date().toISOString()
+        };
+
+        await dbService.set('sop_submissions', subId, submissionData);
         reload();
     };
 
@@ -384,4 +441,57 @@ function openAdminSopBuilder(existing, reload) {
     overlay.appendChild(form);
     document.body.appendChild(overlay);
     if (window.lucide) window.lucide.createIcons();
+}
+
+// ── Admin SOP History Modal ───────────────────────────────────────────────────
+async function openSopHistory(sop) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    const modal = h('div', { className: 'modal-container flex-column gap-3', style: { maxWidth: '700px' } }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, `Historial: ${sop.title}`),
+            h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
+        ]),
+        h('div', { className: 'modal-body flex-column gap-3', style: { maxHeight: '60vh', overflowY: 'auto' } }, [
+            h('div', { className: 'loader' })
+        ])
+    ]);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    try {
+        const subs = await dbService.query('sop_submissions', 'sopId', '==', sop.id);
+        const completed = subs.filter(s => s.status === 'completed').sort((a,b) => new Date(b.completedAt) - new Date(a.completedAt));
+        
+        const body = modal.querySelector('.modal-body');
+        body.innerHTML = '';
+
+        if (completed.length === 0) {
+            body.appendChild(h('p', { className: 'text-muted text-center text-xs p-4' }, 'Nadie ha completado este SOP todavía.'));
+            return;
+        }
+
+        completed.forEach(sub => {
+            const dateStr = new Date(sub.completedAt).toLocaleString();
+            const row = h('div', { className: 'card p-3 flex-column gap-2', style: { border: '1px solid var(--border)' } }, [
+                h('div', { className: 'flex justify-between items-center border-bottom pb-2' }, [
+                    h('span', { className: 'font-bold text-sm text-primary' }, sub.userName || sub.userId),
+                    h('span', { className: 'text-xs text-muted' }, dateStr)
+                ]),
+                h('div', { className: 'flex-column gap-1' }, 
+                    (sub.steps || []).map((st, i) => {
+                        const originalStep = sop.steps[i] || {};
+                        const userVal = st.userValue ? ` ➔ ${st.userValue}` : '';
+                        return h('div', { className: 'text-xs flex gap-2' }, [
+                            h('span', { className: st.done ? 'text-success' : 'text-error' }, st.done ? '☑' : '☒'),
+                            h('span', { className: 'text-muted' }, `${originalStep.text || 'Paso'}${userVal}`)
+                        ]);
+                    })
+                )
+            ]);
+            body.appendChild(row);
+        });
+        if (window.lucide) window.lucide.createIcons();
+    } catch(e) {
+        modal.querySelector('.modal-body').innerHTML = `<p class="text-error text-xs p-4">Error cargando historial: ${e.message}</p>`;
+    }
 }

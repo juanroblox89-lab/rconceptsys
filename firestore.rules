@@ -82,7 +82,11 @@ service cloud.firestore {
     match /system_rules/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
     match /roles/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
     match /metrics/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-
+    match /sop_submissions/{docId} {
+      allow read: if isApprovedUser() && (isAdmin() || resource == null || resource.data.userId == request.auth.uid);
+      allow create, update: if isApprovedUser() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
     // ── CHATS and CHATS_LIMIT Collections ────────────────────
     match /chats/{chatId} {
       allow read, write: if request.auth != null && (

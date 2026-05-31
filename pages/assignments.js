@@ -87,27 +87,48 @@ export const render = async () => {
                                 asg.status === 'Pendiente' ? h('button', {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
                                     style: { color: 'var(--info)', borderColor: 'rgba(var(--info-rgb), 0.3)' },
-                                    onClick: async () => {
-                                        await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' });
-                                        loadAndRender();
+                                    onClick: async (e) => {
+                                        const btn = e.currentTarget;
+                                        btn.disabled = true;
+                                        try {
+                                            await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' });
+                                            loadAndRender();
+                                        } catch(err) {
+                                            btn.disabled = false;
+                                            alert("Error al actualizar la tarea.");
+                                        }
                                     }
                                 }, [icon('play', 12), h('span', {}, 'Empezar')]) : null,
 
                                 (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? h('button', {
                                     className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
                                     style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
-                                    onClick: async () => {
-                                        await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
-                                        loadAndRender();
+                                    onClick: async (e) => {
+                                        const btn = e.currentTarget;
+                                        btn.disabled = true;
+                                        try {
+                                            await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
+                                            loadAndRender();
+                                        } catch(err) {
+                                            btn.disabled = false;
+                                            alert("Error al actualizar la tarea.");
+                                        }
                                     }
                                 }, [icon('check', 12), h('span', {}, 'Completar')]) : null,
 
                                 asg.status === 'Completado' ? h('button', {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
                                     style: { color: 'var(--text-muted)', borderColor: 'var(--border)' },
-                                    onClick: async () => {
-                                        await assignmentService.saveAssignment({ ...asg, status: 'Pendiente' });
-                                        loadAndRender();
+                                    onClick: async (e) => {
+                                        const btn = e.currentTarget;
+                                        btn.disabled = true;
+                                        try {
+                                            await assignmentService.saveAssignment({ ...asg, status: 'Pendiente' });
+                                            loadAndRender();
+                                        } catch(err) {
+                                            btn.disabled = false;
+                                            alert("Error al actualizar la tarea.");
+                                        }
                                     }
                                 }, [icon('rotate-ccw', 12), h('span', {}, 'Reabrir')]) : null
                             ])
@@ -284,9 +305,13 @@ export const render = async () => {
         
         const submit = async (e) => {
             e.preventDefault();
+            const btnSubmit = form.querySelector('button[type="submit"]');
+            if (btnSubmit) btnSubmit.disabled = true;
+
             const descVal = form.querySelector('#asg-desc').value.trim();
             if (descVal.split(/\s+/).length < 5) {
                 alert("La guía / descripción debe contener al menos 5 palabras para dar suficiente contexto al equipo (Ej: En la parte 'Eventos especiales' poner clip de niños).");
+                if (btnSubmit) btnSubmit.disabled = false;
                 return;
             }
 
@@ -304,15 +329,22 @@ export const render = async () => {
                 linkedAsset: form.querySelector('#asg-link-asset').value
             };
 
-            await assignmentService.saveAssignment(formData);
-            document.body.removeChild(overlay);
-            loadAndRender();
+            try {
+                await assignmentService.saveAssignment(formData);
+                if (document.body.contains(overlay)) {
+                    document.body.removeChild(overlay);
+                }
+                loadAndRender();
+            } catch (err) {
+                if (btnSubmit) btnSubmit.disabled = false;
+                alert("Error guardando asignación.");
+            }
         };
 
         const form = h('form', { className: 'modal-container', onSubmit: submit }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title' }, existing ? 'Editar Asignación' : 'Nueva Asignación'),
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+                h('button', { type: 'button', onClick: () => document.body.contains(overlay) && document.body.removeChild(overlay) }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
@@ -407,7 +439,7 @@ export const render = async () => {
         const listContainer = h('div', { className: 'modal-container', style: { maxWidth: '600px' } }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title' }, `Asignaciones: ${emp.nombre || emp.email}`),
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+                h('button', { type: 'button', onClick: () => document.body.contains(overlay) && document.body.removeChild(overlay) }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, 
                 asgs.length === 0 ? [h('p', { className: 'text-xs text-muted italic p-4 text-center' }, 'No hay tareas asignadas.')] :
@@ -422,17 +454,22 @@ export const render = async () => {
                         h('button', { 
                             className: 'btn-icon text-muted', 
                             onClick: () => {
-                                document.body.removeChild(overlay);
+                                if (document.body.contains(overlay)) document.body.removeChild(overlay);
                                 openAssignmentModal(asg, { users: [emp], clients: context.clients, scripts: context.scripts || [], assets: context.assets || [] });
                             }
                         }, [icon('edit', 14)]),
                         h('button', { 
                             className: 'btn-icon text-error', 
-                            onClick: async () => {
+                            onClick: async (e) => {
                                 if (confirm('¿Eliminar esta asignación?')) {
-                                    await assignmentService.deleteAssignment(asg.id);
-                                    document.body.removeChild(overlay);
-                                    loadAndRender();
+                                    e.currentTarget.disabled = true;
+                                    try {
+                                        await assignmentService.deleteAssignment(asg.id);
+                                        if (document.body.contains(overlay)) document.body.removeChild(overlay);
+                                        loadAndRender();
+                                    } catch(err) {
+                                        e.currentTarget.disabled = false;
+                                    }
                                 }
                             }
                         }, [icon('trash-2', 14)])
@@ -440,7 +477,7 @@ export const render = async () => {
                 ]))
             ),
             h('div', { className: 'modal-footer' }, [
-                h('button', { className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cerrar')
+                h('button', { className: 'btn btn-outline text-xs', onClick: () => document.body.contains(overlay) && document.body.removeChild(overlay) }, 'Cerrar')
             ])
         ]);
         overlay.appendChild(listContainer);

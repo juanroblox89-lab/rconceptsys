@@ -70,25 +70,10 @@ export const assignmentService = {
     },
 
     /**
-     * Cleanup logic: Delete assignments 2 days after deadline.
+     * Cleanup logic: Disabled to preserve history.
      */
     async cleanupAssignments() {
-        const now = new Date();
-        const twoDaysMs = 86400000 * 2;
-        
-        const all = await this.getAllAssignments();
-        const toDelete = all.filter(asg => {
-            if (!asg.dueDate) return false;
-            if (asg.status !== 'Completado') return false;
-            const deadline = new Date(asg.dueDate);
-            return (now - deadline) > twoDaysMs;
-        });
-
-        for (const asg of toDelete) {
-            console.log(`[Cleanup] Deleting expired assignment: ${asg.id}`);
-            await this.deleteAssignment(asg.id);
-        }
-        
-        return toDelete.length;
+        console.log("[Cleanup] Auto-cleanup disabled to preserve completed assignments history.");
+        return 0;
     }
 };

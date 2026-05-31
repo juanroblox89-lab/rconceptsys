@@ -407,44 +407,12 @@ function renderRolesSection(rolesList = [], reload) {
                 }, [icon('settings-2', 11), h('span', { style: { marginLeft: '4px' } }, 'Inicializar Roles Base')]) : null
             ]),
 
-            // Add Custom Role Form inline
-            h('div', { className: 'flex gap-2 mt-2', style: { flexWrap: 'wrap' } }, [
-                h('input', {
-                    type: 'text',
-                    id: 'new-role-label',
-                    className: 'form-input text-xs',
-                    placeholder: 'Ej. Copiloto de IA, Diseñador 3D...',
-                    style: { flex: 1, minWidth: '160px' }
-                }),
+            // Button to open new role modal
+            h('div', { className: 'mt-2 border-top pt-3' }, [
                 h('button', {
                     className: 'btn btn-primary text-xs',
-                    style: { flexShrink: 0 },
-                    onClick: async (e) => {
-                        const input = document.getElementById('new-role-label');
-                        const label = input?.value?.trim();
-                        if (!label) {
-                            alert('Ingresa el nombre del rol.');
-                            return;
-                        }
-                        const id = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                        if (!id) {
-                            alert('El nombre del rol contiene caracteres no permitidos.');
-                            return;
-                        }
-                        const btn = e.currentTarget;
-                        btn.disabled = true;
-                        btn.textContent = 'Guardando...';
-                        try {
-                            await dbService.set('roles', id, { id, label, active: true });
-                            input.value = '';
-                            alert('✅ Rol creado en Firestore exitosamente.');
-                            reload();
-                        } catch (err) {
-                            alert(`Error al guardar: ${err.message}`);
-                            if (btn) { btn.disabled = false; btn.textContent = 'Agregar Rol'; }
-                        }
-                    }
-                }, [icon('plus', 13), h('span', { style: { marginLeft: '4px' } }, 'Agregar Rol')])
+                    onClick: () => openNewRoleModal(reload)
+                }, [icon('plus', 13), h('span', { style: { marginLeft: '4px' } }, 'Crear Nuevo Rol')])
             ]),
 
             // List of roles
@@ -542,6 +510,81 @@ function renderUploadSection() {
             ])
         ])
     ]);
+}
+
+// ── New Role Modal ───────────────────────────────────────────
+function openNewRoleModal(reload) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    
+    const submit = async (e) => {
+        e.preventDefault();
+        const input = form.querySelector('#modal-role-label');
+        const label = input?.value?.trim();
+        if (!label) {
+            alert('Ingresa el nombre del rol.');
+            return;
+        }
+        const id = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        if (!id) {
+            alert('El nombre del rol contiene caracteres no permitidos.');
+            return;
+        }
+        
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        
+        try {
+            await dbService.set('roles', id, { id, label, active: true });
+            document.body.removeChild(overlay);
+            // Mostrar un pequeño feedback en lugar de un alert feo
+            const toast = h('div', { 
+                className: 'card fade-in text-xs', 
+                style: { position: 'fixed', bottom: '20px', right: '20px', background: 'var(--success)', color: '#fff', padding: '12px 20px', zIndex: 10000, fontWeight: 'bold' }
+            }, '✓ Rol creado exitosamente');
+            document.body.appendChild(toast);
+            setTimeout(() => { if (document.body.contains(toast)) document.body.removeChild(toast); }, 3000);
+            
+            reload();
+        } catch (err) {
+            alert(`Error al guardar: ${err.message}`);
+            if (btn) { btn.disabled = false; btn.textContent = 'Crear Rol'; }
+        }
+    };
+
+    const form = h('form', { className: 'modal-container', style: { maxWidth: '400px' }, onSubmit: submit }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, 'Crear Nuevo Rol'),
+            h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+        ]),
+        h('div', { className: 'modal-body flex-column gap-3' }, [
+            h('p', { className: 'text-xs text-muted' }, 'Añade un nuevo rol de producción para categorizar a los miembros de tu equipo.'),
+            h('div', { className: 'form-group' }, [
+                h('label', { className: 'form-label' }, 'Nombre del Rol'),
+                h('input', { 
+                    id: 'modal-role-label', 
+                    type: 'text', 
+                    className: 'form-input', 
+                    placeholder: 'Ej. Diseñador 3D, Motion Grapher...', 
+                    required: true,
+                    autoFocus: true
+                })
+            ])
+        ]),
+        h('div', { className: 'modal-footer' }, [
+            h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+            h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Crear Rol')
+        ])
+    ]);
+
+    overlay.appendChild(form);
+    document.body.appendChild(overlay);
+    
+    // Auto-focus after appending
+    setTimeout(() => {
+        const input = form.querySelector('#modal-role-label');
+        if (input) input.focus();
+    }, 50);
 }
 
 // ── Client Access Modal ──────────────────────────────────────

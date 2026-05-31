@@ -30,6 +30,7 @@ export const render = () => {
     let currentAdmItems = [];
     let employeeAdmInvoice = null;
     let showAdminInvoicePanel = false; // State to show/hide admin invoice for employee
+    let globalBillingConfig = { showAdminInvoiceToWorkers: true };
 
     // Helper to render the clean Grid Table of charges
     const renderSpreadsheetGrid = ({ title, prefix, isEditable, itemsArray, onSave }) => {
@@ -54,8 +55,8 @@ export const render = () => {
             ]),
 
             // Table Grid Container (Excel-like Horizontal Scrollable Wrapper)
-            h('div', { className: 'excel-table-wrapper w-full' }, [
-                h('table', { className: 'excel-table' }, [
+            h('div', { className: 'excel-table-wrapper w-full', style: { overflowX: 'auto', display: 'block', maxWidth: '100%' } }, [
+                h('table', { className: 'excel-table', style: { width: '100%', minWidth: '900px' } }, [
                     h('thead', {}, [
                         h('tr', {}, [
                             h('th', { style: { width: '220px' } }, 'Servicio Realizado'),
@@ -214,6 +215,29 @@ export const render = () => {
                         title: 'Exportar todas las facturas a CSV',
                         onClick: () => invoiceService.exportToCsv([...empInvoices, ...admInvoices], '') 
                     }, [icon('file-spreadsheet', 14), h('span', {}, 'Exportar CSV')]),
+                    
+                    // Toggle Admin Invoice Visibility for Workers
+                    h('button', { 
+                        className: 'btn btn-outline text-xs', 
+                        style: { borderColor: globalBillingConfig.showAdminInvoiceToWorkers ? 'var(--success)' : 'var(--warning)', color: globalBillingConfig.showAdminInvoiceToWorkers ? 'var(--success)' : 'var(--warning)' },
+                        title: 'Permitir o denegar a los trabajadores ver la factura consolidada del admin',
+                        onClick: async (e) => {
+                            const btn = e.currentTarget;
+                            btn.disabled = true;
+                            const newVal = !globalBillingConfig.showAdminInvoiceToWorkers;
+                            try {
+                                await dbService.set('settings', 'billing', { showAdminInvoiceToWorkers: newVal });
+                                globalBillingConfig.showAdminInvoiceToWorkers = newVal;
+                                loadAndRender(false);
+                            } catch (err) {
+                                alert("Error al guardar la configuración.");
+                                btn.disabled = false;
+                            }
+                        }
+                    }, [
+                        icon(globalBillingConfig.showAdminInvoiceToWorkers ? 'eye' : 'eye-off', 14), 
+                        h('span', {}, globalBillingConfig.showAdminInvoiceToWorkers ? 'Trabajadores: Viendo Facturas' : 'Trabajadores: Ocultas')
+                    ]),
                     h('button', { 
                         className: 'btn btn-outline text-xs',
                         style: { borderColor: 'rgba(239,68,68,0.3)', color: 'var(--error)' },
@@ -266,7 +290,8 @@ export const render = () => {
                         onClick: async () => {
                             selectedUserId = member.uid;
                             const userAdmInv = admInvoices.find(i => i.employeeId === member.uid);
-                            currentAdmItems = userAdmInv?.items || [
+                            // JSON.parse/stringify ensures deep copy to avoid mutating the global admInvoices state prematurely
+                            currentAdmItems = JSON.parse(JSON.stringify(userAdmInv?.items || [
                                 {
                                     type: userAdmInv?.type || 'Factura Consolidada',
                                     client: userAdmInv?.client || 'General',
@@ -274,7 +299,7 @@ export const render = () => {
                                     observations: userAdmInv?.observations || '',
                                     createdAt: userAdmInv?.createdAt || new Date().toISOString()
                                 }
-                            ];
+                            ]));
                             loadAndRender(false);
                         }
                     }, [
@@ -487,58 +512,70 @@ export const render = () => {
             container.appendChild(myEmpGrid);
 
             // Section 3: Expandable Admin Invoice Section (With Warning Banner)
-            const toggleButton = h('button', {
-                type: 'button',
-                className: 'btn btn-outline text-xs w-full py-3 justify-center gap-2 mb-2 font-bold transition-all',
-                style: { borderStyle: 'dashed', background: 'var(--bg-secondary)', borderColor: 'var(--border)' },
-                onClick: () => {
-                    showAdminInvoicePanel = !showAdminInvoicePanel;
-                    drawDOM();
-                }
-            }, [
-                icon(showAdminInvoicePanel ? 'eye-off' : 'eye', 14, 'text-primary'),
-                h('span', {}, showAdminInvoicePanel ? 'Ocultar Liquidación Autorizada del Administrador' : '👁️ Ver Factura Consolidada del Administrador')
-            ]);
-
-            container.appendChild(toggleButton);
-
-            if (showAdminInvoicePanel) {
-                // Warning Banner explaining standard operational precision rules
-                const warningBanner = h('div', { 
-                    className: 'p-4 bg-tertiary rounded flex gap-3 text-xs mb-3 border',
-                    style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', borderRadius: '8px', lineHeight: '1.5' } 
+            if (globalBillingConfig.showAdminInvoiceToWorkers) {
+                const toggleButton = h('button', {
+                    type: 'button',
+                    className: 'btn btn-outline text-xs w-full py-3 justify-center gap-2 mb-2 font-bold transition-all',
+                    style: { borderStyle: 'dashed', background: 'var(--bg-secondary)', borderColor: 'var(--border)' },
+                    onClick: () => {
+                        showAdminInvoicePanel = !showAdminInvoicePanel;
+                        drawDOM();
+                    }
                 }, [
-                    icon('alert-circle', 18, 'text-warning'),
-                    h('div', {}, [
-                        h('strong', { className: 'text-primary' }, 'Aviso de Conciliación de Pagos: '),
-                        h('p', { className: 'text-muted mt-1' }, 
-                            'El Administrador registra su factura consolidada de forma periódica para una mayor exactitud en la liquidación. Ten en cuenta que a veces no se actualiza de inmediato. Esta factura consolidada sirve como la base oficial y definitiva para conciliar las horas, entregas y pagos de la agencia al cierre de cada ciclo.'
-                        )
-                    ])
+                    icon(showAdminInvoicePanel ? 'eye-off' : 'eye', 14, 'text-primary'),
+                    h('span', {}, showAdminInvoicePanel ? 'Ocultar Liquidación Autorizada del Administrador' : '👁️ Ver Factura Consolidada del Administrador')
                 ]);
 
-                container.appendChild(warningBanner);
+                container.appendChild(toggleButton);
 
-                const admInvData = employeeAdmInvoice || { amount: 0, items: [] };
-                
-                const adminViewItems = admInvData.items?.length > 0 ? admInvData.items : [
-                    {
-                        type: admInvData.type || 'Factura Consolidada',
-                        client: admInvData.client || 'General',
-                        amount: admInvData.amount || 0,
-                        observations: admInvData.observations || 'El Administrador aún no ha cargado tu liquidación autorizada para este ciclo.',
-                        createdAt: admInvData.createdAt || new Date().toISOString()
-                    }
-                ];
+                if (showAdminInvoicePanel) {
+                    // Warning Banner explaining standard operational precision rules
+                    const warningBanner = h('div', { 
+                        className: 'p-4 bg-tertiary rounded flex gap-3 text-xs mb-3 border',
+                        style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', borderRadius: '8px', lineHeight: '1.5' } 
+                    }, [
+                        icon('alert-circle', 18, 'text-warning'),
+                        h('div', {}, [
+                            h('strong', { className: 'text-primary' }, 'Aviso de Conciliación de Pagos: '),
+                            h('p', { className: 'text-muted mt-1' }, 
+                                'El Administrador registra su factura consolidada de forma periódica para una mayor exactitud en la liquidación. Ten en cuenta que a veces no se actualiza de inmediato. Esta factura consolidada sirve como la base oficial y definitiva para conciliar las horas, entregas y pagos de la agencia al cierre de cada ciclo.'
+                            )
+                        ])
+                    ]);
 
-                const myAdmGrid = renderSpreadsheetGrid({
-                    title: 'Liquidación Oficial Autorizada por la Agencia (Solo Lectura)',
-                    prefix: 'adm-view',
-                    isEditable: false,
-                    itemsArray: adminViewItems
-                });
+                    container.appendChild(warningBanner);
 
-                container.appendChild(myAdmGrid);
+                    const admInvData = employeeAdmInvoice || { amount: 0, items: [] };
+                    
+                    const adminViewItems = admInvData.items?.length > 0 ? admInvData.items : [
+                        {
+                            type: admInvData.type || 'Factura Consolidada',
+                            client: admInvData.client || 'General',
+                            amount: admInvData.amount || 0,
+                            observations: admInvData.observations || 'El Administrador aún no ha cargado tu liquidación autorizada para este ciclo.',
+                            createdAt: admInvData.createdAt || new Date().toISOString()
+                        }
+                    ];
+
+                    const myAdmGrid = renderSpreadsheetGrid({
+                        title: 'Liquidación Oficial Autorizada por la Agencia (Solo Lectura)',
+                        prefix: 'adm-view',
+                        isEditable: false,
+                        itemsArray: adminViewItems
+                    });
+
+                    container.appendChild(myAdmGrid);
+                }
+            } else {
+                // If visibility is disabled, show a small badge or nothing
+                const disabledBanner = h('div', { 
+                    className: 'p-4 bg-tertiary rounded flex items-center justify-center gap-2 text-xs mb-3 border text-muted',
+                    style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', borderRadius: '8px' } 
+                }, [
+                    icon('lock', 14),
+                    h('span', {}, 'La visualización de la Factura Consolidada del Administrador ha sido bloqueada temporalmente.')
+                ]);
+                container.appendChild(disabledBanner);
             }
         }
 
@@ -550,11 +587,17 @@ export const render = () => {
             container.innerHTML = '<div class="loader mb-4"></div>';
             try {
                 // Load global references safely
-                [clientsList, allUsers, allAssignments] = await Promise.all([
+                let settingsBillingData = null;
+                [clientsList, allUsers, allAssignments, settingsBillingData] = await Promise.all([
                     dbService.getAll('clients').catch(() => []),
                     userService.getAllUsers().catch(() => []),
-                    assignmentService.getAllAssignments().catch(() => [])
+                    assignmentService.getAllAssignments().catch(() => []),
+                    dbService.get('settings', 'billing').catch(() => null)
                 ]);
+                
+                if (settingsBillingData) {
+                    globalBillingConfig.showAdminInvoiceToWorkers = settingsBillingData.showAdminInvoiceToWorkers !== false;
+                }
 
                 if (!isAdmin && user.allowedClients) {
                     clientsList = clientsList.filter(c => user.allowedClients.includes(c.id));
@@ -574,7 +617,7 @@ export const render = () => {
                     
                     if (selectedUserId) {
                         const userAdmInv = admInvoices.find(i => i.employeeId === selectedUserId);
-                        currentAdmItems = userAdmInv?.items || [
+                        currentAdmItems = JSON.parse(JSON.stringify(userAdmInv?.items || [
                             {
                                 type: userAdmInv?.type || 'Factura Consolidada',
                                 client: userAdmInv?.client || 'General',
@@ -582,7 +625,7 @@ export const render = () => {
                                 observations: userAdmInv?.observations || '',
                                 createdAt: userAdmInv?.createdAt || new Date().toISOString()
                             }
-                        ];
+                        ]));
                     }
                 } else {
                     const [myEmpInv, myAdmInv] = await Promise.all([
