@@ -1,5 +1,6 @@
 import { h, icon } from '../utils/dom.js';
-import { dbService, invoiceService } from '../firebase/service.js';
+import { dbService } from '../firebase/service.js';
+import { invoiceService } from '../services/invoiceService.js';
 import { store } from '../js/store.js';
 
 export const render = async () => {
