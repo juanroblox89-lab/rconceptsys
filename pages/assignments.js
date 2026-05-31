@@ -382,71 +382,79 @@ export const render = async () => {
                 ])
             ]);
 
-            // Grid of Employee Cards
-            const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))' } }, 
-                approvedUsers.map(emp => {
-                    const empAsgs = assignments.filter(a => a.employeeId === emp.uid);
-                    const pendingAsgs = empAsgs.filter(a => a.status !== 'Completado');
+            // Kanban Board for Admin
+            const statuses = ['Pendiente', 'En Proceso', 'Completado'];
+            
+            const board = h('div', { className: 'kanban-board mt-4' }, 
+                statuses.map(status => {
+                    const colAsgs = assignments.filter(a => a.status === status || (status === 'En Proceso' && a.status === 'En Producción'));
                     
-                    return h('div', { className: 'card p-5 flex-column gap-4 hover-border transition' }, [
-                        // Card Header
-                        h('div', { className: 'flex items-center justify-between' }, [
-                            h('div', { className: 'flex items-center gap-3' }, [
-                                emp.photoURL ? h('img', { src: emp.photoURL, style: { width: '36px', height: '36px', borderRadius: '50%' } }) : 
-                                h('div', { className: 'glass flex items-center justify-center', style: { width: '36px', height: '36px', borderRadius: '50%' } }, [icon('user', 16)]),
-                                h('div', {}, [
-                                    h('h3', { className: 'text-sm font-bold text-primary' }, emp.nombre || emp.email.split('@')[0]),
-                                    h('span', { className: 'text-xs text-muted' }, `${pendingAsgs.length} asignaciones pendientes`)
-                                ])
-                            ]),
-                            h('div', { className: 'flex gap-1' }, [
-                                h('button', { className: 'btn-icon text-muted', title: 'Ver Factura Admin', onClick: () => window.location.hash = '#billing' }, [icon('credit-card', 14)]),
-                                h('button', { className: 'btn-icon text-muted', title: 'Editar Asignaciones', onClick: () => openEmployeeTasksModal(emp, empAsgs, { clients: finalClients, scripts: scripts || [], assets: assets || [] }) }, [icon('more-horizontal', 14)])
-                            ])
+                    return h('div', { className: 'kanban-column' }, [
+                        h('div', { className: 'kanban-column-header' }, [
+                            h('span', {}, status),
+                            h('span', { className: 'kanban-column-count' }, colAsgs.length)
                         ]),
-
-                        // Tasks Preview
-                        h('div', { className: 'flex-column gap-2' }, 
-                            pendingAsgs.length === 0 ? [h('span', { className: 'text-xs text-muted italic' }, 'Sin tareas pendientes.')] :
-                            pendingAsgs.slice(0, 3).map(asg => {
-                                    const now = new Date();
-                                    const due = new Date(asg.dueDate);
-                                    const isExpired = due < now;
-                                    const isToday = !isExpired && due.toDateString() === now.toDateString();
-                                    
-                                    return h('div', { className: 'flex items-center justify-between p-2 bg-secondary border-radius-sm hover-bg-tertiary transition', style: { border: '1px solid var(--border)' } }, [
-                                        h('div', { className: 'flex items-center gap-2 overflow-hidden' }, [
-                                            h('div', { className: `badge ${isExpired ? 'badge-urgent' : (isToday ? 'badge-today' : 'badge-info')}`, style: { width: '8px', height: '8px', padding: 0, borderRadius: '50%' } }),
-                                            h('span', { className: 'text-xs font-medium truncate', style: { maxWidth: '200px' } }, `${asg.client}: ${asg.title}`)
-                                        ]),
-                                        h('div', { className: 'flex items-center gap-2' }, [
-                                            h('span', { className: `text-xs ${isExpired ? 'text-error font-bold' : 'text-muted'}` }, 
-                                                isToday ? 'Hoy' : due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-                                            ),
-                                            h('button', { className: 'action-btn', style: { padding: '2px' }, onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] }) }, [icon('edit-3', 10)])
-                                        ])
-                                    ]);
-                            })
-                        ),
-
-                        // Footer Stats
-                        h('div', { className: 'flex justify-between items-center mt-2' }, [
-                            h('div', { className: 'flex gap-3' }, [
-                                h('div', { className: 'flex items-center gap-1 text-xs text-muted', title: 'Grabaciones' }, [icon('film', 12), h('span', {}, empAsgs.filter(a => a.type === 'Grabación').length)]),
-                                h('div', { className: 'flex items-center gap-1 text-xs text-muted', title: 'Ediciones' }, [icon('zap', 12), h('span', {}, empAsgs.filter(a => a.type === 'Edición').length)]),
-                                h('div', { className: 'flex items-center gap-1 text-xs text-muted', title: 'Creador 360°' }, [icon('sparkles', 12), h('span', {}, empAsgs.filter(a => a.type === 'Creador 360° (Grabación + Edición)').length)])
-                            ]),
-                            h('button', { 
-                                className: 'btn btn-outline py-1 px-3 text-xs',
-                                onClick: () => openAssignmentModal(null, { users: [emp], clients: finalClients, preselectedUser: emp.uid, scripts: scripts || [], assets: assets || [], sops: sops || [] })
-                            }, '+ Asignar')
-                        ])
+                        h('div', { 
+                            className: 'kanban-column-body',
+                            ondragover: (e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); },
+                            ondragleave: (e) => { e.currentTarget.classList.remove('drag-over'); },
+                            ondrop: async (e) => {
+                                e.preventDefault();
+                                e.currentTarget.classList.remove('drag-over');
+                                const asgId = e.dataTransfer.getData('text/plain');
+                                if (!asgId) return;
+                                const asg = assignments.find(a => a.id === asgId);
+                                if (asg && asg.status !== status) {
+                                    try {
+                                        await assignmentService.updateAssignmentStatus(asgId, status);
+                                        loadAndRender(); // Re-render to reflect changes
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert("Error actualizando estado");
+                                    }
+                                }
+                            }
+                        }, colAsgs.map(asg => {
+                            const emp = approvedUsers.find(u => u.uid === asg.employeeId);
+                            const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin Asignar';
+                            const now = new Date();
+                            const due = new Date(asg.dueDate);
+                            const isExpired = due < now && asg.status !== 'Completado';
+                            
+                            return h('div', { 
+                                className: 'kanban-card',
+                                draggable: true,
+                                ondragstart: (e) => {
+                                    e.dataTransfer.setData('text/plain', asg.id);
+                                    setTimeout(() => e.target.classList.add('dragging'), 0);
+                                },
+                                ondragend: (e) => {
+                                    e.target.classList.remove('dragging');
+                                },
+                                onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
+                            }, [
+                                h('div', { className: 'flex justify-between items-start mb-1' }, [
+                                    h('div', { className: 'kanban-card-title mb-0 pr-2' }, asg.title),
+                                    isExpired ? h('div', { className: 'badge badge-urgent', style: { padding: '2px', width: '8px', height: '8px', borderRadius: '50%' }, title: 'Atrasado' }) : null
+                                ]),
+                                h('div', { className: 'text-xs text-muted mb-2 truncate' }, `${asg.client} • ${asg.type}`),
+                                h('div', { className: 'kanban-card-meta border-top pt-2 mt-2' }, [
+                                    h('div', { className: 'flex items-center gap-1 font-medium', style: { color: 'var(--accent)' } }, [
+                                        icon('user', 12),
+                                        h('span', {}, empName)
+                                    ]),
+                                    h('div', { className: 'flex gap-1 items-center' }, [
+                                        asg.billed ? h('span', { className: 'badge badge-success text-[10px] py-0 px-1' }, 'Cobrado') : null
+                                    ])
+                                ])
+                            ]);
+                        }))
                     ]);
                 })
             );
 
             container.appendChild(header);
-            container.appendChild(grid);
+            container.appendChild(board);
             if (window.lucide) window.lucide.createIcons();
 
         } catch (err) {

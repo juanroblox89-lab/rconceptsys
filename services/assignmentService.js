@@ -3,9 +3,19 @@
  * Handles operational task assignments for recordings and edits.
  * Includes auto-deletion logic for tasks 2 days past their deadline.
  */
-import { dbService } from '../firebase/service.js';
+import { dbService, db, onSnapshot, collection } from '../firebase/service.js';
 
 export const assignmentService = {
+    subscribeToAssignments(callback) {
+        return onSnapshot(collection(db, 'assignments'), (snapshot) => {
+            const assignments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            callback(assignments);
+        }, (error) => {
+            console.warn("Error in real-time assignments subscription:", error);
+            callback([]);
+        });
+    },
+
     async getAllAssignments() {
         try {
             const list = await dbService.getAll('assignments');
@@ -59,6 +69,14 @@ export const assignmentService = {
         }
 
         return newAsg;
+    },
+
+    async updateAssignmentStatus(id, newStatus) {
+        try {
+            await dbService.update('assignments', id, { status: newStatus });
+        } catch (err) {
+            console.warn(`Error updating status for assignment ${id}:`, err);
+        }
     },
 
     async deleteAssignment(id) {
