@@ -47,12 +47,16 @@ export const render = async () => {
                 const myAssignments = assignments.filter(a => a.employeeId === user.uid);
 
                 // Header for Employee
+                const activeMyAsgs = myAssignments.filter(a => a.status !== 'Completado' && a.status !== 'Cancelado');
+                const completedMyAsgs = myAssignments.filter(a => a.status === 'Completado');
+                const totalVisible = activeMyAsgs.length + completedMyAsgs.length;
+
                 const header = h('div', { className: 'flex justify-between items-end mb-2 w-full border-bottom pb-3' }, [
                     h('div', {}, [
                         h('h1', { className: 'text-xl font-bold' }, 'Mi Espacio de Trabajo'),
                         h('p', { className: 'text-xs text-muted mt-1' }, 'Listado de tareas y SOPs asignados a tu cuenta.')
                     ]),
-                    h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: ${myAssignments.length} Tareas`)
+                    h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: ${totalVisible} Tareas`)
                 ]);
                 container.appendChild(header);
 
@@ -69,9 +73,7 @@ export const render = async () => {
                     ])
                 );
 
-                // Split my assignments
-                const activeMyAsgs = myAssignments.filter(a => a.status !== 'Completado');
-                const completedMyAsgs = myAssignments.filter(a => a.status === 'Completado');
+                // Assignments already split above
 
                 // Render Task Row
                 const renderEmployeeTaskRow = (asg) => {
