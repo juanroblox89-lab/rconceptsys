@@ -54,6 +54,20 @@ export const render = async () => {
                     ]),
                     h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: ${myAssignments.length} Tareas`)
                 ]);
+                container.appendChild(header);
+
+                // Workflow Guide for Employee
+                container.appendChild(
+                    h('div', { className: 'card p-4 flex-column gap-2 mb-4 w-full', style: { borderLeft: '4px solid var(--accent)', background: 'var(--bg-tertiary)' } }, [
+                        h('h3', { className: 'text-sm font-bold flex items-center gap-2' }, [icon('info', 16, 'text-accent'), h('span', {}, 'Guía de Trabajo Diaria')]),
+                        h('ol', { className: 'text-xs text-muted pl-4', style: { margin: 0, paddingLeft: '24px', display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Revisa tu Tarea: '), 'Abre tu tarea pendiente y revisa las instrucciones, el Guion y el Asset de muestra.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Ejecuta y Llenar SOP: '), 'Haz clic en "Llenar SOP" para abrir tu lista de verificación y entregar los enlaces o archivos requeridos.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Completar: '), 'Al terminar todos los pasos del SOP, la tarea se marcará como Completada automáticamente.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Las tareas completadas y su monto se sumarán a tu factura, que podrás revisar en "Pagos Pendientes".'])
+                        ])
+                    ])
+                );
 
                 // Split my assignments
                 const activeMyAsgs = myAssignments.filter(a => a.status !== 'Completado');
@@ -286,8 +300,6 @@ export const render = async () => {
                         completedList
                     ])
                 ]);
-
-                container.appendChild(header);
                 container.appendChild(employeeLayout);
                 if (window.lucide) window.lucide.createIcons();
                 return;

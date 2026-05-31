@@ -78,6 +78,21 @@ export const render = () => {
                 ])
             );
 
+            // ── 1.5 Workflow Guide ──────────────────────────
+            container.appendChild(
+                h('div', { className: 'card p-4 flex-column gap-2 mb-4 w-full', style: { borderLeft: '4px solid var(--accent)', background: 'var(--bg-tertiary)' } }, [
+                    h('h3', { className: 'text-sm font-bold flex items-center gap-2' }, [icon('info', 16, 'text-accent'), h('span', {}, 'Guía Rápida de Trabajo (Admin)')]),
+                    h('p', { className: 'text-xs text-muted mb-1' }, 'Flujo recomendado desde que entra un cliente hasta que facturas:'),
+                    h('ol', { className: 'text-xs text-muted pl-4', style: { margin: 0, paddingLeft: '24px', display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+                        h('li', {}, [h('span', { className: 'font-bold' }, '1. Registrar Cliente: '), 'Añádelo en la pestaña ', h('b', {}, 'Clientes')]),
+                        h('li', {}, [h('span', { className: 'font-bold' }, '2. Crear Guiones y Formatos: '), 'Redacta el contenido en ', h('b', {}, 'Guiones')]),
+                        h('li', {}, [h('span', { className: 'font-bold' }, '3. Preparar SOPs: '), 'Crea la lista de pasos obligatorios en ', h('b', {}, 'SOPs')]),
+                        h('li', {}, [h('span', { className: 'font-bold' }, '4. Asignar Trabajo: '), 'Ve a ', h('b', {}, 'Workers'), ', elige a tu trabajador y asígnale la tarea (puedes vincular el Guion, Asset y SOP).']),
+                        h('li', {}, [h('span', { className: 'font-bold' }, '5. Facturación: '), 'A fin de mes, revisa y liquida los pagos en ', h('b', {}, 'Pagos Pendientes')])
+                    ])
+                ])
+            );
+
             // ── 2. Pending Users ────────────────────────────
             const pendingSection = h('section', { className: 'flex-column gap-3' }, [
                 h('div', { className: 'flex justify-between items-center' }, [
