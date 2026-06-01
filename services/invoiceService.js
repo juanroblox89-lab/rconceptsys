@@ -216,5 +216,42 @@ export const invoiceService = {
             console.error("Error resetting invoices:", err);
             throw err;
         }
+    },
+
+    // Remove specific items related to a deleted assignment
+    async removeInvoiceItemsByAssignment(assignmentId, assignmentTitle) {
+        try {
+            const [empInvoices, admInvoices] = await Promise.all([
+                dbService.getAll('invoices').catch(() => []),
+                dbService.getAll('admin_invoices').catch(() => [])
+            ]);
+
+            const processInvoice = async (collectionName, inv) => {
+                if (!inv.items || !inv.items.length) return;
+                const originalLength = inv.items.length;
+                
+                // Filter out items that match assignmentId or title
+                inv.items = inv.items.filter(item => {
+                    const matchId = item.assignmentId === assignmentId;
+                    const matchTitle = item.title === assignmentTitle || item.description?.includes(assignmentTitle);
+                    return !(matchId || matchTitle);
+                });
+                
+                if (inv.items.length < originalLength) {
+                    // Recalculate amount
+                    inv.amount = inv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+                    await dbService.update(collectionName, inv.id, { items: inv.items, amount: inv.amount });
+                }
+            };
+
+            const promises = [
+                ...empInvoices.map(inv => processInvoice('invoices', inv)),
+                ...admInvoices.map(inv => processInvoice('admin_invoices', inv))
+            ];
+
+            await Promise.all(promises);
+        } catch (err) {
+            console.error("Error cleaning up invoice items:", err);
+        }
     }
 };

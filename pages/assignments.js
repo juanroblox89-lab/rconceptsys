@@ -239,7 +239,7 @@ export const render = async () => {
                                                         }
                                                         
                                                         if (btn) showFeedback(btn, '✅ Entregado');
-                                                        setTimeout(() => loadAndRender(), 1200);
+                                                        setTimeout(() => window.location.reload(), 1200);
                                                     } catch (err) {
                                                         console.error(err);
                                                         if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }

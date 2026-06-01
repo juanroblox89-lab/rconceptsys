@@ -203,7 +203,28 @@ export const assignmentService = {
 
     async deleteAssignment(id) {
         try {
+            // First fetch the assignment to get its title for invoice cleanup
+            const asg = await dbService.getById('assignments', id);
+            
+            // Delete the assignment
             await dbService.delete('assignments', id);
+            
+            // Cascade cleanup: Invoices
+            if (asg && asg.title) {
+                const { invoiceService } = await import('./invoiceService.js');
+                await invoiceService.removeInvoiceItemsByAssignment(id, asg.title);
+            }
+            
+            // Cascade cleanup: SOP Submissions
+            try {
+                const allSubmissions = await dbService.getAll('sop_submissions') || [];
+                const toDelete = allSubmissions.filter(sub => sub.assignmentId === id);
+                for (const sub of toDelete) {
+                    await dbService.delete('sop_submissions', sub.id);
+                }
+            } catch (e) {
+                console.warn("Could not cleanup SOP submissions:", e);
+            }
         } catch (err) {
             console.warn("Error deleting assignment from DB:", err);
         }
