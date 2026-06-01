@@ -4,8 +4,17 @@ import { invoiceService } from '../services/invoiceService.js';
 import { store } from '../js/store.js';
 
 export const render = async () => {
-    const { user } = store.getState();
+    const { user, roles } = store.getState();
     const container = h('div', { className: 'page-container fade-in' });
+
+    // Validar que el usuario tenga un rol operativo de ventas
+    const currentRole = (roles || []).find(r => r.id === user?.role);
+    const isSalesRole = currentRole?.id === 'ventas' || currentRole?.id === 'marketing';
+
+    if (!isSalesRole) {
+        container.innerHTML = '<div class="card p-8 text-center" style="max-width:400px; margin: 40px auto;"><h3 class="text-danger">Acceso Operativo Denegado</h3><p>Solo el equipo de Ventas puede operar este módulo. Si eres Administrador, debes asignarte el rol de Ventas para interactuar aquí.</p></div>';
+        return container;
+    }
 
     // Header
     const header = h('div', { className: 'flex justify-between items-end mb-6 w-full border-bottom pb-4' }, [

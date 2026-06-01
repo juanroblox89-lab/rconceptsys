@@ -30,9 +30,12 @@ const secondaryNavItems = [
 
 const checkPermission = (href) => {
     const { user, roles } = store.getState();
-    if (user?.role === 'admin') return true;
-    
     const moduleId = href.replace('#', '');
+    
+    if (user?.role === 'admin') {
+        const adminAllowed = ['dashboard', 'admin', 'workers', 'clients', 'billing'];
+        return adminAllowed.includes(moduleId);
+    }
     
     // Find role permissions
     const currentRole = (roles || []).find(r => r.id === user?.role);

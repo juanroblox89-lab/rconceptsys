@@ -56,15 +56,17 @@ class Router {
             
             // --- Permisos ---
             const { user, roles } = store.getState();
-            let hasPermission = true;
-            if (user?.role !== 'admin') {
+            let hasPermission = false;
+            let requiredModule = route.module;
+            if (requiredModule === 'clientDetail') requiredModule = 'clients';
+
+            if (user?.role === 'admin') {
+                const adminAllowed = ['dashboard', 'admin', 'workers', 'clients', 'billing'];
+                hasPermission = adminAllowed.includes(requiredModule);
+            } else {
                 const currentRole = (roles || []).find(r => r.id === user?.role);
                 const defaultModules = ['dashboard', 'assignments', 'sops', 'ai-assistant'];
                 const allowedModules = currentRole?.allowedModules || defaultModules;
-                
-                let requiredModule = route.module;
-                if (requiredModule === 'clientDetail') requiredModule = 'clients';
-                
                 hasPermission = allowedModules.includes(requiredModule);
             }
 
