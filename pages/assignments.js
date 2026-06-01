@@ -134,7 +134,7 @@ export const render = async () => {
                             h('div', { className: 'flex-column gap-1' }, [
                                 h('div', { className: 'flex items-center gap-2 flex-wrap' }, [
                                     h('span', { className: 'badge badge-secondary text-xs font-bold' }, asg.client),
-                                    h('span', { className: `badge badge-${statusClass} text-xs font-semibold` }, asg.status),
+                                    h('span', { className: `badge badge-${statusClass} text-xs font-semibold` }, asg.status === 'blocked' ? 'En espera de compañero' : asg.status),
                                     isExpired ? h('span', { className: 'badge badge-urgent text-xs font-bold' }, '⚠️ ATRASADO') : null,
                                     isToday ? h('span', { className: 'badge badge-today text-xs font-bold' }, '⚡ HOY') : null,
                                 ]),

@@ -178,7 +178,7 @@ function openWorkerAssignmentsPanel(w, asgs, clients, reload) {
             h('div', { className: 'flex-column gap-1', style: { flex: 1, minWidth: 0 } }, [
                 h('span', { className: 'text-xs font-bold text-primary truncate' }, `${asg.client}: ${asg.title}`),
                 h('div', { className: 'flex gap-2 items-center mt-0.5' }, [
-                    h('span', { className: `badge badge-${statusClass} text-xs`, style: { fontSize: '0.55rem' } }, asg.status),
+                    h('span', { className: `badge badge-${statusClass} text-xs`, style: { fontSize: '0.55rem' } }, asg.status === 'blocked' ? 'En espera de compañero' : asg.status),
                     h('span', { className: 'text-xs text-muted', style: { fontSize: '0.6rem' } }, new Date(asg.dueDate).toLocaleDateString('es-ES'))
                 ])
             ]),

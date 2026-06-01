@@ -67,7 +67,7 @@ export const render = () => {
                         ]),
                         h('td', { className: 'text-xs' }, asg.type),
                         h('td', {}, [
-                            h('span', { className: `badge badge-${getStatusClass(asg.status)} text-xs` }, asg.status)
+                            h('span', { className: `badge badge-${getStatusClass(asg.status)} text-xs` }, asg.status === 'blocked' ? 'En espera de compañero' : asg.status)
                         ]),
                         h('td', { className: 'text-xs text-muted font-medium' }, getUserDisplayName(asg.employeeId, asg))
                     ]);
