@@ -175,12 +175,26 @@ export const assignmentService = {
             const nextStageAsg = allAssignments.find(a => a.projectId === projectId && a.stageIndex === completedStageIndex + 1);
             
             if (nextStageAsg && nextStageAsg.status === 'blocked') {
-                console.log(`[Pipeline] Unlocking assignment ${nextStageAsg.id} (Stage ${completedStageIndex + 1})`);
-                const updates = { status: 'Pendiente' };
-                if (completedAsg && completedAsg.uploadLink) {
-                    updates.linkedAsset = completedAsg.uploadLink;
+                console.log(`[Pipeline] Next assignment ${nextStageAsg.id} (Stage ${completedStageIndex + 1})`);
+                
+                // If it's the "Subida" phase, we don't automatically unlock it (needs Admin approval)
+                if (nextStageAsg.title.toLowerCase().includes('subida')) {
+                    console.log(`[Pipeline] Stage is Subida. Keeping it blocked for Admin approval.`);
+                    const updates = {};
+                    if (completedAsg && completedAsg.uploadLink) {
+                        updates.linkedAsset = completedAsg.uploadLink;
+                    }
+                    if (Object.keys(updates).length > 0) {
+                        await dbService.update('assignments', nextStageAsg.id, updates);
+                    }
+                } else {
+                    console.log(`[Pipeline] Unlocking assignment ${nextStageAsg.id}`);
+                    const updates = { status: 'Pendiente' };
+                    if (completedAsg && completedAsg.uploadLink) {
+                        updates.linkedAsset = completedAsg.uploadLink;
+                    }
+                    await dbService.update('assignments', nextStageAsg.id, updates);
                 }
-                await dbService.update('assignments', nextStageAsg.id, updates);
             }
         } catch (err) {
             console.error(`[Pipeline] Error advancing pipeline for project ${projectId}:`, err);

@@ -567,16 +567,19 @@ export const render = async () => {
 
     const openAssignmentModal = (existing = null, context = {}) => {
         const overlay = h('div', { className: 'modal-overlay', style: { zIndex: 1000 } });
-        let form; // Define form here so helpers can access it early
-        
         const showMiniModal = (title, fields, onSubmit) => {
-            const miniOverlay = h('div', { className: 'modal-overlay', style: { zIndex: 10000 } });
+            const miniOverlay = document.createElement('div');
+            miniOverlay.className = 'modal-overlay';
+            miniOverlay.style.zIndex = '2000';
+            
+            const mForm = document.createElement('form');
+            mForm.className = 'card p-4 text-left flex-column gap-3';
+            mForm.style.width = '300px';
+            
             const btnSubmit = h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Guardar');
             
-            const mForm = h('form', { 
-                className: 'modal-container card fade-in', 
-                style: { maxWidth: '350px' },
-                onSubmit: async (e) => {
+            mForm.addEventListener('submit', async (e) => {
+                if (mForm.checkValidity()) {
                     e.preventDefault();
                     btnSubmit.disabled = true;
                     btnSubmit.textContent = 'Guardando...';
@@ -593,26 +596,52 @@ export const render = async () => {
                         btnSubmit.textContent = 'Guardar';
                     }
                 }
-            }, [
+            });
+
+            mForm.appendChild(
                 h('div', { className: 'modal-header' }, [
                     h('span', { className: 'modal-title' }, title),
                     h('button', { type: 'button', onClick: () => document.body.removeChild(miniOverlay) }, '×')
-                ]),
-                h('div', { className: 'modal-body flex-column gap-3' }, fields.map(f => h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, f.label),
-                    f.type === 'textarea' 
-                        ? h('textarea', { id: `mini-${f.id}`, className: 'form-textarea text-xs', placeholder: f.placeholder, required: true, style: { minHeight: '100px' } })
-                        : h('input', { id: `mini-${f.id}`, type: f.type || 'text', className: 'form-input text-xs', placeholder: f.placeholder, required: true })
-                ]))),
+                ])
+            );
+
+            const bodyDiv = h('div', { className: 'modal-body flex-column gap-3' }, fields.map(f => {
+                if (f.type === 'select') {
+                    return h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, f.label),
+                        h('select', { id: `mini-${f.id}`, className: 'form-input text-xs', required: true }, 
+                            f.options.map(o => {
+                                const val = typeof o === 'object' ? o.value : o;
+                                const lbl = typeof o === 'object' ? o.label : o;
+                                return h('option', { value: val, selected: f.value === val }, lbl);
+                            })
+                        )
+                    ]);
+                } else if (f.type === 'textarea') {
+                    return h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, f.label),
+                        h('textarea', { id: `mini-${f.id}`, className: 'form-textarea text-xs', placeholder: f.placeholder, required: true, style: { minHeight: '100px' } }, f.value || '')
+                    ]);
+                } else {
+                    return h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, f.label),
+                        h('input', { id: `mini-${f.id}`, type: f.type || 'text', className: 'form-input text-xs', placeholder: f.placeholder, required: true, value: f.value || '' })
+                    ]);
+                }
+            }));
+            mForm.appendChild(bodyDiv);
+
+            mForm.appendChild(
                 h('div', { className: 'modal-footer' }, [
                     h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(miniOverlay) }, 'Cancelar'),
                     btnSubmit
                 ])
-            ]);
+            );
+            
             miniOverlay.appendChild(mForm);
             document.body.appendChild(miniOverlay);
             setTimeout(() => {
-                const firstInput = mForm.querySelector('input, textarea');
+                const firstInput = mForm.querySelector('input, textarea, select');
                 if (firstInput) firstInput.focus();
             }, 50);
         };
@@ -721,7 +750,7 @@ export const render = async () => {
                 title: form.querySelector('#asg-title').value,
                 description: descVal,
                 dueDate: form.querySelector('#asg-due').value,
-                status: existing?.status || 'Pendiente',
+                status: form.querySelector('#asg-status') ? form.querySelector('#asg-status').value : (existing?.status || 'Pendiente'),
                 createdBy: user.uid,
                 linkedScript: form.querySelector('#asg-link-script').value,
                 linkedAsset: form.querySelector('#asg-link-asset').value,
@@ -754,7 +783,7 @@ export const render = async () => {
                 h('button', { type: 'button', onClick: () => document.body.contains(overlay) && document.body.removeChild(overlay) }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
-                h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' + (user.role === 'admin' ? ' 1fr' : '') } }, [
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Empleado'),
                         h('select', { id: 'asg-emp', className: 'form-select text-xs', required: true }, 
@@ -768,8 +797,19 @@ export const render = async () => {
                             h('option', { value: 'Edición', selected: existing?.type === 'Edición' }, 'Edición'),
                             h('option', { value: 'Creador 360° (Grabación + Edición)', selected: existing?.type === 'Creador 360° (Grabación + Edición)' }, 'Creador 360° (Grabación + Edición)')
                         ])
-                    ])
-                ]),
+                    ]),
+                    user.role === 'admin' ? h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Estado'),
+                        h('select', { id: 'asg-status', className: 'form-select text-xs text-info font-bold' }, [
+                            h('option', { value: 'blocked', selected: existing?.status === 'blocked' }, 'En espera (Blocked)'),
+                            h('option', { value: 'Pendiente', selected: existing?.status === 'Pendiente' }, 'Pendiente'),
+                            h('option', { value: 'En Proceso', selected: existing?.status === 'En Proceso' }, 'En Proceso'),
+                            h('option', { value: 'En Producción', selected: existing?.status === 'En Producción' }, 'En Producción'),
+                            h('option', { value: 'Completado', selected: existing?.status === 'Completado' }, 'Completado'),
+                            h('option', { value: 'Cancelado', selected: existing?.status === 'Cancelado' }, 'Cancelado')
+                        ])
+                    ]) : null
+                ].filter(Boolean)),
                 h('div', { className: 'form-group' }, [
                     h('div', { className: 'flex justify-between items-center w-full mb-1' }, [
                         h('label', { className: 'form-label m-0' }, 'Cliente'),
@@ -1404,6 +1444,23 @@ export function openMasterPipelineModal(context = {}) {
     overlay.querySelector('.close-btn').onclick = () => overlay.remove();
     overlay.querySelector('.close-btn-footer').onclick = () => overlay.remove();
     form.onsubmit = submit;
+    
+    // Build form fields
+    const fields = [
+        { id: 'type', label: 'Tipo de Tarea', type: 'select', options: ['Grabación', 'Edición', 'Diseño', 'Animación', 'Subida', 'Estrategia', 'Revisión'] },
+        { id: 'client', label: 'Cliente', type: 'select', options: context.clients ? context.clients.map(c => c.name) : [] },
+        { id: 'title', label: 'Título del Video / Proyecto', placeholder: 'Ej. Reel 1: Tips de Venta' },
+        { id: 'description', label: 'Instrucciones Adicionales (Opcional)', type: 'textarea' },
+        { id: 'employeeId', label: 'Asignar a', type: 'select', options: context.users ? context.users.map(u => ({ value: u.uid, label: u.nombre || u.email })) : [] },
+        { id: 'dueDate', label: 'Fecha de Entrega', type: 'date' },
+        { id: 'price', label: 'Precio a Pagar (Opcional)', type: 'number', placeholder: 'Ej. 5000' }
+    ];
+    
+    const currentUser = store.getState().user;
+    if (currentUser && currentUser.role === 'admin') {
+        fields.push({ id: 'status', label: 'Estado', type: 'select', options: ['blocked', 'Pendiente', 'En Proceso', 'En Producción', 'Completado', 'Cancelado'] });
+    }
+    
     document.body.appendChild(overlay);
 }
 

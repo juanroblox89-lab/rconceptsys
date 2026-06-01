@@ -22,7 +22,7 @@ const secondaryNavItems = [
     { href: '#formats',      icon: 'film',              label: 'Formatos' },
     { href: '#scripts',      icon: 'file-text',         label: 'Guiones' },
     { href: '#hooks',        icon: 'zap',               label: 'Hooks' },
-    { href: '#sops', icon: 'file-check-2',      label: 'SOPs Operativos' },
+    { href: '#sops', icon: 'file-check-2',      label: 'Guías de Trabajo (SOP)' },
     { href: '#references', icon: 'bookmark',        label: 'Referencias' },
     { href: '#aiAssistant', icon: 'sparkles',          label: 'AI Assistant' },
     { href: '#admin', icon: 'shield',            label: 'Administración' },

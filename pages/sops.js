@@ -61,7 +61,7 @@ export const render = () => {
                     icon('layers', 24, 'text-accent')
                 ]),
                 h('div', {}, [
-                    h('h1', {}, isAdmin ? 'Constructor de SOPs' : 'Mis Procedimientos (SOPs)'),
+                    h('h1', {}, isAdmin ? 'Constructor de SOPs (Guías de Trabajo)' : 'Mis Procedimientos (SOPs)'),
                     h('p', { className: 'text-xs text-muted mt-1' }, isAdmin
                         ? 'Crea y gestiona SOPs por rol. Revisa el historial de entregas de tu equipo.'
                         : 'Completa cada paso de tus procedimientos estándar de calidad.')
