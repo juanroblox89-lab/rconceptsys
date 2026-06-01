@@ -209,7 +209,7 @@ export const render = () => {
                     h('h1', { style: { fontSize: '1.4rem' } }, 'Auditoría de Liquidaciones y Cobros'),
                     h('p', { className: 'text-xs text-muted mt-1' }, 'Estructura de liquidación directa de cobros y facturación administrativa de la agencia.')
                 ]),
-                h('div', { className: 'flex gap-2 flex-wrap' }, [
+                h('div', { className: 'flex gap-2 items-center flex-nowrap overflow-x-auto pb-1', style: { scrollbarWidth: 'none' } }, [
                     h('button', { 
                         className: 'btn btn-outline text-xs', 
                         title: 'Exportar todas las facturas a CSV',

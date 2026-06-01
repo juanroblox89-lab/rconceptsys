@@ -144,7 +144,7 @@ button:active { transform: scale(0.97); }
 @media (min-width: 769px) {
     #main-content {
         margin-left: var(--sidebar-width);
-        padding: 48px 48px 64px;
+        padding: calc(var(--header-height) + 32px) 48px 64px;
     }
 }
 
