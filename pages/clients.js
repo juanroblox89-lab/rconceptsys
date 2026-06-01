@@ -131,6 +131,12 @@ export const render = () => {
 
                     // Actions section (right)
                     h('div', { className: 'flex items-center gap-2', style: { flex: '0 0 auto' } }, [
+                        c.driveFolderUrl ? h('a', { 
+                            href: c.driveFolderUrl, target: '_blank', 
+                            className: 'btn btn-outline text-xs flex items-center gap-1 text-primary',
+                            style: { padding: '4px 8px', height: '28px' }
+                        }, [icon('folder', 11), h('span', {}, 'Drive')]) : null,
+                        
                         h('button', { 
                             className: 'btn btn-outline text-xs flex items-center gap-1',
                             style: { padding: '4px 8px', height: '28px' },
@@ -216,7 +222,8 @@ export const render = () => {
                 logo: logoUrl,
                 recommendedLinks: existingClient?.recommendedLinks || [],
                 packageLimit: form.querySelector('#cli-package').value === 'Personalizado' ? Number(form.querySelector('#cli-custom-limit').value || 0) : Number(form.querySelector('#cli-package').value || 0),
-                videosCompleted: existingClient?.videosCompleted || 0
+                videosCompleted: existingClient?.videosCompleted || 0,
+                driveFolderUrl: form.querySelector('#cli-drive-url')?.value || existingClient?.driveFolderUrl || ''
             };
 
             try {
@@ -268,6 +275,10 @@ export const render = () => {
                         h('label', { className: 'form-label' }, 'Nº Personalizado'),
                         h('input', { id: 'cli-custom-limit', type: 'number', className: 'form-input', value: existingClient?.packageLimit || 0, placeholder: 'Ej. 12' })
                     ])
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label' }, 'Enlace a Carpeta de Google Drive (Opcional)'),
+                    h('input', { id: 'cli-drive-url', type: 'url', className: 'form-input', value: existingClient?.driveFolderUrl || '', placeholder: 'Ej. https://drive.google.com/drive/folders/...' })
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Descripción Estratégica General'),

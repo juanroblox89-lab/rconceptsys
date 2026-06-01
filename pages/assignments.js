@@ -162,10 +162,46 @@ export const render = async () => {
                                 }, [icon('play', 12), h('span', {}, 'Empezar')]) : null,
 
                                 (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? (() => {
+                                    const asgClient = finalClients.find(c => c.name === asg.client || c.id === asg.client);
+                                    const hasDrive = asgClient && asgClient.driveFolderUrl;
+                                    const isRecording = asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)';
+                                    
                                     const hasSop = !!asg.sopId;
                                     const sopObj = hasSop ? sops.find(s => s.id === asg.sopId) : null;
                                     const sopSub = hasSop ? mySopSubmissions.find(sub => sub.sopId === asg.sopId && sub.assignmentId === asg.id) : null;
                                     const sopCompleted = sopSub?.status === 'completed';
+
+                                    const btnList = [];
+
+                                    // Drive Upload Button
+                                    if (hasDrive && isRecording) {
+                                        btnList.push(h('a', {
+                                            href: asgClient.driveFolderUrl,
+                                            target: '_blank',
+                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                            style: { color: 'var(--primary)', borderColor: 'rgba(var(--primary-rgb), 0.3)' }
+                                        }, [icon('folder', 12), h('span', {}, 'Abrir Drive')]));
+                                        
+                                        btnList.push(h('button', {
+                                            className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                            style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
+                                            onClick: async (e) => {
+                                                const btn = e.currentTarget;
+                                                btn.disabled = true;
+                                                try {
+                                                    const descAddition = `\n\n[Auto] Medios subidos a la carpeta de Drive del cliente: ${asgClient.driveFolderUrl}`;
+                                                    const newDesc = (asg.description || '') + descAddition;
+                                                    await assignmentService.saveAssignment({ ...asg, status: 'Completado', description: newDesc });
+                                                    loadAndRender();
+                                                } catch(err) {
+                                                    btn.disabled = false;
+                                                    alert("Error al actualizar la tarea.");
+                                                }
+                                            }
+                                        }, [icon('check', 12), h('span', {}, 'Medios Subidos')]));
+                                        
+                                        return h('div', { className: 'flex gap-2' }, btnList);
+                                    }
 
                                     if (hasSop && sopObj && !sopCompleted) {
                                         return h('button', {
