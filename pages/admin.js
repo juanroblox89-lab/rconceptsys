@@ -7,6 +7,7 @@ import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { userService } from '../services/userService.js';
 import { storageService, dbService } from '../firebase/service.js';
+import { invoiceService } from '../services/invoiceService.js';
 
 export const render = () => {
     const { user } = store.getState();
@@ -156,6 +157,14 @@ export const render = () => {
                     ])
             ]);
             container.appendChild(teamSection);
+
+            // ── 3.5. Dynamic Rates ─────────────────────────
+            try {
+                const rates = await invoiceService.getRateCards();
+                container.appendChild(renderDynamicRatesSection(rates));
+            } catch(e) {
+                console.warn("Could not load rate cards:", e);
+            }
 
             // ── 4. Roles Management ─────────────────────────
             container.appendChild(renderRolesSection(rolesList, loadAdminDashboard));

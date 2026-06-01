@@ -71,6 +71,59 @@ export const assignmentService = {
         return newAsg;
     },
 
+    async createMasterPipeline(data) {
+        const projectId = `PRJ-${crypto.randomUUID().split('-')[0]}`;
+        
+        // Fase 1: Grabación (Activa)
+        const recId = `ASG-${crypto.randomUUID().split('-')[0]}`;
+        const recAssignment = {
+            id: recId,
+            projectId,
+            stageIndex: 0,
+            employeeId: data.camarografoId,
+            type: 'Grabación',
+            client: data.client || 'General',
+            title: `[Grabación] ${data.title}`,
+            description: data.description || '',
+            assignedDate: new Date().toISOString(),
+            dueDate: data.dueDate,
+            status: 'Pendiente',
+            createdBy: data.createdBy || 'admin',
+            linkedScript: data.linkedScript || '',
+            linkedAsset: data.linkedAsset || '',
+            sopId: data.sopCamarografoId || null
+        };
+
+        // Fase 2: Edición (Bloqueada/Oculta)
+        const editId = `ASG-${crypto.randomUUID().split('-')[0]}`;
+        const editAssignment = {
+            id: editId,
+            projectId,
+            stageIndex: 1,
+            employeeId: data.editorId,
+            type: 'Edición',
+            client: data.client || 'General',
+            title: `[Edición] ${data.title}`,
+            description: '', // Se llenará en la transición
+            assignedDate: new Date().toISOString(),
+            dueDate: data.dueDate,
+            status: 'blocked',
+            createdBy: 'system_automator',
+            linkedScript: data.linkedScript || '',
+            linkedAsset: data.linkedAsset || '',
+            sopId: data.sopEditorId || null
+        };
+
+        try {
+            await dbService.set('assignments', recId, recAssignment);
+            await dbService.set('assignments', editId, editAssignment);
+        } catch (err) {
+            console.warn("Error saving pipeline assignments to DB:", err);
+        }
+
+        return projectId;
+    },
+
     async updateAssignmentStatus(id, newStatus) {
         try {
             await dbService.update('assignments', id, { status: newStatus });

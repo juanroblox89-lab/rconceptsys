@@ -2,7 +2,7 @@
  * Firebase Service Wrapper - Creative Production OS
  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc, onSnapshot, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -24,7 +24,7 @@ const storage = getStorage(app);
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
 
-export { db, auth, storage, onSnapshot, collection };
+export { db, auth, storage, onSnapshot, collection, arrayUnion, increment, doc, updateDoc, setDoc };
 
 /**
  * Generic Database Service

@@ -20,17 +20,15 @@ export const render = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
 
         try {
-            // 0. Cleanup expired assignments (2 days past due)
-            await assignmentService.cleanupAssignments();
-
             // 1. Load Data
-            const [users, assignments, clients, scripts, assets, sops, mySopSubmissions] = await Promise.all([
+            const [users, assignments, clients, scripts, assets, sops, rates, mySopSubmissions] = await Promise.all([
                 userService.getAllUsers(),
                 assignmentService.getAllAssignments(),
                 dbService.getAll('clients').catch(() => []),
                 dbService.getAll('scripts').catch(() => []),
                 dbService.getAll('assets').catch(() => []),
                 dbService.getAll('sops').catch(() => []),
+                invoiceService.getRateCards().catch(() => []),
                 (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([])
             ]);
 
@@ -200,7 +198,48 @@ export const render = async () => {
                                             }
                                         }, [icon('check', 12), h('span', {}, 'Medios Subidos')]));
                                         
-                                        return h('div', { className: 'flex gap-2' }, btnList);
+                                        const bodyContent = [h('div', { className: 'flex gap-2' }, btnList)];
+
+                                        if (hasSop && sopObj) {
+                                            let sopBanner;
+                                            if (sopCompleted) {
+                                                sopBanner = h('div', {
+                                                    className: 'mt-4 p-4 flex-column items-center justify-center cursor-pointer transition',
+                                                    style: { 
+                                                        background: 'linear-gradient(135deg, var(--success) 0%, #10b981 100%)', 
+                                                        borderRadius: '12px', color: '#fff',
+                                                        boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)', border: '1px solid rgba(255,255,255,0.15)',
+                                                        transform: 'translateY(0)'
+                                                    },
+                                                    onMouseEnter: (e) => { e.currentTarget.style.transform = 'translateY(-2px)'; },
+                                                    onMouseLeave: (e) => { e.currentTarget.style.transform = 'translateY(0)'; }
+                                                }, [
+                                                    icon('check-circle', 32, 'mb-2'),
+                                                    h('span', { className: 'font-bold text-sm tracking-wide uppercase', style: { textShadow: '0 2px 4px rgba(0,0,0,0.2)' } }, `✅ SOP COMPLETADO: ${sopObj.title}`),
+                                                    h('span', { className: 'text-xs opacity-90 mt-1 text-center font-medium max-w-sm' }, 'Todos los pasos han sido verificados. Puedes proceder a cobrar.')
+                                                ]);
+                                            } else {
+                                                sopBanner = h('div', {
+                                                    className: 'mt-4 p-4 flex-column items-center justify-center cursor-pointer transition',
+                                                    style: { 
+                                                        background: 'linear-gradient(135deg, var(--accent) 0%, #8a2be2 100%)', 
+                                                        borderRadius: '12px', color: '#fff',
+                                                        boxShadow: '0 8px 24px rgba(var(--accent-rgb), 0.25)', border: '1px solid rgba(255,255,255,0.15)',
+                                                        transform: 'translateY(0)'
+                                                    },
+                                                    onMouseEnter: (e) => { e.currentTarget.style.transform = 'translateY(-2px)'; },
+                                                    onMouseLeave: (e) => { e.currentTarget.style.transform = 'translateY(0)'; },
+                                                    onClick: () => openSopViewerModal(sopObj, asg, sopSub, loadAndRender)
+                                                }, [
+                                                    icon('clipboard-list', 32, 'mb-2'),
+                                                    h('span', { className: 'font-bold text-sm tracking-wide uppercase', style: { textShadow: '0 2px 4px rgba(0,0,0,0.2)' } }, `🔥 LLENAR SOP OBLIGATORIO: ${sopObj.title}`),
+                                                    h('span', { className: 'text-xs opacity-90 mt-1 text-center font-medium max-w-sm' }, 'Haz clic aquí para abrir tu lista de verificación y entregar los enlaces o archivos requeridos.')
+                                                ]);
+                                            }
+                                            bodyContent.push(sopBanner);
+                                        }
+
+                                        return h('div', { className: 'flex-column' }, bodyContent);
                                     }
 
                                     if (hasSop && sopObj && !sopCompleted) {
@@ -393,10 +432,115 @@ export const render = async () => {
                 h('div', { className: 'flex gap-2' }, [
                     h('button', { 
                         className: 'btn btn-primary text-xs',
-                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
+                        style: { background: 'var(--success)', borderColor: 'var(--success)' },
+                        onClick: () => openMasterPipelineModal({ users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [], rates: rates || [] })
+                    }, [icon('git-commit', 14), h('span', {}, 'Asignación Maestra')]),
+                    h('button', { 
+                        className: 'btn btn-primary text-xs',
+                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [], rates: rates || [] })
                     }, [icon('plus', 14), h('span', {}, 'Nueva Asignación')])
                 ])
             ]);
+
+            // Master Pipeline Board
+            const renderMasterPipelines = () => {
+                // Group assignments by projectId
+                const pipelines = {};
+                assignments.forEach(asg => {
+                    if (asg.projectId && asg.status !== 'blocked') {
+                        // wait, we need 'blocked' ones too to show the full pipeline!
+                    }
+                    if (asg.projectId) {
+                        if (!pipelines[asg.projectId]) pipelines[asg.projectId] = [];
+                        pipelines[asg.projectId].push(asg);
+                    }
+                });
+
+                const pipelineIds = Object.keys(pipelines);
+                if (pipelineIds.length === 0) return null;
+
+                return h('div', { className: 'flex-column gap-3 mb-6' }, [
+                    h('h3', { className: 'text-sm font-bold flex items-center gap-2 m-0 text-success' }, [
+                        icon('git-merge', 16),
+                        h('span', {}, 'Procesos Maestros Activos')
+                    ]),
+                    h('div', { className: 'grid gap-3', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' } }, 
+                        pipelineIds.map(pid => {
+                            const tasks = pipelines[pid].sort((a, b) => a.stageIndex - b.stageIndex);
+                            const title = tasks[0]?.title.replace('[Grabación] ', '').replace('[Edición] ', '') || pid;
+                            
+                            // Check overall completion
+                            const allDone = tasks.every(t => t.status === 'Completado');
+                            
+                            return h('div', { 
+                                className: 'card p-3 flex-column gap-3 relative overflow-hidden',
+                                style: { 
+                                    borderLeft: `4px solid ${allDone ? 'var(--success)' : 'var(--accent)'}`,
+                                    opacity: allDone ? '0.7' : '1'
+                                }
+                            }, [
+                                h('div', { className: 'flex justify-between items-start' }, [
+                                    h('div', { className: 'flex-column' }, [
+                                        h('span', { className: 'font-bold text-xs', style: { wordBreak: 'break-all' } }, title),
+                                        h('span', { className: 'text-[10px] text-muted' }, `ID: ${pid}`)
+                                    ]),
+                                    allDone ? h('span', { className: 'badge badge-success text-[10px]' }, 'Finalizado') : null
+                                ]),
+                                h('div', { className: 'flex items-center w-full gap-2 relative' }, [
+                                    // Connecting line
+                                    h('div', { 
+                                        className: 'absolute', 
+                                        style: { height: '2px', background: 'var(--border)', top: '12px', left: '20px', right: '20px', zIndex: 1 } 
+                                    }),
+                                    ...tasks.map((t, idx) => {
+                                        const isDone = t.status === 'Completado';
+                                        const isBlocked = t.status === 'blocked';
+                                        const isActive = t.status === 'En Proceso' || t.status === 'Pendiente';
+                                        
+                                        const emp = approvedUsers.find(u => u.uid === t.employeeId);
+                                        const avatarUrl = emp?.photoURL;
+                                        
+                                        let bubbleColor = 'var(--bg-tertiary)';
+                                        let borderColor = 'var(--border)';
+                                        let textColor = 'var(--text-muted)';
+                                        
+                                        if (isDone) {
+                                            bubbleColor = 'rgba(var(--success-rgb), 0.1)';
+                                            borderColor = 'var(--success)';
+                                            textColor = 'var(--success)';
+                                        } else if (isActive && !isBlocked) {
+                                            bubbleColor = 'rgba(var(--accent-rgb), 0.1)';
+                                            borderColor = 'var(--accent)';
+                                            textColor = 'var(--accent)';
+                                        }
+                                        
+                                        return h('div', { 
+                                            className: 'flex-column items-center gap-1 flex-1 relative', 
+                                            style: { zIndex: 2 } 
+                                        }, [
+                                            h('div', { 
+                                                className: 'flex items-center justify-center rounded-full',
+                                                style: { 
+                                                    width: '24px', height: '24px', 
+                                                    background: bubbleColor, border: `2px solid ${borderColor}`,
+                                                    color: textColor
+                                                }
+                                            }, [
+                                                isDone ? icon('check', 12) : isBlocked ? icon('lock', 12) : icon('clock', 12)
+                                            ]),
+                                            h('span', { className: 'text-[9px] font-bold mt-1 text-center', style: { color: textColor } }, t.type),
+                                            h('span', { className: 'text-[9px] text-muted text-center', style: { maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, emp ? (emp.nombre || emp.email.split('@')[0]) : '?')
+                                        ]);
+                                    })
+                                ])
+                            ]);
+                        })
+                    )
+                ]);
+            };
+
+            const pipelineBoard = renderMasterPipelines();
+            if (pipelineBoard) container.appendChild(pipelineBoard);
 
             // Kanban Board for Admin
             const statuses = ['Pendiente', 'En Proceso', 'Completado'];
@@ -641,6 +785,14 @@ export const render = async () => {
                 linkedAsset: form.querySelector('#asg-link-asset').value,
                 sopId: form.querySelector('#asg-sop')?.value || null
             };
+            
+            const rateVal = form.querySelector('#asg-rate')?.value;
+            if (rateVal) {
+                formData.billing = {
+                    rateCardId: rateVal !== 'custom' ? rateVal : null,
+                    customPrice: rateVal === 'custom' ? Number(prompt("Ingresa el Precio Personalizado ($):", existing?.billing?.customPrice || 0)) || 0 : null
+                };
+            }
 
             try {
                 await assignmentService.saveAssignment(formData);
@@ -760,9 +912,19 @@ export const render = async () => {
                     h('label', { className: 'form-label' }, 'Título del Trabajo'),
                     h('input', { id: 'asg-title', className: 'form-input', value: existing?.title || '', placeholder: 'Ej. Edición Reel Villagrande', required: true })
                 ]),
-                h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Fecha Límite'),
-                    h('input', { id: 'asg-due', type: 'datetime-local', className: 'form-input', value: existing?.dueDate ? existing.dueDate.slice(0, 16) : '', required: true })
+                h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Fecha Límite'),
+                        h('input', { id: 'asg-due', type: 'datetime-local', className: 'form-input', value: existing?.dueDate ? existing.dueDate.slice(0, 16) : '', required: true })
+                    ]),
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Tarifa / Pago Base'),
+                        h('select', { id: 'asg-rate', className: 'form-select text-xs', required: true }, [
+                            h('option', { value: '' }, '-- Selecciona Tarifa --'),
+                            ...(context.rates || []).map(r => h('option', { value: r.id, selected: existing?.billing?.rateCardId === r.id }, `${r.name} ($${r.basePrice})`)),
+                            h('option', { value: 'custom', selected: existing?.billing?.customPrice !== undefined }, 'Precio Personalizado')
+                        ])
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label text-error font-bold' }, 'Guía / Observaciones (Obligatorio, mín. 5 palabras)'),
@@ -867,7 +1029,61 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
         await dbService.set('sop_submissions', subId, submissionData);
 
         if (isAllDone) {
-            await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
+            // 1. Marcar completado
+            const completedAsg = { ...asg, status: 'Completado', billed: true };
+            await assignmentService.saveAssignment(completedAsg);
+
+            // 2. Auto-Facturación (Tarifa dinámica o manual)
+            try {
+                // Determine rate
+                let billingAmount = asg.billing?.customPrice || 0;
+                if (!billingAmount && asg.billing?.rateCardId) {
+                    const rates = await invoiceService.getRateCards();
+                    const rate = rates.find(r => r.id === asg.billing.rateCardId);
+                    if (rate) {
+                        billingAmount = rate.rateType === 'per_minute' && asg.billing.minutes
+                            ? rate.basePrice * asg.billing.minutes
+                            : rate.basePrice;
+                    }
+                }
+
+                if (billingAmount > 0) {
+                    const invoiceItem = {
+                        assignmentId: asg.id,
+                        employeeName: user.name || user.email,
+                        amount: billingAmount,
+                        description: `[Auto-facturado] ${asg.title}`,
+                        date: new Date().toISOString().split('T')[0]
+                    };
+                    // Employee invoice
+                    await invoiceService.autoBilledItem(user.uid, false, invoiceItem);
+                    // Admin consolidated invoice
+                    await invoiceService.autoBilledItem(user.uid, true, invoiceItem);
+                }
+            } catch (err) {
+                console.error("Error auto-facturando:", err);
+            }
+
+            // 3. Asignación Maestra Trigger (Si es Fase 1 de un Pipeline)
+            if (asg.projectId && asg.stageIndex === 0) {
+                const allAsgs = await assignmentService.getAllAssignments();
+                const nextPhase = allAsgs.find(a => a.projectId === asg.projectId && a.stageIndex === 1);
+                
+                if (nextPhase) {
+                    // Extraer enlace de drive del SOP actual (buscando el campo 'link')
+                    const driveLinkStep = stepsData.find((s, idx) => sop.steps[idx].type === 'link');
+                    const driveLink = driveLinkStep ? driveLinkStep.userValue : '';
+                    
+                    const descMsg = `\n\n--- Traspaso de Pipeline ---\nMaterial de Grabación: ${driveLink}`;
+                    
+                    await assignmentService.saveAssignment({
+                        ...nextPhase,
+                        status: 'Pendiente', // Unlock it
+                        description: (nextPhase.description || '') + descMsg
+                    });
+                }
+            }
+
             overlay.remove();
             reload();
         } else {
@@ -880,15 +1096,36 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
         stepsContainer.innerHTML = '';
         sop.steps.forEach((step, idx) => {
             const subData = stepsData[idx] || { done: false, userValue: '' };
+            const msg = encodeURIComponent(`🚨 *SOS - Tarea Atascada*\n*Cliente:* ${asg?.client || 'N/A'}\n*Paso:* ${step.text}\n*Necesito ayuda con:* `);
+            const adminPhone = "573000000000"; // Se puede cambiar después a config.adminPhone
+            const waLink = `https://wa.me/${adminPhone}?text=${msg}`;
+
             const row = h('div', { className: 'card p-3 flex-column gap-2', style: { border: '1px solid var(--border)' } }, [
-                h('div', { className: 'flex gap-2 items-start' }, [
-                    h('input', {
-                        type: 'checkbox',
-                        checked: subData.done,
-                        style: { marginTop: '3px' },
-                        onChange: (e) => updateStep(idx, e.target.checked, subData.userValue)
-                    }),
-                    h('span', { className: 'text-xs', style: { textDecoration: subData.done ? 'line-through' : 'none', opacity: subData.done ? 0.6 : 1 } }, step.text)
+                h('div', { className: 'flex justify-between items-start gap-2 w-full' }, [
+                    h('div', { className: 'flex gap-2 items-start' }, [
+                        h('input', {
+                            type: 'checkbox',
+                            checked: subData.done,
+                            style: { marginTop: '3px' },
+                            onChange: (e) => updateStep(idx, e.target.checked, subData.userValue)
+                        }),
+                        h('span', { className: 'text-xs font-medium', style: { textDecoration: subData.done ? 'line-through' : 'none', opacity: subData.done ? 0.6 : 1 } }, step.text)
+                    ]),
+                    // Botón SOS WhatsApp
+                    asg ? h('a', {
+                        href: waLink,
+                        target: '_blank',
+                        className: 'btn text-[10px] flex items-center gap-1 font-bold transition hover-opacity',
+                        style: { 
+                            padding: '3px 8px', 
+                            backgroundColor: 'rgba(37, 211, 102, 0.1)', 
+                            color: '#25D366', 
+                            border: '1px solid rgba(37, 211, 102, 0.3)',
+                            borderRadius: '12px',
+                            textDecoration: 'none'
+                        },
+                        title: 'Contactar al Jefe por WhatsApp'
+                    }, [icon('message-circle', 12), h('span', {}, 'SOS')]) : null
                 ]),
                 step.type === 'link' || step.type === 'text' ? h('input', {
                     type: 'text',
@@ -1004,8 +1241,139 @@ function openBillingModal(asg, callback) {
     if (window.lucide) window.lucide.createIcons();
     
     // Focus first input
-    setTimeout(() => {
-        if (isRecording) minsInput.focus();
-        else genericPriceInput.focus();
     }, 100);
+}
+
+export function openMasterPipelineModal(context = {}) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay fade-in';
+    overlay.style.zIndex = '1000';
+    
+    const submit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Creando...";
+        
+        const data = {
+            title: form.querySelector('#mp-title').value,
+            client: form.querySelector('#mp-client').value,
+            description: form.querySelector('#mp-desc').value,
+            dueDate: form.querySelector('#mp-due').value,
+            camarografoId: form.querySelector('#mp-cam').value,
+            editorId: form.querySelector('#mp-ed').value,
+            sopCamarografoId: form.querySelector('#mp-sop-cam').value || null,
+            sopEditorId: form.querySelector('#mp-sop-ed').value || null,
+            linkedScript: form.querySelector('#mp-script').value || '',
+            linkedAsset: form.querySelector('#mp-asset').value || '',
+            createdBy: 'admin',
+            // Billing payload for both phases will be identical or handled separately.
+            // For now, let's just pass rate cards if needed or we can enhance this later.
+        };
+        
+        try {
+            // dynamic import assignmentService to avoid scope issues
+            const { assignmentService } = await import('../services/assignmentService.js');
+            await assignmentService.createMasterPipeline(data);
+            overlay.remove();
+            // Assuming location.reload is the simplest way to reload if we don't have loadAndRender in scope here
+            window.location.reload(); 
+        } catch(err) {
+            alert('Error creating pipeline: ' + err.message);
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Crear Pipeline";
+        }
+    };
+
+    const usersHtml = (context.users || []).map(u => `<option value="${u.uid}">${u.nombre || u.email}</option>`).join('');
+    const clientsHtml = (context.clients || []).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    const sopsHtml = (context.sops || []).map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+    const scriptsHtml = (context.scripts || []).map(s => `<option value="${s.script}">[${s.client}] ${s.title}</option>`).join('');
+    const assetsHtml = (context.assets || []).map(a => `<option value="${a.url || a.thumbnail}">[${a.client}] ${a.title}</option>`).join('');
+
+    const modalHTML = `
+        <form class="modal-container" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--success), #10b981); color: white;">
+                <span class="modal-title font-bold">🚀 Nueva Asignación Maestra (Pipeline)</span>
+                <button type="button" class="close-btn" style="color:white; background:none; border:none; font-size:1.5rem; cursor:pointer;">×</button>
+            </div>
+            <div class="modal-body grid gap-4" style="grid-template-columns: 1fr 1fr;">
+                
+                <!-- Columna Izquierda: Detalles Generales -->
+                <div class="flex-column gap-3" style="border-right: 1px solid var(--border); padding-right: 1rem;">
+                    <h3 class="text-sm font-bold text-accent">1. Detalles del Proyecto</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Título del Proyecto</label>
+                        <input type="text" id="mp-title" class="form-input" required placeholder="Ej. Reel de Verano Villagrande">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cliente</label>
+                        <select id="mp-client" class="form-select text-xs" required>${clientsHtml}</select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Guion (Script)</label>
+                        <select id="mp-script" class="form-select text-xs"><option value="">-- Sin Guion --</option>${scriptsHtml}</select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Asset (Galería)</label>
+                        <select id="mp-asset" class="form-select text-xs"><option value="">-- Sin Asset --</option>${assetsHtml}</select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción Global (Instrucciones)</label>
+                        <textarea id="mp-desc" class="form-textarea text-xs" rows="4" required placeholder="Instrucciones que verán ambos..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha Límite Final (Editor)</label>
+                        <input type="date" id="mp-due" class="form-input" required>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: El Equipo -->
+                <div class="flex-column gap-3" style="padding-left: 0.5rem;">
+                    <h3 class="text-sm font-bold text-success">2. Equipo de Trabajo</h3>
+                    
+                    <div class="card p-3" style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent);">
+                        <h4 class="text-xs font-bold mb-2">Fase 1: Grabación</h4>
+                        <div class="form-group mb-2">
+                            <label class="form-label text-[10px]">Camarógrafo</label>
+                            <select id="mp-cam" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label text-[10px]">SOP Obligatorio</label>
+                            <select id="mp-sop-cam" class="form-select text-xs" required><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                        </div>
+                    </div>
+
+                    <div class="text-center text-muted" style="font-size: 1.2rem;">↓</div>
+
+                    <div class="card p-3" style="background: rgba(var(--info-rgb), 0.05); border: 1px solid var(--info);">
+                        <h4 class="text-xs font-bold mb-2">Fase 2: Edición (Se desbloquea al terminar Fase 1)</h4>
+                        <div class="form-group mb-2">
+                            <label class="form-label text-[10px]">Editor</label>
+                            <select id="mp-ed" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label text-[10px]">SOP Obligatorio</label>
+                            <select id="mp-sop-ed" class="form-select text-xs" required><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline text-xs close-btn-footer">Cancelar</button>
+                <button type="submit" class="btn btn-primary text-xs" style="background: var(--success); border-color: var(--success);">Crear Pipeline</button>
+            </div>
+        </form>
+    `;
+    
+    overlay.innerHTML = modalHTML;
+    
+    overlay.querySelector('.close-btn').onclick = () => overlay.remove();
+    overlay.querySelector('.close-btn-footer').onclick = () => overlay.remove();
+    overlay.querySelector('form').onsubmit = submit;
+    
+    document.body.appendChild(overlay);
 }

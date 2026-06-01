@@ -2,9 +2,69 @@
  * Invoice Service - Creative Production OS
  * Handles single invoice operational tracking: Employee Invoice (emp-inv-{userId}) and Admin Invoice (adm-inv-{userId}).
  */
-import { dbService } from '../firebase/service.js';
+import { dbService, db, doc, updateDoc, arrayUnion, increment } from '../firebase/service.js';
 
 export const invoiceService = {
+    // --- Rate Cards Methods ---
+    async getRateCards() {
+        try {
+            return await dbService.getAll('rate_cards') || [];
+        } catch (err) {
+            console.warn("Error fetching rate cards:", err);
+            return [];
+        }
+    },
+    async saveRateCard(data) {
+        const id = data.id || `rate-${crypto.randomUUID().split('-')[0]}`;
+        await dbService.set('rate_cards', id, { id, ...data });
+        return id;
+    },
+    async deleteRateCard(id) {
+        await dbService.delete('rate_cards', id);
+    },
+
+    // --- Auto-Billing Atomic Engine ---
+    async autoBilledItem(userId, isAdminInvoice, invoiceItem) {
+        const collectionName = isAdminInvoice ? 'admin_invoices' : 'invoices';
+        const docPrefix = isAdminInvoice ? 'adm-inv-' : 'emp-inv-';
+        const docId = `${docPrefix}${userId}`;
+        
+        // Anti-Fraud: Math constraints
+        const amount = Math.max(0, Math.round(Number(invoiceItem.amount) || 0));
+        invoiceItem.amount = amount;
+        invoiceItem.autoBilled = true;
+        invoiceItem.timestamp = new Date().toISOString();
+
+        try {
+            const docRef = doc(db, collectionName, docId);
+            await updateDoc(docRef, {
+                items: arrayUnion(invoiceItem),
+                amount: increment(amount),
+                updatedAt: new Date().toISOString()
+            });
+        } catch (err) {
+            // If doc doesn't exist, create it first
+            if (err.code === 'not-found') {
+                console.log(`Invoice ${docId} not found, creating baseline...`);
+                const baseline = {
+                    id: docId,
+                    employeeId: userId,
+                    employeeName: invoiceItem.employeeName || 'Empleado',
+                    type: isAdminInvoice ? 'Factura Consolidada' : 'Factura por Servicios',
+                    client: '',
+                    amount: amount,
+                    observations: '',
+                    items: [invoiceItem],
+                    createdAt: new Date().toISOString(),
+                    status: 'Pendiente'
+                };
+                await dbService.set(collectionName, docId, baseline);
+            } else {
+                console.error("Atomic auto-billing failed:", err);
+                throw err;
+            }
+        }
+    },
     // Get an employee's reported invoice
     async getEmployeeInvoice(userId) {
         try {
