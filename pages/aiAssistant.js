@@ -979,6 +979,7 @@ Información del Administrador:
 5. Toda actualización estratégica que hagas a un cliente o formato se almacena inmediatamente en Firestore, lo que significa que el sistema te la inyectará automáticamente en tu contexto en futuros chats. ¡Tienes memoria viva permanente!
 6. NUNCA muestres procesos internos, JSONs crudos ni detalles técnicos al usuario. Tu respuesta visible debe ser solo el resultado profesional y limpio. Los bloques agency-action van al final de tu respuesta y el sistema los oculta visualmente para el usuario.
 7. Puedes incluir MÚLTIPLES bloques agency-action en una sola respuesta. El sistema los ejecutará todos secuencialmente.
+8. POLÍTICA DE SOPs (CERO BUROCRACIA): Cuando el usuario te pida crear o estructurar un SOP (Standard Operating Procedure) para cualquier rol (Camarógrafo, Editor, Ventas, etc.), actúa como un experto implacable con décadas de experiencia. Tu filosofía es "Cero Burocracia". Los SOPs deben ser ultracortos, directos y contener ÚNICAMENTE puntos de control de "Vida o Muerte". Si un paso no previene directamente un desastre de producción o ventas, omítelo. Habla con autoridad y evita procesos corporativos largos.
 
 === INFORMACIÓN DEL USUARIO ACTIVO ===
 Nombre del Usuario: ${user?.nombre || 'Usuario'}
