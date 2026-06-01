@@ -68,10 +68,10 @@ export const render = async () => {
                             let newVisits = currentVisits + 1;
                             
                             if (newVisits >= 10) {
-                                // Give Bonus!
-                                const bonusAmountStr = prompt("¡Felicidades! Llegaste a 10 visitas. Ingresa el monto del bono a cobrar:", "1000");
-                                if (bonusAmountStr !== null) {
-                                    const bonusAmount = Number(bonusAmountStr.replace(/[^0-9.-]+/g,"")) || 0;
+                                // Give fixed bonus
+                                const confirmBonus = confirm("¡Felicidades! Llegaste a 10 visitas. Se acreditará un bono de $50,000 COP a tu liquidación.");
+                                if (confirmBonus) {
+                                    const bonusAmount = 50000;
                                     
                                     let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
                                     if (!currentInv) currentInv = { items: [] };
@@ -88,17 +88,27 @@ export const render = async () => {
                                     currentInv.amount = currentInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
                                     
                                     await invoiceService.saveEmployeeInvoice(user.uid, currentInv);
+                                    
+                                    // Save user ONLY if invoice succeeded
+                                    await dbService.update('users', user.uid, { marketingVisits: 0 });
                                     alert("¡Bono agregado a tu factura!");
-                                    newVisits = 0; // Reset
+                                    
+                                    currentVisits = 0;
+                                    visitsPanel.querySelector('.text-3xl').textContent = `0 / 10`;
+                                    btn.disabled = false;
+                                    return; // early exit
                                 } else {
-                                    // User cancelled the prompt, so don't increment to 10 yet
-                                    newVisits = currentVisits;
+                                    // Cancelled, don't update anything
+                                    btn.disabled = false;
+                                    return;
                                 }
                             }
                             
-                            // Save user
+                            // Normal visit without bonus
                             await dbService.update('users', user.uid, { marketingVisits: newVisits });
-                            loadData(); // Reload UI
+                            currentVisits = newVisits;
+                            visitsPanel.querySelector('.text-3xl').textContent = `${currentVisits} / 10`;
+                            btn.disabled = false;
                         } catch (err) {
                             console.error(err);
                             alert("Error al registrar la visita.");

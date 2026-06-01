@@ -6,8 +6,6 @@
 import { dbService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 
-let localUsers = [];
-
 export const userService = {
     async getAllUsers() {
         try {
@@ -43,12 +41,6 @@ export const userService = {
         } catch (err) {
             console.warn("Simulated user approval offline:", err);
         }
-
-        const idx = localUsers.findIndex(u => u.uid === uid);
-        if (idx >= 0) {
-            localUsers[idx].approved = true;
-            localUsers[idx].role = assignedRole || 'editor';
-        }
     },
 
     async delegateAdminRole(targetUid, currentUid) {
@@ -70,13 +62,6 @@ export const userService = {
             console.warn("Offline admin handover simulation:", err);
             alert("Simulación offline: Título cedido.");
         }
-        
-        // Update local cache if present
-        const tIdx = localUsers.findIndex(u => u.uid === targetUid);
-        if (tIdx >= 0) { localUsers[tIdx].approved = true; localUsers[tIdx].role = 'admin'; }
-        
-        const cIdx = localUsers.findIndex(u => u.uid === currentUid);
-        if (cIdx >= 0) { localUsers[cIdx].role = 'editor'; }
     },
 
     async rejectUser(uid) {
@@ -85,17 +70,5 @@ export const userService = {
         } catch (err) {
             console.warn("Simulated user rejection offline:", err);
         }
-
-        localUsers = localUsers.filter(u => u.uid !== uid);
-    },
-
-    async promoteAllPendingToAdmin() {
-        const pending = await this.getPendingUsers();
-        if (!pending.length) return 0;
-        
-        for (const user of pending) {
-            await this.approveUser(user.uid, 'admin');
-        }
-        return pending.length;
     }
 };
