@@ -881,7 +881,8 @@ function openUserPhoneModal(user, reload) {
     const submit = async (e) => {
         e.preventDefault();
         const input = form.querySelector('#modal-user-phone');
-        const phone = input?.value?.trim();
+        let phone = input?.value?.trim() || '';
+        phone = phone.replace(/\+/g, '').replace(/\s+/g, '');
         if (!phone) {
             alert('Ingresa el número de WhatsApp.');
             return;
