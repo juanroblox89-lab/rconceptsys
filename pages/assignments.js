@@ -463,7 +463,13 @@ export const render = async () => {
                                             className: 'flex-column items-center gap-1 flex-1 relative cursor-pointer', 
                                             style: { zIndex: 2 },
                                             title: `Ver detalles de ${t.title}`,
-                                            onClick: () => openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
+                                            onClick: () => {
+                                                if(isDone) {
+                                                    alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
+                                                    return;
+                                                }
+                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] });
+                                            }
                                         }, [
                                             h('div', { 
                                                 className: 'flex items-center justify-center rounded-full',
@@ -533,7 +539,13 @@ export const render = async () => {
                             
                             return h('div', { 
                                 className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
-                                onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
+                                onClick: () => {
+                                    if(asg.status === 'Completado') {
+                                        alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
+                                        return;
+                                    }
+                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] });
+                                }
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [
                                     h('div', { className: 'text-sm font-bold mb-0 pr-2', style: { wordBreak: 'break-all' } }, displayTitle),
@@ -1499,7 +1511,7 @@ export function openEditPipelineModal(pid, tasks, context = {}) {
                                         <span class="badge badge-info text-[10px] mb-1">Fase ${t.stageIndex + 1} • ${t.type}</span>
                                         <h4 class="text-xs font-bold text-primary" style="margin: 0">${t.title}</h4>
                                     </div>
-                                    <button type="button" class="btn btn-outline text-xs edit-task-btn" data-task-id="${t.id}" style="padding: 4px 8px;">
+                                    <button type="button" class="btn btn-outline text-xs edit-task-btn" data-task-id="${t.id}" style="padding: 4px 8px;" ${t.status === 'Completado' ? 'disabled title="Las tareas completadas no se pueden editar"' : ''}>
                                         Editar Tarea
                                     </button>
                                 </div>

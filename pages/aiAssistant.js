@@ -130,6 +130,38 @@ Cuando el usuario te entregue mucha información o copies de marcas:
                     await dbService.set('system_rules', rule.id, rule);
                 }
                 systemRules = defaultRules;
+            } else if (user?.role === 'admin' && !systemRules.find(r => r.id === 'os_manual')) {
+                const manualRule = {
+                    id: 'os_manual',
+                    title: 'Manual de Usuario del Sistema Operativo',
+                    content: `=== MANUAL DE USO PARA LOS USUARIOS DE LA PLATAFORMA ===
+Cuando un usuario te pregunte cómo funciona algo en la plataforma, guíate estrictamente por estas reglas:
+
+1. WORKFLOW Y PIPELINES:
+- Todo se trabaja en "Pipelines". Un Pipeline es un conjunto de tareas conectadas (Ej: Grabación -> Edición -> Subida).
+- Solo el "Admin" puede crear un Pipeline Maestro.
+- Cuando una fase (ej. Grabación) termina, la siguiente (ej. Edición) se desbloquea automáticamente.
+
+2. SOPs (GUÍAS DE TRABAJO):
+- Los SOPs (Standard Operating Procedures) ahora son OPCIONALES. Se pueden asignar al crear un Pipeline, pero si no se asignan, el empleado puede completar la tarea directamente.
+
+3. COMPLETAR TAREAS:
+- Para terminar una tarea, el usuario debe hacer clic en "Entregar y Completar".
+- Se le pedirá obligatoriamente el enlace del Entregable (Link de Drive, Frame.io, etc).
+- Si la tarea fue configurada con pago adicional o por minuto, aparecerá la ventana de liquidación de cobro. Al confirmar, la tarea pasa a Completada y se auto-factura.
+- IMPORTANTE: Las tareas Completadas NO se pueden editar para proteger la contabilidad. Si hubo un error, el Admin debe borrarla o el usuario debe informarle.
+
+4. FACTURACIÓN Y ELIMINACIÓN:
+- La facturación es automática al completar la tarea.
+- Si el Admin borra un proyecto o tarea desde el panel de control (usando la "Zona de Peligro"), se borrarán también todas las facturas y SOPs asociados a ella de forma automática (Eliminación en Cascada).
+
+5. ROLES DEL SISTEMA:
+Los roles base oficiales son 7: Camarógrafo, Editor de Video, Creador 360° (Camarógrafo + Editor), Publicador / Uploader, Estratega Creativo, Diseñador Gráfico, y Administración Digital.
+Si al Admin le faltan estos roles, puede ir a 'Administración' > 'Roles de Producción' y dar clic en 'Actualizar Roles Base'.`,
+                    updatedAt: new Date().toISOString()
+                };
+                await dbService.set('system_rules', 'os_manual', manualRule);
+                systemRules.push(manualRule);
             }
 
             // Ensure our default clients have formatted IDs & initial formats/hooks setup if they don't have them
