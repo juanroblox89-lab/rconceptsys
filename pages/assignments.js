@@ -1241,6 +1241,9 @@ function openBillingModal(asg, callback) {
     if (window.lucide) window.lucide.createIcons();
     
     // Focus first input
+    setTimeout(() => {
+        const firstInput = overlay.querySelector('input');
+        if (firstInput) firstInput.focus();
     }, 100);
 }
 
