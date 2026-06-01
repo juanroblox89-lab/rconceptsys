@@ -78,7 +78,7 @@ export const render = () => {
                         return h('tr', { key: idx, className: 'border-bottom hover-bg-tertiary transition' }, [
                             
                             // 1. Service select/input
-                            isEditable ? h('td', { className: 'p-2' }, [
+                            isEditable ? h('td', { className: 'p-2', 'data-label': 'Servicio Realizado' }, [
                                 h('select', { 
                                     className: 'form-select text-xs w-full bg-tertiary',
                                     onChange: (e) => { item.type = e.target.value; }
@@ -87,10 +87,10 @@ export const render = () => {
                                     h('option', { value: 'Factura de Grabación de Video', selected: item.type === 'Factura de Grabación de Video' }, 'Factura de Grabación de Video'),
                                     h('option', { value: 'Factura Consolidada', selected: item.type === 'Factura Consolidada' }, 'Factura Consolidada')
                                 ])
-                            ]) : h('td', { className: 'p-3 text-primary' }, item.type || 'N/A'),
+                            ]) : h('td', { className: 'p-3 text-primary', 'data-label': 'Servicio Realizado' }, item.type || 'N/A'),
 
                             // 2. Client select/input
-                            isEditable ? h('td', { className: 'p-2' }, [
+                            isEditable ? h('td', { className: 'p-2', 'data-label': 'Cliente / Proyecto' }, [
                                 h('select', { 
                                     className: 'form-select text-xs w-full bg-tertiary',
                                     onChange: (e) => { item.client = e.target.value; }
@@ -98,10 +98,10 @@ export const render = () => {
                                     h('option', { value: 'General' }, '🌍 General / Otro'),
                                     ...clientsList.map(c => h('option', { value: c.nombre || c.name || c.id, selected: item.client === (c.nombre || c.name || c.id) }, c.nombre || c.name))
                                 ])
-                            ]) : h('td', { className: 'p-3 text-primary' }, item.client || 'N/A'),
+                            ]) : h('td', { className: 'p-3 text-primary', 'data-label': 'Cliente / Proyecto' }, item.client || 'N/A'),
 
                             // 3. Amount input/text
-                            isEditable ? h('td', { className: 'p-2' }, [
+                            isEditable ? h('td', { className: 'p-2', 'data-label': 'Monto (COP)' }, [
                                 h('input', { 
                                     type: 'number',
                                     className: 'form-input text-xs w-full font-bold bg-tertiary text-primary',
@@ -116,15 +116,15 @@ export const render = () => {
                                         }
                                     }
                                 })
-                            ]) : h('td', { className: 'p-3 font-bold text-primary' }, `COP ${(item.amount || 0).toLocaleString()}`),
+                            ]) : h('td', { className: 'p-3 font-bold text-primary', 'data-label': 'Monto (COP)' }, `COP ${(item.amount || 0).toLocaleString()}`),
 
                             // 4. Date (Always auto-calculated or stored)
-                            h('td', { className: 'p-3 text-muted' }, 
+                            h('td', { className: 'p-3 text-muted', 'data-label': 'Fecha' }, 
                                 item.createdAt ? new Date(item.createdAt).toLocaleDateString() : new Date().toLocaleDateString()
                             ),
 
                             // 5. Observations input/text
-                            isEditable ? h('td', { className: 'p-2' }, [
+                            isEditable ? h('td', { className: 'p-2', 'data-label': 'Observaciones' }, [
                                 h('input', { 
                                     type: 'text',
                                     className: 'form-input text-xs w-full bg-tertiary',
@@ -132,10 +132,10 @@ export const render = () => {
                                     placeholder: 'Ej: Cantidad de piezas, links de entrega...',
                                     onInput: (e) => { item.observations = e.target.value; }
                                 })
-                            ]) : h('td', { className: 'p-3 text-secondary' }, item.observations || 'Sin observaciones.'),
+                            ]) : h('td', { className: 'p-3 text-secondary', 'data-label': 'Observaciones' }, item.observations || 'Sin observaciones.'),
 
                             // 6. Delete row action
-                            isEditable ? h('td', { className: 'p-2 text-center' }, [
+                            isEditable ? h('td', { className: 'p-2 text-center', 'data-label': 'Acciones' }, [
                                 h('button', { 
                                     type: 'button',
                                     className: 'btn btn-outline text-xs p-1 hover-bg-tertiary border-radius-sm text-error',
