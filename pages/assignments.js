@@ -567,6 +567,7 @@ export const render = async () => {
 
     const openAssignmentModal = (existing = null, context = {}) => {
         const overlay = h('div', { className: 'modal-overlay', style: { zIndex: 1000 } });
+        let form;
         const showMiniModal = (title, fields, onSubmit) => {
             const miniOverlay = document.createElement('div');
             miniOverlay.className = 'modal-overlay';
@@ -1377,8 +1378,8 @@ export function openMasterPipelineModal(context = {}) {
                             <select id="mp-cam" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label text-[10px]">SOP Obligatorio</label>
-                            <select id="mp-sop-cam" class="form-select text-xs" required><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                            <label class="form-label text-[10px]">SOP Recomendado (Opcional)</label>
+                            <select id="mp-sop-cam" class="form-select text-xs"><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
                         </div>
                     </div>
 
@@ -1391,8 +1392,8 @@ export function openMasterPipelineModal(context = {}) {
                             <select id="mp-ed" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label text-[10px]">SOP Obligatorio</label>
-                            <select id="mp-sop-ed" class="form-select text-xs" required><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                            <label class="form-label text-[10px]">SOP Recomendado (Opcional)</label>
+                            <select id="mp-sop-ed" class="form-select text-xs"><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
                         </div>
                     </div>
                     
@@ -1409,8 +1410,8 @@ export function openMasterPipelineModal(context = {}) {
                             <input type="text" id="mp-up-link" class="form-input text-xs" placeholder="Ej. Link de TikTok, Google Drive, etc." required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label text-[10px]">SOP Obligatorio</label>
-                            <select id="mp-sop-up" class="form-select text-xs" required><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                            <label class="form-label text-[10px]">SOP Recomendado (Opcional)</label>
+                            <select id="mp-sop-up" class="form-select text-xs"><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
                         </div>
                     </div>
                 </div>
@@ -1518,7 +1519,7 @@ export function openEditPipelineModal(pid, tasks, context = {}) {
                         Zona de Peligro
                     </h3>
                     <p class="text-xs text-muted mb-2">Eliminar este flujo borrará permanentemente todas las tareas y fases asociadas. Esta acción no se puede deshacer.</p>
-                    <button type="button" id="btn-delete-pipeline" class="btn btn-outline text-xs text-error py-2" style="border-color: var(--error);">
+                    <button type="button" id="btn-delete-pipeline" class="btn btn-primary text-xs py-2 w-full" style="background: var(--error); border-color: var(--error); color: white;">
                         Eliminar Pipeline Completo
                     </button>
                 </div>
