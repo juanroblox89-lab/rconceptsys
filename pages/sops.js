@@ -109,11 +109,11 @@ function renderSopCard(sop, isAdmin, user, reload) {
     const roleLabel = ROLE_LABELS[sop.targetRole] || sop.targetRole || 'Todos';
 
     return h('div', {
-        className: 'card p-0 flex-column hover-border transition',
+        className: 'card interactive-card p-0 flex-column',
         style: { overflow: 'hidden', opacity: sop.active === false ? 0.5 : 1 }
     }, [
         // Top bar with progress color
-        h('div', { style: { height: '3px', background: `linear-gradient(90deg, #3b82f6 ${pct}%, var(--bg-tertiary) ${pct}%)` } }),
+        h('div', { style: { height: '3px', background: `linear-gradient(90deg, var(--accent) ${pct}%, var(--bg-tertiary) ${pct}%)` } }),
         h('div', { className: 'p-4 flex-column gap-3' }, [
             // Header row
             h('div', { className: 'flex justify-between items-start' }, [
@@ -152,7 +152,7 @@ function renderSopCard(sop, isAdmin, user, reload) {
                     h('span', { className: allDone ? 'text-success font-bold' : '' }, `${pct}%`)
                 ]),
                 h('div', { style: { height: '4px', background: 'var(--bg-tertiary)', borderRadius: '2px', overflow: 'hidden' } }, [
-                    h('div', { style: { height: '100%', width: `${pct}%`, background: allDone ? '#10b981' : '#3b82f6', transition: 'width 0.4s ease', borderRadius: '2px' } })
+                    h('div', { style: { height: '100%', width: `${pct}%`, background: allDone ? 'var(--success)' : 'var(--accent)', transition: 'width 0.4s ease', borderRadius: '2px' } })
                 ])
             ]),
 
@@ -223,7 +223,7 @@ function renderStep(step, idx, sop, user, isAdmin, reload) {
     const checkbox = h('input', {
         type: 'checkbox',
         checked: step.done || false,
-        style: { cursor: 'pointer', accentColor: '#3b82f6', flexShrink: 0 },
+        style: { cursor: 'pointer', accentColor: 'var(--accent)', flexShrink: 0 },
         onChange: async (e) => saveStep({ done: e.target.checked })
     });
 

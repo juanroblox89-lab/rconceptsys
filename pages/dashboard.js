@@ -141,7 +141,7 @@ export const render = () => {
                 );
             }
 
-            const layoutGrid = h('div', { className: 'grid', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' } }, [
+            const layoutGrid = h('div', { className: 'grid gap-6', style: { gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } }, [
                 h('section', { style: { flex: '2', minWidth: '320px' } }, [
                     h('div', { className: 'flex justify-between items-center mb-3' }, [
                         h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary' }, 
@@ -185,23 +185,22 @@ const createMetricCard = (label, value, iconName, color, subtext) => {
         h('div', { className: 'metric-value' }, value),
         h('div', { className: 'flex items-center gap-1 mt-1 text-xs font-medium', style: { color: color } }, [
             icon(iconName, 12),
-            h('span', { style: { fontSize: '0.65rem' } }, subtext)
+            h('span', { className: 'text-xs' }, subtext)
         ])
     ]);
 };
 
 const createQuickAction = (iconName, title, desc, onClickHandler) => {
     return h('button', { 
-        className: 'card hover-lift flex items-center gap-3 w-full text-left transition', 
-        style: { padding: '12px 16px', border: '1px solid var(--border)' },
+        className: 'card interactive-card flex items-center gap-3 w-full text-left p-3',
         onClick: onClickHandler 
     }, [
-        h('div', { className: 'btn-icon flex items-center justify-center font-bold text-primary', style: { width: '32px', height: '32px', borderRadius: '6px', background: 'var(--bg-tertiary)' } }, [
+        h('div', { className: 'btn-icon flex items-center justify-center font-bold text-primary bg-tertiary', style: { width: '32px', height: '32px', borderRadius: '6px' } }, [
             icon(iconName, 16)
         ]),
         h('div', { className: 'flex-1' }, [
-            h('div', { className: 'font-bold text-xs text-primary' }, title),
-            h('div', { className: 'text-muted', style: { fontSize: '0.65rem', marginTop: '1px' } }, desc)
+            h('div', { className: 'font-bold text-sm text-primary' }, title),
+            h('div', { className: 'text-xs text-muted mt-1' }, desc)
         ]),
         icon('chevron-right', 14, 'text-muted')
     ]);

@@ -75,11 +75,31 @@ export const render = async (params) => {
                                                 const uploadedUrl = await storageService.uploadFile(`client-logos/${client.id}`, file);
                                                 await dbService.update('clients', client.id, { logo: uploadedUrl });
                                                 client.logo = uploadedUrl;
-                                                alert("¡Foto de perfil del cliente actualizada exitosamente!");
-                                                loadClient();
+                                                const overlay = h('div', { className: 'modal-overlay fade-in' });
+                                                const modal = h('div', { className: 'modal-container' }, [
+                                                    h('div', { className: 'modal-header text-sm font-bold' }, 'Éxito'),
+                                                    h('div', { className: 'modal-body text-xs' }, '¡Foto de perfil del cliente actualizada exitosamente!'),
+                                                    h('div', { className: 'modal-footer' }, [
+                                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => {
+                                                            document.body.removeChild(overlay);
+                                                            loadClient();
+                                                        }}, 'Aceptar')
+                                                    ])
+                                                ]);
+                                                overlay.appendChild(modal);
+                                                document.body.appendChild(overlay);
                                             } catch (err) {
                                                 console.error(err);
-                                                alert("Error al subir la imagen.");
+                                                const overlay = h('div', { className: 'modal-overlay fade-in' });
+                                                const modal = h('div', { className: 'modal-container' }, [
+                                                    h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
+                                                    h('div', { className: 'modal-body text-xs' }, 'Error al subir la imagen.'),
+                                                    h('div', { className: 'modal-footer' }, [
+                                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
+                                                    ])
+                                                ]);
+                                                overlay.appendChild(modal);
+                                                document.body.appendChild(overlay);
                                             } finally {
                                                 loader.remove();
                                             }
@@ -194,8 +214,8 @@ export const render = async (params) => {
                     h('section', { className: 'card p-5 flex-column gap-3' }, [
                         h('h3', { className: 'text-xs font-bold uppercase text-muted' }, 'Estilo Visual'),
                         h('div', { className: 'flex-column gap-2' }, [
-                            h('div', { className: 'flex items-center gap-2' }, [h('div', { style: { width: '12px', height: '12px', borderRadius: '2px', background: '#3b82f6' } }), h('span', { className: 'text-xs' }, 'Dinámico')]),
-                            h('div', { className: 'flex items-center gap-2' }, [h('div', { style: { width: '12px', height: '12px', borderRadius: '2px', background: '#10b981' } }), h('span', { className: 'text-xs' }, 'Premium/Limpio')]),
+                            h('div', { className: 'flex items-center gap-2' }, [h('div', { style: { width: '12px', height: '12px', borderRadius: '2px', background: 'var(--text-primary)' } }), h('span', { className: 'text-xs' }, 'Dinámico')]),
+                            h('div', { className: 'flex items-center gap-2' }, [h('div', { style: { width: '12px', height: '12px', borderRadius: '2px', background: 'var(--text-muted)' } }), h('span', { className: 'text-xs' }, 'Premium/Limpio')]),
                             h('p', { className: 'text-xs text-muted mt-2 italic' }, client.visualStyle || 'Subtítulos grandes, transiciones rápidas, música trending.')
                         ])
                     ]),
@@ -367,12 +387,23 @@ export const render = async (params) => {
         document.body.appendChild(overlay);
     };
 
-    const deleteRecommendedLink = async (client, index) => {
-        if (confirm("¿Estás seguro de que deseas eliminar este link recomendado?")) {
-            client.recommendedLinks.splice(index, 1);
-            await dbService.set('clients', client.id, client);
-            loadClient();
-        }
+    const deleteRecommendedLink = (client, index) => {
+        const overlay = h('div', { className: 'modal-overlay fade-in' });
+        const modal = h('div', { className: 'modal-container' }, [
+            h('div', { className: 'modal-header text-sm font-bold' }, 'Confirmar Eliminación'),
+            h('div', { className: 'modal-body text-xs' }, "¿Estás seguro de que deseas eliminar este link recomendado?"),
+            h('div', { className: 'modal-footer' }, [
+                h('button', { className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { className: 'btn text-xs', style: { color: 'var(--error)', borderColor: 'var(--error)' }, onClick: async () => {
+                    document.body.removeChild(overlay);
+                    client.recommendedLinks.splice(index, 1);
+                    await dbService.set('clients', client.id, client);
+                    loadClient();
+                }}, 'Eliminar')
+            ])
+        ]);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
     };
 
     loadClient();

@@ -186,9 +186,9 @@ Cuando el usuario te entregue mucha información o copies de marcas:
                             id: 'ai-remaining-badge',
                             className: 'badge text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5',
                             style: {
-                                background: remainingMessages > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                color: remainingMessages > 0 ? '#10b981' : '#ef4444',
-                                border: remainingMessages > 0 ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                                background: remainingMessages > 0 ? 'var(--bg-tertiary)' : 'var(--bg-tertiary)',
+                                color: remainingMessages > 0 ? 'var(--text-primary)' : 'var(--error, var(--text-primary))',
+                                border: '1px solid var(--border)',
                                 display: 'inline-flex'
                             }
                         }, [
@@ -510,8 +510,8 @@ Información del Administrador:
                             height: '28px', 
                             borderRadius: '50%', 
                             flexShrink: 0,
-                            background: isAI ? 'linear-gradient(135deg, var(--accent) 0%, #a855f7 100%)' : 'var(--bg-secondary)',
-                            color: isAI ? 'white' : 'var(--text-primary)',
+                            background: isAI ? 'var(--accent)' : 'var(--bg-secondary)',
+                            color: isAI ? 'var(--bg-primary)' : 'var(--text-primary)',
                             border: isAI ? 'none' : '1px solid var(--border)'
                         } 
                     }, [
@@ -547,8 +547,8 @@ Información del Administrador:
                             height: '28px', 
                             borderRadius: '50%', 
                             flexShrink: 0,
-                            background: 'linear-gradient(135deg, var(--accent) 0%, #a855f7 100%)',
-                            color: 'white'
+                            background: 'var(--accent)',
+                            color: 'var(--bg-primary)'
                         } 
                     }, [icon('sparkles', 12)]);
 
@@ -1198,10 +1198,10 @@ ${sopsList.map(s => `- SOP: "${s.title}" (${(s.steps || []).length} pasos)`).joi
                         const isAdmin = user?.role === 'admin';
                         const maxAllowed = isAdmin ? 10 : 5;
                         const newRemaining = Math.max(0, maxAllowed - currentCount);
-                        badge.style.background = newRemaining > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-                        badge.style.color = newRemaining > 0 ? '#10b981' : '#ef4444';
-                        badge.style.border = newRemaining > 0 ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)';
-                        badge.innerHTML = `<i data-lucide="message-square" style="width: 10px; height: 10px;"></i><span>Quedan ${newRemaining} mensajes hoy</span>`;
+                        badge.style.color = newRemaining > 0 ? 'var(--text-primary)' : 'var(--error)';
+                        badge.style.background = 'var(--bg-tertiary)';
+                        badge.style.border = '1px solid var(--border)';
+                        badge.innerHTML = icon('message-square', 10).outerHTML + ` <span>Quedan ${newRemaining} mensajes hoy</span>`;
                         if (window.lucide) window.lucide.createIcons();
                     }
 
@@ -1297,55 +1297,55 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
                     title = "Acción: Crear SOP/Procedimiento";
                     details = `**Título**: ${action.payload.title}<br>**Pasos**: ${(action.payload.steps || []).join(', ')}`;
                     iconName = "check-square";
-                    colorClass = "#10b981"; // Success Green
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'create_format') {
                     title = "Acción: Registrar Nuevo Formato Creativo";
                     details = `**Nombre**: ${action.payload.name}<br>**Estructura**: ${action.payload.structure}<br>**Uso**: ${action.payload.usedFor || 'General'}`;
                     iconName = "file-text";
-                    colorClass = "#ec4899"; // Pink
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'create_assignment') {
                     title = "Acción: Asignar Tarea";
                     details = `**Tarea**: ${action.payload.title}<br>**Cliente**: ${action.payload.client}<br>**Responsable**: ${action.payload.employeeName || '@equipo'}`;
                     iconName = "clipboard-list";
-                    colorClass = "#3b82f6"; // Info Blue
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'update_metric') {
                     title = "Acción: Actualizar Métrica de Rendimiento";
                     details = `**Cliente ID**: ${action.payload.clientId}<br>**Formato ID**: ${action.payload.formatId}<br>**Hook ID**: ${action.payload.hookId || 'N/A'}<br>**Período**: ${action.payload.period}<br>**Retención**: ${action.payload.retention || '0%'}<br>**Vistas**: ${action.payload.views || '0'}<br>**Saves**: ${action.payload.saves || '0'}`;
                     iconName = "bar-chart-2";
-                    colorClass = "#f59e0b"; // Warning Orange
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'create_hook') {
                     title = "Acción: Guardar Hook";
                     details = `**Hook**: "${action.payload.title}"<br>**Psicología**: ${action.payload.psychology}<br>**Retención Promedio**: ${action.payload.avgRetention || '0%'}`;
                     iconName = "zap";
-                    colorClass = "#a855f7"; // Accent Purple
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'update_client') {
                     title = "Acción: Actualizar Estrategia de Cliente";
                     details = `**Cliente ID**: ${action.payload.clientId}<br>**Descripción**: ${action.payload.description || 'Sin cambios'}<br>**Formatos**: ${(action.payload.assignedFormats || []).join(', ')}`;
                     iconName = "users";
-                    colorClass = "#3b82f6"; // Info Blue
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'create_client') {
                     title = "Acción: Registrar Nuevo Cliente";
                     details = `**Nombre**: ${action.payload.name}<br>**Industria**: ${action.payload.businessType}<br>**Descripción**: ${action.payload.description}`;
                     iconName = "users";
-                    colorClass = "#10b981"; // Success Green
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'create_script') {
                     title = "Acción: Crear Guión";
                     details = `**Título**: ${action.payload.title}<br>**Cliente**: ${action.payload.client}`;
                     iconName = "file-text";
-                    colorClass = "#10b981"; // Success Green
+                    colorClass = "var(--text-primary)";
                 } else if (action.type === 'update_script') {
                     title = "Acción: Actualizar Guión";
                     details = `**Guión ID**: ${action.payload.scriptId}`;
                     iconName = "edit-3";
-                    colorClass = "#3b82f6"; // Info Blue
+                    colorClass = "var(--text-primary)";
                 }
 
                 return `
-                <div class="card p-3 my-2 border-radius-sm border flex-column gap-1 bg-secondary" style="border-left: 4px solid ${colorClass}; max-width: 100%; border-radius: 4px;">
-                    <div class="flex items-center gap-2 font-bold text-xs" style="color: ${colorClass};">
+                <div class="card p-3 my-2 border-radius-sm border flex-column gap-1 bg-secondary" style="border-left: 4px solid var(--accent); max-width: 100%; border-radius: 4px;">
+                    <div class="flex items-center gap-2 font-bold text-xs" style="color: var(--text-primary);">
                         ${icon(iconName, 12).outerHTML}
                         <span>${title}</span>
-                        <span class="text-success text-xs font-semibold ml-auto flex items-center gap-1" style="color: #10b981;">
+                        <span class="text-xs font-semibold ml-auto flex items-center gap-1" style="color: var(--text-primary);">
                             ✓ Ejecutado en Firestore
                         </span>
                     </div>

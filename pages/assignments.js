@@ -107,7 +107,7 @@ export const render = async () => {
                 container.appendChild(
                     h('div', { className: 'card p-4 flex-column gap-2 mb-4 w-full', style: { borderLeft: '4px solid var(--accent)', background: 'var(--bg-tertiary)' } }, [
                         h('h3', { className: 'text-sm font-bold flex items-center gap-2' }, [icon('info', 16, 'text-accent'), h('span', {}, `Guía de Flujo Operativo: ${roleNameDisplay}`)]),
-                        h('ol', { className: 'text-xs text-muted pl-4', style: { margin: 0, paddingLeft: '24px', display: 'flex', flexDirection: 'column', gap: '4px' } }, 
+                        h('ol', { className: 'text-xs text-muted pl-4 flex-column gap-1' }, 
                             getRoleSpecificGuide(user.role)
                         )
                     ])
@@ -128,8 +128,7 @@ export const render = async () => {
 
                     return h('div', { 
                         key: asg.id, 
-                        className: 'card p-4 flex-column gap-3 hover-border transition w-full',
-                        style: { background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }
+                        className: 'card p-4 flex-column gap-3 interactive-card w-full'
                     }, [
                         h('div', { className: 'flex justify-between items-start flex-wrap gap-2' }, [
                             h('div', { className: 'flex-column gap-1' }, [
@@ -176,13 +175,11 @@ export const render = async () => {
                                         btnList.push(h('a', {
                                             href: asgClient.driveFolderUrl,
                                             target: '_blank',
-                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                            style: { color: 'var(--primary)', borderColor: 'rgba(var(--primary-rgb), 0.3)' }
+                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold'
                                         }, [icon('folder', 12), h('span', {}, 'Abrir Drive')]));
                                         
                                         btnList.push(h('button', {
                                             className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                            style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
                                             onClick: async (e) => {
                                                 const btn = e.currentTarget;
                                                 btn.disabled = true;
@@ -220,19 +217,11 @@ export const render = async () => {
                                                 ]);
                                             } else {
                                                 sopBanner = h('div', {
-                                                    className: 'mt-4 p-4 flex-column items-center justify-center cursor-pointer transition',
-                                                    style: { 
-                                                        background: 'linear-gradient(135deg, var(--accent) 0%, #8a2be2 100%)', 
-                                                        borderRadius: '12px', color: '#fff',
-                                                        boxShadow: '0 8px 24px rgba(var(--accent-rgb), 0.25)', border: '1px solid rgba(255,255,255,0.15)',
-                                                        transform: 'translateY(0)'
-                                                    },
-                                                    onMouseEnter: (e) => { e.currentTarget.style.transform = 'translateY(-2px)'; },
-                                                    onMouseLeave: (e) => { e.currentTarget.style.transform = 'translateY(0)'; },
+                                                    className: 'mt-4 p-4 flex-column items-center justify-center cursor-pointer transition interactive-card',
                                                     onClick: () => openSopViewerModal(sopObj, asg, sopSub, loadAndRender)
                                                 }, [
                                                     icon('clipboard-list', 32, 'mb-2'),
-                                                    h('span', { className: 'font-bold text-sm tracking-wide uppercase', style: { textShadow: '0 2px 4px rgba(0,0,0,0.2)' } }, `🔥 LLENAR SOP OBLIGATORIO: ${sopObj.title}`),
+                                                    h('span', { className: 'font-bold text-sm tracking-wide uppercase' }, `🔥 LLENAR SOP OBLIGATORIO: ${sopObj.title}`),
                                                     h('span', { className: 'text-xs opacity-90 mt-1 text-center font-medium max-w-sm' }, 'Haz clic aquí para abrir tu lista de verificación y entregar los enlaces o archivos requeridos.')
                                                 ]);
                                             }
@@ -245,7 +234,6 @@ export const render = async () => {
                                     if (hasSop && sopObj && !sopCompleted) {
                                         return h('button', {
                                             className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                            style: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
                                             onClick: () => openSopViewerModal(sopObj, asg, sopSub, loadAndRender)
                                         }, [icon('check-square', 12), h('span', {}, 'Llenar SOP')]);
                                     } else {
@@ -382,7 +370,7 @@ export const render = async () => {
                             ]) : null,
 
                             // Linked asset box
-                            asg.linkedAsset ? h('div', { className: 'p-2 bg-secondary mt-2 flex items-center justify-between', style: { borderRadius: '6px', border: '1px solid var(--border)' } }, [
+                            asg.linkedAsset ? h('div', { className: 'p-2 bg-secondary mt-2 flex items-center justify-between card' }, [
                                 h('span', { className: 'text-xs text-muted font-medium flex items-center gap-1' }, [icon('image', 12), h('span', {}, 'Asset / Referencia Vinculada')]),
                                 h('a', { href: asg.linkedAsset, target: '_blank', className: 'btn btn-outline text-xs', style: { padding: '4px 8px' } }, 'Ver Referencia')
                             ]) : null
@@ -582,7 +570,7 @@ export const render = async () => {
                             const isExpired = due < now && asg.status !== 'Completado';
                             
                             return h('div', { 
-                                className: 'kanban-card',
+                                className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
                                 draggable: true,
                                 ondragstart: (e) => {
                                     e.dataTransfer.setData('text/plain', asg.id);
@@ -594,11 +582,11 @@ export const render = async () => {
                                 onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [
-                                    h('div', { className: 'kanban-card-title mb-0 pr-2' }, asg.title),
-                                    isExpired ? h('div', { className: 'badge badge-urgent', style: { padding: '2px', width: '8px', height: '8px', borderRadius: '50%' }, title: 'Atrasado' }) : null
+                                    h('div', { className: 'text-sm font-bold mb-0 pr-2' }, asg.title),
+                                    isExpired ? h('div', { className: 'badge badge-urgent p-1 rounded-full' }, title: 'Atrasado') : null
                                 ]),
                                 h('div', { className: 'text-xs text-muted mb-2 truncate' }, `${asg.client} • ${asg.type}`),
-                                h('div', { className: 'kanban-card-meta border-top pt-2 mt-2' }, [
+                                h('div', { className: 'flex items-center justify-between border-top pt-2 mt-2' }, [
                                     h('div', { className: 'flex items-center gap-1 font-medium', style: { color: 'var(--accent)' } }, [
                                         icon('user', 12),
                                         h('span', {}, empName)

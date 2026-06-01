@@ -31,15 +31,14 @@ export const Header = () => {
         h('div', { className: 'flex items-center gap-2', style: { flexShrink: 0 } }, [
             // User role chip - Consolidated
             user?.role === 'admin' 
-                ? h('span', { className: 'badge badge-success', style: { fontSize: '0.65rem', padding: '3px 8px' } }, [icon('shield-check', 11), h('span', { className: 'ml-1' }, 'ADMIN')])
-                : h('span', { className: `badge ${user?.approved ? 'badge-info' : 'badge-warning'}`, style: { fontSize: '0.65rem' } }, user?.approved ? user?.role?.toUpperCase() : 'PENDIENTE'),
+                ? h('span', { className: 'badge badge-success text-xs px-2' }, [icon('shield-check', 11), h('span', { className: 'ml-1' }, 'ADMIN')])
+                : h('span', { className: `badge ${user?.approved ? 'badge-info' : 'badge-warning'} text-xs` }, user?.approved ? user?.role?.toUpperCase() : 'PENDIENTE'),
 
             // Search button — Premium with KBD hint
             h('button', {
-                className: 'btn-icon flex items-center gap-2 px-3',
+                className: 'btn btn-outline flex items-center gap-2 px-3',
                 id: 'global-search-trigger',
                 title: 'Buscar (Ctrl+K)',
-                style: { width: 'auto', background: 'var(--bg-secondary)', border: '1px solid var(--border)' },
                 onClick: () => window.dispatchEvent(new KeyboardEvent('keydown', { ctrlKey: true, key: 'k' }))
             }, [
                 icon('search', 16, 'text-muted'),

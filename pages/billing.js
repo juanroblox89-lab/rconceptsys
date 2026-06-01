@@ -54,61 +54,57 @@ export const render = () => {
                 h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: COP ${totalSum.toLocaleString()}`)
             ]),
 
-            // Table Grid Container (Excel-like Horizontal Scrollable Wrapper)
-            h('div', { className: 'excel-table-wrapper w-full', style: { overflowX: 'auto', display: 'block', maxWidth: '100%' } }, [
-                h('table', { className: 'excel-table', style: { width: '100%', minWidth: '900px' } }, [
-                    h('thead', {}, [
-                        h('tr', {}, [
-                            h('th', { style: { width: '220px' } }, 'Servicio Realizado'),
-                            h('th', { style: { width: '200px' } }, 'Cliente / Proyecto'),
-                            h('th', { style: { width: '140px' } }, 'Monto (COP)'),
-                            h('th', { style: { width: '110px' } }, 'Fecha'),
-                            h('th', {}, 'Observaciones y Links de Entrega'),
-                            isEditable ? h('th', { style: { width: '50px', textAlign: 'center' } }, '') : null
+            // Table Grid Container
+            h('div', { className: 'w-full', style: { overflowX: 'auto' } }, [
+                h('table', { className: 'w-full text-left', style: { borderCollapse: 'collapse', minWidth: '900px' } }, [
+                    h('thead', { className: 'border-bottom' }, [
+                        h('tr', { className: 'text-xs text-muted font-bold' }, [
+                            h('th', { className: 'p-3', style: { width: '220px' } }, 'Servicio Realizado'),
+                            h('th', { className: 'p-3', style: { width: '200px' } }, 'Cliente / Proyecto'),
+                            h('th', { className: 'p-3', style: { width: '140px' } }, 'Monto (COP)'),
+                            h('th', { className: 'p-3', style: { width: '110px' } }, 'Fecha'),
+                            h('th', { className: 'p-3' }, 'Observaciones y Links de Entrega'),
+                            isEditable ? h('th', { className: 'p-3 text-center', style: { width: '50px' } }, '') : null
                         ])
                     ]),
                     h('tbody', {}, itemsArray.length === 0 ? [
                         h('tr', {}, [
                             h('td', { 
                                 colSpan: isEditable ? 6 : 5, 
-                                className: 'text-center text-muted italic p-6',
-                                style: { background: 'var(--bg-tertiary)' }
+                                className: 'text-center text-muted italic p-6'
                             }, 'Sin cobros registrados en esta hoja de liquidación.')
                         ])
                     ] : itemsArray.map((item, idx) => {
-                        return h('tr', { key: idx }, [
+                        return h('tr', { key: idx, className: 'border-bottom hover-bg-tertiary transition' }, [
                             
                             // 1. Service select/input
-                            isEditable ? h('td', {}, [
+                            isEditable ? h('td', { className: 'p-2' }, [
                                 h('select', { 
-                                    className: 'form-select text-xs w-full',
-                                    style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)' },
+                                    className: 'form-select text-xs w-full bg-tertiary',
                                     onChange: (e) => { item.type = e.target.value; }
                                 }, [
                                     h('option', { value: 'Factura de Edición de Video', selected: item.type === 'Factura de Edición de Video' }, 'Factura de Edición de Video'),
                                     h('option', { value: 'Factura de Grabación de Video', selected: item.type === 'Factura de Grabación de Video' }, 'Factura de Grabación de Video'),
                                     h('option', { value: 'Factura Consolidada', selected: item.type === 'Factura Consolidada' }, 'Factura Consolidada')
                                 ])
-                            ]) : h('td', { style: { color: 'var(--text-primary)' } }, item.type || 'N/A'),
+                            ]) : h('td', { className: 'p-3 text-primary' }, item.type || 'N/A'),
 
                             // 2. Client select/input
-                            isEditable ? h('td', {}, [
+                            isEditable ? h('td', { className: 'p-2' }, [
                                 h('select', { 
-                                    className: 'form-select text-xs w-full',
-                                    style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)' },
+                                    className: 'form-select text-xs w-full bg-tertiary',
                                     onChange: (e) => { item.client = e.target.value; }
                                 }, [
                                     h('option', { value: 'General' }, '🌍 General / Otro'),
                                     ...clientsList.map(c => h('option', { value: c.nombre || c.name || c.id, selected: item.client === (c.nombre || c.name || c.id) }, c.nombre || c.name))
                                 ])
-                            ]) : h('td', { style: { color: 'var(--text-primary)' } }, item.client || 'N/A'),
+                            ]) : h('td', { className: 'p-3 text-primary' }, item.client || 'N/A'),
 
                             // 3. Amount input/text
-                            isEditable ? h('td', {}, [
+                            isEditable ? h('td', { className: 'p-2' }, [
                                 h('input', { 
                                     type: 'number',
-                                    className: 'form-input text-xs w-full font-bold',
-                                    style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--primary)' },
+                                    className: 'form-input text-xs w-full font-bold bg-tertiary text-primary',
                                     value: item.amount || '',
                                     placeholder: 'Monto',
                                     onInput: (e) => { 
@@ -120,31 +116,30 @@ export const render = () => {
                                         }
                                     }
                                 })
-                            ]) : h('td', { style: { fontWeight: 'bold', color: 'var(--primary)' } }, `COP ${(item.amount || 0).toLocaleString()}`),
+                            ]) : h('td', { className: 'p-3 font-bold text-primary' }, `COP ${(item.amount || 0).toLocaleString()}`),
 
                             // 4. Date (Always auto-calculated or stored)
-                            h('td', { style: { color: 'var(--text-muted)' } }, 
+                            h('td', { className: 'p-3 text-muted' }, 
                                 item.createdAt ? new Date(item.createdAt).toLocaleDateString() : new Date().toLocaleDateString()
                             ),
 
                             // 5. Observations input/text
-                            isEditable ? h('td', {}, [
+                            isEditable ? h('td', { className: 'p-2' }, [
                                 h('input', { 
                                     type: 'text',
-                                    className: 'form-input text-xs w-full',
-                                    style: { background: 'var(--bg-tertiary)', borderColor: 'var(--border)' },
+                                    className: 'form-input text-xs w-full bg-tertiary',
                                     value: item.observations || '',
                                     placeholder: 'Ej: Cantidad de piezas, links de entrega...',
                                     onInput: (e) => { item.observations = e.target.value; }
                                 })
-                            ]) : h('td', { style: { color: 'var(--text-secondary)' } }, item.observations || 'Sin observaciones.'),
+                            ]) : h('td', { className: 'p-3 text-secondary' }, item.observations || 'Sin observaciones.'),
 
                             // 6. Delete row action
-                            isEditable ? h('td', { style: { textAlign: 'center' } }, [
+                            isEditable ? h('td', { className: 'p-2 text-center' }, [
                                 h('button', { 
                                     type: 'button',
-                                    className: 'btn btn-outline text-xs p-1 hover-bg-tertiary border-radius-sm',
-                                    style: { borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--error)' },
+                                    className: 'btn btn-outline text-xs p-1 hover-bg-tertiary border-radius-sm text-error',
+                                    style: { borderColor: 'rgba(239, 68, 68, 0.2)' },
                                     onClick: () => {
                                         itemsArray.splice(idx, 1);
                                         drawDOM();
@@ -231,7 +226,16 @@ export const render = () => {
                                 loadAndRender(false);
                             } catch (err) {
                                 console.error(err);
-                                alert("Error al guardar la configuración. (Revisa tus reglas de Firebase)");
+                                const overlay = h('div', { className: 'modal-overlay fade-in' });
+                                const modal = h('div', { className: 'modal-container' }, [
+                                    h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
+                                    h('div', { className: 'modal-body text-xs text-muted' }, 'Error al guardar la configuración. (Revisa tus reglas de Firebase)'),
+                                    h('div', { className: 'modal-footer' }, [
+                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
+                                    ])
+                                ]);
+                                overlay.appendChild(modal);
+                                document.body.appendChild(overlay);
                                 btn.disabled = false;
                             }
                         }
@@ -245,22 +249,70 @@ export const render = () => {
                         title: 'Eliminar TODAS las facturas de empleados y admin para iniciar nuevo ciclo',
                         onClick: async () => {
                             const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-                            const userInput = prompt(`⚠️ ATENCIÓN: Esta acción ELIMINARÁ PERMANENTEMENTE todas las facturas de todos los trabajadores.\n\nPara confirmar que no es un error, escribe exactamente este código de seguridad: ${code}`);
-                            if (userInput !== code) {
-                                if (userInput !== null) alert("Código incorrecto. Operación cancelada.");
-                                return;
-                            }
-                            
-                            if (!confirm('🚨 ÚLTIMA ADVERTENCIA: ¿Estás 100% seguro? NO HAY VUELTA ATRÁS.')) return;
-                            
-                            container.innerHTML = '<div class="loader mb-4"></div>';
-                            try {
-                                const result = await invoiceService.resetAllInvoices();
-                                alert(`Mes reiniciado. Se eliminaron ${result.deleted} facturas.`);
-                            } catch (err) {
-                                alert(`Error: ${err.message}`);
-                            }
-                            loadAndRender(true);
+                            const overlay = h('div', { className: 'modal-overlay fade-in' });
+                            const input = h('input', { className: 'form-input w-full', placeholder: code });
+                            const modal = h('div', { className: 'modal-container' }, [
+                                h('div', { className: 'modal-header text-sm font-bold text-error' }, '⚠️ ATENCIÓN'),
+                                h('div', { className: 'modal-body flex-column gap-3' }, [
+                                    h('p', { className: 'text-xs text-muted' }, 'Esta acción ELIMINARÁ PERMANENTEMENTE todas las facturas de todos los trabajadores.\n\nPara confirmar que no es un error, escribe exactamente este código de seguridad: ' + code),
+                                    input
+                                ]),
+                                h('div', { className: 'modal-footer' }, [
+                                    h('button', { className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                                    h('button', { className: 'btn text-xs', style: { color: 'var(--error)', borderColor: 'var(--error)' }, onClick: () => {
+                                        if (input.value !== code) {
+                                            document.body.removeChild(overlay);
+                                            const errOverlay = h('div', { className: 'modal-overlay fade-in' });
+                                            const errModal = h('div', { className: 'modal-container' }, [
+                                                h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
+                                                h('div', { className: 'modal-body text-xs' }, 'Código incorrecto. Operación cancelada.'),
+                                                h('div', { className: 'modal-footer' }, [h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(errOverlay) }, 'Aceptar')])
+                                            ]);
+                                            errOverlay.appendChild(errModal);
+                                            document.body.appendChild(errOverlay);
+                                            return;
+                                        }
+                                        document.body.removeChild(overlay);
+                                        const confirmOverlay = h('div', { className: 'modal-overlay fade-in' });
+                                        const confirmModal = h('div', { className: 'modal-container' }, [
+                                            h('div', { className: 'modal-header text-sm font-bold text-error' }, '🚨 ÚLTIMA ADVERTENCIA'),
+                                            h('div', { className: 'modal-body text-xs text-muted' }, '¿Estás 100% seguro? NO HAY VUELTA ATRÁS.'),
+                                            h('div', { className: 'modal-footer' }, [
+                                                h('button', { className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(confirmOverlay) }, 'Cancelar'),
+                                                h('button', { className: 'btn text-xs', style: { color: 'var(--error)', borderColor: 'var(--error)' }, onClick: async () => {
+                                                    document.body.removeChild(confirmOverlay);
+                                                    container.innerHTML = '<div class="loader mb-4"></div>';
+                                                    try {
+                                                        const result = await invoiceService.resetAllInvoices();
+                                                        const successOverlay = h('div', { className: 'modal-overlay fade-in' });
+                                                        const successModal = h('div', { className: 'modal-container' }, [
+                                                            h('div', { className: 'modal-header text-sm font-bold' }, 'Éxito'),
+                                                            h('div', { className: 'modal-body text-xs' }, `Mes reiniciado. Se eliminaron ${result.deleted} facturas.`),
+                                                            h('div', { className: 'modal-footer' }, [h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(successOverlay) }, 'Aceptar')])
+                                                        ]);
+                                                        successOverlay.appendChild(successModal);
+                                                        document.body.appendChild(successOverlay);
+                                                    } catch (err) {
+                                                        const errorOverlay = h('div', { className: 'modal-overlay fade-in' });
+                                                        const errorModal = h('div', { className: 'modal-container' }, [
+                                                            h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
+                                                            h('div', { className: 'modal-body text-xs' }, err.message),
+                                                            h('div', { className: 'modal-footer' }, [h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(errorOverlay) }, 'Aceptar')])
+                                                        ]);
+                                                        errorOverlay.appendChild(errorModal);
+                                                        document.body.appendChild(errorOverlay);
+                                                    }
+                                                    loadAndRender(true);
+                                                }}, 'Eliminar Todo')
+                                            ])
+                                        ]);
+                                        confirmOverlay.appendChild(confirmModal);
+                                        document.body.appendChild(confirmOverlay);
+                                    } }, 'Confirmar Código')
+                                ])
+                            ]);
+                            overlay.appendChild(modal);
+                            document.body.appendChild(overlay);
                         }
                     }, [icon('refresh-cw', 14), h('span', {}, 'Reiniciar Mes')])
                 ])
@@ -435,9 +487,27 @@ export const render = () => {
                                     createdAt: new Date().toISOString(),
                                     status: 'Aprobado'
                                 });
-                                alert("¡Hoja de Liquidación Administrativa guardada con éxito en Firestore!");
+                                const overlay = h('div', { className: 'modal-overlay fade-in' });
+                                const modal = h('div', { className: 'modal-container' }, [
+                                    h('div', { className: 'modal-header text-sm font-bold' }, 'Éxito'),
+                                    h('div', { className: 'modal-body text-xs' }, '¡Hoja de Liquidación Administrativa guardada con éxito en Firestore!'),
+                                    h('div', { className: 'modal-footer' }, [
+                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
+                                    ])
+                                ]);
+                                overlay.appendChild(modal);
+                                document.body.appendChild(overlay);
                             } catch (e) {
-                                alert(`Error al guardar liquidación: ${e.message}`);
+                                const overlay = h('div', { className: 'modal-overlay fade-in' });
+                                const modal = h('div', { className: 'modal-container' }, [
+                                    h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
+                                    h('div', { className: 'modal-body text-xs' }, `Error al guardar liquidación: ${e.message}`),
+                                    h('div', { className: 'modal-footer' }, [
+                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
+                                    ])
+                                ]);
+                                overlay.appendChild(modal);
+                                document.body.appendChild(overlay);
                             }
                             loadAndRender(true);
                         }
@@ -511,9 +581,27 @@ export const render = () => {
                             createdAt: new Date().toISOString(),
                             status: 'Pendiente'
                         });
-                        alert("¡Tu reporte de cobros ha sido guardado exitosamente!");
+                        const overlay = h('div', { className: 'modal-overlay fade-in' });
+                        const modal = h('div', { className: 'modal-container' }, [
+                            h('div', { className: 'modal-header text-sm font-bold' }, 'Éxito'),
+                            h('div', { className: 'modal-body text-xs' }, '¡Tu reporte de cobros ha sido guardado exitosamente!'),
+                            h('div', { className: 'modal-footer' }, [
+                                h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
+                            ])
+                        ]);
+                        overlay.appendChild(modal);
+                        document.body.appendChild(overlay);
                     } catch (e) {
-                        alert(`Error al guardar reporte: ${e.message}`);
+                        const overlay = h('div', { className: 'modal-overlay fade-in' });
+                        const modal = h('div', { className: 'modal-container' }, [
+                            h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
+                            h('div', { className: 'modal-body text-xs' }, `Error al guardar reporte: ${e.message}`),
+                            h('div', { className: 'modal-footer' }, [
+                                h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
+                            ])
+                        ]);
+                        overlay.appendChild(modal);
+                        document.body.appendChild(overlay);
                     }
                     loadAndRender(true);
                 }

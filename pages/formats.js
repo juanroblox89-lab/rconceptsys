@@ -55,7 +55,7 @@ export const render = () => {
 
         // Grid
         const grid = h('div', { className: 'grid gap-4', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' } }, 
-            formatsList.map(f => h('div', { key: f.id || f.name, className: 'card flex-column gap-3 p-5 relative' }, [
+            formatsList.map(f => h('div', { key: f.id || f.name, className: 'card interactive-card flex-column gap-3 p-5 relative' }, [
                 h('div', { className: 'flex justify-between items-start' }, [
                     h('span', { className: 'badge badge-info text-xs font-bold' }, f.id || 'NUEVO'),
                     h('div', { className: 'flex items-center gap-2' }, [

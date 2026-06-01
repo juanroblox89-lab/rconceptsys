@@ -183,12 +183,12 @@ export const render = () => {
         const hk = hooksList.find(h => h.id === s.recommendedHook);
 
         return h('div', { 
-            className: 'card p-0 flex-column hover-border transition bg-secondary cursor-pointer',
+            className: 'card interactive-card p-0 flex-column bg-secondary cursor-pointer',
             style: { overflow: 'hidden' },
             onClick: (e) => { if (!e.target.closest('button')) openDetailModal(s); }
         }, [
             // Color top bar
-            h('div', { style: { height: '3px', background: 'linear-gradient(90deg, var(--accent), #10b981)' } }),
+            h('div', { style: { height: '3px', background: 'var(--accent)' } }),
             h('div', { className: 'p-4 flex-column gap-2' }, [
                 // Header row
                 h('div', { className: 'flex justify-between items-start' }, [
@@ -231,7 +231,7 @@ export const render = () => {
         const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin asignar';
         const statusClass = asg.status === 'Completado' ? 'success' : (asg.status === 'En Producción' ? 'info' : 'warning');
 
-        return h('div', { className: 'card p-4 flex-column gap-2 hover-border transition bg-secondary' }, [
+        return h('div', { className: 'card interactive-card p-4 flex-column gap-2 bg-secondary' }, [
             h('div', { className: 'flex justify-between items-start' }, [
                 h('div', { className: 'flex-column gap-1' }, [
                     h('h4', { className: 'text-xs font-bold text-primary' }, asg.title),

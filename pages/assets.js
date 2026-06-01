@@ -164,7 +164,7 @@ const statusMap = {
 const createAssetCard = (asset, isAdmin, onDelete) => {
     const status = statusMap[asset.status] || { label: asset.status, cls: 'badge-secondary' };
 
-    return h('div', { className: 'card flex-column justify-between hover-border transition', style: { padding: '0', overflow: 'hidden' } }, [
+    return h('div', { className: 'card interactive-card flex-column justify-between', style: { padding: '0', overflow: 'hidden' } }, [
         h('div', {
             style: {
                 height: '150px',

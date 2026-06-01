@@ -152,7 +152,20 @@ export const Sidebar = () => {
                     className: 'btn btn-primary w-full justify-center text-xs',
                     onClick: async () => {
                         try { await authService.loginWithGoogle(); }
-                        catch { alert("Error al iniciar sesión."); }
+                        catch { 
+                            const overlay = h('div', { className: 'modal-overlay fade-in' }, [
+                                h('div', { className: 'modal-container' }, [
+                                    h('div', { className: 'modal-header p-4' }, [
+                                        h('h3', { className: 'text-sm font-bold m-0' }, 'Error de autenticación')
+                                    ]),
+                                    h('div', { className: 'modal-body p-4 text-sm text-secondary' }, 'Hubo un error al intentar iniciar sesión.'),
+                                    h('div', { className: 'modal-footer p-4 flex justify-end border-t border-solid' }, [
+                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => overlay.remove() }, 'Aceptar')
+                                    ])
+                                ])
+                            ]);
+                            document.body.appendChild(overlay);
+                        }
                     }
                 }, [icon('log-in', 14), h('span', {}, 'Acceder con Google')])
         ])

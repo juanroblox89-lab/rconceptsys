@@ -60,16 +60,9 @@ export const render = () => {
             clientsList.map(c => {
                 return h('div', { 
                     key: c.id, 
-                    className: 'card hover-bg-secondary transition relative flex gap-3 items-center justify-between p-3 flex-wrap', 
+                    className: 'card hover-bg-secondary transition relative flex items-center justify-between p-4 gap-4 flex-wrap', 
                     style: { 
-                        display: 'flex',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        padding: '10px 16px',
-                        gap: '16px'
+                        minHeight: '80px'
                     }
                 }, [
                     // Identity section (left)
@@ -154,16 +147,27 @@ export const render = () => {
                                 className: 'btn-icon text-error', 
                                 style: { width: '26px', height: '26px', padding: '3px' }, 
                                 title: 'Eliminar Cliente',
-                                onClick: async (e) => {
+                                onClick: (e) => {
                                     e.stopPropagation();
-                                    if (confirm(`¿Estás seguro de eliminar a ${c.name}?`)) {
-                                        try {
-                                            await dbService.delete('clients', c.id);
-                                            loadAndRenderClients();
-                                        } catch (err) {
-                                            alert("Error al eliminar cliente.");
-                                        }
-                                    }
+                                    const overlay = h('div', { className: 'modal-overlay fade-in' });
+                                    const modal = h('div', { className: 'modal-container' }, [
+                                        h('div', { className: 'modal-header text-sm font-bold' }, 'Eliminar Cliente'),
+                                        h('div', { className: 'modal-body text-xs' }, `¿Estás seguro de eliminar a ${c.name}?`),
+                                        h('div', { className: 'modal-footer' }, [
+                                            h('button', { className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                                            h('button', { className: 'btn text-xs', style: { color: 'var(--error)', borderColor: 'var(--error)' }, onClick: async () => {
+                                                document.body.removeChild(overlay);
+                                                try {
+                                                    await dbService.delete('clients', c.id);
+                                                    loadAndRenderClients();
+                                                } catch (err) {
+                                                    console.error(err);
+                                                }
+                                            }}, 'Eliminar')
+                                        ])
+                                    ]);
+                                    overlay.appendChild(modal);
+                                    document.body.appendChild(overlay);
                                 } 
                             }, [icon('trash-2', 11)])
                         ]) : null
