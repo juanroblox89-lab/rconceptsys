@@ -232,8 +232,8 @@ export const render = async () => {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
                                     style: { color: 'var(--success)', borderColor: 'rgba(var(--success-rgb), 0.3)' },
                                     onClick: async (e) => {
+                                        const btn = e.currentTarget;
                                         openBillingModal(asg, async (price, obs) => {
-                                            const btn = e.currentTarget;
                                             btn.disabled = true;
                                             try {
                                                 let currentInv = await invoiceService.getEmployeeInvoice(user.uid);

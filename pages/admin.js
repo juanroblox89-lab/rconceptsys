@@ -590,8 +590,8 @@ function renderDatabaseMaintenanceSection() {
                     const confirm1 = window.confirm("⚠️ ADVERTENCIA: Estás a punto de eliminar permanentemente todas las tareas mayores a 30 días. Esta acción no se puede deshacer. ¿Deseas continuar?");
                     if (!confirm1) return;
                     
-                    const confirm2 = window.confirm("¿Estás absolutamente seguro? Escribe 'Aceptar' si es así (o simplemente dale OK).");
-                    if (!confirm2) return;
+                    const confirm2 = window.prompt("¿Estás absolutamente seguro? Escribe 'Aceptar' para confirmar.");
+                    if (confirm2 !== 'Aceptar') return;
                     
                     const btn = e.currentTarget;
                     btn.disabled = true;
