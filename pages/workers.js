@@ -74,7 +74,13 @@ export const render = () => {
 };
 
 function renderWorkerCard(w, assignments, clients, sops, roles, reload) {
-    const meta = ROLE_META[w.role] || { label: w.role, color: '#64748b', icon: 'user', invoiceType: 'Factura General' };
+    const roleDef = roles.find(r => r.id === w.role);
+    const meta = {
+        label: roleDef ? roleDef.label : w.role,
+        color: (ROLE_META[w.role] && ROLE_META[w.role].color) ? ROLE_META[w.role].color : '#64748b',
+        icon: (ROLE_META[w.role] && ROLE_META[w.role].icon) ? ROLE_META[w.role].icon : 'user',
+        invoiceType: (ROLE_META[w.role] && ROLE_META[w.role].invoiceType) ? ROLE_META[w.role].invoiceType : 'Factura General'
+    };
     const myAsgs = assignments.filter(a => a.employeeId === w.uid);
     const pending = myAsgs.filter(a => a.status !== 'Completado');
     const done = myAsgs.filter(a => a.status === 'Completado');
@@ -161,7 +167,7 @@ function renderWorkerCard(w, assignments, clients, sops, roles, reload) {
                 h('button', {
                     className: 'btn btn-outline text-xs flex-1',
                     style: { fontSize: '0.65rem' },
-                    onClick: () => openChangeRoleModal(w, reload)
+                    onClick: () => openChangeRoleModal(w, roles, reload)
                 }, [icon('refresh-cw', 11), h('span', {}, 'Cambiar Rol')])
             ])
         ])
@@ -218,13 +224,14 @@ function openWorkerAssignmentsPanel(w, asgs, clients, reload) {
     if (window.lucide) window.lucide.createIcons();
 }
 
-function openChangeRoleModal(w, reload) {
+function openChangeRoleModal(w, roles, reload) {
     const overlay = h('div', { className: 'modal-overlay' });
-    const roleKeys = Object.keys(ROLE_META).filter(r => r !== 'admin');
+    const activeRoles = roles.filter(r => r.active !== false && r.id !== 'admin');
 
-    const select = h('select', { className: 'form-select text-xs' },
-        roleKeys.map(r => h('option', { value: r, selected: w.role === r }, ROLE_META[r].label))
-    );
+    const select = h('select', { className: 'form-select text-xs' }, [
+        ...activeRoles.map(r => h('option', { value: r.id, selected: w.role === r.id }, r.label)),
+        (!activeRoles.find(r => r.id === w.role)) ? h('option', { value: w.role, selected: true }, w.role) : null
+    ].filter(Boolean));
 
     const modal = h('div', { className: 'modal-container', style: { maxWidth: '380px' } }, [
         h('div', { className: 'modal-header' }, [
