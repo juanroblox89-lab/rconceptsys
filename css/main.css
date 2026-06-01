@@ -25,7 +25,7 @@
     /* Refined Typography Colors */
     --text-primary: #09090b; /* zinc-950 */
     --text-secondary: #52525b; /* zinc-600 */
-    --text-muted: #a1a1aa; /* zinc-400 */
+    --text-muted: #71717a; /* zinc-500 for better contrast */
     
     --accent: #000000; /* Sophisticated black accent */
     --accent-hover: #27272a;
@@ -343,4 +343,33 @@ a, input, select, textarea {
         margin-bottom: 1rem;
         padding-bottom: 0.75rem;
     }
+}
+
+/* ================================
+   PREMIUM CARDS
+================================ */
+.card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.interactive-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--border-hover);
+}
+
+/* Float / Elevation for Modals & Banners */
+.elevation-1 {
+    box-shadow: var(--shadow-md);
+}
+
+.elevation-2 {
+    box-shadow: var(--shadow-lg);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }

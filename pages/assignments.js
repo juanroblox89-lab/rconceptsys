@@ -73,14 +73,14 @@ export const render = async () => {
                             h('li', {}, [h('span', { className: 'font-bold' }, '1. Preparación: '), 'Revisa tus tareas pendientes. Verifica el cliente, el día y lee el Guion asignado.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '2. Confirmación: '), 'Recuerda confirmar la asistencia con el cliente el día antes por el grupo de WhatsApp.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '3. Grabación y Subida: '), 'Ve al lugar, sácate el guion del cerebro y graba. Al terminar, sube los archivos crudos al Drive.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Notificar y Cobrar: '), 'Avisa al equipo que el crudo está listo, dale a "Cobrar Tarea" e ingresa los minutos que grabaste.'])
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Completar y Cobrar: '), 'Dale a "Completar". El sistema te pedirá el monto a cobrar y cerrará la tarea.'])
                         ];
                     } else if (r.includes('editor')) {
                         return [
                             h('li', {}, [h('span', { className: 'font-bold' }, '1. Recepción: '), 'Revisa tu tarea. El líder te habrá notificado que los crudos están en Drive junto al Guion.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '2. Edición: '), 'Descarga los crudos, edita el video aplicando formatos virales y exporta el archivo final.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '3. Entrega: '), 'Sube el video final al Drive y manda el link por WhatsApp para revisión.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Marca la tarea como completada y dale a "Cobrar Tarea" para añadir tu pago a la factura.'])
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Completar y Cobrar: '), 'Dale a "Completar" para añadir tu pago a la factura automáticamente.'])
                         ];
                     } else if (r.includes('estratega') || r.includes('lider') || r.includes('admin')) {
                         return [
@@ -95,7 +95,7 @@ export const render = async () => {
                             h('li', {}, [h('span', { className: 'font-bold' }, '1. Revisa tu Tarea: '), 'Abre tu tarea pendiente y revisa las instrucciones, el Guion y el Asset de muestra.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '2. Ejecuta y Llenar SOP: '), 'Haz clic en "Llenar SOP" para abrir tu lista de verificación y entregar los enlaces o archivos requeridos.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '3. Completar: '), 'Al terminar todos los pasos del SOP, la tarea se marcará como Completada automáticamente.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Dale a "Cobrar Tarea" para sumar el pago a tu factura en "Pagos Pendientes".'])
+                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Auto-Cobro: '), 'Al hacer clic en "Completar", el sistema lanzará tu factura para asegurar tu pago.'])
                         ];
                     }
                 };
@@ -242,59 +242,49 @@ export const render = async () => {
                                             style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
                                             onClick: async (e) => {
                                                 const btn = e.currentTarget;
-                                                btn.disabled = true;
-                                                try {
-                                                    await assignmentService.saveAssignment({ ...asg, status: 'Completado' });
-                                                    loadAndRender();
-                                                } catch(err) {
-                                                    btn.disabled = false;
-                                                    alert("Error al actualizar la tarea.");
-                                                }
+                                                openBillingModal(asg, async (price, obs) => {
+                                                    btn.disabled = true;
+                                                    try {
+                                                        let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
+                                                        if (!currentInv) currentInv = { items: [] };
+                                                        else if (!currentInv.items) currentInv.items = [];
+                                                        
+                                                        const newItem = {
+                                                            id: `item-${Date.now()}`,
+                                                            type: asg.type,
+                                                            client: asg.client,
+                                                            title: asg.title,
+                                                            amount: price, // Fix: Changed price to amount
+                                                            date: new Date().toISOString(),
+                                                            observations: obs
+                                                        };
+                                                        
+                                                        // Guardamos la tarea como completada primero
+                                                        await assignmentService.saveAssignment({ ...asg, status: 'Completado', billed: true });
+                                                        
+                                                        try {
+                                                            currentInv.items.push(newItem);
+                                                            await invoiceService.saveEmployeeInvoice(user.uid, currentInv);
+                                                        } catch (billingError) {
+                                                            // Rollback
+                                                            await assignmentService.saveAssignment({ ...asg, status: 'Pendiente', billed: false });
+                                                            throw new Error("No se pudo guardar la factura. Tarea revertida a Pendiente.");
+                                                        }
+                                                        
+                                                        if (btn) showFeedback(btn, '✅ Completado y Cobrado');
+                                                        setTimeout(() => loadAndRender(), 1200);
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
+                                                    }
+                                                });
                                             }
                                         }, [icon('check', 12), h('span', {}, 'Completar')]);
                                     }
                                 })() : null,
 
-                                asg.status === 'Completado' && !asg.billed ? h('button', {
-                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                    style: { color: 'var(--success)', borderColor: 'rgba(var(--success-rgb), 0.3)' },
-                                    onClick: async (e) => {
-                                        const btn = e.currentTarget;
-                                        openBillingModal(asg, async (price, obs) => {
-                                            btn.disabled = true;
-                                            try {
-                                                let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
-                                                if (!currentInv) {
-                                                    currentInv = { items: [] };
-                                                } else if (!currentInv.items) {
-                                                    currentInv.items = [];
-                                                }
-                                                
-                                                const newItem = {
-                                                    id: `item-${Date.now()}`,
-                                                    type: asg.type,
-                                                    client: asg.client,
-                                                    title: asg.title,
-                                                    price: price,
-                                                    date: new Date().toISOString(),
-                                                    observations: obs
-                                                };
-                                                
-                                                currentInv.items.push(newItem);
-                                                
-                                                await invoiceService.saveEmployeeInvoice(user.uid, currentInv);
-                                                
-                                                await assignmentService.saveAssignment({ ...asg, status: 'Completado', billed: true });
-                                                
-                                                if (btn) showFeedback(btn, '✅ Cobrado');
-                                                setTimeout(() => loadAndRender(), 1200);
-                                            } catch (err) {
-                                                console.error(err);
-                                                if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
-                                            }
-                                        });
-                                    }
-                                }, [icon('file-text', 12), h('span', {}, 'Cobrar Tarea')]) : null,
+                                // El botón "Cobrar Tarea" independiente fue removido para evitar duplicidad,
+                                // ahora el cobro es automático al presionar "Completar".
                                 
                                 asg.billed ? h('span', { className: 'badge badge-success text-xs flex items-center gap-1 font-bold', style: { padding: '4px 8px' } }, [icon('check-circle', 12), h('span', {}, 'Facturado')]) : null,
 

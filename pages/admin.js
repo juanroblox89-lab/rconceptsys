@@ -69,7 +69,7 @@ export const render = () => {
 
             // ── 1. Page Header ──────────────────────────────
             container.appendChild(
-                h('div', { className: 'content-header flex justify-between items-center w-full' }, [
+                h('div', { className: 'content-header flex justify-between items-center flex-wrap gap-2 w-full' }, [
                     h('div', {}, [
                         h('h1', {}, 'Panel de Administración'),
                         h('p', { className: 'text-xs text-muted mt-1' },
@@ -96,7 +96,7 @@ export const render = () => {
 
             // ── 2. Pending Users ────────────────────────────
             const pendingSection = h('section', { className: 'flex-column gap-3' }, [
-                h('div', { className: 'flex justify-between items-center' }, [
+                h('div', { className: 'flex justify-between items-center flex-wrap gap-2' }, [
                     h('h3', { className: 'section-label', style: { marginBottom: 0 } },
                         `Empleados Pendientes (${pendingUsers.length})`),
                     h('button', {

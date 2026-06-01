@@ -41,7 +41,7 @@ export const render = () => {
             style: { background: 'var(--bg-secondary)', border: '1px solid var(--border)' }
         }, [
             // Header bar
-            h('div', { className: 'flex justify-between items-center border-bottom pb-2 mb-1' }, [
+            h('div', { className: 'flex justify-between items-center flex-wrap gap-2 border-bottom pb-2 mb-1' }, [
                 h('div', {}, [
                     h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5' }, [
                         icon('file-spreadsheet', 14, 'text-primary'),
@@ -56,7 +56,7 @@ export const render = () => {
 
             // Table Grid Container
             h('div', { className: 'w-full', style: { overflowX: 'auto' } }, [
-                h('table', { className: 'w-full text-left', style: { borderCollapse: 'collapse', minWidth: '900px' } }, [
+                h('table', { className: 'w-full text-left', style: { borderCollapse: 'collapse' } }, [
                     h('thead', { className: 'border-bottom' }, [
                         h('tr', { className: 'text-xs text-muted font-bold' }, [
                             h('th', { className: 'p-3', style: { width: '220px' } }, 'Servicio Realizado'),

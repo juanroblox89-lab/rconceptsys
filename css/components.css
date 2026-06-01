@@ -513,7 +513,7 @@ table {
     border-collapse: collapse;
     text-align: left;
     font-size: 0.8rem;
-    min-width: 500px;
+    /* Removed min-width: 500px to prevent mobile scale-out */
 }
 
 th {
@@ -1142,7 +1142,8 @@ tr:hover td { background-color: var(--bg-secondary); }
     width: 100%;
     border-collapse: collapse;
     font-size: 0.72rem;
-    min-width: 720px; /* Keep tabular view readable on touch viewports */
+    /* Removed min-width: 720px to prevent mobile scale-out. 
+       Let the table be scrollable via the wrapper. */
 }
 
 .excel-table th {

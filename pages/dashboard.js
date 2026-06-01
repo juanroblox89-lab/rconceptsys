@@ -117,7 +117,7 @@ export const render = () => {
                     createQuickAction('plus-square', 'Crear Nuevo Formato', 'Estandariza una estructura', () => {
                         window.location.hash = '#formats';
                     }),
-                    createQuickAction('file-text', 'Reportar Jornada / Factura', 'Control operativo de entregas', () => {
+                    createQuickAction('file-text', 'Auditar Facturación de Equipo', 'Control operativo de entregas', () => {
                         window.location.hash = '#billing';
                     }),
                     createQuickAction('users', 'Directorio de Clientes', 'Ver estilos y videos virales', () => {

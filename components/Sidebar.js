@@ -179,7 +179,15 @@ export const Sidebar = () => {
 
     // ─── Bottom Nav (mobile) ───────────────────────────────
     const bottomNav = h('nav', { className: 'bottom-nav', 'aria-label': 'Navegación principal' }, [
-        ...primaryNavItems.map(createBottomNavItem).filter(Boolean),
+        ...primaryNavItems
+            .filter(item => ['#dashboard', '#assignments', '#marketing'].includes(item.href))
+            .map(item => {
+                const mobileItem = { ...item };
+                if (mobileItem.href === '#assignments') mobileItem.label = 'Trabajo';
+                if (mobileItem.href === '#marketing') mobileItem.label = 'Ventas';
+                return createBottomNavItem(mobileItem);
+            })
+            .filter(Boolean),
         // "Más" button opens sidebar
         h('button', {
             className: 'bottom-nav-item bottom-nav-more',
