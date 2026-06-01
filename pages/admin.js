@@ -160,7 +160,10 @@ export const render = () => {
             // ── 4. Roles Management ─────────────────────────
             container.appendChild(renderRolesSection(rolesList, loadAdminDashboard));
 
-            // ── 5. Visual Identity (logo upload) ────────────
+            // ── 5. Database Maintenance ────────────────────────
+            container.appendChild(renderDatabaseMaintenanceSection());
+            
+            // ── 6. Logo Upload ───────────────────────────────
             container.appendChild(renderUploadSection());
 
             // Hydrate icons
@@ -569,6 +572,46 @@ function renderRolesSection(rolesList = [], reload) {
     ]);
 
     return container;
+}
+
+// ── Database Maintenance Section ────────────────────────────
+function renderDatabaseMaintenanceSection() {
+    return h('section', { className: 'flex-column gap-3' }, [
+        h('h3', { className: 'section-label', style: { color: 'var(--error)' } }, 'Mantenimiento Avanzado de BD'),
+        h('div', { className: 'card flex-column gap-3 bg-secondary' }, [
+            h('div', { className: 'flex-column gap-1' }, [
+                h('span', { className: 'font-bold text-xs', style: { color: 'var(--error)' } }, 'Purgar Tareas Antiguas (Cuello de Botella)'),
+                h('p', { className: 'text-xs text-muted' }, 'Elimina de forma permanente todas las tareas de la base de datos que tengan más de 30 días de antigüedad. Útil para mantener la velocidad del sistema.')
+            ]),
+            h('button', {
+                className: 'btn btn-primary text-xs',
+                style: { alignSelf: 'flex-start', background: 'var(--error)', borderColor: 'var(--error)' },
+                onClick: async (e) => {
+                    const confirm1 = window.confirm("⚠️ ADVERTENCIA: Estás a punto de eliminar permanentemente todas las tareas mayores a 30 días. Esta acción no se puede deshacer. ¿Deseas continuar?");
+                    if (!confirm1) return;
+                    
+                    const confirm2 = window.confirm("¿Estás absolutamente seguro? Escribe 'Aceptar' si es así (o simplemente dale OK).");
+                    if (!confirm2) return;
+                    
+                    const btn = e.currentTarget;
+                    btn.disabled = true;
+                    btn.textContent = 'Purgando...';
+                    
+                    try {
+                        const { assignmentService } = await import('../services/assignmentService.js');
+                        const count = await assignmentService.purgeOldAssignments();
+                        alert(`✅ Mantenimiento completado. Se eliminaron ${count} tareas antiguas.`);
+                        btn.textContent = 'Purgar Tareas Antiguas';
+                        btn.disabled = false;
+                    } catch (err) {
+                        alert(`Error durante la purga: ${err.message}`);
+                        btn.disabled = false;
+                        btn.textContent = 'Purgar Tareas Antiguas';
+                    }
+                }
+            }, [icon('trash-2', 14), h('span', { style: { marginLeft: '4px' } }, 'Purgar Tareas Antiguas')])
+        ])
+    ]);
 }
 
 // ── Logo Upload Section ──────────────────────────────────────

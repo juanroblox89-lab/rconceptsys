@@ -88,10 +88,37 @@ export const assignmentService = {
     },
 
     /**
-     * Cleanup logic: Disabled to preserve history.
+     * Manual Cleanup logic: Deletes assignments older than 30 days.
+     * Invoked from Admin panel.
      */
-    async cleanupAssignments() {
-        console.log("[Cleanup] Auto-cleanup disabled to preserve completed assignments history.");
-        return 0;
+    async purgeOldAssignments() {
+        try {
+            console.log("[Cleanup] Starting manual purge of old assignments...");
+            const all = await this.getAllAssignments();
+            const now = new Date();
+            let count = 0;
+            
+            for (const asg of all) {
+                // Check if older than 30 days
+                const createdAtDate = asg.createdAt ? new Date(asg.createdAt) : null;
+                const dueDate = asg.dueDate ? new Date(asg.dueDate) : null;
+                
+                // Use createdAt or dueDate as reference
+                const refDate = createdAtDate || dueDate;
+                if (!refDate) continue;
+                
+                const diffTime = Math.abs(now - refDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays > 30) {
+                    await this.deleteAssignment(asg.id);
+                    count++;
+                }
+            }
+            return count;
+        } catch (err) {
+            console.error("Purge error:", err);
+            throw err;
+        }
     }
 };
