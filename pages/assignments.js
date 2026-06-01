@@ -583,7 +583,7 @@ export const render = async () => {
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [
                                     h('div', { className: 'text-sm font-bold mb-0 pr-2' }, asg.title),
-                                    isExpired ? h('div', { className: 'badge badge-urgent p-1 rounded-full' }, title: 'Atrasado') : null
+                                    isExpired ? h('div', { className: 'badge badge-urgent p-1 rounded-full', title: 'Atrasado' }) : null
                                 ]),
                                 h('div', { className: 'text-xs text-muted mb-2 truncate' }, `${asg.client} • ${asg.type}`),
                                 h('div', { className: 'flex items-center justify-between border-top pt-2 mt-2' }, [
