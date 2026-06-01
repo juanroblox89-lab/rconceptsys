@@ -232,60 +232,40 @@ export const render = async () => {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
                                     style: { color: 'var(--success)', borderColor: 'rgba(var(--success-rgb), 0.3)' },
                                     onClick: async (e) => {
-                                        let price = 0;
-                                        let obs = `Cobro por tarea: ${asg.title}`;
-
-                                        if (asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)') {
-                                            const minStr = prompt(`¿Cuántos minutos duró la GRABACIÓN para "${asg.title}"?\n\n(Se multiplicará automáticamente por $200)`);
-                                            if (minStr === null) return;
-                                            const mins = Number(minStr.replace(/[^0-9.-]+/g,"")) || 0;
-                                            price = mins * 200;
-                                            obs = `Cobro por grabación (${mins} minutos a $200): ${asg.title}`;
-
-                                            if (asg.type === 'Creador 360° (Grabación + Edición)') {
-                                                const editPriceStr = prompt(`Ingresa el monto a cobrar extra por la parte de EDICIÓN de "${asg.title}":`);
-                                                if (editPriceStr === null) return;
-                                                const editPrice = Number(editPriceStr.replace(/[^0-9.-]+/g,"")) || 0;
-                                                price += editPrice;
-                                                obs += ` + Edición ($${editPrice})`;
+                                        openBillingModal(asg, async (price, obs) => {
+                                            const btn = e.currentTarget;
+                                            btn.disabled = true;
+                                            try {
+                                                let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
+                                                if (!currentInv) {
+                                                    currentInv = { items: [] };
+                                                } else if (!currentInv.items) {
+                                                    currentInv.items = [];
+                                                }
+                                                
+                                                const newItem = {
+                                                    id: `item-${Date.now()}`,
+                                                    type: asg.type,
+                                                    client: asg.client,
+                                                    title: asg.title,
+                                                    price: price,
+                                                    date: new Date().toISOString(),
+                                                    observations: obs
+                                                };
+                                                
+                                                currentInv.items.push(newItem);
+                                                
+                                                await invoiceService.saveEmployeeInvoice(user.uid, currentInv);
+                                                
+                                                await assignmentService.saveAssignment({ ...asg, status: 'Completado', billed: true });
+                                                
+                                                if (btn) showFeedback(btn, '✅ Cobrado');
+                                                setTimeout(() => loadAndRender(), 1200);
+                                            } catch (err) {
+                                                console.error(err);
+                                                if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
                                             }
-                                        } else {
-                                            const priceStr = prompt(`Ingresa el monto a cobrar por la tarea "${asg.title}" (Dejar vacío o 0 si no aplica):`);
-                                            if (priceStr === null) return;
-                                            price = Number(priceStr.replace(/[^0-9.-]+/g,"")) || 0;
-                                        }
-                                        
-                                        const btn = e.currentTarget;
-                                        btn.disabled = true;
-                                        try {
-                                            let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
-                                            if (!currentInv) {
-                                                currentInv = { items: [] };
-                                            } else if (!currentInv.items) {
-                                                currentInv.items = [];
-                                            }
-                                            
-                                            const newItem = {
-                                                id: `item-${Date.now()}`,
-                                                type: asg.type,
-                                                client: asg.client,
-                                                amount: price,
-                                                createdAt: new Date().toISOString(),
-                                                observations: obs
-                                            };
-                                            
-                                            currentInv.items.push(newItem);
-                                            currentInv.amount = currentInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-                                            
-                                            await invoiceService.saveEmployeeInvoice(user.uid, currentInv);
-                                            await assignmentService.saveAssignment({ ...asg, billed: true });
-                                            loadAndRender();
-                                            alert("¡Tarea agregada a tu factura exitosamente!");
-                                        } catch(err) {
-                                            btn.disabled = false;
-                                            alert("Error al añadir a factura.");
-                                            console.error(err);
-                                        }
+                                        });
                                     }
                                 }, [icon('file-text', 12), h('span', {}, 'Cobrar Tarea')]) : null,
                                 
@@ -943,4 +923,89 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     if (window.lucide) window.lucide.createIcons();
+}
+
+// --- Billing Modal ---
+function openBillingModal(asg, callback) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    const isRecording = asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)';
+    const is360 = asg.type === 'Creador 360° (Grabación + Edición)';
+
+    const contentDiv = h('div', { className: 'flex-column gap-3 mt-2' });
+    
+    // Inputs
+    const minsInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0' });
+    const editPriceInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0' });
+    const genericPriceInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0' });
+
+    if (isRecording) {
+        contentDiv.appendChild(h('div', { className: 'flex-column gap-1' }, [
+            h('label', { className: 'text-xs font-bold' }, 'Minutos de Grabación:'),
+            h('span', { className: 'text-xs text-muted mb-1' }, '(Se multiplicará por $200 COP automáticamente)'),
+            minsInput
+        ]));
+
+        if (is360) {
+            contentDiv.appendChild(h('div', { className: 'flex-column gap-1 mt-2' }, [
+                h('label', { className: 'text-xs font-bold' }, 'Cobro extra por Edición (Opcional):'),
+                h('span', { className: 'text-xs text-muted mb-1' }, '¿Cuánto cobras por editar este material? (COP)'),
+                editPriceInput
+            ]));
+        }
+    } else {
+        contentDiv.appendChild(h('div', { className: 'flex-column gap-1' }, [
+            h('label', { className: 'text-xs font-bold' }, 'Monto a Cobrar (COP):'),
+            h('span', { className: 'text-xs text-muted mb-1' }, 'Dejar en 0 si no aplica cobro extra por esta tarea.'),
+            genericPriceInput
+        ]));
+    }
+
+    const modal = h('div', { className: 'modal-container', style: { maxWidth: '400px' } }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, `Liquidación: ${asg.title}`),
+            h('button', { onClick: () => overlay.remove() }, '×')
+        ]),
+        h('div', { className: 'modal-body' }, [
+            h('p', { className: 'text-xs text-muted mb-2' }, `Vas a registrar el cobro por la tarea de cliente: ${asg.client}.`),
+            contentDiv
+        ]),
+        h('div', { className: 'modal-footer' }, [
+            h('button', { className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
+            h('button', {
+                className: 'btn btn-primary text-xs',
+                style: { background: 'var(--success)', borderColor: 'var(--success)' },
+                onClick: () => {
+                    let price = 0;
+                    let obs = `Cobro por tarea: ${asg.title}`;
+
+                    if (isRecording) {
+                        const mins = Number(minsInput.value) || 0;
+                        price = mins * 200;
+                        obs = `Cobro por grabación (${mins} minutos a $200): ${asg.title}`;
+
+                        if (is360) {
+                            const editPrice = Number(editPriceInput.value) || 0;
+                            price += editPrice;
+                            obs += ` + Edición ($${editPrice})`;
+                        }
+                    } else {
+                        price = Number(genericPriceInput.value) || 0;
+                    }
+
+                    overlay.remove();
+                    callback(price, obs);
+                }
+            }, [icon('check', 12), h('span', { style: { marginLeft: '4px' } }, 'Confirmar Cobro')])
+        ])
+    ]);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+    
+    // Focus first input
+    setTimeout(() => {
+        if (isRecording) minsInput.focus();
+        else genericPriceInput.focus();
+    }, 100);
 }
