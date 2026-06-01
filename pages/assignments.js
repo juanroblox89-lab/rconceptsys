@@ -1294,7 +1294,10 @@ export function openMasterPipelineModal(context = {}) {
                         <select id="mp-client" class="form-select text-xs" required>${clientsHtml}</select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Guion (Script)</label>
+                        <label class="form-label flex justify-between items-center">
+                            Guion (Script)
+                            <button type="button" class="text-xs text-accent font-bold bg-transparent border-none cursor-pointer hover:underline" onclick="window.location.hash='#ai-assistant'; localStorage.setItem('ria_prefill', 'Créame un guion (create_script) detallado paso a paso para el cliente [CLIENTE] sobre [TEMA]. Asegúrate de incluir la puesta en escena (sceneDirections).'); document.querySelector('.modal-overlay').remove();">[+ Pedir a RIA]</button>
+                        </label>
                         <select id="mp-script" class="form-select text-xs"><option value="">-- Sin Guion --</option>${scriptsHtml}</select>
                     </div>
                     <div class="form-group">
@@ -1312,7 +1315,7 @@ export function openMasterPipelineModal(context = {}) {
                 </div>
 
                 <!-- Columna Derecha: El Equipo -->
-                <div class="flex-column gap-3" style="padding-left: 0.5rem; max-height: 60vh; overflow-y: auto;">
+                <div class="flex-column gap-3" style="padding-left: 0.5rem;">
                     <h3 class="text-sm font-bold text-success">2. Equipo de Trabajo (Fases)</h3>
                     
                     <div class="card p-3" style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent);">

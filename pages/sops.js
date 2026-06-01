@@ -64,14 +64,14 @@ export const render = () => {
                 ])
             ]),
             h('div', { className: 'flex gap-2' }, [
-                h('button', { 
+                isAdmin ? h('button', { 
                     className: 'btn btn-outline text-xs flex items-center gap-1 font-bold text-accent', 
                     style: { borderColor: 'var(--accent)', color: 'var(--accent)' },
                     onClick: () => {
-                        localStorage.setItem('ria_prefill', 'Créame un SOP detallado paso a paso para [INSERTAR MOTIVO] que sea profesional, claro y cumpla con nuestros estándares: ');
+                        localStorage.setItem('ria_prefill', 'Créame un SOP (create_sop) detallado paso a paso para [INSERTAR MOTIVO] que sea profesional, claro y cumpla con nuestros estándares: ');
                         window.location.hash = '#ai-assistant';
                     }
-                }, [icon('sparkles', 13), h('span', {}, 'Ayuda de RIA')]),
+                }, [icon('sparkles', 13), h('span', {}, 'Ayuda de RIA')]) : null,
                 isAdmin ? h('button', {
                     className: 'btn btn-primary text-xs',
                     onClick: () => openAdminSopBuilder(null, load)
@@ -410,11 +410,7 @@ function openAdminSopBuilder(existing, reload) {
                     )
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label flex items-center gap-1' }, [
-                        h('input', { id: 'sop-active', type: 'checkbox', checked: existing?.active !== false }),
-                        h('span', {}, 'Activo')
-                    ]),
-                    h('div', {})
+                    // Empty placeholder to maintain grid layout
                 ])
             ]),
             // Role target
