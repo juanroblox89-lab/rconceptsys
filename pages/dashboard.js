@@ -86,7 +86,7 @@ export const render = () => {
             }
 
             // Assemble main elements inside dynamic container
-            const banner = h('div', { className: 'p-6 bg-secondary border-radius-md flex justify-between items-center flex-wrap gap-4', style: { border: '1px solid var(--border)', borderRadius: '12px', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #fff 100%)' } }, [
+            const banner = h('div', { className: 'glass-panel p-6 flex justify-between items-center flex-wrap gap-4', style: { marginBottom: '24px' } }, [
                 h('div', { className: 'flex-column gap-1' }, [
                     h('div', { className: 'flex items-center gap-2 mb-1' }, [
                         h('span', { className: 'badge badge-today' }, 'SISTEMA OPERATIVO'),
@@ -180,7 +180,7 @@ export const render = () => {
 
 // Helpers
 const createMetricCard = (label, value, iconName, color, subtext) => {
-    return h('div', { className: 'card metric-card flex-column justify-between' }, [
+    return h('div', { className: 'card hover-lift metric-card flex-column justify-between' }, [
         h('div', { className: 'metric-label' }, label),
         h('div', { className: 'metric-value' }, value),
         h('div', { className: 'flex items-center gap-1 mt-1 text-xs font-medium', style: { color: color } }, [
@@ -192,7 +192,7 @@ const createMetricCard = (label, value, iconName, color, subtext) => {
 
 const createQuickAction = (iconName, title, desc, onClickHandler) => {
     return h('button', { 
-        className: 'card flex items-center gap-3 w-full text-left transition hover-bg-tertiary', 
+        className: 'card hover-lift flex items-center gap-3 w-full text-left transition', 
         style: { padding: '12px 16px', border: '1px solid var(--border)' },
         onClick: onClickHandler 
     }, [
