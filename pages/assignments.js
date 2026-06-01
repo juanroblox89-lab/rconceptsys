@@ -168,80 +168,39 @@ export const render = async () => {
                                     const sopSub = hasSop ? mySopSubmissions.find(sub => sub.sopId === asg.sopId && sub.assignmentId === asg.id) : null;
                                     const sopCompleted = sopSub?.status === 'completed';
 
-                                    const btnList = [];
+                                    // Unified Deliverable UI
+                                    const defaultLink = asg.uploadLink || (hasDrive ? asgClient.driveFolderUrl : '') || '';
+                                    const inputId = `deliverable-input-${asg.id}`;
 
-                                    // Drive Upload Button
-                                    if (hasDrive && isRecording) {
-                                        btnList.push(h('a', {
-                                            href: asgClient.driveFolderUrl,
-                                            target: '_blank',
-                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold'
-                                        }, [icon('folder', 12), h('span', {}, 'Abrir Drive')]));
-                                        
-                                        btnList.push(h('button', {
-                                            className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                            onClick: async (e) => {
-                                                const btn = e.currentTarget;
-                                                btn.disabled = true;
-                                                try {
-                                                    const descAddition = `\n\n[Auto] Medios subidos a la carpeta de Drive del cliente: ${asgClient.driveFolderUrl}`;
-                                                    const newDesc = (asg.description || '') + descAddition;
-                                                    await assignmentService.saveAssignment({ ...asg, status: 'Completado', description: newDesc });
-                                                    loadAndRender();
-                                                } catch(err) {
-                                                    btn.disabled = false;
-                                                    alert("Error al actualizar la tarea.");
-                                                }
-                                            }
-                                        }, [icon('check', 12), h('span', {}, 'Medios Subidos')]));
-                                        
-                                        const bodyContent = [h('div', { className: 'flex gap-2' }, btnList)];
-
-                                        if (hasSop && sopObj) {
-                                            let sopBanner;
-                                            if (sopCompleted) {
-                                                sopBanner = h('div', {
-                                                    className: 'mt-4 p-4 flex-column items-center justify-center cursor-pointer transition',
-                                                    style: { 
-                                                        background: 'linear-gradient(135deg, var(--success) 0%, #10b981 100%)', 
-                                                        borderRadius: '12px', color: '#fff',
-                                                        boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)', border: '1px solid rgba(255,255,255,0.15)',
-                                                        transform: 'translateY(0)'
-                                                    },
-                                                    onMouseEnter: (e) => { e.currentTarget.style.transform = 'translateY(-2px)'; },
-                                                    onMouseLeave: (e) => { e.currentTarget.style.transform = 'translateY(0)'; }
-                                                }, [
-                                                    icon('check-circle', 32, 'mb-2'),
-                                                    h('span', { className: 'font-bold text-sm tracking-wide uppercase', style: { textShadow: '0 2px 4px rgba(0,0,0,0.2)' } }, `✅ SOP COMPLETADO: ${sopObj.title}`),
-                                                    h('span', { className: 'text-xs opacity-90 mt-1 text-center font-medium max-w-sm' }, 'Todos los pasos han sido verificados. Puedes proceder a cobrar.')
-                                                ]);
-                                            } else {
-                                                sopBanner = h('div', {
-                                                    className: 'mt-4 p-4 flex-column items-center justify-center cursor-pointer transition interactive-card',
-                                                    onClick: () => openSopViewerModal(sopObj, asg, sopSub, loadAndRender)
-                                                }, [
-                                                    icon('clipboard-list', 32, 'mb-2'),
-                                                    h('span', { className: 'font-bold text-sm tracking-wide uppercase' }, `🔥 LLENAR SOP OBLIGATORIO: ${sopObj.title}`),
-                                                    h('span', { className: 'text-xs opacity-90 mt-1 text-center font-medium max-w-sm' }, 'Haz clic aquí para abrir tu lista de verificación y entregar los enlaces o archivos requeridos.')
-                                                ]);
-                                            }
-                                            bodyContent.push(sopBanner);
-                                        }
-
-                                        return h('div', { className: 'flex-column' }, bodyContent);
-                                    }
-
-                                    if (hasSop && sopObj && !sopCompleted) {
-                                        return h('button', {
-                                            className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                            onClick: () => openSopViewerModal(sopObj, asg, sopSub, loadAndRender)
-                                        }, [icon('check-square', 12), h('span', {}, 'Llenar SOP')]);
-                                    } else {
-                                        return h('button', {
-                                            className: 'btn btn-primary text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                    return h('div', { 
+                                        className: 'mt-3 p-3 border rounded', 
+                                        style: { background: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }
+                                    }, [
+                                        h('label', { className: 'text-xs font-bold mb-1 block' }, 'Enlace de Entregable (Drive, Frame.io, etc):'),
+                                        h('div', { className: 'flex gap-2 items-center' }, [
+                                            h('input', {
+                                                id: inputId,
+                                                type: 'url',
+                                                className: 'form-input text-xs flex-grow',
+                                                placeholder: 'https://...',
+                                                defaultValue: defaultLink
+                                            }),
+                                            hasDrive && asgClient.driveFolderUrl ? h('a', {
+                                                href: asgClient.driveFolderUrl,
+                                                target: '_blank',
+                                                className: 'btn btn-outline text-xs p-1 px-2',
+                                                title: 'Abrir Drive del Cliente'
+                                            }, [icon('folder', 14)]) : null
+                                        ]),
+                                        h('button', {
+                                            className: 'btn btn-primary text-xs py-1.5 px-3 mt-2 w-full flex items-center justify-center gap-1 font-bold transition',
                                             style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
                                             onClick: async (e) => {
+                                                const linkVal = document.getElementById(inputId).value.trim();
+                                                if (!linkVal) { alert('Por favor, ingresa el enlace del entregable para poder continuar.'); return; }
+
                                                 const btn = e.currentTarget;
+                                                
                                                 openBillingModal(asg, async (price, obs) => {
                                                     btn.disabled = true;
                                                     try {
@@ -254,24 +213,32 @@ export const render = async () => {
                                                             type: asg.type,
                                                             client: asg.client,
                                                             title: asg.title,
-                                                            amount: price, // Fix: Changed price to amount
+                                                            amount: price,
                                                             date: new Date().toISOString(),
                                                             observations: obs
                                                         };
                                                         
-                                                        // Guardamos la tarea como completada primero
-                                                        await assignmentService.saveAssignment({ ...asg, status: 'Completado', billed: true });
+                                                        const descAddition = `\n\n[Auto] Enlace Entregable: ${linkVal}`;
+                                                        const newDesc = (asg.description || '') + descAddition;
+                                                        
+                                                        // Guardamos la tarea
+                                                        await assignmentService.saveAssignment({ 
+                                                            ...asg, 
+                                                            status: 'Completado', 
+                                                            billed: true,
+                                                            uploadLink: linkVal,
+                                                            description: newDesc
+                                                        });
                                                         
                                                         try {
                                                             currentInv.items.push(newItem);
                                                             await invoiceService.saveEmployeeInvoice(user.uid, currentInv);
                                                         } catch (billingError) {
-                                                            // Rollback
                                                             await assignmentService.saveAssignment({ ...asg, status: 'Pendiente', billed: false });
-                                                            throw new Error("No se pudo guardar la factura. Tarea revertida a Pendiente.");
+                                                            throw new Error("No se pudo guardar la factura.");
                                                         }
                                                         
-                                                        if (btn) showFeedback(btn, '✅ Completado y Cobrado');
+                                                        if (btn) showFeedback(btn, '✅ Entregado');
                                                         setTimeout(() => loadAndRender(), 1200);
                                                     } catch (err) {
                                                         console.error(err);
@@ -279,8 +246,8 @@ export const render = async () => {
                                                     }
                                                 });
                                             }
-                                        }, [icon('check', 12), h('span', {}, 'Completar')]);
-                                    }
+                                        }, [icon('check-circle', 14), h('span', {}, 'Entregar y Completar')])
+                                    ]);
                                 })() : null,
 
                                 // El botón "Cobrar Tarea" independiente fue removido para evitar duplicidad,
@@ -304,7 +271,7 @@ export const render = async () => {
                                     }
                                 }, [icon('rotate-ccw', 12), h('span', {}, 'Reabrir')]) : null,
 
-                                asg.status !== 'Completado' && asg.status !== 'Cancelado' ? h('button', {
+                                asg.status !== 'Completado' && asg.status !== 'Cancelado' && user.role === 'admin' ? h('button', {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
                                     style: { color: 'var(--error)', borderColor: 'rgba(var(--error-rgb), 0.3)' },
                                     onClick: async (e) => {

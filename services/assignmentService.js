@@ -171,12 +171,16 @@ export const assignmentService = {
         try {
             console.log(`[Pipeline] Stage ${completedStageIndex} completed for project ${projectId}. Checking for next stage...`);
             const allAssignments = await this.getAllAssignments();
+            const completedAsg = allAssignments.find(a => a.projectId === projectId && a.stageIndex === completedStageIndex);
             const nextStageAsg = allAssignments.find(a => a.projectId === projectId && a.stageIndex === completedStageIndex + 1);
             
             if (nextStageAsg && nextStageAsg.status === 'blocked') {
                 console.log(`[Pipeline] Unlocking assignment ${nextStageAsg.id} (Stage ${completedStageIndex + 1})`);
-                await dbService.update('assignments', nextStageAsg.id, { status: 'Pendiente' });
-                // Note: The UI will automatically react via the real-time listener
+                const updates = { status: 'Pendiente' };
+                if (completedAsg && completedAsg.uploadLink) {
+                    updates.linkedAsset = completedAsg.uploadLink;
+                }
+                await dbService.update('assignments', nextStageAsg.id, updates);
             }
         } catch (err) {
             console.error(`[Pipeline] Error advancing pipeline for project ${projectId}:`, err);
