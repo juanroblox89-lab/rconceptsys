@@ -33,7 +33,7 @@ const checkPermission = (href) => {
     const moduleId = href.replace('#', '');
     
     if (user?.role === 'admin') {
-        const adminAllowed = ['dashboard', 'admin', 'workers', 'clients', 'billing'];
+        const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'sops', 'references', 'ai-assistant', 'admin', 'workers', 'clients', 'billing', 'assets'];
         return adminAllowed.includes(moduleId);
     }
     
