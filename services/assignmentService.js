@@ -47,23 +47,28 @@ export const assignmentService = {
     },
 
     async saveAssignment(data) {
+        const id = data.id || `ASG-${crypto.randomUUID().split('-')[0]}`;
         const newAsg = {
-            id: data.id || `ASG-${crypto.randomUUID().split('-')[0]}`,
-            employeeId: data.employeeId,
-            type: data.type || 'Edición', // 'Grabación' | 'Edición' | 'Creador 360°'
-            client: data.client || 'General',
-            title: data.title || 'Nueva Asignación',
-            description: data.description || '',
-            assignedDate: data.assignedDate || new Date().toISOString(),
-            dueDate: data.dueDate,
-            status: data.status || 'Pendiente',
-            createdBy: data.createdBy || 'admin',
-            linkedScript: data.linkedScript || '',
-            linkedAsset: data.linkedAsset || ''
+            type: 'Edición',
+            client: 'General',
+            title: 'Nueva Asignación',
+            description: '',
+            assignedDate: new Date().toISOString(),
+            status: 'Pendiente',
+            createdBy: 'admin',
+            linkedScript: '',
+            linkedAsset: '',
+            ...data,
+            id // Ensure ID is not overwritten
         };
 
         try {
-            await dbService.set('assignments', newAsg.id, newAsg);
+            await dbService.set('assignments', id, newAsg);
+            
+            // Auto-advance pipeline if completed
+            if (newAsg.status === 'Completado' && newAsg.projectId && typeof newAsg.stageIndex !== 'undefined') {
+                await this._advancePipeline(newAsg.projectId, newAsg.stageIndex);
+            }
         } catch (err) {
             console.warn("Error saving assignment to DB:", err);
         }
@@ -149,8 +154,32 @@ export const assignmentService = {
     async updateAssignmentStatus(id, newStatus) {
         try {
             await dbService.update('assignments', id, { status: newStatus });
+            
+            // Fetch the assignment to check if we need to advance pipeline
+            if (newStatus === 'Completado') {
+                const asg = await dbService.getById('assignments', id);
+                if (asg && asg.projectId && typeof asg.stageIndex !== 'undefined') {
+                    await this._advancePipeline(asg.projectId, asg.stageIndex);
+                }
+            }
         } catch (err) {
             console.warn(`Error updating status for assignment ${id}:`, err);
+        }
+    },
+
+    async _advancePipeline(projectId, completedStageIndex) {
+        try {
+            console.log(`[Pipeline] Stage ${completedStageIndex} completed for project ${projectId}. Checking for next stage...`);
+            const allAssignments = await this.getAllAssignments();
+            const nextStageAsg = allAssignments.find(a => a.projectId === projectId && a.stageIndex === completedStageIndex + 1);
+            
+            if (nextStageAsg && nextStageAsg.status === 'blocked') {
+                console.log(`[Pipeline] Unlocking assignment ${nextStageAsg.id} (Stage ${completedStageIndex + 1})`);
+                await dbService.update('assignments', nextStageAsg.id, { status: 'Pendiente' });
+                // Note: The UI will automatically react via the real-time listener
+            }
+        } catch (err) {
+            console.error(`[Pipeline] Error advancing pipeline for project ${projectId}:`, err);
         }
     },
 
