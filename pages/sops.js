@@ -33,7 +33,11 @@ export const render = () => {
         // Filter SOPs visible to this user
         let visibleSops = isAdmin
             ? sopsList
-            : sopsList.filter(s => s.active !== false && (!s.targetRole || s.targetRole === 'all' || s.targetRole === userRole));
+            : sopsList.filter(s => {
+                if (s.active === false) return false;
+                if (!s.targetRole || s.targetRole.toLowerCase() === 'all') return true;
+                return s.targetRole.trim().toLowerCase() === userRole.trim().toLowerCase();
+            });
 
         // Merge active submissions to reflect user's current progress
         visibleSops = visibleSops.map(sopTemplate => {

@@ -197,11 +197,26 @@ export const render = () => {
                     ])
                 ])
             ]),
-            h('div', { className: 'modal-footer' }, [
+            h('div', { className: 'modal-footer flex gap-2' }, [
+                isAdmin ? h('button', { 
+                    type: 'button', 
+                    className: 'btn btn-outline text-error text-xs flex items-center gap-1',
+                    onClick: async () => {
+                        if (confirm('¿Eliminar esta referencia permanentemente?')) {
+                            try {
+                                await dbService.delete('references', refItem.id);
+                                document.body.removeChild(overlay);
+                                loadReferences();
+                            } catch (err) {
+                                console.error("Error deleting reference:", err);
+                            }
+                        }
+                    }
+                }, [icon('trash-2', 14), h('span', {}, 'Eliminar')]) : null,
                 h('a', { 
                     href: refItem.url, 
                     target: '_blank', 
-                    className: 'btn btn-primary text-xs no-underline flex items-center gap-1',
+                    className: 'btn btn-primary text-xs no-underline flex items-center gap-1 flex-1 justify-center',
                     style: { padding: '8px 16px' }
                 }, [icon('external-link', 14), h('span', {}, 'Ver en Plataforma')]),
                 h('button', { 
