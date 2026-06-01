@@ -159,14 +159,10 @@ export const render = () => {
                     ].filter(Boolean))
                 ]),
 
-                // Scripts grid
                 h('div', { className: 'grid gap-3 mt-2', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' } },
-                    data.recommended.length === 0 && data.activeMonthly.length === 0
+                    data.recommended.length === 0
                         ? [h('div', { className: 'text-center p-6 text-xs text-muted italic' }, 'Sin guiones para este cliente.')]
-                        : [
-                            ...data.recommended.map(s => createScriptCard(s)),
-                            ...data.activeMonthly.map(a => createAssignmentCard(a))
-                        ]
+                        : data.recommended.map(s => createScriptCard(s))
                 )
             ]);
             groupedContainer.appendChild(clientSection);
@@ -225,26 +221,7 @@ export const render = () => {
         ]);
     };
 
-    // --- Assignment Card ---
-    const createAssignmentCard = (asg) => {
-        const emp = usersList.find(u => u.uid === asg.employeeId);
-        const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin asignar';
-        const statusClass = asg.status === 'Completado' ? 'success' : (asg.status === 'En Producción' ? 'info' : 'warning');
-
-        return h('div', { className: 'card interactive-card p-4 flex-column gap-2 bg-secondary' }, [
-            h('div', { className: 'flex justify-between items-start' }, [
-                h('div', { className: 'flex-column gap-1' }, [
-                    h('h4', { className: 'text-xs font-bold text-primary' }, asg.title),
-                    h('div', { className: 'flex gap-1 mt-1' }, [
-                        h('span', { className: `badge badge-${statusClass}`, style: { fontSize: '0.55rem', padding: '1px 5px' } }, asg.status),
-                        h('span', { className: 'badge badge-outline', style: { fontSize: '0.55rem', padding: '1px 5px' } }, `📋 ${empName}`)
-                    ])
-                ]),
-                h('a', { href: '#assignments', className: 'btn-icon text-muted', title: 'Ver en Kanban', style: { width: '20px', height: '20px' } }, [icon('external-link', 11)])
-            ]),
-            asg.description ? h('p', { className: 'text-xs text-muted', style: { margin: 0 } }, asg.description.substring(0, 80)) : null
-        ]);
-    };
+    // (Removed createAssignmentCard)
 
     // --- Detail Modal (full script view for ALL users) ---
     const openDetailModal = (s) => {
