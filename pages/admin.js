@@ -213,8 +213,10 @@ function renderPendingCard(pu, reload, rolesList = []) {
 
     // Build options from Firestore roles, fallback to defaults
     const defaultRoles = [
-        { id: 'editor', label: 'Editor de Video' },
         { id: 'camarógrafo', label: 'Camarógrafo' },
+        { id: 'editor', label: 'Editor de Video' },
+        { id: 'editorcamarografo', label: 'Creador 360° (Camarógrafo + Editor)' },
+        { id: 'uploader', label: 'Publicador / Uploader' },
         { id: 'estratega', label: 'Estratega Creativo' },
         { id: 'diseñador', label: 'Diseñador Gráfico' },
         { id: 'administración digital', label: 'Administración Digital' }
@@ -508,8 +510,10 @@ function openRoleConfigModal(role, reload) {
 // ── Roles Management Section ──────────────────────────────────
 function renderRolesSection(rolesList = [], reload) {
     const defaultRoles = [
-        { id: 'editor', label: 'Editor de Video', active: true },
         { id: 'camarógrafo', label: 'Camarógrafo', active: true },
+        { id: 'editor', label: 'Editor de Video', active: true },
+        { id: 'editorcamarografo', label: 'Creador 360° (Camarógrafo + Editor)', active: true },
+        { id: 'uploader', label: 'Publicador / Uploader', active: true },
         { id: 'estratega', label: 'Estratega Creativo', active: true },
         { id: 'diseñador', label: 'Diseñador Gráfico', active: true },
         { id: 'administración digital', label: 'Administración Digital', active: true }
@@ -525,24 +529,24 @@ function renderRolesSection(rolesList = [], reload) {
                     h('span', { className: 'font-bold text-xs' }, 'Configuración de Roles'),
                     h('p', { className: 'text-xs text-muted' }, 'Administra los roles disponibles para la asignación de tareas en el equipo.')
                 ]),
-                rolesList.length === 0 ? h('button', {
+                h('button', {
                     className: 'btn btn-outline text-xs',
                     style: { padding: '4px 10px', fontSize: '0.68rem' },
                     onClick: async (e) => {
-                        if (!confirm('¿Inicializar los 5 roles predeterminados en Firestore?')) return;
+                        if (!confirm('¿Agregar/Actualizar los roles base recomendados en Firestore? (Esto no borrará tus roles personalizados)')) return;
                         const btn = e.currentTarget;
                         btn.disabled = true;
-                        btn.textContent = 'Inicializando...';
+                        btn.textContent = 'Actualizando...';
                         try {
                             await Promise.all(defaultRoles.map(r => dbService.set('roles', r.id, r)));
-                            alert('✅ Roles base inicializados en Firestore con éxito.');
+                            alert('✅ Roles base actualizados en Firestore con éxito.');
                             reload();
                         } catch (err) {
-                            alert(`Error al inicializar: ${err.message}`);
-                            if (btn) { btn.disabled = false; btn.textContent = 'Inicializar Roles Base'; }
+                            alert(`Error al actualizar: ${err.message}`);
+                            if (btn) { btn.disabled = false; btn.textContent = 'Actualizar Roles Base'; }
                         }
                     }
-                }, [icon('settings-2', 11), h('span', { style: { marginLeft: '4px' } }, 'Inicializar Roles Base')]) : null
+                }, [icon('settings-2', 11), h('span', { style: { marginLeft: '4px' } }, 'Actualizar Roles Base')])
             ]),
 
             // Button to open new role modal
