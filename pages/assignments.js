@@ -460,8 +460,10 @@ export const render = async () => {
                                         }
                                         
                                         return h('div', { 
-                                            className: 'flex-column items-center gap-1 flex-1 relative', 
-                                            style: { zIndex: 2 } 
+                                            className: 'flex-column items-center gap-1 flex-1 relative cursor-pointer', 
+                                            style: { zIndex: 2 },
+                                            title: `Ver detalles de ${t.title}`,
+                                            onClick: () => openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
                                         }, [
                                             h('div', { 
                                                 className: 'flex items-center justify-center rounded-full',
@@ -1027,28 +1029,49 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
             }
 
             // 3. Asignación Maestra Trigger (Desbloquear siguiente Fase)
+            let needsAdminApproval = false;
+            let driveLinkForWa = '';
+            
             if (asg.projectId && asg.stageIndex !== undefined) {
                 const allAsgs = await assignmentService.getAllAssignments();
                 const nextPhase = allAsgs.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex + 1);
                 
                 if (nextPhase) {
-                    // Extraer enlace de drive del SOP actual (buscando el campo 'link' o 'url')
+                    // Extraer enlace de drive del SOP actual
                     const driveLinkStep = stepsData.find((s, idx) => sop.steps[idx].type === 'link' || sop.steps[idx].text.toLowerCase().includes('enlace'));
                     const driveLink = driveLinkStep ? driveLinkStep.userValue : '';
+                    if (driveLink) driveLinkForWa = driveLink;
                     
                     const descMsg = driveLink ? `\n\n--- Traspaso de Pipeline ---\nMaterial / Link: ${driveLink}` : '\n\n--- Traspaso de Pipeline ---';
                     
-                    await assignmentService.saveAssignment({
-                        ...nextPhase,
-                        status: 'Pendiente', // Unlock it
-                        description: (nextPhase.description || '') + descMsg
-                    });
+                    if (nextPhase.title.toLowerCase().includes('subida')) {
+                        needsAdminApproval = true;
+                        // NO cambiamos el status a 'Pendiente', se queda en 'blocked' (En espera)
+                        await assignmentService.saveAssignment({
+                            ...nextPhase,
+                            description: (nextPhase.description || '') + descMsg
+                        });
+                    } else {
+                        await assignmentService.saveAssignment({
+                            ...nextPhase,
+                            status: 'Pendiente', // Unlock it
+                            description: (nextPhase.description || '') + descMsg
+                        });
+                    }
                 }
             }
 
-            if (confirm('✅ ¡Asignación Completada! Factura validada y Pipeline actualizado.\n\n¿Deseas avisarle al jefe por WhatsApp que ya terminaste?')) {
+            let confirmMsg = '✅ ¡Asignación Completada! Factura validada y Pipeline actualizado.\n\n¿Deseas avisarle al jefe por WhatsApp que ya terminaste?';
+            let waMsgText = `✅ *Tarea Completada*\n*Trabajo:* ${asg.title}\n*Cliente:* ${asg.client || 'General'}\n*Status:* Ya está lista y facturada en la plataforma.`;
+            
+            if (needsAdminApproval) {
+                confirmMsg = '✅ ¡Asignación Completada!\n⚠️ La siguiente fase (Subida) requiere aprobación del Administrador.\n\n¿Notificar al líder por WhatsApp para que revise tu video y apruebe la subida?';
+                waMsgText = `✅ *Video Listo para Revisión*\n*Trabajo:* ${asg.title}\n*Cliente:* ${asg.client || 'General'}\n*Material:* ${driveLinkForWa || 'En la plataforma'}\n\nPor favor, revísalo y aprueba la fase de "Subida" en la plataforma cuando estés listo.`;
+            }
+
+            if (confirm(confirmMsg)) {
                 const adminPhone = "573000000000"; // Se puede cambiar después a config.adminPhone
-                const msg = encodeURIComponent(`✅ *Tarea Completada*\n*Trabajo:* ${asg.title}\n*Cliente:* ${asg.client || 'General'}\n*Status:* Ya está lista y facturada en la plataforma.`);
+                const msg = encodeURIComponent(waMsgText);
                 window.open(`https://wa.me/${adminPhone}?text=${msg}`, '_blank');
             }
             overlay.remove();
