@@ -114,9 +114,31 @@ export const assignmentService = {
             sopId: data.sopEditorId || null
         };
 
+        // Fase 3: Subida (Bloqueada/Oculta)
+        const uploadId = `ASG-${crypto.randomUUID().split('-')[0]}`;
+        const uploadAssignment = {
+            id: uploadId,
+            projectId,
+            stageIndex: 2,
+            employeeId: data.uploaderId,
+            type: 'Subida',
+            client: data.client || 'General',
+            title: `[Subida] ${data.title}`,
+            description: '',
+            assignedDate: new Date().toISOString(),
+            dueDate: data.dueDate,
+            status: 'blocked',
+            createdBy: 'system_automator',
+            linkedScript: data.linkedScript || '',
+            linkedAsset: data.linkedAsset || '',
+            sopId: data.sopUploaderId || null,
+            uploadLink: data.uploadLink || ''
+        };
+
         try {
             await dbService.set('assignments', recId, recAssignment);
             await dbService.set('assignments', editId, editAssignment);
+            await dbService.set('assignments', uploadId, uploadAssignment);
         } catch (err) {
             console.warn("Error saving pipeline assignments to DB:", err);
         }

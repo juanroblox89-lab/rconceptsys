@@ -1064,17 +1064,17 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                 console.error("Error auto-facturando:", err);
             }
 
-            // 3. Asignación Maestra Trigger (Si es Fase 1 de un Pipeline)
-            if (asg.projectId && asg.stageIndex === 0) {
+            // 3. Asignación Maestra Trigger (Desbloquear siguiente Fase)
+            if (asg.projectId && asg.stageIndex !== undefined) {
                 const allAsgs = await assignmentService.getAllAssignments();
-                const nextPhase = allAsgs.find(a => a.projectId === asg.projectId && a.stageIndex === 1);
+                const nextPhase = allAsgs.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex + 1);
                 
                 if (nextPhase) {
-                    // Extraer enlace de drive del SOP actual (buscando el campo 'link')
-                    const driveLinkStep = stepsData.find((s, idx) => sop.steps[idx].type === 'link');
+                    // Extraer enlace de drive del SOP actual (buscando el campo 'link' o 'url')
+                    const driveLinkStep = stepsData.find((s, idx) => sop.steps[idx].type === 'link' || sop.steps[idx].text.toLowerCase().includes('enlace'));
                     const driveLink = driveLinkStep ? driveLinkStep.userValue : '';
                     
-                    const descMsg = `\n\n--- Traspaso de Pipeline ---\nMaterial de Grabación: ${driveLink}`;
+                    const descMsg = driveLink ? `\n\n--- Traspaso de Pipeline ---\nMaterial / Link: ${driveLink}` : '\n\n--- Traspaso de Pipeline ---';
                     
                     await assignmentService.saveAssignment({
                         ...nextPhase,
@@ -1263,13 +1263,14 @@ export function openMasterPipelineModal(context = {}) {
             dueDate: form.querySelector('#mp-due').value,
             camarografoId: form.querySelector('#mp-cam').value,
             editorId: form.querySelector('#mp-ed').value,
+            uploaderId: form.querySelector('#mp-up').value,
             sopCamarografoId: form.querySelector('#mp-sop-cam').value || null,
             sopEditorId: form.querySelector('#mp-sop-ed').value || null,
+            sopUploaderId: form.querySelector('#mp-sop-up').value || null,
             linkedScript: form.querySelector('#mp-script').value || '',
             linkedAsset: form.querySelector('#mp-asset').value || '',
+            uploadLink: form.querySelector('#mp-up-link').value || '',
             createdBy: 'admin',
-            // Billing payload for both phases will be identical or handled separately.
-            // For now, let's just pass rate cards if needed or we can enhance this later.
         };
         
         try {
@@ -1277,7 +1278,6 @@ export function openMasterPipelineModal(context = {}) {
             const { assignmentService } = await import('../services/assignmentService.js');
             await assignmentService.createMasterPipeline(data);
             overlay.remove();
-            // Assuming location.reload is the simplest way to reload if we don't have loadAndRender in scope here
             window.location.reload(); 
         } catch(err) {
             alert('Error creating pipeline: ' + err.message);
@@ -1293,7 +1293,7 @@ export function openMasterPipelineModal(context = {}) {
     const assetsHtml = (context.assets || []).map(a => `<option value="${a.url || a.thumbnail}">[${a.client}] ${a.title}</option>`).join('');
 
     const modalHTML = `
-        <form class="modal-container" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+        <form class="modal-container" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header" style="background: linear-gradient(135deg, var(--success), #10b981); color: white;">
                 <span class="modal-title font-bold">🚀 Nueva Asignación Maestra (Pipeline)</span>
                 <button type="button" class="close-btn" style="color:white; background:none; border:none; font-size:1.5rem; cursor:pointer;">×</button>
@@ -1322,22 +1322,22 @@ export function openMasterPipelineModal(context = {}) {
                     </div>
                     <div class="form-group">
                         <label class="form-label">Descripción Global (Instrucciones)</label>
-                        <textarea id="mp-desc" class="form-textarea text-xs" rows="4" required placeholder="Instrucciones que verán ambos..."></textarea>
+                        <textarea id="mp-desc" class="form-textarea text-xs" rows="4" required placeholder="Instrucciones que verán todos..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Fecha Límite Final (Editor)</label>
+                        <label class="form-label">Fecha Límite Final (Uploader)</label>
                         <input type="date" id="mp-due" class="form-input" required>
                     </div>
                 </div>
 
                 <!-- Columna Derecha: El Equipo -->
-                <div class="flex-column gap-3" style="padding-left: 0.5rem;">
-                    <h3 class="text-sm font-bold text-success">2. Equipo de Trabajo</h3>
+                <div class="flex-column gap-3" style="padding-left: 0.5rem; max-height: 60vh; overflow-y: auto;">
+                    <h3 class="text-sm font-bold text-success">2. Equipo de Trabajo (Fases)</h3>
                     
                     <div class="card p-3" style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent);">
                         <h4 class="text-xs font-bold mb-2">Fase 1: Grabación</h4>
                         <div class="form-group mb-2">
-                            <label class="form-label text-[10px]">Camarógrafo</label>
+                            <label class="form-label text-[10px]">Asignar a</label>
                             <select id="mp-cam" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
                         </div>
                         <div class="form-group">
@@ -1349,14 +1349,32 @@ export function openMasterPipelineModal(context = {}) {
                     <div class="text-center text-muted" style="font-size: 1.2rem;">↓</div>
 
                     <div class="card p-3" style="background: rgba(var(--info-rgb), 0.05); border: 1px solid var(--info);">
-                        <h4 class="text-xs font-bold mb-2">Fase 2: Edición (Se desbloquea al terminar Fase 1)</h4>
+                        <h4 class="text-xs font-bold mb-2">Fase 2: Edición (Automática)</h4>
                         <div class="form-group mb-2">
-                            <label class="form-label text-[10px]">Editor</label>
+                            <label class="form-label text-[10px]">Asignar a</label>
                             <select id="mp-ed" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
                         </div>
                         <div class="form-group">
                             <label class="form-label text-[10px]">SOP Obligatorio</label>
                             <select id="mp-sop-ed" class="form-select text-xs" required><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center text-muted" style="font-size: 1.2rem;">↓</div>
+
+                    <div class="card p-3" style="background: rgba(var(--warning-rgb), 0.05); border: 1px solid var(--warning);">
+                        <h4 class="text-xs font-bold mb-2">Fase 3: Subida (Automática)</h4>
+                        <div class="form-group mb-2">
+                            <label class="form-label text-[10px]">Asignar a</label>
+                            <select id="mp-up" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="form-label text-[10px]">Link/URL para publicar</label>
+                            <input type="text" id="mp-up-link" class="form-input text-xs" placeholder="Ej. Link de TikTok, Google Drive, etc." required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label text-[10px]">SOP Obligatorio</label>
+                            <select id="mp-sop-up" class="form-select text-xs" required><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
                         </div>
                     </div>
                 </div>
