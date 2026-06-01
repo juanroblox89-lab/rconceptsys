@@ -477,6 +477,19 @@ export const render = async () => {
                                             h('span', { className: 'text-[9px] text-muted text-center', style: { maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, emp ? (emp.nombre || emp.email.split('@')[0]) : '?')
                                         ]);
                                     })
+                                ]),
+                                h('div', { className: 'flex justify-between items-center mt-3 pt-3 border-top w-full' }, [
+                                    h('button', {
+                                        className: 'btn btn-outline text-[10px] py-1 px-2 flex-1 mr-2',
+                                        style: { borderColor: 'var(--accent)', color: 'var(--accent)' },
+                                        onClick: () => {
+                                            window.location.hash = `#ai-assistant?client=${tasks[0]?.client || ''}&context=Pipeline_${pid}`;
+                                        }
+                                    }, [icon('bot', 12), h('span', {}, 'Preguntar a RIA')]),
+                                    user?.role === 'admin' ? h('button', {
+                                        className: 'btn btn-outline text-[10px] py-1 px-2',
+                                        onClick: () => openEditPipelineModal(pid, tasks, { users: approvedUsers, clients: finalClients, sops: sops || [] })
+                                    }, [icon('edit', 12), h('span', {}, 'Editar / Eliminar')]) : null
                                 ])
                             ]);
                         })
@@ -500,25 +513,7 @@ export const render = async () => {
                             h('span', { className: 'kanban-column-count' }, colAsgs.length)
                         ]),
                         h('div', { 
-                            className: 'kanban-column-body',
-                            ondragover: (e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); },
-                            ondragleave: (e) => { e.currentTarget.classList.remove('drag-over'); },
-                            ondrop: async (e) => {
-                                e.preventDefault();
-                                e.currentTarget.classList.remove('drag-over');
-                                const asgId = e.dataTransfer.getData('text/plain');
-                                if (!asgId) return;
-                                const asg = assignments.find(a => a.id === asgId);
-                                if (asg && asg.status !== status) {
-                                    try {
-                                        await assignmentService.updateAssignmentStatus(asgId, status);
-                                        loadAndRender(); // Re-render to reflect changes
-                                    } catch (err) {
-                                        console.error(err);
-                                        alert("Error actualizando estado");
-                                    }
-                                }
-                            }
+                            className: 'kanban-column-body'
                         }, colAsgs.map(asg => {
                             const emp = approvedUsers.find(u => u.uid === asg.employeeId);
                             const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin Asignar';
@@ -526,20 +521,20 @@ export const render = async () => {
                             const due = new Date(asg.dueDate);
                             const isExpired = due < now && asg.status !== 'Completado';
                             
+                            // If it's part of a pipeline, show more context in the title
+                            let displayTitle = asg.title;
+                            if (asg.projectId && asg.title.length < 15) {
+                                // Attempt to find the pipeline context
+                                const pipelineContext = assignments.find(a => a.projectId === asg.projectId && a.id !== asg.id)?.title.replace(/\[.*?\]\s*/g, '') || asg.projectId;
+                                displayTitle = `${asg.title} - ${pipelineContext}`;
+                            }
+                            
                             return h('div', { 
                                 className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
-                                draggable: true,
-                                ondragstart: (e) => {
-                                    e.dataTransfer.setData('text/plain', asg.id);
-                                    setTimeout(() => e.target.classList.add('dragging'), 0);
-                                },
-                                ondragend: (e) => {
-                                    e.target.classList.remove('dragging');
-                                },
                                 onClick: () => openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] })
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [
-                                    h('div', { className: 'text-sm font-bold mb-0 pr-2' }, asg.title),
+                                    h('div', { className: 'text-sm font-bold mb-0 pr-2', style: { wordBreak: 'break-all' } }, displayTitle),
                                     isExpired ? h('div', { className: 'badge badge-urgent p-1 rounded-full', title: 'Atrasado' }) : null
                                 ]),
                                 h('div', { className: 'text-xs text-muted mb-2 truncate' }, `${asg.client} • ${asg.type}`),
@@ -871,8 +866,29 @@ export const render = async () => {
                         ])
                     ])
                 ]),
-                h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label text-error font-bold' }, 'Guía / Observaciones (Obligatorio, mín. 5 palabras)'),
+                h('div', { className: 'form-group mb-2' }, [
+                    h('div', { className: 'flex justify-between items-end w-full mb-2' }, [
+                        h('label', { className: 'form-label text-error font-bold m-0' }, 'Guía / Observaciones (Obligatorio, mín. 5 palabras)'),
+                        h('div', { className: 'flex gap-2' }, [
+                            h('button', {
+                                type: 'button',
+                                className: 'btn btn-outline text-[10px] py-1 px-2',
+                                style: { borderColor: 'var(--accent)', color: 'var(--accent)' },
+                                onClick: () => {
+                                    const client = form.querySelector('#asg-client')?.value || '';
+                                    if(confirm('Ir al Asistente IA cerrará esta ventana. ¿Continuar?')) {
+                                        document.body.removeChild(overlay);
+                                        window.location.hash = `#aiAssistant?client=${client}&context=Crear_Nueva_Asignacion`;
+                                    }
+                                }
+                            }, [icon('bot', 12), h('span', {}, 'Pedir a RIA')]),
+                            h('button', {
+                                type: 'button',
+                                className: 'btn btn-outline text-[10px] py-1 px-2',
+                                onClick: handleUploadAsset
+                            }, [icon('upload-cloud', 12), h('span', {}, 'Adjuntar Foto / Video')])
+                        ])
+                    ]),
                     h('textarea', { id: 'asg-desc', className: 'form-textarea', placeholder: 'Detalles específicos del requerimiento...', required: true }, existing?.description || '')
                 ])
             ]),
@@ -918,7 +934,7 @@ export const render = async () => {
                                 openAssignmentModal(asg, { users: [emp], clients: context.clients, scripts: context.scripts || [], assets: context.assets || [], sops: context.sops || [] });
                             }
                         }, [icon('edit', 14)]),
-                        h('button', { 
+                        user.role === 'admin' ? h('button', { 
                             className: 'btn-icon text-error', 
                             onClick: async (e) => {
                                 if (confirm('¿Eliminar esta asignación?')) {
@@ -932,7 +948,7 @@ export const render = async () => {
                                     }
                                 }
                             }
-                        }, [icon('trash-2', 14)])
+                        }, [icon('trash-2', 14)]) : null
                     ])
                 ]))
             ),
@@ -996,6 +1012,7 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                     const invoiceItem = {
                         assignmentId: asg.id,
                         employeeName: user.name || user.email,
+                        client: asg.client || 'General',
                         amount: billingAmount,
                         description: `[Auto-facturado] ${asg.title}`,
                         date: new Date().toISOString().split('T')[0]
@@ -1029,6 +1046,11 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                 }
             }
 
+            if (confirm('✅ ¡Asignación Completada! Factura validada y Pipeline actualizado.\n\n¿Deseas avisarle al jefe por WhatsApp que ya terminaste?')) {
+                const adminPhone = "573000000000"; // Se puede cambiar después a config.adminPhone
+                const msg = encodeURIComponent(`✅ *Tarea Completada*\n*Trabajo:* ${asg.title}\n*Cliente:* ${asg.client || 'General'}\n*Status:* Ya está lista y facturada en la plataforma.`);
+                window.open(`https://wa.me/${adminPhone}?text=${msg}`, '_blank');
+            }
             overlay.remove();
             reload();
         } else {
@@ -1320,7 +1342,7 @@ export function openMasterPipelineModal(context = {}) {
                             <select id="mp-up" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
                         </div>
                         <div class="form-group mb-2">
-                            <label class="form-label text-[10px]">Link/URL para publicar</label>
+                            <label id="lbl-mp-up-link" class="form-label text-[10px]">Link/URL para publicar en redes sociales</label>
                             <input type="text" id="mp-up-link" class="form-input text-xs" placeholder="Ej. Link de TikTok, Google Drive, etc." required>
                         </div>
                         <div class="form-group">
@@ -1340,9 +1362,97 @@ export function openMasterPipelineModal(context = {}) {
     
     overlay.innerHTML = modalHTML;
     
+    const form = overlay.querySelector('form');
+    const clientSelect = form.querySelector('#mp-client');
+    const lblUpLink = form.querySelector('#lbl-mp-up-link');
+    const inputUpLink = form.querySelector('#mp-up-link');
+    if (clientSelect && lblUpLink) {
+        clientSelect.addEventListener('change', () => {
+            const clientName = clientSelect.options[clientSelect.selectedIndex]?.text || '';
+            if (clientName && clientName !== '-- Selecciona Cliente --') {
+                lblUpLink.textContent = `Publicar en redes sociales de ${clientName}`;
+                inputUpLink.value = `Publicar en ${clientName}`;
+            } else {
+                lblUpLink.textContent = 'Link/URL para publicar en redes sociales';
+            }
+        });
+    }
+    
     overlay.querySelector('.close-btn').onclick = () => overlay.remove();
     overlay.querySelector('.close-btn-footer').onclick = () => overlay.remove();
-    overlay.querySelector('form').onsubmit = submit;
+    form.onsubmit = submit;
+    document.body.appendChild(overlay);
+}
+
+export function openEditPipelineModal(pid, tasks, context = {}) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    const usersHtml = context.users ? context.users.map(u => `<option value="${u.uid}">${u.nombre || u.email.split('@')[0]}</option>`).join('') : '';
     
+    // Sort tasks by stageIndex
+    tasks.sort((a, b) => a.stageIndex - b.stageIndex);
+    
+    let modalHTML = `
+        <form class="modal-container text-left flex-column" style="width: 90%; max-width: 600px; height: 90vh; max-height: 800px;" onsubmit="return false;">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title font-bold">✏️ Editar Asignación Maestra</h2>
+                    <p class="text-xs text-muted mt-1">ID: ${pid}</p>
+                </div>
+                <button type="button" class="btn-icon close-btn-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            
+            <div class="modal-body flex-1 overflow-y-auto pr-2 flex-column gap-4" style="background: var(--bg-tertiary);">
+                <div class="card p-4 flex-column gap-3">
+                    <h3 class="text-sm font-bold text-error flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        Zona de Peligro
+                    </h3>
+                    <p class="text-xs text-muted mb-2">Eliminar este flujo borrará permanentemente todas las tareas y fases asociadas. Esta acción no se puede deshacer.</p>
+                    <button type="button" id="btn-delete-pipeline" class="btn btn-outline text-xs text-error py-2" style="border-color: var(--error);">
+                        Eliminar Pipeline Completo
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline text-xs close-btn-footer">Cerrar</button>
+            </div>
+        </form>
+    `;
+
+    overlay.innerHTML = modalHTML;
+    
+    overlay.querySelector('.close-btn-header').onclick = () => overlay.remove();
+    overlay.querySelector('.close-btn-footer').onclick = () => overlay.remove();
+    
+    const deleteBtn = overlay.querySelector('#btn-delete-pipeline');
+    deleteBtn.addEventListener('click', async () => {
+        if (confirm("🚨 ¿ESTÁS SEGURO? Se eliminarán todas las asignaciones de este flujo de trabajo.")) {
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = 'Eliminando...';
+            try {
+                // Delete all tasks in the pipeline
+                const { assignmentService } = await import('../services/assignmentService.js');
+                for (const task of tasks) {
+                    await assignmentService.deleteAssignment(task.id);
+                }
+                overlay.remove();
+                // Reload
+                const hash = window.location.hash;
+                window.location.hash = '';
+                setTimeout(() => { window.location.hash = hash; }, 50);
+            } catch (err) {
+                console.error("Error deleting pipeline", err);
+                alert("Hubo un error al eliminar el pipeline.");
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = 'Eliminar Pipeline Completo';
+            }
+        }
+    });
+
     document.body.appendChild(overlay);
 }

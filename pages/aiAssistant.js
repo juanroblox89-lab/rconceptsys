@@ -15,7 +15,7 @@ let currentThreadId = null;
 let chatThreadsList = [];
 let isAssistantLoading = false;
 
-export const render = () => {
+export const render = (params = {}) => {
     const { user } = store.getState();
     const container = h('div', { className: 'fade-in flex flex-column gap-4 w-full', style: { minHeight: '80vh' } });
 
@@ -1263,6 +1263,27 @@ Incluye notas de SFX/VFX en negrita para el editor.`;
             renderChatFeed();
             renderThreadsList();
             renderBrandFocusSummary();
+
+            // Handle URL Parameters (Deep Linking)
+            if (params.client) {
+                const clientExists = clients.find(c => c.id === params.client);
+                if (clientExists) {
+                    clientSelect.value = params.client;
+                    renderBrandFocusSummary();
+                }
+            }
+            if (params.context) {
+                textarea.value = `Quiero información o estado sobre el proceso: ${params.context}. ¿Puedes darme un resumen?`;
+                // Optionally auto-send:
+                // sendMessage(textarea.value); 
+                // Wait, sendMessage gets text from textarea.value so we can just call it
+                setTimeout(() => {
+                    const sendBtn = chatMainView.querySelector('button[title="Enviar mensaje"]');
+                    if(sendBtn && !sendBtn.disabled) {
+                        sendBtn.click();
+                    }
+                }, 500);
+            }
 
             if (window.lucide) window.lucide.createIcons();
 

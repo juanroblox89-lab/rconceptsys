@@ -151,7 +151,7 @@ export const render = () => {
                                 h('th', { style: { padding: '12px' } }, 'Acciones')
                             ])),
                             h('tbody', {}, approvedUsers.map(u =>
-                                renderTeamRow(u, user, loadAdminDashboard, showFeedback, clientsList)
+                                renderTeamRow(u, user, loadAdminDashboard, showFeedback, clientsList, rolesList)
                             ))
                         ])
                     ])
@@ -270,7 +270,7 @@ function renderPendingCard(pu, reload, rolesList = []) {
 }
 
 // ── Team Row ─────────────────────────────────────────────────
-function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
+function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesList = []) {
     const isCurrentUser = u.uid === currentUser.uid;
     const isAdmin = u.role === 'admin';
 
@@ -298,6 +298,15 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
             style: { padding: '3px 8px', fontSize: '0.68rem', borderColor: 'var(--accent)', color: 'var(--accent)' },
             onClick: () => openClientAccessModal(u, clientsList, reload)
         }, [icon('eye', 11), h('span', { style: { marginLeft: '3px' } }, 'Accesos')]));
+    }
+
+    if (isAdmin && !isCurrentUser) {
+        // Edit WhatsApp Number Button
+        actions.push(h('button', {
+            className: 'btn btn-outline text-xs',
+            style: { padding: '3px 8px', fontSize: '0.68rem' },
+            onClick: () => openUserPhoneModal(u, reload)
+        }, [icon('phone', 11), h('span', { style: { marginLeft: '3px' } }, 'WhatsApp')]));
     }
 
     if (!isAdmin && !isCurrentUser) {
@@ -386,9 +395,35 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList) {
                 ])
             ])
         ]),
-        h('td', {}, h('span', {
-            className: `badge ${isAdmin ? 'badge-success' : 'badge-info'} text-xs`
-        }, (u.role || 'viewer').toUpperCase())),
+        h('td', {}, 
+            (currentUser.role === 'admin' && !isAdmin) ? 
+            h('select', { 
+                className: 'form-select text-xs', 
+                style: { padding: '2px 20px 2px 8px', borderRadius: '4px', height: 'auto', minHeight: '24px' },
+                onChange: async (e) => {
+                    const newRole = e.target.value;
+                    const el = e.target;
+                    el.disabled = true;
+                    try {
+                        await userService.approveUser(u.uid, newRole);
+                        showFeedback(el.parentNode, '✓ Guardado');
+                    } catch(err) {
+                        alert('Error: ' + err.message);
+                    } finally {
+                        el.disabled = false;
+                        reload();
+                    }
+                }
+            }, [
+                ...rolesList.filter(r => r.active !== false).map(r => 
+                    h('option', { value: r.id, selected: u.role === r.id }, r.label)
+                ),
+                // Fallback option in case the role doesn't exist
+                (!rolesList.find(r => r.id === u.role)) ? h('option', { value: u.role, selected: true }, u.role) : null
+            ].filter(Boolean)) 
+            : 
+            h('span', { className: `badge ${isAdmin ? 'badge-success' : 'badge-info'} text-xs` }, (u.role || 'viewer').toUpperCase())
+        ),
         h('td', {}, h('span', { className: 'badge badge-success text-xs' }, 'Activo')),
         h('td', {}, h('div', { style: { display: 'flex', gap: '4px', flexWrap: 'wrap', minWidth: '80px' } }, actions))
     ]);
@@ -412,11 +447,11 @@ function openRoleConfigModal(role, reload) {
         { id: 'hooks', label: 'Hooks' },
         { id: 'sops', label: 'SOPs' },
         { id: 'references', label: 'Referencias' },
-        { id: 'ai-assistant', label: 'AI Assistant' }
+        { id: 'aiAssistant', label: 'AI Assistant' }
     ];
 
     // Módulos por defecto si el rol es nuevo y no tiene arreglo
-    const defaultModules = ['dashboard', 'assignments', 'sops', 'ai-assistant'];
+    const defaultModules = ['dashboard', 'assignments', 'sops', 'aiAssistant'];
     const currentModules = role.allowedModules || defaultModules;
 
     const checkboxes = systemModules.map(mod => {
@@ -837,5 +872,76 @@ function openClientAccessModal(user, clients, reload) {
     modal.appendChild(footer);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+}
+
+// ── User Phone Modal ──────────────────────────────────────
+function openUserPhoneModal(user, reload) {
+    const overlay = h('div', { className: 'modal-overlay' });
+    
+    const submit = async (e) => {
+        e.preventDefault();
+        const input = form.querySelector('#modal-user-phone');
+        const phone = input?.value?.trim();
+        if (!phone) {
+            alert('Ingresa el número de WhatsApp.');
+            return;
+        }
+        
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        
+        try {
+            await dbService.update('users', user.uid, { phone: phone });
+            document.body.removeChild(overlay);
+            
+            const toast = h('div', { 
+                className: 'card fade-in text-xs', 
+                style: { position: 'fixed', bottom: '20px', right: '20px', background: 'var(--success)', color: '#fff', padding: '12px 20px', zIndex: 10000, fontWeight: 'bold' }
+            }, '✓ Número guardado exitosamente');
+            document.body.appendChild(toast);
+            setTimeout(() => { if (document.body.contains(toast)) document.body.removeChild(toast); }, 3000);
+            
+            reload();
+        } catch (err) {
+            alert(`Error al guardar: ${err.message}`);
+            if (btn) { btn.disabled = false; btn.textContent = 'Guardar Número'; }
+        }
+    };
+
+    const form = h('form', { className: 'modal-container', style: { maxWidth: '350px' }, onSubmit: submit }, [
+        h('div', { className: 'modal-header' }, [
+            h('span', { className: 'modal-title' }, `Editar WhatsApp: ${user.nombre || user.email}`),
+            h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+        ]),
+        h('div', { className: 'modal-body flex-column gap-3' }, [
+            h('p', { className: 'text-xs text-muted' }, 'Ingresa el número de teléfono con código de país (ej. 573001234567) para notificaciones y alertas.'),
+            h('div', { className: 'form-group' }, [
+                h('label', { className: 'form-label' }, 'Número de WhatsApp'),
+                h('input', { 
+                    id: 'modal-user-phone', 
+                    type: 'tel', 
+                    className: 'form-input', 
+                    placeholder: 'Ej. 573001234567', 
+                    value: user.phone || '',
+                    required: true,
+                    autoFocus: true
+                })
+            ])
+        ]),
+        h('div', { className: 'modal-footer' }, [
+            h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+            h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Guardar Número')
+        ])
+    ]);
+
+    overlay.appendChild(form);
+    document.body.appendChild(overlay);
+    
+    // Auto-focus after appending
+    setTimeout(() => {
+        const input = form.querySelector('#modal-user-phone');
+        if (input) input.focus();
+    }, 50);
 }
 

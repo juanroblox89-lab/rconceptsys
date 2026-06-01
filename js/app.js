@@ -264,10 +264,61 @@ class App {
                     console.warn("[App] Lucide not found for icon hydration.");
                 }
             }, 100);
+
+            // 4. Mandatory Phone Number Check
+            const currentUser = store.getState().user;
+            if (currentUser && !currentUser.phone) {
+                this.renderPhoneModal(currentUser);
+            }
         } catch (err) {
             console.error("[App] Render Authenticated Failed:", err);
             this.appContainer.innerHTML += `<div style="color:red; padding:10px;">Layout Error: ${escapeHTML(err.message)}</div>`;
         }
+    }
+
+    renderPhoneModal(user) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.zIndex = '9999'; // Ensure it's on top of everything
+        
+        overlay.innerHTML = `
+            <div class="modal-container text-center flex-column items-center gap-4" style="max-width: 400px; padding: 2rem;">
+                <div style="background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border-radius: 50%; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                    <i data-lucide="smartphone" style="width: 32px; height: 32px;"></i>
+                </div>
+                <h3 class="text-lg font-bold">Último Paso</h3>
+                <p class="text-xs text-muted">Para habilitar el contacto directo con el equipo, por favor ingresa tu número de WhatsApp (incluyendo el código de país, ej. +57300...).</p>
+                <input type="tel" id="mandatory-phone-input" class="form-input w-full text-center" placeholder="+00 000000000" />
+                <button id="save-phone-btn" class="btn btn-primary w-full py-2 mt-2">Guardar Número</button>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        if (window.lucide) window.lucide.createIcons();
+
+        const btn = document.getElementById('save-phone-btn');
+        const input = document.getElementById('mandatory-phone-input');
+
+        btn.addEventListener('click', async () => {
+            const phone = input.value.trim();
+            if (!phone || phone.length < 8) {
+                alert('Por favor ingresa un número de teléfono válido.');
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Guardando...';
+            try {
+                await dbService.update('users', user.uid, { phone });
+                const updatedUser = { ...user, phone };
+                store.setState({ user: updatedUser });
+                document.body.removeChild(overlay);
+            } catch (err) {
+                console.error("Error saving phone:", err);
+                alert("Error al guardar el teléfono.");
+                btn.disabled = false;
+                btn.textContent = 'Guardar Número';
+            }
+        });
     }
 }
 

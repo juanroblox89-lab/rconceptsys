@@ -16,7 +16,7 @@ export const routes = [
     { path: 'sops', module: 'sops', title: "SOPs", subtitle: "Procesos y estándares de calidad" },
     { path: 'assets', module: 'assets', title: "Assets", subtitle: "Gestión de producción" },
     { path: 'references', module: 'references', title: "Referencias", subtitle: "Inspiración curada" },
-    { path: 'ai-assistant', module: 'aiAssistant', title: "AI Assistant", subtitle: "Inteligencia generativa y análisis" },
+    { path: 'aiAssistant', module: 'aiAssistant', title: "AI Assistant", subtitle: "Inteligencia generativa y análisis" },
     { path: 'admin', module: 'admin', title: "Panel de Administración", subtitle: "Aprobación de usuarios y control integral" },
     { path: 'workers', module: 'workers', title: "Equipo y Productividad", subtitle: "Asignaciones y SOPs del personal" },
     { path: 'marketing', module: 'marketing', title: "Ventas y Marketing", subtitle: "Control de visitas y comisiones" }
@@ -168,15 +168,26 @@ class Router {
         this.updateActiveLinks(hash);
     }
 
-    findMatch(hash) {
+    findMatch(hashRaw) {
+        const [hash, queryString] = hashRaw.split('?');
         for (const route of routes) {
             const pattern = route.path.replace(/:[^\s/]+/g, '([^/]+)');
             const regex = new RegExp(`^${pattern}$`);
             const match = hash.match(regex);
             if (match) {
                 const params = {};
+                // Parse URL path params
                 const paramNames = (route.path.match(/:[^\s/]+/g) || []).map(p => p.slice(1));
                 paramNames.forEach((name, index) => { params[name] = match[index + 1]; });
+                
+                // Parse query string params (e.g. ?client=123&context=abc)
+                if (queryString) {
+                    const urlParams = new URLSearchParams(queryString);
+                    for (const [key, value] of urlParams.entries()) {
+                        params[key] = value;
+                    }
+                }
+                
                 return { route, params };
             }
         }
