@@ -1075,7 +1075,7 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                 window.open(`https://wa.me/${adminPhone}?text=${msg}`, '_blank');
             }
             overlay.remove();
-            reload();
+            window.location.reload();
         } else {
             renderSteps();
         }
@@ -1420,8 +1420,8 @@ export function openEditPipelineModal(pid, tasks, context = {}) {
         <form class="modal-container text-left flex-column" style="width: 90%; max-width: 600px; height: 90vh; max-height: 800px;" onsubmit="return false;">
             <div class="modal-header">
                 <div>
-                    <h2 class="modal-title font-bold">✏️ Editar Asignación Maestra</h2>
-                    <p class="text-xs text-muted mt-1">ID: ${pid}</p>
+                    <h2 class="modal-title font-bold flex items-center gap-2">✏️ Editar Pipeline</h2>
+                    <p class="text-xs text-muted mt-1">Proyecto: ${tasks[0]?.title.replace(/\[.*?\]\s*/g, '') || pid}</p>
                 </div>
                 <button type="button" class="btn-icon close-btn-header">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -1429,7 +1429,33 @@ export function openEditPipelineModal(pid, tasks, context = {}) {
             </div>
             
             <div class="modal-body flex-1 overflow-y-auto pr-2 flex-column gap-4" style="background: var(--bg-tertiary);">
-                <div class="card p-4 flex-column gap-3">
+                
+                <div class="flex-column gap-3">
+                    <h3 class="text-sm font-bold text-primary mb-1">Fases del Pipeline</h3>
+                    ${tasks.map(t => {
+                        const emp = context.users ? context.users.find(u => u.uid === t.employeeId) : null;
+                        return `
+                            <div class="card p-3 flex-column gap-2" style="border: 1px solid var(--border);">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="badge badge-info text-[10px] mb-1">Fase ${t.stageIndex + 1} • ${t.type}</span>
+                                        <h4 class="text-xs font-bold text-primary" style="margin: 0">${t.title}</h4>
+                                    </div>
+                                    <button type="button" class="btn btn-outline text-xs edit-task-btn" data-task-id="${t.id}" style="padding: 4px 8px;">
+                                        Editar Tarea
+                                    </button>
+                                </div>
+                                <div class="text-xs text-muted flex items-center gap-2 mt-1">
+                                    <span>👤 Asignado a: <strong class="text-secondary">${emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin Asignar'}</strong></span>
+                                    <span>•</span>
+                                    <span>Estado: <strong>${t.status === 'blocked' ? 'En espera de compañero' : t.status}</strong></span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <div class="card p-4 flex-column gap-3 mt-4" style="border: 1px solid var(--error-transparent);">
                     <h3 class="text-sm font-bold text-error flex items-center gap-2">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         Zona de Peligro
@@ -1452,6 +1478,20 @@ export function openEditPipelineModal(pid, tasks, context = {}) {
     overlay.querySelector('.close-btn-header').onclick = () => overlay.remove();
     overlay.querySelector('.close-btn-footer').onclick = () => overlay.remove();
     
+    // Wire up Edit Task buttons
+    overlay.querySelectorAll('.edit-task-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const taskId = btn.getAttribute('data-task-id');
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                // We use openAssignmentModal to edit the specific task
+                // Then reload when done
+                openAssignmentModal(task, context);
+                // We could close this modal, or keep it open in the background
+            }
+        });
+    });
+
     const deleteBtn = overlay.querySelector('#btn-delete-pipeline');
     deleteBtn.addEventListener('click', async () => {
         if (confirm("🚨 ¿ESTÁS SEGURO? Se eliminarán todas las asignaciones de este flujo de trabajo.")) {
