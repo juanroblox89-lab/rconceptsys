@@ -21,12 +21,13 @@ export const render = async () => {
 
         try {
             // 1. Load Data
-            const [users, assignments, clients, scripts, assets, mySopSubmissions] = await Promise.all([
+            const [users, assignments, clients, scripts, assets, rates, mySopSubmissions] = await Promise.all([
                 userService.getAllUsers(),
                 assignmentService.getAllAssignments(),
                 dbService.getAll('clients').catch(() => []),
                 dbService.getAll('scripts').catch(() => []),
                 dbService.getAll('assets').catch(() => []),
+                invoiceService.getRateCards().catch(() => []),
                 (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([])
             ]);
 
@@ -990,7 +991,7 @@ export const render = async () => {
                             className: 'btn-icon text-muted', 
                             onClick: () => {
                                 if (document.body.contains(overlay)) document.body.removeChild(overlay);
-                                openAssignmentModal(asg, { users: [emp], clients: context.clients, scripts: context.scripts || [], assets: context.assets || [], sops: context.sops || [] });
+                                openAssignmentModal(asg, { users: [emp], clients: context.clients, scripts: context.scripts || [], assets: context.assets || [] });
                             }
                         }, [icon('edit', 14)]),
                         user.role === 'admin' ? h('button', { 
