@@ -2,7 +2,7 @@
  * Assets Page - Creative Production OS
  * Notion Light UI presenting video production deliveries, thumbnails, and cloud storage controls.
  */
-import { h, icon } from '../utils/dom.js';
+import { h, icon, openLightbox } from '../utils/dom.js';
 import { dbService, storageService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 
@@ -50,7 +50,7 @@ export const render = () => {
                 await storageService.deleteFile(storagePath);
 
                 // 2. Delete from Firestore Database
-                if (asset.id && !asset.id.startsWith('AST-mock-')) {
+                if (asset.id) {
                     await dbService.delete('assets', asset.id);
                 }
 
@@ -106,7 +106,10 @@ export const render = () => {
             };
 
             try {
-                await dbService.add('assets', newObj);
+                const addedAsset = await dbService.add('assets', newObj);
+                if(addedAsset && addedAsset.id) {
+                    newObj.id = addedAsset.id; // Get the real Firestore document ID
+                }
             } catch (err) {
                 console.warn("Simulated asset append local:", err);
             }
@@ -168,10 +171,15 @@ const createAssetCard = (asset, isAdmin, onDelete) => {
         h('div', {
             style: {
                 height: '150px',
-                background: `url(${asset.thumbnail}) center/cover no-repeat`,
+                background: `url("${asset.thumbnail}") center/cover no-repeat`,
                 position: 'relative',
                 backgroundColor: 'var(--bg-tertiary)',
-                borderBottom: '1px solid var(--border)'
+                borderBottom: '1px solid var(--border)',
+                cursor: 'pointer'
+            },
+            onClick: () => {
+                const url = asset.url !== '#' ? asset.url : asset.thumbnail;
+                openLightbox(url);
             }
         }, [
             h('div', {

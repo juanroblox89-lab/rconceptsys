@@ -273,7 +273,7 @@ function renderPendingCard(pu, reload, rolesList = []) {
 
 // ── Team Row ─────────────────────────────────────────────────
 function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesList = []) {
-    const isCurrentUser = u.uid === currentUser.uid;
+    const isCurrentUser = (u.uid || u.id) === (currentUser.uid || currentUser.id);
     const isAdmin = u.role === 'admin';
 
     const avatar = u.photoURL
@@ -322,7 +322,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                 btn.disabled = true;
                 btn.textContent = '...';
                 try {
-                    await userService.approveUser(u.uid, 'admin');
+                    await userService.approveUser(u.uid || u.id, 'admin');
                     if (btn) showFeedback(btn, '✓ Promovido');
                     setTimeout(() => reload(), 1200);
                 } catch (err) {
@@ -343,7 +343,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                 btn.disabled = true;
                 btn.textContent = '...';
                 try {
-                    await userService.approveUser(u.uid, 'editor');
+                    await userService.approveUser(u.uid || u.id, 'editor');
                     if (btn) showFeedback(btn, '✓ Revocado');
                     setTimeout(() => reload(), 1200);
                 } catch (err) {
@@ -363,7 +363,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                 if (!window.confirm(`Confirmar: ¿Ceder el control total a ${u.nombre || u.email}?`)) return;
                 const btn = e.currentTarget;
                 btn.disabled = true;
-                await userService.delegateAdminRole(u.uid, currentUser.uid);
+                await userService.delegateAdminRole(u.uid || u.id, currentUser.uid || currentUser.id);
                 window.location.reload();
             }
         }, [icon('shield-off', 11), h('span', { style: { marginLeft: '3px' } }, 'Ceder')]));
@@ -378,7 +378,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                 if (!window.confirm(`¿Eliminar a ${u.nombre || u.email} del equipo permanentemente?`)) return;
                 const btn = e.currentTarget;
                 btn.disabled = true;
-                await userService.rejectUser(u.uid);
+                await userService.rejectUser(u.uid || u.id);
                 reload();
             }
         }, [icon('trash-2', 11), h('span', { style: { marginLeft: '3px' } }, 'Eliminar')]));
@@ -407,7 +407,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                     const el = e.target;
                     el.disabled = true;
                     try {
-                        await userService.approveUser(u.uid, newRole);
+                        await userService.approveUser(u.uid || u.id, newRole);
                         showFeedback(el.parentNode, '✓ Guardado');
                     } catch(err) {
                         alert('Error: ' + err.message);

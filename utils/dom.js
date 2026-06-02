@@ -78,3 +78,56 @@ export const skeleton = (width = '100%', height = '20px') => {
         }
     });
 };
+
+/**
+ * Image Lightbox Helper
+ * Opens a modal with a zoomed version of the image.
+ */
+export const openLightbox = (url) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay fade-in';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.9)';
+    overlay.style.backdropFilter = 'blur(10px)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '9999';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.maxWidth = '90vw';
+    img.style.maxHeight = '90vh';
+    img.style.objectFit = 'contain';
+    img.style.borderRadius = '8px';
+    img.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
+    img.style.transform = 'scale(0.95)';
+    img.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
+    
+    // Zoom in animation
+    setTimeout(() => { img.style.transform = 'scale(1)'; }, 10);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '20px';
+    closeBtn.style.right = '30px';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = '#fff';
+    closeBtn.style.fontSize = '40px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.opacity = '0.8';
+
+    const close = () => {
+        overlay.classList.remove('fade-in');
+        overlay.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(overlay), 300);
+    };
+
+    overlay.onclick = (e) => { if (e.target === overlay) close(); };
+    closeBtn.onclick = close;
+
+    overlay.appendChild(img);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+};

@@ -21,14 +21,12 @@ export const render = async () => {
 
         try {
             // 1. Load Data
-            const [users, assignments, clients, scripts, assets, sops, rates, mySopSubmissions] = await Promise.all([
+            const [users, assignments, clients, scripts, assets, mySopSubmissions] = await Promise.all([
                 userService.getAllUsers(),
                 assignmentService.getAllAssignments(),
                 dbService.getAll('clients').catch(() => []),
                 dbService.getAll('scripts').catch(() => []),
                 dbService.getAll('assets').catch(() => []),
-                dbService.getAll('sops').catch(() => []),
-                invoiceService.getRateCards().catch(() => []),
                 (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([])
             ]);
 
@@ -93,8 +91,8 @@ export const render = async () => {
                         // Default Guide
                         return [
                             h('li', {}, [h('span', { className: 'font-bold' }, '1. Revisa tu Tarea: '), 'Abre tu tarea pendiente y revisa las instrucciones, el Guion y el Asset de muestra.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Ejecuta y Llenar SOP: '), 'Haz clic en "Llenar SOP" para abrir tu lista de verificación y entregar los enlaces o archivos requeridos.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Completar: '), 'Al terminar todos los pasos del SOP, la tarea se marcará como Completada automáticamente.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Ejecuta: '), 'Ejecuta la tarea asignada.']),
+                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Completar: '), 'Al terminar, la tarea se marcará como Completada automáticamente.']),
                             h('li', {}, [h('span', { className: 'font-bold' }, '4. Auto-Cobro: '), 'Al hacer clic en "Completar", el sistema lanzará tu factura para asegurar tu pago.'])
                         ];
                     }
@@ -138,7 +136,13 @@ export const render = async () => {
                                     isExpired ? h('span', { className: 'badge badge-urgent text-xs font-bold' }, '⚠️ ATRASADO') : null,
                                     isToday ? h('span', { className: 'badge badge-today text-xs font-bold' }, '⚡ HOY') : null,
                                 ]),
-                                h('h3', { className: 'text-sm font-bold text-primary mt-1' }, asg.title)
+                                h('h3', { className: 'text-sm font-bold text-primary mt-1' }, asg.title),
+                                asg.sourceFilesLink ? h('a', {
+                                    href: asg.sourceFilesLink,
+                                    target: '_blank',
+                                    className: 'btn btn-outline text-xs py-1 px-3 mt-1 flex items-center gap-1 font-bold',
+                                    style: { color: 'var(--accent)', borderColor: 'var(--accent)', alignSelf: 'flex-start' }
+                                }, [icon('download', 14), h('span', {}, 'Archivos Crudos (Fase Anterior)')]) : null
                             ]),
                             h('div', { className: 'flex items-center gap-2' }, [
                                 // Action buttons
@@ -161,13 +165,7 @@ export const render = async () => {
                                 (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? (() => {
                                     const asgClient = finalClients.find(c => c.name === asg.client || c.id === asg.client);
                                     const hasDrive = asgClient && asgClient.driveFolderUrl;
-                                    const isRecording = asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)';
                                     
-                                    const hasSop = !!asg.sopId;
-                                    const sopObj = hasSop ? sops.find(s => s.id === asg.sopId) : null;
-                                    const sopSub = hasSop ? mySopSubmissions.find(sub => sub.sopId === asg.sopId && sub.assignmentId === asg.id) : null;
-                                    const sopCompleted = sopSub?.status === 'completed';
-
                                     // Unified Deliverable UI
                                     const defaultLink = asg.uploadLink || (hasDrive ? asgClient.driveFolderUrl : '') || '';
                                     const inputId = `deliverable-input-${asg.id}`;
@@ -203,7 +201,7 @@ export const render = async () => {
                                                 if (btn.disabled) return;
                                                 btn.disabled = true;
                                                 
-                                                openBillingModal(asg, async (price, obs) => {
+                                                const finalizeCompletion = async (price, obs) => {
                                                     try {
                                                         let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
                                                         if (!currentInv) currentInv = { items: [] };
@@ -246,16 +244,30 @@ export const render = async () => {
                                                         console.error(err);
                                                         if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
                                                     }
-                                                }, () => {
-                                                    if (btn) btn.disabled = false;
-                                                });
+                                                };
+
+                                                if (asg.billing && (asg.billing.rateCardId || asg.billing.customPrice !== null)) {
+                                                    let finalPrice = asg.billing.customPrice !== null ? asg.billing.customPrice : 0;
+                                                    let finalObs = 'Cobro pre-configurado';
+                                                    if (asg.billing.rateCardId && rates) {
+                                                        const rate = rates.find(r => r.id === asg.billing.rateCardId);
+                                                        if (rate) {
+                                                            finalPrice = rate.basePrice;
+                                                            finalObs = `Cobro por tarifa ${rate.name}: ${asg.title}`;
+                                                        }
+                                                    } else if (asg.billing.customPrice !== null) {
+                                                        finalObs = `Cobro personalizado: ${asg.title}`;
+                                                    }
+                                                    await finalizeCompletion(finalPrice, finalObs);
+                                                } else {
+                                                    openBillingModal(asg, finalizeCompletion, () => {
+                                                        if (btn) btn.disabled = false;
+                                                    });
+                                                }
                                             }
                                         }, [icon('check-circle', 14), h('span', {}, 'Entregar y Completar')])
                                     ]);
                                 })() : null,
-
-                                // El botón "Cobrar Tarea" independiente fue removido para evitar duplicidad,
-                                // ahora el cobro es automático al presionar "Completar".
                                 
                                 asg.billed ? h('span', { className: 'badge badge-success text-xs flex items-center gap-1 font-bold', style: { padding: '4px 8px' } }, [icon('check-circle', 12), h('span', {}, 'Facturado')]) : null,
 
@@ -382,11 +394,11 @@ export const render = async () => {
                     h('button', { 
                         className: 'btn btn-primary text-xs',
                         style: { background: 'var(--success)', borderColor: 'var(--success)' },
-                        onClick: () => openMasterPipelineModal({ users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [], rates: rates || [] })
+                        onClick: () => openMasterPipelineModal({ users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [] })
                     }, [icon('git-commit', 14), h('span', {}, 'Asignación Maestra')]),
                     h('button', { 
                         className: 'btn btn-primary text-xs',
-                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [], rates: rates || [] })
+                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [] })
                     }, [icon('plus', 14), h('span', {}, 'Nueva Asignación')])
                 ])
             ]);
@@ -472,7 +484,7 @@ export const render = async () => {
                                                     alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
                                                     return;
                                                 }
-                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] });
+                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] });
                                             }
                                         }, [
                                             h('div', { 
@@ -500,7 +512,7 @@ export const render = async () => {
                                     }, [icon('bot', 12), h('span', {}, 'Preguntar a RIA')]),
                                     user?.role === 'admin' ? h('button', {
                                         className: 'btn btn-outline text-[10px] py-1 px-2',
-                                        onClick: () => openEditPipelineModal(pid, tasks, { users: approvedUsers, clients: finalClients, sops: sops || [] })
+                                        onClick: () => openEditPipelineModal(pid, tasks, { users: approvedUsers, clients: finalClients })
                                     }, [icon('edit', 12), h('span', {}, 'Editar / Eliminar')]) : null
                                 ])
                             ]);
@@ -548,7 +560,7 @@ export const render = async () => {
                                         alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
                                         return;
                                     }
-                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], sops: sops || [] });
+                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] });
                                 }
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [
@@ -770,8 +782,7 @@ export const render = async () => {
                 status: form.querySelector('#asg-status') ? form.querySelector('#asg-status').value : (existing?.status || 'Pendiente'),
                 createdBy: user.uid,
                 linkedScript: form.querySelector('#asg-link-script').value,
-                linkedAsset: form.querySelector('#asg-link-asset').value,
-                sopId: form.querySelector('#asg-sop')?.value || null
+                linkedAsset: form.querySelector('#asg-link-asset').value
             };
             
             const rateVal = form.querySelector('#asg-rate')?.value;
@@ -840,7 +851,7 @@ export const render = async () => {
                         context.clients.map(c => h('option', { value: c.name, selected: existing?.client === c.name }, c.name))
                     )
                 ]),
-                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' } }, [
+                h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
                     h('div', { className: 'form-group' }, [
                         h('div', { className: 'flex justify-between items-center w-full mb-1' }, [
                             h('label', { className: 'form-label m-0' }, 'Vincular Guión'),
@@ -893,17 +904,6 @@ export const render = async () => {
                         }, [
                             h('option', { value: '' }, '-- Sin Vincular --'),
                             ...(context.assets || []).map(a => h('option', { value: a.url || a.thumbnail, selected: existing?.linkedAsset === (a.url || a.thumbnail) }, `[${a.client}] ${a.title}`))
-                        ])
-                    ]),
-                    h('div', { className: 'form-group' }, [
-                        h('label', { className: 'form-label mb-1' }, 'SOP Recomendado'),
-                        h('select', { 
-                            id: 'asg-sop', 
-                            className: 'form-select text-xs',
-                            style: { height: '38px' }
-                        }, [
-                            h('option', { value: '' }, '-- Sin Vincular --'),
-                            ...(context.sops || []).map(s => h('option', { value: s.id, selected: existing?.sopId === s.id }, s.title))
                         ])
                     ])
                 ]),
@@ -1308,27 +1308,64 @@ export function openMasterPipelineModal(context = {}) {
         const form = e.target;
         const btnSubmit = form.querySelector('button[type="submit"]');
         btnSubmit.disabled = true;
-        btnSubmit.textContent = "Creando...";
+        btnSubmit.textContent = "Creando e subiendo archivos...";
         
+        const getBilling = (selectorId) => {
+            const val = form.querySelector(selectorId)?.value;
+            if (!val) return null;
+            return {
+                rateCardId: val !== 'custom' ? val : null,
+                customPrice: val === 'custom' ? Number(prompt("Ingresa el Precio Personalizado ($):", 0)) || 0 : null
+            };
+        };
+
+        const clientVal = form.querySelector('#mp-client').value;
+        const titleVal = form.querySelector('#mp-title').value;
+
+        // --- File Uploads ---
+        let finalAssetUrl = form.querySelector('#mp-asset').value;
+        const assetFileInput = form.querySelector('#mp-asset-file');
+        if (assetFileInput?.files[0]) {
+            try {
+                const { storageService } = await import('../firebase/service.js');
+                finalAssetUrl = await storageService.uploadFile(`assets/${clientVal}/${assetFileInput.files[0].name}`, assetFileInput.files[0]);
+            } catch(e) { console.error('Error uploading asset:', e); }
+        }
+
+        let finalScriptUrl = form.querySelector('#mp-script').value;
+        const scriptFileInput = form.querySelector('#mp-script-file');
+        if (scriptFileInput?.files[0]) {
+            try {
+                const { storageService } = await import('../firebase/service.js');
+                finalScriptUrl = await storageService.uploadFile(`scripts/${clientVal}/${scriptFileInput.files[0].name}`, scriptFileInput.files[0]);
+            } catch(e) { console.error('Error uploading script:', e); }
+        }
+        // --------------------
+
+        const camSupportSelect = form.querySelector('#mp-cam-support');
+        const camSupportIds = Array.from(camSupportSelect.selectedOptions).map(opt => opt.value).filter(Boolean);
+
         const data = {
-            title: form.querySelector('#mp-title').value,
-            client: form.querySelector('#mp-client').value,
+            title: titleVal,
+            client: clientVal,
             description: form.querySelector('#mp-desc').value,
-            dueDate: form.querySelector('#mp-due').value,
-            camarografoId: form.querySelector('#mp-cam').value,
+            dueDateCam: form.querySelector('#mp-due-cam').value,
+            dueDateEd: form.querySelector('#mp-due-ed').value,
+            dueDateUp: form.querySelector('#mp-due-up').value,
+            camarografoPrincipalId: form.querySelector('#mp-cam-main').value,
+            camarografoApoyoIds: camSupportIds,
             editorId: form.querySelector('#mp-ed').value,
             uploaderId: form.querySelector('#mp-up').value,
-            sopCamarografoId: form.querySelector('#mp-sop-cam').value || null,
-            sopEditorId: form.querySelector('#mp-sop-ed').value || null,
-            sopUploaderId: form.querySelector('#mp-sop-up').value || null,
-            linkedScript: form.querySelector('#mp-script').value || '',
-            linkedAsset: form.querySelector('#mp-asset').value || '',
+            billingCam: getBilling('#mp-rate-cam'),
+            billingEd: getBilling('#mp-rate-ed'),
+            billingUp: getBilling('#mp-rate-up'),
+            linkedScript: finalScriptUrl,
+            linkedAsset: finalAssetUrl,
             uploadLink: form.querySelector('#mp-up-link').value || '',
             createdBy: 'admin',
         };
         
         try {
-            // dynamic import assignmentService to avoid scope issues
             const { assignmentService } = await import('../services/assignmentService.js');
             await assignmentService.createMasterPipeline(data);
             overlay.remove();
@@ -1342,9 +1379,10 @@ export function openMasterPipelineModal(context = {}) {
 
     const usersHtml = (context.users || []).map(u => `<option value="${u.uid}">${u.nombre || u.email}</option>`).join('');
     const clientsHtml = (context.clients || []).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    const sopsHtml = (context.sops || []).map(s => `<option value="${s.id}">${s.title}</option>`).join('');
     const scriptsHtml = (context.scripts || []).map(s => `<option value="${s.script}">[${s.client}] ${s.title}</option>`).join('');
     const assetsHtml = (context.assets || []).map(a => `<option value="${a.url || a.thumbnail}">[${a.client}] ${a.title}</option>`).join('');
+    const ratesHtml = (context.rates || []).map(r => `<option value="${r.id}">${r.name} ($${r.basePrice})</option>`).join('');
+    const rateOptionsHtml = `<option value="">-- Sin Tarifa (Manual) --</option>${ratesHtml}<option value="custom">Precio Personalizado</option>`;
 
     const modalHTML = `
         <form class="modal-container" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
@@ -1352,7 +1390,7 @@ export function openMasterPipelineModal(context = {}) {
                 <span class="modal-title font-bold">🚀 Nueva Asignación Maestra (Pipeline)</span>
                 <button type="button" class="close-btn" style="color:white; background:none; border:none; font-size:1.5rem; cursor:pointer;">×</button>
             </div>
-            <div class="modal-body grid gap-4" style="grid-template-columns: 1fr 1fr;">
+            <div class="modal-body grid gap-4" style="grid-template-columns: 1fr 1.2fr;">
                 
                 <!-- Columna Izquierda: Detalles Generales -->
                 <div class="flex-column gap-3" style="border-right: 1px solid var(--border); padding-right: 1rem;">
@@ -1360,78 +1398,98 @@ export function openMasterPipelineModal(context = {}) {
                     
                     <div class="form-group">
                         <label class="form-label">Título del Proyecto</label>
-                        <input type="text" id="mp-title" class="form-input" required placeholder="Ej. Reel de Verano Villagrande">
+                        <input type="text" id="mp-title" class="form-input" required placeholder="Ej. Reel de Verano">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Cliente</label>
                         <select id="mp-client" class="form-select text-xs" required>${clientsHtml}</select>
                     </div>
-                    <div class="form-group">
+                    
+                    <div class="form-group p-2 rounded" style="background: var(--bg-tertiary); border: 1px dashed var(--border);">
                         <label class="form-label flex justify-between items-center">
                             Guion (Script)
-                            <button type="button" class="text-xs text-accent font-bold bg-transparent border-none cursor-pointer hover:underline" onclick="window.location.hash='#ai-assistant'; localStorage.setItem('ria_prefill', 'Créame un guion (create_script) detallado paso a paso para el cliente [CLIENTE] sobre [TEMA]. Asegúrate de incluir la puesta en escena (sceneDirections).'); document.querySelector('.modal-overlay').remove();">[+ Pedir a RIA]</button>
+                            <button type="button" class="text-xs text-accent font-bold bg-transparent border-none cursor-pointer" onclick="window.location.hash='#aiAssistant'; document.querySelector('.modal-overlay').remove();">[+ Pedir a RIA]</button>
                         </label>
-                        <select id="mp-script" class="form-select text-xs"><option value="">-- Sin Guion --</option>${scriptsHtml}</select>
+                        <select id="mp-script" class="form-select text-xs mb-1"><option value="">-- Existente --</option>${scriptsHtml}</select>
+                        <input type="file" id="mp-script-file" class="form-input text-xs" accept=".pdf,.doc,.docx,.txt" title="O subir un archivo nuevo">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Asset (Galería)</label>
-                        <select id="mp-asset" class="form-select text-xs"><option value="">-- Sin Asset --</option>${assetsHtml}</select>
+                    
+                    <div class="form-group p-2 rounded" style="background: var(--bg-tertiary); border: 1px dashed var(--border);">
+                        <label class="form-label">Asset de Referencia Original</label>
+                        <select id="mp-asset" class="form-select text-xs mb-1"><option value="">-- Existente --</option>${assetsHtml}</select>
+                        <input type="file" id="mp-asset-file" class="form-input text-xs" accept="image/*,video/*" title="O subir un archivo nuevo">
                     </div>
+
                     <div class="form-group">
-                        <label class="form-label">Descripción Global (Instrucciones)</label>
+                        <label class="form-label">Instrucciones Globales (Todas las fases)</label>
                         <textarea id="mp-desc" class="form-textarea text-xs" rows="4" required placeholder="Instrucciones que verán todos..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Fecha Límite Final (Uploader)</label>
-                        <input type="date" id="mp-due" class="form-input" required>
                     </div>
                 </div>
 
                 <!-- Columna Derecha: El Equipo -->
                 <div class="flex-column gap-3" style="padding-left: 0.5rem;">
-                    <h3 class="text-sm font-bold text-success">2. Equipo de Trabajo (Fases)</h3>
+                    <h3 class="text-sm font-bold text-success">2. Equipo y Fases</h3>
                     
                     <div class="card p-3" style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent);">
-                        <h4 class="text-xs font-bold mb-2">Fase 1: Grabación</h4>
-                        <div class="form-group mb-2">
-                            <label class="form-label text-[10px]">Asignar a</label>
-                            <select id="mp-cam" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-xs font-bold">Fase 1: Grabación</h4>
+                            <input type="date" id="mp-due-cam" class="form-input text-[10px]" style="width:110px; padding:2px;" required>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label text-[10px]">SOP Recomendado (Opcional)</label>
-                            <select id="mp-sop-cam" class="form-select text-xs"><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                        <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label class="form-label text-[10px]">Principal (Sube Medios)</label>
+                                <select id="mp-cam-main" class="form-select text-[10px]"><option value="">-- Omitir Fase --</option>${usersHtml}</select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label text-[10px]">Tarifa Principal</label>
+                                <select id="mp-rate-cam" class="form-select text-[10px]">${rateOptionsHtml}</select>
+                            </div>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label text-[10px]">Apoyo (Múltiples - Solo Anotan Minutos)</label>
+                            <select id="mp-cam-support" class="form-select text-[10px]" multiple size="3">${usersHtml}</select>
                         </div>
                     </div>
 
-                    <div class="text-center text-muted" style="font-size: 1.2rem;">↓</div>
+                    <div class="text-center text-muted" style="font-size: 1.2rem; margin: -5px 0;">↓</div>
 
                     <div class="card p-3" style="background: rgba(var(--info-rgb), 0.05); border: 1px solid var(--info);">
-                        <h4 class="text-xs font-bold mb-2">Fase 2: Edición (Automática)</h4>
-                        <div class="form-group mb-2">
-                            <label class="form-label text-[10px]">Asignar a</label>
-                            <select id="mp-ed" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-xs font-bold">Fase 2: Edición (Automática)</h4>
+                            <input type="date" id="mp-due-ed" class="form-input text-[10px]" style="width:110px; padding:2px;" required>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label text-[10px]">SOP Recomendado (Opcional)</label>
-                            <select id="mp-sop-ed" class="form-select text-xs"><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                        <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label class="form-label text-[10px]">Asignar a</label>
+                                <select id="mp-ed" class="form-select text-[10px]"><option value="">-- Omitir Fase --</option>${usersHtml}</select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label text-[10px]">Tarifa</label>
+                                <select id="mp-rate-ed" class="form-select text-[10px]">${rateOptionsHtml}</select>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="text-center text-muted" style="font-size: 1.2rem;">↓</div>
+                    <div class="text-center text-muted" style="font-size: 1.2rem; margin: -5px 0;">↓</div>
 
                     <div class="card p-3" style="background: rgba(var(--warning-rgb), 0.05); border: 1px solid var(--warning);">
-                        <h4 class="text-xs font-bold mb-2">Fase 3: Subida (Automática)</h4>
-                        <div class="form-group mb-2">
-                            <label class="form-label text-[10px]">Asignar a</label>
-                            <select id="mp-up" class="form-select text-xs" required><option value="">-- Selecciona Empleado --</option>${usersHtml}</select>
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-xs font-bold">Fase 3: Subida (Automática)</h4>
+                            <input type="date" id="mp-due-up" class="form-input text-[10px]" style="width:110px; padding:2px;" required>
                         </div>
-                        <div class="form-group mb-2">
-                            <label id="lbl-mp-up-link" class="form-label text-[10px]">Link/URL para publicar en redes sociales</label>
-                            <input type="text" id="mp-up-link" class="form-input text-xs" placeholder="Ej. Link de TikTok, Google Drive, etc." required>
+                        <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label class="form-label text-[10px]">Asignar a</label>
+                                <select id="mp-up" class="form-select text-[10px]"><option value="">-- Omitir Fase --</option>${usersHtml}</select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label text-[10px]">Tarifa</label>
+                                <select id="mp-rate-up" class="form-select text-[10px]">${rateOptionsHtml}</select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label text-[10px]">SOP Recomendado (Opcional)</label>
-                            <select id="mp-sop-up" class="form-select text-xs"><option value="">-- Selecciona SOP --</option>${sopsHtml}</select>
+                        <div class="form-group mt-2">
+                            <label id="lbl-mp-up-link" class="form-label text-[10px]">Red Social a Publicar</label>
+                            <input type="text" id="mp-up-link" class="form-input text-[10px]" placeholder="Ej. TikTok, Drive">
                         </div>
                     </div>
                 </div>

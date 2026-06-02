@@ -78,72 +78,119 @@ export const assignmentService = {
 
     async createMasterPipeline(data) {
         const projectId = `PRJ-${crypto.randomUUID().split('-')[0]}`;
-        
-        // Fase 1: Grabación (Activa)
-        const recId = `ASG-${crypto.randomUUID().split('-')[0]}`;
-        const recAssignment = {
-            id: recId,
-            projectId,
-            stageIndex: 0,
-            employeeId: data.camarografoId,
-            type: 'Grabación',
-            client: data.client || 'General',
-            title: `[Grabación] ${data.title}`,
-            description: data.description || '',
-            assignedDate: new Date().toISOString(),
-            dueDate: data.dueDate,
-            status: 'Pendiente',
-            createdBy: data.createdBy || 'admin',
-            linkedScript: data.linkedScript || '',
-            linkedAsset: data.linkedAsset || '',
-            sopId: data.sopCamarografoId || null
-        };
+        const stagesToCreate = [];
+        let currentStageIndex = 0;
 
-        // Fase 2: Edición (Bloqueada/Oculta)
-        const editId = `ASG-${crypto.randomUUID().split('-')[0]}`;
-        const editAssignment = {
-            id: editId,
-            projectId,
-            stageIndex: 1,
-            employeeId: data.editorId,
-            type: 'Edición',
-            client: data.client || 'General',
-            title: `[Edición] ${data.title}`,
-            description: '', // Se llenará en la transición
-            assignedDate: new Date().toISOString(),
-            dueDate: data.dueDate,
-            status: 'blocked',
-            createdBy: 'system_automator',
-            linkedScript: data.linkedScript || '',
-            linkedAsset: data.linkedAsset || '',
-            sopId: data.sopEditorId || null
-        };
+        // Fase 1: Grabación (Principal - Sube Medios)
+        if (data.camarografoPrincipalId) {
+            stagesToCreate.push({
+                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                projectId,
+                stageIndex: currentStageIndex++,
+                employeeId: data.camarografoPrincipalId,
+                type: 'Grabación',
+                client: data.client || 'General',
+                title: `[Grabación Principal] ${data.title}`,
+                description: data.description || '',
+                assignedDate: new Date().toISOString(),
+                dueDate: data.dueDateCam || data.dueDate,
+                status: 'Pendiente',
+                createdBy: data.createdBy || 'admin',
+                linkedScript: data.linkedScript || '',
+                linkedAsset: data.linkedAsset || '',
+                billing: data.billingCam || null
+            });
+        } else if (data.camarografoId) {
+            // Fallback for old calls
+            stagesToCreate.push({
+                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                projectId,
+                stageIndex: currentStageIndex++,
+                employeeId: data.camarografoId,
+                type: 'Grabación',
+                client: data.client || 'General',
+                title: `[Grabación] ${data.title}`,
+                description: data.description || '',
+                assignedDate: new Date().toISOString(),
+                dueDate: data.dueDateCam || data.dueDate,
+                status: 'Pendiente',
+                createdBy: data.createdBy || 'admin',
+                linkedScript: data.linkedScript || '',
+                linkedAsset: data.linkedAsset || '',
+                billing: data.billingCam || null
+            });
+        }
 
-        // Fase 3: Subida (Bloqueada/Oculta)
-        const uploadId = `ASG-${crypto.randomUUID().split('-')[0]}`;
-        const uploadAssignment = {
-            id: uploadId,
-            projectId,
-            stageIndex: 2,
-            employeeId: data.uploaderId,
-            type: 'Subida',
-            client: data.client || 'General',
-            title: `[Subida] ${data.title}`,
-            description: '',
-            assignedDate: new Date().toISOString(),
-            dueDate: data.dueDate,
-            status: 'blocked',
-            createdBy: 'system_automator',
-            linkedScript: data.linkedScript || '',
-            linkedAsset: data.linkedAsset || '',
-            sopId: data.sopUploaderId || null,
-            uploadLink: data.uploadLink || ''
-        };
+        // Fase 1.1: Grabación (Apoyo - Solo Minutos)
+        if (data.camarografoApoyoIds && Array.isArray(data.camarografoApoyoIds)) {
+            for (const apoyoId of data.camarografoApoyoIds) {
+                stagesToCreate.push({
+                    id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                    projectId,
+                    stageIndex: -1, // -1 means it doesn't block or advance the pipeline
+                    employeeId: apoyoId,
+                    type: 'Grabación',
+                    client: data.client || 'General',
+                    title: `[Grabación Apoyo] ${data.title}`,
+                    description: data.description || '',
+                    assignedDate: new Date().toISOString(),
+                    dueDate: data.dueDateCam || data.dueDate,
+                    status: 'Pendiente',
+                    createdBy: data.createdBy || 'admin',
+                    linkedScript: data.linkedScript || '',
+                    linkedAsset: data.linkedAsset || '',
+                    billing: data.billingCam || null // Optionally same billing config
+                });
+            }
+        }
+
+        // Fase 2: Edición
+        if (data.editorId) {
+            stagesToCreate.push({
+                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                projectId,
+                stageIndex: currentStageIndex++,
+                employeeId: data.editorId,
+                type: 'Edición',
+                client: data.client || 'General',
+                title: `[Edición] ${data.title}`,
+                description: data.description || '', // ¡Se arregló la fuga de contexto!
+                assignedDate: new Date().toISOString(),
+                dueDate: data.dueDateEd || data.dueDate,
+                status: stagesToCreate.filter(s => s.stageIndex >= 0).length === 0 ? 'Pendiente' : 'blocked',
+                createdBy: 'system_automator',
+                linkedScript: data.linkedScript || '',
+                linkedAsset: data.linkedAsset || '',
+                billing: data.billingEd || null
+            });
+        }
+
+        // Fase 3: Subida
+        if (data.uploaderId) {
+            stagesToCreate.push({
+                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                projectId,
+                stageIndex: currentStageIndex++,
+                employeeId: data.uploaderId,
+                type: 'Subida',
+                client: data.client || 'General',
+                title: `[Subida] ${data.title}`,
+                description: data.description || '',
+                assignedDate: new Date().toISOString(),
+                dueDate: data.dueDateUp || data.dueDate,
+                status: stagesToCreate.filter(s => s.stageIndex >= 0).length === 0 ? 'Pendiente' : 'blocked',
+                createdBy: 'system_automator',
+                linkedScript: data.linkedScript || '',
+                linkedAsset: data.linkedAsset || '',
+                billing: data.billingUp || null,
+                uploadLink: data.uploadLink || ''
+            });
+        }
 
         try {
-            await dbService.set('assignments', recId, recAssignment);
-            await dbService.set('assignments', editId, editAssignment);
-            await dbService.set('assignments', uploadId, uploadAssignment);
+            for (const stage of stagesToCreate) {
+                await dbService.set('assignments', stage.id, stage);
+            }
         } catch (err) {
             console.warn("Error saving pipeline assignments to DB:", err);
         }
@@ -182,7 +229,7 @@ export const assignmentService = {
                     console.log(`[Pipeline] Stage is Subida. Keeping it blocked for Admin approval.`);
                     const updates = {};
                     if (completedAsg && completedAsg.uploadLink) {
-                        updates.linkedAsset = completedAsg.uploadLink;
+                        updates.sourceFilesLink = completedAsg.uploadLink; // ¡NO sobrescribir linkedAsset!
                     }
                     if (Object.keys(updates).length > 0) {
                         await dbService.update('assignments', nextStageAsg.id, updates);
@@ -191,7 +238,7 @@ export const assignmentService = {
                     console.log(`[Pipeline] Unlocking assignment ${nextStageAsg.id}`);
                     const updates = { status: 'Pendiente' };
                     if (completedAsg && completedAsg.uploadLink) {
-                        updates.linkedAsset = completedAsg.uploadLink;
+                        updates.sourceFilesLink = completedAsg.uploadLink; // ¡NO sobrescribir linkedAsset!
                     }
                     await dbService.update('assignments', nextStageAsg.id, updates);
                 }

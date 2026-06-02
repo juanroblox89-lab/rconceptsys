@@ -272,6 +272,7 @@ function openAssignmentModal(existing, context) {
     const submit = async (e) => {
         e.preventDefault();
         const data = {
+            ...(existing || {}),
             id: existing?.id,
             employeeId: form.querySelector('#wasg-emp').value,
             type: form.querySelector('#wasg-type').value,
@@ -280,7 +281,7 @@ function openAssignmentModal(existing, context) {
             description: form.querySelector('#wasg-desc').value,
             dueDate: form.querySelector('#wasg-due').value,
             status: existing?.status || 'Pendiente',
-            createdBy: store.getState().user?.uid
+            createdBy: existing?.createdBy || store.getState().user?.uid
         };
         await assignmentService.saveAssignment(data);
         overlay.remove();

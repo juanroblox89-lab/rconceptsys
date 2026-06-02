@@ -62,7 +62,7 @@ class Router {
             if (requiredModule === 'clientDetail') requiredModule = 'clients';
 
             if (user?.role === 'admin') {
-                const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'sops', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'clientDetail'];
+                const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'sops', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'clientDetail', 'marketing'];
                 hasPermission = adminAllowed.includes(requiredModule);
             } else {
                 const currentRole = (roles || []).find(r => r.id === user?.role);
