@@ -19,7 +19,8 @@ export const routes = [
     { path: 'aiAssistant', module: 'aiAssistant', title: "AI Assistant", subtitle: "Inteligencia generativa y análisis" },
     { path: 'admin', module: 'admin', title: "Panel de Administración", subtitle: "Aprobación de usuarios y control integral" },
     { path: 'workers', module: 'workers', title: "Equipo y Productividad", subtitle: "Asignaciones y SOPs del personal" },
-    { path: 'marketing', module: 'marketing', title: "Ventas y Marketing", subtitle: "Control de visitas y comisiones" }
+    { path: 'marketing', module: 'marketing', title: "Ventas y Marketing", subtitle: "Control de visitas y comisiones" },
+    { path: 'profile', module: 'profile', title: "Mi Perfil", subtitle: "Configuración personal y atajos" }
 ];
 
 class Router {
@@ -65,9 +66,9 @@ class Router {
                 hasPermission = adminAllowed.includes(requiredModule);
             } else {
                 const currentRole = (roles || []).find(r => r.id === user?.role);
-                const defaultModules = ['dashboard', 'assignments', 'sops', 'aiAssistant'];
+                const defaultModules = ['dashboard', 'assignments', 'sops', 'aiAssistant', 'profile'];
                 const allowedModules = currentRole?.allowedModules || defaultModules;
-                hasPermission = allowedModules.includes(requiredModule);
+                hasPermission = allowedModules.includes(requiredModule) || requiredModule === 'profile';
             }
 
             if (!hasPermission) {
@@ -107,7 +108,8 @@ class Router {
                     aiAssistant: () => import('../pages/aiAssistant.js'),
                     admin: () => import('../pages/admin.js'),
                     workers: () => import('../pages/workers.js'),
-                    marketing: () => import('../pages/marketing.js')
+                    marketing: () => import('../pages/marketing.js'),
+                    profile: () => import('../pages/profile.js')
                 };
 
                 const loadPage = pages[route.module];

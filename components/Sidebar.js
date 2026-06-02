@@ -26,6 +26,7 @@ const secondaryNavItems = [
     { href: '#references', icon: 'bookmark',        label: 'Referencias' },
     { href: '#aiAssistant', icon: 'sparkles',          label: 'AI Assistant' },
     { href: '#admin', icon: 'shield',            label: 'Administración' },
+    { href: '#profile', icon: 'user',            label: 'Mi Perfil' },
 ];
 
 const checkPermission = (href) => {

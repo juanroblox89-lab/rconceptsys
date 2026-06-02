@@ -604,8 +604,14 @@ function renderRolesSection(rolesList = [], reload) {
                                     const btn = e.currentTarget;
                                     btn.disabled = true;
                                     try {
+                                        const allUsrs = await dbService.getAll('users');
+                                        for (const u of allUsrs) {
+                                            if (u.role === role.id || u.role === role.label) {
+                                                await dbService.update('users', u.uid || u.id, { role: 'viewer' });
+                                            }
+                                        }
                                         await dbService.delete('roles', role.id);
-                                        reload();
+                                        await reload();
                                     } catch (err) {
                                         alert(`Error al eliminar: ${err.message}`);
                                         if (btn) btn.disabled = false;

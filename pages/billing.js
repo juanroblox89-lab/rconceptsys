@@ -185,7 +185,8 @@ export const render = () => {
                                 alert("Por favor agrega al menos un cobro a la hoja de liquidación.");
                                 return;
                             }
-                            onSave(itemsArray, totalSum);
+                            const currentTotal = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+                            onSave(itemsArray, currentTotal);
                         }
                     }, [icon('save', 12), h('span', {}, 'Guardar Cobros')])
                 ]) : null

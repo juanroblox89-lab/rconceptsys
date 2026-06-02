@@ -230,10 +230,10 @@ export const invoiceService = {
                 if (!inv.items || !inv.items.length) return;
                 const originalLength = inv.items.length;
                 
-                // Filter out items that match assignmentId or title
+                // Filter out items that match assignmentId or (legacy items) title
                 inv.items = inv.items.filter(item => {
                     const matchId = item.assignmentId === assignmentId;
-                    const matchTitle = item.title === assignmentTitle || item.description?.includes(assignmentTitle);
+                    const matchTitle = !item.assignmentId && (item.title === assignmentTitle || item.description?.includes(assignmentTitle));
                     return !(matchId || matchTitle);
                 });
                 

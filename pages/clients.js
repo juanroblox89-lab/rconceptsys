@@ -5,6 +5,7 @@
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { dbService, storageService } from '../firebase/service.js';
+import { assignmentService } from '../services/assignmentService.js';
 
 export const render = () => {
     const { user } = store.getState();
@@ -103,7 +104,7 @@ export const render = () => {
                                             e.stopPropagation();
                                             const newVal = Math.max(0, (c.videosCompleted || 0) - 1);
                                             await dbService.update('clients', c.id, { videosCompleted: newVal });
-                                            loadAndRenderClients();
+                                            await loadAndRenderClients();
                                         }
                                     }, '-'),
                                     h('span', { className: 'text-xs font-bold text-accent' }, `${c.videosCompleted || 0} / ${c.packageLimit}`),
@@ -114,7 +115,7 @@ export const render = () => {
                                             e.stopPropagation();
                                             const newVal = (c.videosCompleted || 0) + 1;
                                             await dbService.update('clients', c.id, { videosCompleted: newVal });
-                                            loadAndRenderClients();
+                                            await loadAndRenderClients();
                                         }
                                     }, '+')
                                 ])
@@ -158,8 +159,13 @@ export const render = () => {
                                             h('button', { className: 'btn text-xs', style: { color: 'var(--error)', borderColor: 'var(--error)' }, onClick: async () => {
                                                 document.body.removeChild(overlay);
                                                 try {
+                                                    // Cascada de eliminación: Tareas asociadas
+                                                    const asgs = await assignmentService.getAssignmentsByClient(c.name);
+                                                    for (const asg of asgs) {
+                                                        await assignmentService.deleteAssignment(asg.id);
+                                                    }
                                                     await dbService.delete('clients', c.id);
-                                                    loadAndRenderClients();
+                                                    await loadAndRenderClients();
                                                 } catch (err) {
                                                     console.error(err);
                                                 }
@@ -237,7 +243,7 @@ export const render = () => {
             }
 
             document.body.removeChild(overlay);
-            loadAndRenderClients();
+            await loadAndRenderClients();
         };
 
         const form = h('form', { className: 'modal-container', onSubmit: submitForm }, [
@@ -332,7 +338,7 @@ export const render = () => {
             }
 
             document.body.removeChild(overlay);
-            loadAndRenderClients();
+            await loadAndRenderClients();
         };
 
         const vform = h('form', { className: 'modal-container', onSubmit: saveViralLink }, [

@@ -15,7 +15,7 @@ export const userService = {
             let result = list || [];
             
             // Ensure the current user is in the list for administrative visibility
-            if (currentUser && !result.some(u => u.uid === currentUser.uid)) {
+            if (currentUser && !result.some(u => (u.uid || u.id) === currentUser.uid)) {
                 result.push(currentUser);
             }
             

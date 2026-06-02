@@ -200,9 +200,10 @@ export const render = async () => {
                                                 if (!linkVal) { alert('Por favor, ingresa el enlace del entregable para poder continuar.'); return; }
 
                                                 const btn = e.currentTarget;
+                                                if (btn.disabled) return;
+                                                btn.disabled = true;
                                                 
                                                 openBillingModal(asg, async (price, obs) => {
-                                                    btn.disabled = true;
                                                     try {
                                                         let currentInv = await invoiceService.getEmployeeInvoice(user.uid);
                                                         if (!currentInv) currentInv = { items: [] };
@@ -210,6 +211,7 @@ export const render = async () => {
                                                         
                                                         const newItem = {
                                                             id: `item-${Date.now()}`,
+                                                            assignmentId: asg.id,
                                                             type: asg.type,
                                                             client: asg.client,
                                                             title: asg.title,
@@ -244,6 +246,8 @@ export const render = async () => {
                                                         console.error(err);
                                                         if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
                                                     }
+                                                }, () => {
+                                                    if (btn) btn.disabled = false;
                                                 });
                                             }
                                         }, [icon('check-circle', 14), h('span', {}, 'Entregar y Completar')])
@@ -1051,9 +1055,12 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
 
             // 2. Auto-Facturación (Tarifa dinámica o manual)
             try {
-                // Determine rate
-                let billingAmount = asg.billing?.customPrice || 0;
-                if (!billingAmount && asg.billing?.rateCardId) {
+                let billingAmount = 0;
+                let hasExplicitCustomPrice = asg.billing?.customPrice !== undefined && asg.billing?.customPrice !== null;
+                
+                if (hasExplicitCustomPrice) {
+                    billingAmount = asg.billing.customPrice;
+                } else if (asg.billing?.rateCardId) {
                     const rates = await invoiceService.getRateCards();
                     const rate = rates.find(r => r.id === asg.billing.rateCardId);
                     if (rate) {
@@ -1063,7 +1070,8 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                     }
                 }
 
-                if (billingAmount > 0) {
+                // Si hay un customPrice en 0, registramos la transacción en $0 como constancia.
+                if (billingAmount > 0 || hasExplicitCustomPrice) {
                     const invoiceItem = {
                         assignmentId: asg.id,
                         employeeName: user.name || user.email,
@@ -1206,7 +1214,7 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
 }
 
 // --- Billing Modal ---
-function openBillingModal(asg, callback) {
+function openBillingModal(asg, callback, onCancel) {
     const overlay = h('div', { className: 'modal-overlay' });
     const isRecording = asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)';
     const is360 = asg.type === 'Creador 360° (Grabación + Edición)';
@@ -1243,14 +1251,14 @@ function openBillingModal(asg, callback) {
     const modal = h('div', { className: 'modal-container', style: { maxWidth: '400px' } }, [
         h('div', { className: 'modal-header' }, [
             h('span', { className: 'modal-title' }, `Liquidación: ${asg.title}`),
-            h('button', { onClick: () => overlay.remove() }, '×')
+            h('button', { onClick: () => { overlay.remove(); if(onCancel) onCancel(); } }, '×')
         ]),
         h('div', { className: 'modal-body' }, [
             h('p', { className: 'text-xs text-muted mb-2' }, `Vas a registrar el cobro por la tarea de cliente: ${asg.client}.`),
             contentDiv
         ]),
         h('div', { className: 'modal-footer' }, [
-            h('button', { className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
+            h('button', { className: 'btn btn-outline text-xs', onClick: () => { overlay.remove(); if(onCancel) onCancel(); } }, 'Cancelar'),
             h('button', {
                 className: 'btn btn-primary text-xs',
                 style: { background: 'var(--success)', borderColor: 'var(--success)' },

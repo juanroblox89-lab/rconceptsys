@@ -81,7 +81,7 @@ function renderWorkerCard(w, assignments, clients, sops, roles, reload) {
         icon: (ROLE_META[w.role] && ROLE_META[w.role].icon) ? ROLE_META[w.role].icon : 'user',
         invoiceType: (ROLE_META[w.role] && ROLE_META[w.role].invoiceType) ? ROLE_META[w.role].invoiceType : 'Factura General'
     };
-    const myAsgs = assignments.filter(a => a.employeeId === w.uid);
+    const myAsgs = assignments.filter(a => a.employeeId === (w.uid || w.id));
     const pending = myAsgs.filter(a => a.status !== 'Completado');
     const done = myAsgs.filter(a => a.status === 'Completado');
 
@@ -162,7 +162,7 @@ function renderWorkerCard(w, assignments, clients, sops, roles, reload) {
                 h('button', {
                     className: 'btn btn-outline text-xs flex-1',
                     style: { fontSize: '0.65rem' },
-                    onClick: () => openAssignmentModal(null, { users: [w], preselectedUser: w.uid, clients, assignments: myAsgs, reload, sops })
+                    onClick: () => openAssignmentModal(null, { users: [w], preselectedUser: w.uid || w.id, clients, assignments: myAsgs, reload, sops })
                 }, [icon('plus', 11), h('span', {}, 'Asignar')]),
                 h('button', {
                     className: 'btn btn-outline text-xs flex-1',
@@ -252,7 +252,7 @@ function openChangeRoleModal(w, roles, reload) {
                 onClick: async (e) => {
                     const btn = e.currentTarget;
                     btn.disabled = true;
-                    await dbService.update('users', w.uid, { role: select.value });
+                    await dbService.update('users', w.uid || w.id, { role: select.value });
                     overlay.remove();
                     reload();
                 }
