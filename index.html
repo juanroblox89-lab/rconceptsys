@@ -23,6 +23,37 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            var div = document.createElement('div');
+            div.style.background = 'red';
+            div.style.color = 'white';
+            div.style.padding = '20px';
+            div.style.position = 'fixed';
+            div.style.zIndex = '999999';
+            div.style.top = '0';
+            div.style.left = '0';
+            div.style.width = '100%';
+            div.style.fontSize = '20px';
+            div.innerHTML = '<h1>CRITICAL ERROR:</h1><p>' + message + '</p><pre>' + (error && error.stack ? error.stack : '') + '</pre>';
+            document.body.appendChild(div);
+            return true; // prevent default
+        };
+        window.addEventListener("unhandledrejection", function(event) {
+            var div = document.createElement('div');
+            div.style.background = 'red';
+            div.style.color = 'white';
+            div.style.padding = '20px';
+            div.style.position = 'fixed';
+            div.style.zIndex = '999999';
+            div.style.top = '200px';
+            div.style.left = '0';
+            div.style.width = '100%';
+            div.style.fontSize = '20px';
+            div.innerHTML = '<h1>UNHANDLED PROMISE REJECTION:</h1><p>' + event.reason + '</p><pre>' + (event.reason && event.reason.stack ? event.reason.stack : '') + '</pre>';
+            document.body.appendChild(div);
+        });
+    </script>
     <div id="app">
         <!-- Sidebar injected by Sidebar.js component -->
 
