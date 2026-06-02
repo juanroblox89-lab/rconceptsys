@@ -323,7 +323,5 @@ class App {
 }
 
 const app = new App();
-window.addEventListener('DOMContentLoaded', () => {
-    console.log("[DOM] DOMContentLoaded fired.");
-    app.init();
-});
+console.log("[DOM] Module loaded, initializing app...");
+app.init();
