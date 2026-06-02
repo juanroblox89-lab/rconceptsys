@@ -3,7 +3,8 @@
  * Handles operational task assignments for recordings and edits.
  * Includes auto-deletion logic for tasks 2 days past their deadline.
  */
-import { dbService, db, onSnapshot, collection } from '../firebase/service.js';
+import { dbService, db } from '../firebase/service.js';
+import { onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 export const assignmentService = {
     subscribeToAssignments(callback) {

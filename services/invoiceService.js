@@ -2,8 +2,8 @@
  * Invoice Service - Creative Production OS
  * Handles single invoice operational tracking: Employee Invoice (emp-inv-{userId}) and Admin Invoice (adm-inv-{userId}).
  */
-import { dbService, db, doc, updateDoc } from '../firebase/service.js';
-
+import { dbService, db } from '../firebase/service.js';
+import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 export const invoiceService = {
     // --- Rate Cards Methods ---
     async getRateCards() {
