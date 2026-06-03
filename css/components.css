@@ -1285,8 +1285,204 @@ tr:hover td { background-color: var(--bg-secondary); }
 .kanban-card-meta {
     font-size: 0.7rem;
     color: var(--text-secondary);
+        padding: 8px 12px;
+    }
+}
+
+.billing-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 640px) {
+    .billing-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+/* Excel spreadsheet layout wrapper for scrollable tables */
+.excel-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    margin-bottom: 12px;
+}
+
+/* Beautiful custom thin scrollbar for Excel-like feel */
+.excel-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.excel-table-wrapper::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.excel-table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.excel-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+.excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    /* Removed min-width: 720px to prevent mobile scale-out. 
+       Let the table be scrollable via the wrapper. */
+}
+
+.excel-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    border: 1px solid var(--border) !important;
+    padding: 8px 10px;
+}
+
+.excel-table td {
+    border: 1px solid var(--border) !important;
+    padding: 6px;
+    vertical-align: middle;
+}
+
+.excel-table tr:hover td {
+    background: var(--bg-tertiary);
+}
+
+/* ==================================
+   RESPONSIVE CLIENT DETAILS CLASSES
+   ================================== */
+.client-detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+}
+
+@media (min-width: 769px) {
+    .client-detail-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.client-two-column-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .client-two-column-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ================================
+   KANBAN BOARD
+================================ */
+.kanban-board {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    align-items: flex-start;
+    min-height: 60vh;
+}
+
+.kanban-column {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    min-width: 280px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.kanban-column-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kanban-column-count {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+}
+
+.kanban-column-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 150px;
+    flex: 1;
+    transition: background-color 0.2s;
+}
+
+.kanban-column-body.drag-over {
+    background-color: var(--bg-tertiary);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.kanban-card {
+    background-color: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    cursor: grab;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.kanban-card:active {
+    cursor: grabbing;
+}
+
+.kanban-card.dragging {
+    opacity: 0.5;
+    transform: scale(1.02);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.kanban-card-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.kanban-card-meta {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-top: 8px;
 }
+.hover-scale:hover { transform: scale(1.02); transition: transform 0.2s ease; }

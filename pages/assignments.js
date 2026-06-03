@@ -139,34 +139,46 @@ export const render = async () => {
                             h('div', { className: 'flex items-center gap-2' }, [
                                 // Action buttons
                                 asg.status === 'Pendiente' ? (() => {
-                                    if (asg.sourceFilesLink) {
-                                        return h('div', { className: 'flex-column gap-2 p-3 border rounded mt-2 w-full', style: { background: 'var(--bg-tertiary)', borderColor: 'var(--warning)' } }, [
-                                            h('div', { className: 'text-xs text-warning font-bold flex items-center gap-1' }, [icon('alert-circle', 14), h('span', {}, 'Materiales recibidos. Revisa y aprueba para iniciar.')]),
-                                            h('div', { className: 'flex items-center gap-2 flex-wrap mt-1' }, [
-                                                h('a', { href: asg.sourceFilesLink, target: '_blank', className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold', style: { borderColor: 'var(--accent)', color: 'var(--accent)' } }, [icon('external-link', 12), h('span', {}, 'Revisar Material')]),
+                                    const prevTask = typeof asg.stageIndex !== 'undefined' ? assignments.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex - 1) : null;
+                                    const prevWorker = prevTask ? approvedUsers.find(u => u.uid === prevTask.employeeId || u.id === prevTask.employeeId) : null;
+                                    
+                                    if (prevTask && prevTask.uploadLink) {
+                                        return h('div', { className: 'flex-column gap-2 p-3 border mt-2 w-full transition', style: { background: 'var(--bg-tertiary)', borderColor: 'var(--success)', borderRadius: '8px' } }, [
+                                            h('div', { className: 'text-xs text-primary font-bold flex items-center gap-2 mb-1' }, [
+                                                icon('package', 16, 'text-success'), 
+                                                h('span', {}, `📦 Materiales de la Fase Anterior: ${prevTask.title}`)
+                                            ]),
+                                            h('div', { className: 'text-[11px] text-muted mb-2' }, `Entregados por ${prevWorker ? prevWorker.nombre.split(' ')[0] : 'tu compañero'}. Revísalos antes de empezar.`),
+                                            h('div', { className: 'flex items-center gap-2 flex-wrap mb-2' }, [
+                                                h('a', { 
+                                                    href: prevTask.uploadLink, 
+                                                    target: '_blank', 
+                                                    className: 'btn btn-primary text-xs py-2 px-3 flex items-center gap-2 font-bold w-full justify-center transform hover:scale-105 transition', 
+                                                    style: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'white', borderRadius: '6px' } 
+                                                }, [icon('folder-open', 16), h('span', {}, 'Abrir Archivos de Trabajo (Drive/Web)')])
+                                            ]),
+                                            h('div', { className: 'text-[11px] font-bold mt-1 text-center' }, '¿Están correctos los materiales?'),
+                                            h('div', { className: 'flex items-center gap-2 flex-wrap mt-1 justify-center' }, [
                                                 h('button', {
-                                                    className: 'btn btn-primary text-xs py-1 px-2 flex items-center gap-1 font-bold',
-                                                    style: { background: 'var(--success)' },
+                                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                                    style: { borderColor: 'var(--success)', color: 'var(--success)' },
                                                     onClick: async (e) => {
                                                         const btn = e.currentTarget; btn.disabled = true;
                                                         try { await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' }); loadAndRender(); }
                                                         catch(err) { btn.disabled = false; alert("Error al actualizar la tarea."); }
                                                     }
-                                                }, [icon('check', 12), h('span', {}, 'Aceptar y Empezar')]),
+                                                }, [icon('check-circle', 14), h('span', {}, 'Sí, Empezar')]),
                                                 h('button', {
-                                                    className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold',
+                                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
                                                     style: { borderColor: 'var(--warning)', color: 'var(--warning)' },
-                                                    title: 'Devolver tarea al responsable anterior para corrección',
                                                     onClick: async () => {
-                                                        const prevTask = typeof asg.stageIndex !== 'undefined' ? assignments.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex - 1) : null;
-                                                        if (!prevTask) { alert('No hay tarea anterior a quién devolverle (esta es la fase inicial).'); return; }
-                                                        const just = prompt('Razón para devolver la tarea (se creará una tarea de corrección gratuita para el responsable anterior):');
+                                                        const just = prompt('Razón para devolver la tarea:');
                                                         if (!just) return;
                                                         try {
                                                             await assignmentService.saveAssignment({
                                                                 id: `corr-${Date.now()}`,
                                                                 title: `Corrección: ${prevTask.title}`,
-                                                                description: `Devuelto por el responsable de la siguiente fase.\n\nRazón: ${just}\n\nPor favor, sube el nuevo material corregido aquí.`,
+                                                                description: `Devuelto por la fase siguiente.\n\nRazón: ${just}\n\nPor favor, sube el nuevo material corregido aquí.`,
                                                                 type: prevTask.type,
                                                                 client: prevTask.client,
                                                                 employeeId: prevTask.employeeId,
@@ -176,35 +188,32 @@ export const render = async () => {
                                                                 stageIndex: prevTask.stageIndex,
                                                                 billing: { customPrice: 0 }
                                                             });
-                                                            alert('Tarea devuelta con éxito (Nueva asignación de corrección enviada).');
+                                                            alert('Tarea devuelta con éxito.');
                                                             loadAndRender();
                                                         } catch(e) { alert('Error al devolver la tarea.'); }
                                                     }
-                                                }, [icon('corner-up-left', 12), h('span', {}, 'Devolver Tarea')]),
+                                                }, [icon('corner-up-left', 14), h('span', {}, 'Devolver')]),
                                                 h('button', {
-                                                    className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold',
-                                                    style: { borderColor: 'var(--error)', color: 'var(--error)' },
-                                                    title: 'Contactar al responsable anterior o Admin',
+                                                    className: 'btn btn-icon text-muted p-1',
+                                                    title: 'Contactar por WhatsApp',
                                                     onClick: () => {
-                                                        const prevTask = typeof asg.stageIndex !== 'undefined' ? assignments.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex - 1) : null;
-                                                        const prevWorker = prevTask ? approvedUsers.find(u => u.uid === prevTask.employeeId || u.id === prevTask.employeeId) : null;
                                                         const phone = prevWorker?.phone ? prevWorker.phone.replace(/[^0-9]/g, '') : adminPhone;
                                                         const msg = prevWorker ? `Hola ${prevWorker.nombre.split(' ')[0]}, el material de la tarea *${asg.title}* está incompleto o tiene un problema. ¿Puedes revisarlo?` : `Hola, reporto un problema con los materiales de la tarea *${asg.title}*.`;
                                                         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                                     }
-                                                }, [icon('alert-triangle', 12), h('span', {}, 'Reportar')])
+                                                }, [icon('message-circle', 14)])
                                             ])
                                         ]);
                                     } else {
                                         return h('button', {
-                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold mt-2',
                                             style: { color: 'var(--info)', borderColor: 'rgba(var(--info-rgb), 0.3)' },
                                             onClick: async (e) => {
                                                 const btn = e.currentTarget; btn.disabled = true;
                                                 try { await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' }); loadAndRender(); }
                                                 catch(err) { btn.disabled = false; alert("Error al actualizar la tarea."); }
                                             }
-                                        }, [icon('play', 12), h('span', {}, 'Empezar')]);
+                                        }, [icon('play', 12), h('span', {}, 'Empezar Tarea')]);
                                     }
                                 })() : null,
 
@@ -509,7 +518,7 @@ export const render = async () => {
                     }, [icon('git-commit', 14), h('span', {}, 'Asignación Maestra')]),
                     h('button', { 
                         className: 'btn btn-primary text-xs',
-                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [], systemPricing: adminConfig })
+                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [], systemPricing: adminConfig, assignments })
                     }, [icon('plus', 14), h('span', {}, 'Nueva Asignación')])
                 ])
             ]);
@@ -595,7 +604,7 @@ export const render = async () => {
                                                     alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
                                                     return;
                                                 }
-                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig });
+                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig, assignments });
                                             }
                                         }, [
                                             h('div', { 
@@ -668,7 +677,7 @@ export const render = async () => {
                                 className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
                                 onClick: () => {
                                     // Allow clicking to view, but we will disable save button inside the modal if it's completed
-                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig });
+                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig, assignments });
                                 }
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [
@@ -1111,6 +1120,31 @@ export const render = async () => {
                     h('textarea', { id: 'asg-desc', className: 'form-textarea', placeholder: 'Detalles específicos del requerimiento...', required: true }, existing?.description || '')
                 ])
             ]),
+            (existing && existing.projectId && context.assignments) ? (() => {
+                const siblings = context.assignments.filter(a => a.projectId === existing.projectId).sort((a,b) => a.stageIndex - b.stageIndex);
+                const hasDeliverables = siblings.some(s => s.uploadLink);
+                if(!hasDeliverables) return null;
+                return h('div', { className: 'mb-4 p-4 rounded', style: { background: 'var(--bg-tertiary)', border: '1px solid var(--border)' } }, [
+                    h('h4', { className: 'text-sm font-bold flex items-center gap-2 mb-3' }, [icon('layers', 16, 'text-accent'), h('span', {}, 'Resumen de Entregables del Proyecto')]),
+                    h('div', { className: 'flex-column gap-2' }, 
+                        siblings.map(s => {
+                            if(!s.uploadLink) return null;
+                            return h('div', { className: 'flex items-center justify-between p-2 rounded', style: { background: 'var(--bg-secondary)', borderLeft: '3px solid var(--accent)' } }, [
+                                h('div', { className: 'flex items-center gap-2' }, [
+                                    h('span', { className: 'badge badge-info text-[10px]' }, `Fase ${s.stageIndex + 1}`),
+                                    h('span', { className: 'text-xs font-bold' }, s.type)
+                                ]),
+                                h('a', {
+                                    href: s.uploadLink,
+                                    target: '_blank',
+                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 transition transform hover:scale-105',
+                                    style: { color: 'var(--success)', borderColor: 'var(--success)' }
+                                }, [icon('external-link', 12), h('span', {}, 'Abrir Material')])
+                            ]);
+                        }).filter(Boolean)
+                    )
+                ]);
+            })() : null,
             h('div', { className: 'modal-footer flex justify-between' }, [
                 h('div', { className: 'flex gap-2' }, [
                     existing ? h('button', {
