@@ -210,10 +210,13 @@ export const Sidebar = () => {
     window._sidebarUnsubscribe = store.subscribe(({ ui: nextUi }) => {
         sidebar.classList.toggle('open', nextUi.sidebarOpen);
         overlay.classList.toggle('visible', nextUi.sidebarOpen);
-        // Evitar scroll en el body cuando el sidebar móvil está abierto
         if (window.innerWidth <= 768) {
-            document.body.style.overflow = nextUi.sidebarOpen ? 'hidden' : '';
-        } else {
+            if (nextUi.sidebarOpen) {
+                document.body.style.overflow = 'hidden';
+            } else if (!document.querySelector('.modal-overlay')) {
+                document.body.style.overflow = '';
+            }
+        } else if (!document.querySelector('.modal-overlay')) {
             document.body.style.overflow = '';
         }
     });

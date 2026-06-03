@@ -56,6 +56,10 @@ export const userService = {
                 await dbService.update('users', currentUid, {
                     role: 'editor'
                 });
+                const currentUser = store.getState().user;
+                if (currentUser) {
+                    store.setState({ user: { ...currentUser, role: 'editor' } });
+                }
             }
             alert("¡Título de Administrador cedido exitosamente! Has sido reasignado como Editor.");
         } catch (err) {

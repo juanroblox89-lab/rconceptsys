@@ -7,15 +7,15 @@
 @media (max-width: 768px) {
     /* --- 1. GLOBAL FIXES --- */
     html, body, #app {
-        max-width: 100vw !important;
+        max-width: 100% !important;
         overflow-x: hidden !important; /* Block horizontal zoom/scroll at root */
         width: 100% !important;
     }
 
     #main-content {
-        padding: 60px 12px 90px 12px !important; /* Space for bottom nav and header */
+        padding: 60px 12px calc(80px + env(safe-area-inset-bottom)) 12px !important; /* Space for bottom nav and header */
         width: 100% !important;
-        max-width: 100vw !important;
+        max-width: 100% !important;
         box-sizing: border-box !important;
     }
 
@@ -30,70 +30,8 @@
     }
 
     /* --- 2. CARD-BASED TABLES --- 
-       Destroy the standard table layout so it fits perfectly on a phone.
+       Removed to allow .table-container horizontal scrolling to work properly on mobile.
     */
-    .excel-table-wrapper, .table-responsive-cards, table {
-        display: block !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        border: none !important;
-        background: transparent !important;
-    }
-
-    table thead {
-        /* Hide standard headers on mobile */
-        display: none !important;
-    }
-
-    table tbody, table tr, table td {
-        display: block !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-
-    table tr {
-        background: var(--bg-secondary) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-md) !important;
-        margin-bottom: 16px !important;
-        padding: 12px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
-    }
-
-    table td {
-        padding: 8px 0 !important;
-        border: none !important;
-        border-bottom: 1px solid var(--border) !important;
-        position: relative !important;
-        text-align: right !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        gap: 8px !important;
-    }
-
-    table td:last-child {
-        border-bottom: none !important;
-    }
-
-    /* Inject pseudo-element for mobile labels using data-label */
-    table td::before {
-        content: attr(data-label);
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        flex-shrink: 0;
-        text-align: left;
-    }
-
-    /* Ensure actions/buttons in cells wrap nicely */
-    table td > div {
-        flex-grow: 1;
-        display: flex;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-    }
 
     /* --- 3. BOTTOM NAV OPTIMIZATIONS --- */
     .bottom-nav {
@@ -115,7 +53,7 @@
     }
 
     /* --- 4. FORM FIELDS AND MODALS --- */
-    .modal-content {
+    .modal-container {
         width: 95% !important;
         margin: 10px auto !important;
         max-height: 90vh !important;

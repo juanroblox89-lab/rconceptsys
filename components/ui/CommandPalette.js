@@ -3,7 +3,6 @@ import { store } from '../../js/store.js';
 import { dbService } from '../../firebase/service.js';
 
 let hasGlobalListener = false;
-let globalClientsCache = null;
 
 export const CommandPalette = () => {
     let isOpen = false;
@@ -120,10 +119,8 @@ export const CommandPalette = () => {
 
             let dynamicResults = [];
             if (query.length > 1) {
-                if (!globalClientsCache) {
-                    globalClientsCache = await dbService.getAll('clients') || [];
-                }
-                dynamicResults = globalClientsCache
+                const clientsList = await dbService.getAll('clients') || [];
+                dynamicResults = clientsList
                     .filter(c => (c.nombre || c.name || '').toLowerCase().includes(query.toLowerCase()))
                     .map(c => ({ type: 'client', id: c.id, title: `Cliente: ${c.nombre || c.name}`, icon: 'briefcase', action: () => window.location.hash = `#client/${c.id}` }));
             }
@@ -165,16 +162,19 @@ export const CommandPalette = () => {
         close();
     };
 
+    window.__toggleCommandPalette = () => {
+        if (isOpen) close(); else open();
+    };
+
     // Listen for global shortcut (Only bind once globally)
     if (!hasGlobalListener) {
         hasGlobalListener = true;
         window.addEventListener('keydown', (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
-                // Since this runs globally, it triggers the last created palette instance if there are multiple,
-                // but the old instances are unreachable due to re-renders. 
-                // To be perfectly robust, we'd dispatch a custom event, but this is a quick fix.
-                if (isOpen) close(); else open();
+                if (window.__toggleCommandPalette) {
+                    window.__toggleCommandPalette();
+                }
             }
         });
     }

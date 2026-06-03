@@ -755,7 +755,7 @@ Información del Administrador:
                 console.log("[Agent] Executing Action:", action);
                 try {
                     // Check admin role for delicate actions (SOP, Format, Client updates, Metric updates)
-                    if (action.type === 'create_sop' || action.type === 'create_format' || action.type === 'create_client' || action.type === 'update_client') {
+                    if (action.type === 'create_sop' || action.type === 'create_format' || action.type === 'create_client' || action.type === 'update_client' || action.type === 'create_script' || action.type === 'update_script' || action.type === 'create_assignment' || action.type === 'create_hook') {
                         if (user?.role !== 'admin') {
                             console.warn("[Agent] Permission Denied: User is not an admin.");
                             activeConversation.push({

@@ -130,17 +130,20 @@ export const openLightbox = (url) => {
         startY = e.clientY - translateY;
     });
 
-    window.addEventListener('mousemove', (e) => {
+    const onMouseMove = (e) => {
         if (!isDragging) return;
         translateX = e.clientX - startX;
         translateY = e.clientY - startY;
         updateTransform();
-    });
+    };
 
-    window.addEventListener('mouseup', () => {
+    const onMouseUp = () => {
         isDragging = false;
         img.style.cursor = 'grab';
-    });
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
 
     // Zoom in animation initially
     setTimeout(() => { img.style.transform = 'scale(1)'; }, 10);
@@ -158,6 +161,8 @@ export const openLightbox = (url) => {
     closeBtn.style.opacity = '0.8';
 
     const close = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
         overlay.classList.remove('fade-in');
         overlay.style.opacity = '0';
         setTimeout(() => document.body.removeChild(overlay), 300);

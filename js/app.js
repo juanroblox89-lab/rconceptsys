@@ -24,11 +24,13 @@ window.debugLog = [];
 const originalLog = console.log;
 console.log = (...args) => {
     window.debugLog.push(`[LOG] ${args.join(' ')}`);
+    if(window.debugLog.length > 500) window.debugLog.shift();
     originalLog(...args);
 };
 const originalError = console.error;
 console.error = (...args) => {
     window.debugLog.push(`[ERR] ${args.join(' ')}`);
+    if(window.debugLog.length > 500) window.debugLog.shift();
     originalError(...args);
 };
 
@@ -204,11 +206,16 @@ class App {
             const loginBtn = document.getElementById('google-login-btn');
             if (loginBtn) {
                 loginBtn.addEventListener('click', async () => {
+                    loginBtn.disabled = true;
+                    const originalContent = loginBtn.innerHTML;
+                    loginBtn.innerHTML = '<span class="loader-ring" style="width:16px;height:16px;border-width:2px;border-top-color:#fff;"></span> Conectando...';
                     try {
                         await authService.loginWithGoogle();
                     } catch (e) {
                         console.error("[Login] Failed:", e);
                         alert("Error al iniciar sesión. Verifica tu conexión.");
+                        loginBtn.disabled = false;
+                        loginBtn.innerHTML = originalContent;
                     }
                 });
             }

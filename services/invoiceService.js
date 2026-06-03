@@ -3,7 +3,7 @@
  * Handles single invoice operational tracking: Employee Invoice (emp-inv-{userId}) and Admin Invoice (adm-inv-{userId}).
  */
 import { dbService, db } from '../firebase/service.js';
-import { doc, updateDoc, arrayUnion, increment } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, increment, setDoc } from "firebase/firestore";
 export const invoiceService = {
     // --- Rate Cards Methods ---
     async getRateCards() {

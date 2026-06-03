@@ -938,8 +938,6 @@ export const render = async () => {
             } else {
                 formData.billing = { rateCardId: 'default', customPrice: null };
             }
-                };
-            }
 
             try {
                 await assignmentService.saveAssignment(formData);

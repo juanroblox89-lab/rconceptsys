@@ -257,10 +257,17 @@ function renderPendingCard(pu, reload, rolesList = []) {
                 style: { color: 'var(--error)', borderColor: 'var(--error)', padding: '6px' },
                 onClick: async (e) => {
                     const btn = e.currentTarget;
+                    const originalText = btn.textContent;
                     btn.disabled = true;
                     btn.textContent = 'Rechazando...';
-                    await userService.rejectUser(pu.uid);
-                    reload();
+                    try {
+                        await userService.rejectUser(pu.uid);
+                        reload();
+                    } catch (err) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                        alert("Error: " + err.message);
+                    }
                 }
             }, 'Rechazar'),
             h('button', {
@@ -268,10 +275,17 @@ function renderPendingCard(pu, reload, rolesList = []) {
                 style: { padding: '6px' },
                 onClick: async (e) => {
                     const btn = e.currentTarget;
+                    const originalText = btn.textContent;
                     btn.disabled = true;
                     btn.textContent = 'Aprobando...';
-                    await userService.approveUser(pu.uid, roleSelect.value);
-                    reload();
+                    try {
+                        await userService.approveUser(pu.uid, roleSelect.value);
+                        reload();
+                    } catch (err) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                        alert("Error: " + err.message);
+                    }
                 }
             }, 'Aprobar ✓')
         ])
@@ -354,7 +368,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                     if (btn) showFeedback(btn, '✓ Revocado');
                     setTimeout(() => reload(), 1200);
                 } catch (err) {
-                    if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
+                    if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; btn.textContent = 'Quitar Admin'; }
                 }
             }
         }, [icon('user-minus', 11), h('span', { style: { marginLeft: '3px' } }, 'Quitar Admin')]));
@@ -369,9 +383,16 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                 if (!window.confirm(`⚠️ CEDER ADMIN: Perderás tus permisos de administrador. ¿Continuar?`)) return;
                 if (!window.confirm(`Confirmar: ¿Ceder el control total a ${u.nombre || u.email}?`)) return;
                 const btn = e.currentTarget;
+                const originalText = btn.textContent;
                 btn.disabled = true;
-                await userService.delegateAdminRole(u.uid || u.id, currentUser.uid || currentUser.id);
-                window.location.reload();
+                try {
+                    await userService.delegateAdminRole(u.uid || u.id, currentUser.uid || currentUser.id);
+                    window.location.reload();
+                } catch (err) {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    alert("Error: " + err.message);
+                }
             }
         }, [icon('shield-off', 11), h('span', { style: { marginLeft: '3px' } }, 'Ceder')]));
     }
@@ -384,9 +405,16 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
             onClick: async (e) => {
                 if (!window.confirm(`¿Eliminar a ${u.nombre || u.email} del equipo permanentemente?`)) return;
                 const btn = e.currentTarget;
+                const originalText = btn.textContent;
                 btn.disabled = true;
-                await userService.rejectUser(u.uid || u.id);
-                reload();
+                try {
+                    await userService.rejectUser(u.uid || u.id);
+                    reload();
+                } catch (err) {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    alert("Error: " + err.message);
+                }
             }
         }, [icon('trash-2', 11), h('span', { style: { marginLeft: '3px' } }, 'Eliminar')]));
     }
