@@ -210,6 +210,12 @@ export const Sidebar = () => {
     window._sidebarUnsubscribe = store.subscribe(({ ui: nextUi }) => {
         sidebar.classList.toggle('open', nextUi.sidebarOpen);
         overlay.classList.toggle('visible', nextUi.sidebarOpen);
+        // Evitar scroll en el body cuando el sidebar móvil está abierto
+        if (window.innerWidth <= 768) {
+            document.body.style.overflow = nextUi.sidebarOpen ? 'hidden' : '';
+        } else {
+            document.body.style.overflow = '';
+        }
     });
 
     // ─── Hash change: update active links ─────────────────

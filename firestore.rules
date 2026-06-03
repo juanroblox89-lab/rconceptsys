@@ -78,6 +78,7 @@ service cloud.firestore {
       // Only Admin can create/update/delete client profiles and special fields
       allow write: if isAdmin(); 
     }
+    match /system_config/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
     match /formats/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
     match /hooks/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
     match /assets/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }

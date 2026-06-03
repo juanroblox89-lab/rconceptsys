@@ -155,6 +155,34 @@ export const render = async () => {
                                                 }, [icon('check', 12), h('span', {}, 'Aceptar y Empezar')]),
                                                 h('button', {
                                                     className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold',
+                                                    style: { borderColor: 'var(--warning)', color: 'var(--warning)' },
+                                                    title: 'Devolver tarea al responsable anterior para corrección',
+                                                    onClick: async () => {
+                                                        const prevTask = typeof asg.stageIndex !== 'undefined' ? assignments.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex - 1) : null;
+                                                        if (!prevTask) { alert('No hay tarea anterior a quién devolverle (esta es la fase inicial).'); return; }
+                                                        const just = prompt('Razón para devolver la tarea (se creará una tarea de corrección gratuita para el responsable anterior):');
+                                                        if (!just) return;
+                                                        try {
+                                                            await assignmentService.saveAssignment({
+                                                                id: `corr-${Date.now()}`,
+                                                                title: `Corrección: ${prevTask.title}`,
+                                                                description: `Devuelto por el responsable de la siguiente fase.\n\nRazón: ${just}\n\nPor favor, sube el nuevo material corregido aquí.`,
+                                                                type: prevTask.type,
+                                                                client: prevTask.client,
+                                                                employeeId: prevTask.employeeId,
+                                                                status: 'En Proceso',
+                                                                dueDate: new Date(Date.now() + 86400000).toISOString(),
+                                                                projectId: prevTask.projectId,
+                                                                stageIndex: prevTask.stageIndex,
+                                                                billing: { customPrice: 0 }
+                                                            });
+                                                            alert('Tarea devuelta con éxito (Nueva asignación de corrección enviada).');
+                                                            loadAndRender();
+                                                        } catch(e) { alert('Error al devolver la tarea.'); }
+                                                    }
+                                                }, [icon('corner-up-left', 12), h('span', {}, 'Devolver Tarea')]),
+                                                h('button', {
+                                                    className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold',
                                                     style: { borderColor: 'var(--error)', color: 'var(--error)' },
                                                     title: 'Contactar al responsable anterior o Admin',
                                                     onClick: () => {
@@ -164,7 +192,7 @@ export const render = async () => {
                                                         const msg = prevWorker ? `Hola ${prevWorker.nombre.split(' ')[0]}, el material de la tarea *${asg.title}* está incompleto o tiene un problema. ¿Puedes revisarlo?` : `Hola, reporto un problema con los materiales de la tarea *${asg.title}*.`;
                                                         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                                     }
-                                                }, [icon('alert-triangle', 12), h('span', {}, 'Reportar Problema')])
+                                                }, [icon('alert-triangle', 12), h('span', {}, 'Reportar')])
                                             ])
                                         ]);
                                     } else {
@@ -267,7 +295,24 @@ export const render = async () => {
                                                 if (asg.billing && (asg.billing.rateCardId || asg.billing.customPrice !== null)) {
                                                     let finalPrice = asg.billing.customPrice !== null ? asg.billing.customPrice : 0;
                                                     let finalObs = 'Cobro pre-configurado';
-                                                    if (asg.billing.rateCardId && rates) {
+                                                    if (asg.billing.rateCardId === 'default') {
+                                                        if (asg.type === 'Grabación') {
+                                                            const mins = Number(prompt('¿Cuántos minutos de grabación efectivos reportas? (Ej: 60)', '60'));
+                                                            if (!mins) { if (btn) btn.disabled = false; return; }
+                                                            finalPrice = (adminConfig.precioMinutoGrabacion || 200) * mins;
+                                                            finalObs = `Cobro Grabación (${mins} mins): ${asg.title}`;
+                                                        } else if (asg.type === 'Subida') {
+                                                            finalPrice = adminConfig.precioSubidaRedes || 10000;
+                                                            finalObs = `Cobro Subida Redes: ${asg.title}`;
+                                                        } else if (asg.type === 'Edición') {
+                                                            const isLong = confirm('¿El video es mayor a 60 segundos? (Aceptar = Sí, Cancelar = No)');
+                                                            finalPrice = isLong ? (adminConfig.precioVideoLargo || 25000) : (adminConfig.precioVideoCorto || 15000);
+                                                            finalObs = `Cobro Edición ${isLong ? '>60s' : '<60s'}: ${asg.title}`;
+                                                        } else {
+                                                            finalPrice = 15000;
+                                                            finalObs = `Cobro base predeterminado: ${asg.title}`;
+                                                        }
+                                                    } else if (asg.billing.rateCardId && rates) {
                                                         const rate = rates.find(r => r.id === asg.billing.rateCardId);
                                                         if (rate) {
                                                             finalPrice = rate.basePrice;
@@ -464,7 +509,7 @@ export const render = async () => {
                     }, [icon('git-commit', 14), h('span', {}, 'Asignación Maestra')]),
                     h('button', { 
                         className: 'btn btn-primary text-xs',
-                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [] })
+                        onClick: () => openAssignmentModal(null, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [], systemPricing: adminConfig })
                     }, [icon('plus', 14), h('span', {}, 'Nueva Asignación')])
                 ])
             ]);
@@ -550,7 +595,7 @@ export const render = async () => {
                                                     alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
                                                     return;
                                                 }
-                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] });
+                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig });
                                             }
                                         }, [
                                             h('div', { 
@@ -591,7 +636,7 @@ export const render = async () => {
             if (pipelineBoard) container.appendChild(pipelineBoard);
 
             // Kanban Board for Admin
-            const statuses = ['Pendiente', 'En Proceso', 'Completado'];
+            const statuses = ['Pendiente', 'En Proceso', 'Completado', 'Archivado'];
             
             const board = h('div', { className: 'kanban-board mt-4' }, 
                 statuses.map(status => {
@@ -623,7 +668,7 @@ export const render = async () => {
                                 className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
                                 onClick: () => {
                                     // Allow clicking to view, but we will disable save button inside the modal if it's completed
-                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] });
+                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig });
                                 }
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [
@@ -645,6 +690,13 @@ export const render = async () => {
                                             style: { borderColor: asg.uploadLink ? 'var(--success)' : 'var(--accent)', color: asg.uploadLink ? 'var(--success)' : 'var(--accent)' },
                                             onClick: (e) => e.stopPropagation()
                                         }, asg.uploadLink ? 'Entregable' : 'Materiales') : null,
+                                        h('a', {
+                                            href: '#/scripts',
+                                            title: 'Escribir Guion para esta tarea',
+                                            className: 'btn btn-outline text-[10px] py-0 px-1 ml-1',
+                                            style: { borderColor: 'var(--border)', color: 'var(--text-muted)' },
+                                            onClick: (e) => { e.stopPropagation(); window.location.hash = '#/scripts'; }
+                                        }, [icon('pen-tool', 12)]),
                                         (function(){
                                             const w = approvedUsers.find(u => u.uid === asg.employeeId || u.id === asg.employeeId);
                                             const phone = w?.phone ? w.phone.replace(/[^0-9]/g, '') : null;
@@ -868,11 +920,15 @@ export const render = async () => {
                 linkedAsset: form.querySelector('#asg-link-asset').value
             };
             
-            const rateVal = form.querySelector('#asg-rate')?.value;
-            if (rateVal) {
+            const isCustomRate = form.querySelector('input[name="rate-type"]:checked')?.value === 'custom';
+            if (isCustomRate) {
                 formData.billing = {
-                    rateCardId: rateVal !== 'custom' ? rateVal : null,
-                    customPrice: rateVal === 'custom' ? Number(prompt("Ingresa el Precio Personalizado ($):", existing?.billing?.customPrice || 0)) || 0 : null
+                    rateCardId: null,
+                    customPrice: Number(form.querySelector('#asg-custom-price').value) || 0
+                };
+            } else {
+                formData.billing = { rateCardId: 'default', customPrice: null };
+            }
                 };
             }
 
@@ -1001,10 +1057,31 @@ export const render = async () => {
                     ]),
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Tarifa / Pago Base'),
-                        h('select', { id: 'asg-rate', className: 'form-select text-xs', required: true }, [
-                            h('option', { value: '' }, '-- Selecciona Tarifa --'),
-                            ...(context.rates || []).map(r => h('option', { value: r.id, selected: existing?.billing?.rateCardId === r.id }, `${r.name} ($${r.basePrice})`)),
-                            h('option', { value: 'custom', selected: existing?.billing?.customPrice !== undefined }, 'Precio Personalizado')
+                        h('div', { className: 'flex-column gap-2', style: { background: 'var(--bg-tertiary)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' } }, [
+                            h('label', { className: 'flex items-center gap-2 text-xs cursor-pointer' }, [
+                                h('input', { type: 'radio', name: 'rate-type', value: 'default', checked: !existing?.billing?.customPrice, onchange: (e) => {
+                                    form.querySelector('#asg-custom-price').disabled = true;
+                                    form.querySelector('#asg-custom-price').style.opacity = '0.5';
+                                } }),
+                                h('span', {}, 'Tarifa Predeterminada (Dinámica por Sistema)')
+                            ]),
+                            h('label', { className: 'flex items-center gap-2 text-xs cursor-pointer mt-1' }, [
+                                h('input', { type: 'radio', name: 'rate-type', value: 'custom', checked: !!existing?.billing?.customPrice, onchange: (e) => {
+                                    form.querySelector('#asg-custom-price').disabled = false;
+                                    form.querySelector('#asg-custom-price').style.opacity = '1';
+                                    form.querySelector('#asg-custom-price').focus();
+                                } }),
+                                h('span', {}, 'Tarifa Personalizada:')
+                            ]),
+                            h('input', {
+                                id: 'asg-custom-price',
+                                type: 'number',
+                                className: 'form-input text-xs',
+                                placeholder: 'Ingresa valor en COP',
+                                defaultValue: existing?.billing?.customPrice || '',
+                                disabled: !existing?.billing?.customPrice,
+                                style: { opacity: existing?.billing?.customPrice ? '1' : '0.5', marginLeft: '24px', width: 'calc(100% - 24px)' }
+                            })
                         ])
                     ])
                 ]),
@@ -1034,17 +1111,46 @@ export const render = async () => {
                     h('textarea', { id: 'asg-desc', className: 'form-textarea', placeholder: 'Detalles específicos del requerimiento...', required: true }, existing?.description || '')
                 ])
             ]),
-            h('div', { className: 'modal-footer' }, [
-                h('button', { 
-                    type: 'button', 
-                    className: 'btn btn-outline text-xs', 
-                    onClick: () => {
-                        if (confirm('¿Estás seguro de que deseas cancelar? Se perderán los datos no guardados.')) {
-                            document.body.removeChild(overlay);
+            h('div', { className: 'modal-footer flex justify-between' }, [
+                h('div', { className: 'flex gap-2' }, [
+                    existing ? h('button', {
+                        type: 'button',
+                        className: 'btn text-error text-xs',
+                        style: { border: '1px solid var(--error-light)', background: 'var(--error-alpha)' },
+                        onClick: async (e) => {
+                            if (confirm('¿Estás seguro de que deseas archivar esta tarea? Se ocultará del tablero principal.')) {
+                                const btn = e.target;
+                                btn.disabled = true;
+                                btn.textContent = 'Archivando...';
+                                try {
+                                    await assignmentService.updateAssignment(existing.id, { status: 'Archivado' });
+                                    document.body.removeChild(overlay);
+                                    loadAndRender();
+                                } catch(err) {
+                                    btn.disabled = false;
+                                    btn.textContent = 'Archivar';
+                                    alert('Error al archivar la tarea');
+                                }
+                            }
                         }
-                    } 
-                }, 'Cancelar'),
-                h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Asignar Trabajo')
+                    }, [icon('archive', 14), h('span', { className: 'ml-1' }, 'Archivar')]) : null,
+                ]),
+                h('div', { className: 'flex gap-2' }, [
+                    h('button', { 
+                        type: 'button', 
+                        className: 'btn btn-outline text-xs', 
+                        onClick: () => {
+                            if (confirm('¿Estás seguro de que deseas cancelar? Se perderán los datos no guardados.')) {
+                                document.body.removeChild(overlay);
+                            }
+                        } 
+                    }, 'Cancelar'),
+                    h('button', { 
+                        type: 'submit', 
+                        className: 'btn btn-primary text-xs',
+                        disabled: existing && existing.status === 'Completado' 
+                    }, existing ? 'Guardar Cambios' : 'Asignar Trabajo')
+                ])
             ])
         ]);
 

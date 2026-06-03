@@ -32,20 +32,10 @@ export const Header = () => {
             // User role chip - Consolidated with quick-switch for testing
             user?.role === 'admin' 
                 ? h('span', { 
-                    className: 'badge badge-success text-xs px-2 cursor-pointer',
-                    title: 'Cambiar Rol (Dev Mode)',
-                    onClick: async () => {
-                        const newRole = prompt('Modo Dev: Ingresa tu nuevo rol (admin, camarógrafo, editor, estratega, diseñador):', user.role);
-                        if(newRole) { await userService.updateUserProfile({role: newRole.toLowerCase()}); window.location.reload(); }
-                    }
+                    className: 'badge badge-success text-xs px-2',
                 }, [icon('shield-check', 11), h('span', { className: 'ml-1' }, 'ADMIN')])
                 : h('span', { 
-                    className: `badge ${user?.approved ? 'badge-info' : 'badge-warning'} text-xs cursor-pointer`,
-                    title: 'Cambiar Rol (Dev Mode)',
-                    onClick: async () => {
-                        const newRole = prompt('Modo Dev: Ingresa tu nuevo rol (admin, camarógrafo, editor, estratega, diseñador):', user?.role);
-                        if(newRole) { await userService.updateUserProfile({role: newRole.toLowerCase(), approved: true}); window.location.reload(); }
-                    }
+                    className: `badge ${user?.approved ? 'badge-info' : 'badge-warning'} text-xs`
                 }, user?.approved ? user?.role?.toUpperCase() : 'PENDIENTE'),
 
             // Search button — Premium with KBD hint

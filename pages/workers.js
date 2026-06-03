@@ -58,6 +58,37 @@ export const render = () => {
             ]),
             h('div', { className: 'flex gap-2' }, [
                 h('button', {
+                    className: 'btn btn-outline text-xs',
+                    style: { borderColor: 'var(--accent)', color: 'var(--accent)' },
+                    title: 'Asignar rol a usuarios perdidos',
+                    onClick: async (e) => {
+                        const btn = e.currentTarget;
+                        if (confirm('¿Asignar rol "creador 360" a todos los usuarios sin rol reconocido?')) {
+                            btn.disabled = true;
+                            btn.textContent = 'Procesando...';
+                            try {
+                                const dbRoles = (await dbService.getAll('roles')).map(r => r.id.toLowerCase());
+                                const validRoles = new Set([...Object.keys(ROLE_META).map(k=>k.toLowerCase()), ...dbRoles]);
+                                let count = 0;
+                                for (const u of allUsers) {
+                                    if (u.role !== 'admin' && (!u.role || !validRoles.has(u.role.toLowerCase()))) {
+                                        await userService.updateUser(u.id || u.uid, { role: 'creador 360' });
+                                        count++;
+                                    }
+                                }
+                                alert(`Se actualizaron ${count} usuarios a "creador 360".`);
+                                load();
+                            } catch (err) {
+                                alert('Error al refrescar roles');
+                                btn.disabled = false;
+                                btn.innerHTML = '';
+                                btn.appendChild(icon('refresh-cw', 13));
+                                btn.appendChild(h('span', {}, ' Refrescar Roles'));
+                            }
+                        }
+                    }
+                }, [icon('refresh-cw', 13), h('span', {}, ' Refrescar Roles')]),
+                h('button', {
                     className: 'btn btn-primary text-xs',
                     onClick: () => openAssignmentModal(null, { users: workers, clients, assignments, reload: load, sops })
                 }, [icon('plus', 13), h('span', {}, 'Nueva Asignación')])
