@@ -56,7 +56,18 @@ export const render = async () => {
                         h('h1', { className: 'text-xl font-bold' }, 'Mi Espacio de Trabajo'),
                         h('p', { className: 'text-xs text-muted mt-1' }, 'Listado de tareas y SOPs asignados a tu cuenta.')
                     ]),
-                    h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: ${totalVisible} Tareas`)
+                    h('div', { className: 'flex items-center gap-2' }, [
+                        h('button', {
+                            className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold',
+                            style: { color: 'var(--accent)', borderColor: 'rgba(var(--accent-rgb), 0.3)' },
+                            onClick: () => {
+                                const dismissKey = `guideDismissed_${user.uid}`;
+                                localStorage.removeItem(dismissKey);
+                                loadAndRender();
+                            }
+                        }, [icon('info', 12), h('span', {}, 'Ver Guía')]),
+                        h('span', { className: 'badge text-xs font-mono font-bold' }, `Total: ${totalVisible} Tareas`)
+                    ])
                 ]);
                 container.appendChild(header);
 
@@ -450,39 +461,43 @@ export const render = async () => {
                         : completedMyAsgs.map(renderEmployeeTaskRow)
                 );
 
-                // Collapsible work guide at the bottom
+                // Dismissable work guide at the top
                 const guideSteps = getRoleSpecificGuide(user.role);
-                let guideOpen = false;
-                const guideBody = h('div', {
-                    className: 'text-xs text-muted pl-4',
-                    style: { display: 'none', paddingLeft: '20px', paddingTop: '8px' }
-                }, [h('ol', { className: 'flex-column gap-1', style: { display: 'flex', flexDirection: 'column', gap: '4px', margin: 0 } }, guideSteps)]);
+                const dismissKey = `guideDismissed_${user.uid}`;
+                const isDismissed = localStorage.getItem(dismissKey) === 'true';
 
-                // Capture chevron icon reference BEFORE building button (avoids querySelector ambiguity)
-                const guideToggleIcon = h('span', { style: { transition: 'transform 0.2s', display: 'flex', alignItems: 'center' } }, icon('chevron-down', 14));
-
-                const guideToggle = h('button', {
-                    type: 'button',
-                    className: 'flex items-center gap-2 text-xs font-bold text-muted w-full p-3 rounded',
-                    style: { background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', justifyContent: 'space-between' },
-                    onClick: () => {
-                        guideOpen = !guideOpen;
-                        guideBody.style.display = guideOpen ? 'block' : 'none';
-                        guideToggleIcon.style.transform = guideOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-                    }
-                }, [
-                    h('span', { className: 'flex items-center gap-2' }, [
-                        icon('info', 14, 'text-accent'),
-                        h('span', {}, `Guía de Flujo: ${roleNameDisplay}`)
-                    ]),
-                    guideToggleIcon
-                ]);
-                const guideAccordion = h('div', { className: 'w-full mt-4', style: { borderTop: '1px solid var(--border)', paddingTop: '12px' } }, [
-                    guideToggle,
-                    guideBody
-                ]);
+                let guideAlert = null;
+                if (!isDismissed) {
+                    guideAlert = h('div', { 
+                        className: 'flex-column gap-2 p-4 mb-4 relative fade-in', 
+                        style: { 
+                            background: 'var(--bg-tertiary)', 
+                            border: '1px solid var(--accent)', 
+                            borderRadius: '8px'
+                        } 
+                    }, [
+                        h('button', {
+                            type: 'button',
+                            className: 'absolute top-2 right-2 text-muted hover-opacity p-1',
+                            onClick: (e) => {
+                                localStorage.setItem(dismissKey, 'true');
+                                const p = e.currentTarget.parentNode;
+                                if (p && p.parentNode) p.parentNode.removeChild(p);
+                            }
+                        }, icon('x', 14)),
+                        h('div', { className: 'flex items-center gap-2 mb-1' }, [
+                            icon('info', 16, 'text-accent'),
+                            h('h4', { className: 'font-bold text-sm m-0' }, `Guía Rápida de Flujo: ${roleNameDisplay}`)
+                        ]),
+                        h('ol', { 
+                            className: 'text-xs text-muted flex-column gap-1 pl-4 mb-0', 
+                            style: { display: 'flex', flexDirection: 'column', gap: '4px', margin: 0, paddingLeft: '20px' } 
+                        }, guideSteps)
+                    ]);
+                }
 
                 const employeeLayout = h('div', { className: 'flex-column gap-5 w-full mt-2' }, [
+                    guideAlert ? guideAlert : null,
                     h('div', { className: 'flex-column gap-3 w-full' }, [
                         h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5' }, [
                             icon('clock', 14, 'text-warning'),
@@ -496,8 +511,7 @@ export const render = async () => {
                             h('span', {}, `Tareas Completadas (${completedMyAsgs.length})`)
                         ]),
                         completedList
-                    ]),
-                    guideAccordion
+                    ])
                 ]);
                 container.appendChild(employeeLayout);
                 if (window.lucide) window.lucide.createIcons();
@@ -710,13 +724,26 @@ export const render = async () => {
                                             const w = approvedUsers.find(u => u.uid === asg.employeeId || u.id === asg.employeeId);
                                             const phone = w?.phone ? w.phone.replace(/[^0-9]/g, '') : null;
                                             if (!phone) return null;
-                                            return h('a', {
-                                                href: `https://wa.me/${phone}?text=Hola%20${w.nombre.split(' ')[0]},%20sobre%20la%20tarea%20*${encodeURIComponent(asg.title)}*...`,
-                                                target: '_blank',
-                                                title: 'Contactar trabajador',
-                                                className: 'text-success hover-opacity ml-1',
-                                                onClick: (e) => e.stopPropagation()
-                                            }, icon('message-circle', 14));
+                                            
+                                            const generalMsg = encodeURIComponent(`Hola ${w.nombre.split(' ')[0]}, sobre la tarea *${asg.title}*...`);
+                                            const missingMsg = encodeURIComponent(`Hola ${w.nombre.split(' ')[0]}, revisando la tarea *${asg.title}* noté que falta material en el Drive. ¿Podrías subirlo lo antes posible, por favor?`);
+                                            
+                                            return h('div', { className: 'flex gap-1 items-center ml-1' }, [
+                                                h('a', {
+                                                    href: `https://wa.me/${phone}?text=${generalMsg}`,
+                                                    target: '_blank',
+                                                    title: 'Chat General',
+                                                    className: 'text-success hover-opacity',
+                                                    onClick: (e) => e.stopPropagation()
+                                                }, icon('message-circle', 14)),
+                                                h('a', {
+                                                    href: `https://wa.me/${phone}?text=${missingMsg}`,
+                                                    target: '_blank',
+                                                    title: 'Pedir Materiales Faltantes al Drive',
+                                                    className: 'text-warning hover-opacity',
+                                                    onClick: (e) => e.stopPropagation()
+                                                }, icon('folder-plus', 14))
+                                            ]);
                                         })()
                                     ])
                                 ])
