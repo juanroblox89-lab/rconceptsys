@@ -134,30 +134,51 @@ export const render = async () => {
                                     isToday ? h('span', { className: 'badge badge-today text-xs font-bold' }, '⚡ HOY') : null,
                                 ]),
                                 h('h3', { className: 'text-sm font-bold text-primary mt-1' }, asg.title),
-                                asg.sourceFilesLink ? h('a', {
-                                    href: asg.sourceFilesLink,
-                                    target: '_blank',
-                                    className: 'btn btn-outline text-xs py-1 px-3 mt-1 flex items-center gap-1 font-bold',
-                                    style: { color: 'var(--accent)', borderColor: 'var(--accent)', alignSelf: 'flex-start' }
-                                }, [icon('download', 14), h('span', {}, 'Archivos Crudos (Fase Anterior)')]) : null
+                                // sourceFilesLink replaced by review flow below
                             ]),
                             h('div', { className: 'flex items-center gap-2' }, [
                                 // Action buttons
-                                asg.status === 'Pendiente' ? h('button', {
-                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
-                                    style: { color: 'var(--info)', borderColor: 'rgba(var(--info-rgb), 0.3)' },
-                                    onClick: async (e) => {
-                                        const btn = e.currentTarget;
-                                        btn.disabled = true;
-                                        try {
-                                            await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' });
-                                            loadAndRender();
-                                        } catch(err) {
-                                            btn.disabled = false;
-                                            alert("Error al actualizar la tarea.");
-                                        }
+                                asg.status === 'Pendiente' ? (() => {
+                                    if (asg.sourceFilesLink) {
+                                        return h('div', { className: 'flex-column gap-2 p-3 border rounded mt-2 w-full', style: { background: 'var(--bg-tertiary)', borderColor: 'var(--warning)' } }, [
+                                            h('div', { className: 'text-xs text-warning font-bold flex items-center gap-1' }, [icon('alert-circle', 14), h('span', {}, 'Materiales recibidos. Revisa y aprueba para iniciar.')]),
+                                            h('div', { className: 'flex items-center gap-2 flex-wrap mt-1' }, [
+                                                h('a', { href: asg.sourceFilesLink, target: '_blank', className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold', style: { borderColor: 'var(--accent)', color: 'var(--accent)' } }, [icon('external-link', 12), h('span', {}, 'Revisar Material')]),
+                                                h('button', {
+                                                    className: 'btn btn-primary text-xs py-1 px-2 flex items-center gap-1 font-bold',
+                                                    style: { background: 'var(--success)' },
+                                                    onClick: async (e) => {
+                                                        const btn = e.currentTarget; btn.disabled = true;
+                                                        try { await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' }); loadAndRender(); }
+                                                        catch(err) { btn.disabled = false; alert("Error al actualizar la tarea."); }
+                                                    }
+                                                }, [icon('check', 12), h('span', {}, 'Aceptar y Empezar')]),
+                                                h('button', {
+                                                    className: 'btn btn-outline text-xs py-1 px-2 flex items-center gap-1 font-bold',
+                                                    style: { borderColor: 'var(--error)', color: 'var(--error)' },
+                                                    title: 'Contactar al responsable anterior o Admin',
+                                                    onClick: () => {
+                                                        const prevTask = typeof asg.stageIndex !== 'undefined' ? assignments.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex - 1) : null;
+                                                        const prevWorker = prevTask ? approvedUsers.find(u => u.uid === prevTask.employeeId || u.id === prevTask.employeeId) : null;
+                                                        const phone = prevWorker?.phone ? prevWorker.phone.replace(/[^0-9]/g, '') : adminPhone;
+                                                        const msg = prevWorker ? `Hola ${prevWorker.nombre.split(' ')[0]}, el material de la tarea *${asg.title}* está incompleto o tiene un problema. ¿Puedes revisarlo?` : `Hola, reporto un problema con los materiales de la tarea *${asg.title}*.`;
+                                                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                                                    }
+                                                }, [icon('alert-triangle', 12), h('span', {}, 'Reportar Problema')])
+                                            ])
+                                        ]);
+                                    } else {
+                                        return h('button', {
+                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                            style: { color: 'var(--info)', borderColor: 'rgba(var(--info-rgb), 0.3)' },
+                                            onClick: async (e) => {
+                                                const btn = e.currentTarget; btn.disabled = true;
+                                                try { await assignmentService.saveAssignment({ ...asg, status: 'En Proceso' }); loadAndRender(); }
+                                                catch(err) { btn.disabled = false; alert("Error al actualizar la tarea."); }
+                                            }
+                                        }, [icon('play', 12), h('span', {}, 'Empezar')]);
                                     }
-                                }, [icon('play', 12), h('span', {}, 'Empezar')]) : null,
+                                })() : null,
 
                                 (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? (() => {
                                     const asgClient = finalClients.find(c => c.name === asg.client || c.id === asg.client);
@@ -601,10 +622,7 @@ export const render = async () => {
                             return h('div', { 
                                 className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
                                 onClick: () => {
-                                    if(asg.status === 'Completado') {
-                                        alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
-                                        return;
-                                    }
+                                    // Allow clicking to view, but we will disable save button inside the modal if it's completed
                                     openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [] });
                                 }
                             }, [
@@ -619,7 +637,26 @@ export const render = async () => {
                                         h('span', {}, empName)
                                     ]),
                                     h('div', { className: 'flex gap-1 items-center' }, [
-                                        asg.billed ? h('span', { className: 'badge badge-success text-[10px] py-0 px-1' }, 'Cobrado') : null
+                                        asg.billed ? h('span', { className: 'badge badge-success text-[10px] py-0 px-1' }, 'Cobrado') : null,
+                                        (asg.uploadLink || asg.sourceFilesLink) ? h('a', {
+                                            href: asg.uploadLink || asg.sourceFilesLink,
+                                            target: '_blank',
+                                            className: 'btn btn-outline text-[10px] py-0 px-1 ml-1',
+                                            style: { borderColor: asg.uploadLink ? 'var(--success)' : 'var(--accent)', color: asg.uploadLink ? 'var(--success)' : 'var(--accent)' },
+                                            onClick: (e) => e.stopPropagation()
+                                        }, asg.uploadLink ? 'Entregable' : 'Materiales') : null,
+                                        (function(){
+                                            const w = approvedUsers.find(u => u.uid === asg.employeeId || u.id === asg.employeeId);
+                                            const phone = w?.phone ? w.phone.replace(/[^0-9]/g, '') : null;
+                                            if (!phone) return null;
+                                            return h('a', {
+                                                href: `https://wa.me/${phone}?text=Hola%20${w.nombre.split(' ')[0]},%20sobre%20la%20tarea%20*${encodeURIComponent(asg.title)}*...`,
+                                                target: '_blank',
+                                                title: 'Contactar trabajador',
+                                                className: 'text-success hover-opacity ml-1',
+                                                onClick: (e) => e.stopPropagation()
+                                            }, icon('message-circle', 14));
+                                        })()
                                     ])
                                 ])
                             ]);
@@ -650,7 +687,7 @@ export const render = async () => {
             mForm.className = 'card p-4 text-left flex-column gap-3';
             mForm.style.width = '300px';
             
-            const btnSubmit = h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Guardar');
+            const btnSubmit = h('button', { type: 'submit', className: 'btn btn-primary text-xs', disabled: existing?.status === 'Completado' }, existing?.status === 'Completado' ? 'Solo Lectura' : 'Guardar');
             
             mForm.addEventListener('submit', async (e) => {
                 if (mForm.checkValidity()) {

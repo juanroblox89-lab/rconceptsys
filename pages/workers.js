@@ -32,13 +32,20 @@ export const render = () => {
 
     const load = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
-        const [allUsers, assignments, clients, sops, roles] = await Promise.all([
-            userService.getAllUsers(),
-            assignmentService.getAllAssignments(),
-            dbService.getAll('clients').catch(() => []),
-            dbService.getAll('sops').catch(() => []),
-            dbService.getAll('roles').catch(() => [])
-        ]);
+        let allUsers, assignments, clients, sops, roles;
+        try {
+            [allUsers, assignments, clients, sops, roles] = await Promise.all([
+                userService.getAllUsers(),
+                assignmentService.getAllAssignments(),
+                dbService.getAll('clients').catch(() => []),
+                dbService.getAll('sops').catch(() => []),
+                dbService.getAll('roles').catch(() => [])
+            ]);
+        } catch (err) {
+            console.error('Error loading workers data:', err);
+            container.innerHTML = '<div class="card p-8 text-center text-danger">Error cargando los datos. Por favor, recarga la página.</div>';
+            return;
+        }
 
         const workers = allUsers.filter(u => u.approved && u.role !== 'admin');
         container.innerHTML = '';

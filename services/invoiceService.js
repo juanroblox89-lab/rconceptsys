@@ -36,28 +36,16 @@ export const invoiceService = {
         invoiceItem.timestamp = new Date().toISOString();
 
         try {
-            let existing = await dbService.getById(collectionName, docId);
-            if (!existing) {
-                console.log(`Invoice ${docId} not found, creating baseline...`);
-                existing = {
-                    id: docId,
-                    employeeId: userId,
-                    employeeName: invoiceItem.employeeName || 'Empleado',
-                    type: isAdminInvoice ? 'Factura Consolidada' : 'Factura por Servicios',
-                    client: '',
-                    amount: amount,
-                    observations: '',
-                    items: [invoiceItem],
-                    createdAt: new Date().toISOString(),
-                    status: 'Pendiente'
-                };
-                await dbService.set(collectionName, docId, existing);
-            } else {
-                await updateDoc(doc(db, collectionName, docId), {
-                    items: arrayUnion(invoiceItem),
-                    amount: increment(amount)
-                });
-            }
+            await setDoc(doc(db, collectionName, docId), {
+                id: docId,
+                employeeId: userId,
+                employeeName: invoiceItem.employeeName || 'Empleado',
+                type: isAdminInvoice ? 'Factura Consolidada' : 'Factura por Servicios',
+                amount: increment(amount),
+                items: arrayUnion(invoiceItem),
+                status: 'Pendiente'
+                // Omitimos createdAt para no sobreescribir si ya existe. En un mundo ideal usaríamos serverTimestamp(), pero esto resuelve el race condition principal.
+            }, { merge: true });
         } catch (err) {
             console.error("Auto-billing failed:", err);
             throw err;
