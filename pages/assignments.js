@@ -21,15 +21,18 @@ export const render = async () => {
 
         try {
             // 1. Load Data
-            const [users, assignments, clients, scripts, assets, rates, mySopSubmissions] = await Promise.all([
+            const [users, assignments, clients, scripts, assets, rates, mySopSubmissions, systemPricing] = await Promise.all([
                 userService.getAllUsers(),
                 assignmentService.getAllAssignments(),
                 dbService.getAll('clients').catch(() => []),
                 dbService.getAll('scripts').catch(() => []),
                 dbService.getAll('assets').catch(() => []),
                 invoiceService.getRateCards().catch(() => []),
-                (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([])
+                (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([]),
+                dbService.getById('system_config', 'pricing').catch(() => ({}))
             ]);
+            const adminConfig = systemPricing || {};
+            const adminPhone = adminConfig.adminPhone || '573000000000';
 
             const approvedUsers = users.filter(u => u.approved && u.role !== 'admin');
             let finalClients = clients || [];
@@ -103,14 +106,7 @@ export const render = async () => {
                     ? user.role.charAt(0).toUpperCase() + user.role.slice(1) 
                     : 'Miembro del Equipo';
 
-                container.appendChild(
-                    h('div', { className: 'card p-4 flex-column gap-2 mb-4 w-full', style: { borderLeft: '4px solid var(--accent)', background: 'var(--bg-tertiary)' } }, [
-                        h('h3', { className: 'text-sm font-bold flex items-center gap-2' }, [icon('info', 16, 'text-accent'), h('span', {}, `Guía de Flujo Operativo: ${roleNameDisplay}`)]),
-                        h('ol', { className: 'text-xs text-muted pl-4 flex-column gap-1' }, 
-                            getRoleSpecificGuide(user.role)
-                        )
-                    ])
-                );
+                // (Guide moved to bottom as collapsible accordion)
 
                 // Assignments already split above
 
@@ -193,7 +189,7 @@ export const render = async () => {
                                         ]),
                                         h('button', {
                                             className: 'btn btn-primary text-xs py-1.5 px-3 mt-2 w-full flex items-center justify-center gap-1 font-bold transition',
-                                            style: { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' },
+                                            style: { background: 'var(--success)', borderColor: 'var(--success)', color: 'var(--bg-primary)' },
                                             onClick: async (e) => {
                                                 const linkVal = document.getElementById(inputId).value.trim();
                                                 if (!linkVal) { alert('Por favor, ingresa el enlace del entregable para poder continuar.'); return; }
@@ -239,11 +235,11 @@ export const render = async () => {
                                                             throw new Error("No se pudo guardar la factura.");
                                                         }
                                                         
-                                                        if (btn) showFeedback(btn, '✅ Entregado');
+                                                        if (btn) btn.textContent = '✅ Entregado';
                                                         setTimeout(() => window.location.reload(), 1200);
                                                     } catch (err) {
                                                         console.error(err);
-                                                        if (btn) { showFeedback(btn, '✗ Error', 'error'); btn.disabled = false; }
+                                                        if (btn) { btn.textContent = '✗ Error'; btn.disabled = false; }
                                                     }
                                                 };
 
@@ -304,7 +300,22 @@ export const render = async () => {
                                             }
                                         }
                                     }
-                                }, [icon('x-circle', 12), h('span', {}, 'Cancelar')]) : null
+                                }, [icon('x-circle', 12), h('span', {}, 'Cancelar')]) : null,
+
+                                // WhatsApp: Contact boss with context
+                                asg.status !== 'Completado' && asg.status !== 'Cancelado' ? h('a', {
+                                    href: `https://wa.me/${adminPhone}?text=${encodeURIComponent(`📋 *Contexto de Tarea*\n👤 *Colaborador:* ${user.nombre || user.email}\n📁 *Tarea:* ${asg.title}\n👥 *Cliente:* ${asg.client || 'General'}\n⚡ *Estado:* ${asg.status}\n📋 *Tipo:* ${asg.type || 'N/A'}\n${asg.description ? '\n📝 *Detalle:* ' + asg.description.slice(0, 120) : ''}\n\n❓ Mensaje del colaborador:`)}`,
+                                    target: '_blank',
+                                    className: 'btn text-xs py-1 px-3 flex items-center gap-1 font-bold',
+                                    style: {
+                                        backgroundColor: 'rgba(37, 211, 102, 0.12)',
+                                        color: '#25D366',
+                                        border: '1px solid rgba(37, 211, 102, 0.3)',
+                                        borderRadius: '6px',
+                                        textDecoration: 'none'
+                                    },
+                                    title: 'Contactar al Jefe con contexto automático de esta tarea'
+                                }, [icon('message-circle', 12), h('span', {}, 'Jefe')]) : null
                             ])
                         ]),
 
@@ -364,6 +375,38 @@ export const render = async () => {
                         : completedMyAsgs.map(renderEmployeeTaskRow)
                 );
 
+                // Collapsible work guide at the bottom
+                const guideSteps = getRoleSpecificGuide(user.role);
+                let guideOpen = false;
+                const guideBody = h('div', {
+                    className: 'text-xs text-muted pl-4',
+                    style: { display: 'none', paddingLeft: '20px', paddingTop: '8px' }
+                }, [h('ol', { className: 'flex-column gap-1', style: { display: 'flex', flexDirection: 'column', gap: '4px', margin: 0 } }, guideSteps)]);
+
+                // Capture chevron icon reference BEFORE building button (avoids querySelector ambiguity)
+                const guideToggleIcon = h('span', { style: { transition: 'transform 0.2s', display: 'flex', alignItems: 'center' } }, icon('chevron-down', 14));
+
+                const guideToggle = h('button', {
+                    type: 'button',
+                    className: 'flex items-center gap-2 text-xs font-bold text-muted w-full p-3 rounded',
+                    style: { background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', justifyContent: 'space-between' },
+                    onClick: () => {
+                        guideOpen = !guideOpen;
+                        guideBody.style.display = guideOpen ? 'block' : 'none';
+                        guideToggleIcon.style.transform = guideOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+                    }
+                }, [
+                    h('span', { className: 'flex items-center gap-2' }, [
+                        icon('info', 14, 'text-accent'),
+                        h('span', {}, `Guía de Flujo: ${roleNameDisplay}`)
+                    ]),
+                    guideToggleIcon
+                ]);
+                const guideAccordion = h('div', { className: 'w-full mt-4', style: { borderTop: '1px solid var(--border)', paddingTop: '12px' } }, [
+                    guideToggle,
+                    guideBody
+                ]);
+
                 const employeeLayout = h('div', { className: 'flex-column gap-5 w-full mt-2' }, [
                     h('div', { className: 'flex-column gap-3 w-full' }, [
                         h('span', { className: 'text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5' }, [
@@ -378,7 +421,8 @@ export const render = async () => {
                             h('span', {}, `Tareas Completadas (${completedMyAsgs.length})`)
                         ]),
                         completedList
-                    ])
+                    ]),
+                    guideAccordion
                 ]);
                 container.appendChild(employeeLayout);
                 if (window.lucide) window.lucide.createIcons();
@@ -773,6 +817,7 @@ export const render = async () => {
             }
 
             const formData = {
+                ...(existing || {}),
                 id: existing?.id,
                 employeeId: form.querySelector('#asg-emp').value,
                 type: form.querySelector('#asg-type').value,
@@ -781,7 +826,7 @@ export const render = async () => {
                 description: descVal,
                 dueDate: form.querySelector('#asg-due').value,
                 status: form.querySelector('#asg-status') ? form.querySelector('#asg-status').value : (existing?.status || 'Pendiente'),
-                createdBy: user.uid,
+                createdBy: existing?.createdBy || user.uid,
                 linkedScript: form.querySelector('#asg-link-script').value,
                 linkedAsset: form.querySelector('#asg-link-asset').value
             };
@@ -1075,7 +1120,7 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                 if (billingAmount > 0 || hasExplicitCustomPrice) {
                     const invoiceItem = {
                         assignmentId: asg.id,
-                        employeeName: user.name || user.email,
+                        employeeName: user.nombre || user.email,
                         client: asg.client || 'General',
                         amount: billingAmount,
                         description: `[Auto-facturado] ${asg.title}`,
@@ -1215,22 +1260,31 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
 }
 
 // --- Billing Modal ---
-function openBillingModal(asg, callback, onCancel) {
+async function openBillingModal(asg, callback, onCancel) {
     const overlay = h('div', { className: 'modal-overlay' });
     const isRecording = asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)';
     const is360 = asg.type === 'Creador 360° (Grabación + Edición)';
 
+    // Load pricing from Firestore
+    let pricing = {};
+    try { pricing = await dbService.getById('system_config', 'pricing') || {}; } catch(e) {}
+    const precioMinutoGrabacion = pricing.precioMinutoGrabacion ?? 200;
+    const precioSubidaRedes = pricing.precioSubidaRedes ?? 10000;
+    const precioVideoCorto = pricing.precioVideoCorto ?? 15000;
+    const precioVideoLargo = pricing.precioVideoLargo ?? 25000;
+
     const contentDiv = h('div', { className: 'flex-column gap-3 mt-2' });
     
     // Inputs
-    const minsInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0' });
-    const editPriceInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0' });
-    const genericPriceInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0' });
+    const minsInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0', min: '0' });
+    const editPriceInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0', min: '0' });
+    const genericPriceInput = h('input', { type: 'number', className: 'form-input text-xs', placeholder: '0', min: '0' });
+    const isUpload = asg.type === 'Subida' || (asg.type || '').toLowerCase().includes('subida');
 
     if (isRecording) {
         contentDiv.appendChild(h('div', { className: 'flex-column gap-1' }, [
             h('label', { className: 'text-xs font-bold' }, 'Minutos de Grabación:'),
-            h('span', { className: 'text-xs text-muted mb-1' }, '(Se multiplicará por $200 COP automáticamente)'),
+            h('span', { className: 'text-xs text-muted mb-1' }, `(Se multiplicará por $${precioMinutoGrabacion.toLocaleString('es-CO')} COP/min automáticamente)`),
             minsInput
         ]));
 
@@ -1241,10 +1295,23 @@ function openBillingModal(asg, callback, onCancel) {
                 editPriceInput
             ]));
         }
+    } else if (isUpload) {
+        contentDiv.appendChild(h('div', { className: 'card p-3 flex-column gap-2', style: { background: 'var(--bg-tertiary)' } }, [
+            h('span', { className: 'text-xs text-muted' }, `Tarifa de subida a redes: $${precioSubidaRedes.toLocaleString('es-CO')} COP (fijo)`),
+        ]));
+        genericPriceInput.value = String(precioSubidaRedes);
+        contentDiv.appendChild(h('div', { className: 'flex-column gap-1 mt-2' }, [
+            h('label', { className: 'text-xs font-bold' }, 'Monto a Cobrar (COP):'),
+            h('span', { className: 'text-xs text-muted mb-1' }, 'Puedes ajustar si el precio fue diferente.'),
+            genericPriceInput
+        ]));
     } else {
         contentDiv.appendChild(h('div', { className: 'flex-column gap-1' }, [
             h('label', { className: 'text-xs font-bold' }, 'Monto a Cobrar (COP):'),
-            h('span', { className: 'text-xs text-muted mb-1' }, 'Dejar en 0 si no aplica cobro extra por esta tarea.'),
+            h('div', { className: 'flex gap-2 mb-1' }, [
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => { genericPriceInput.value = String(precioVideoCorto); } }, `Video < 60s ($${precioVideoCorto.toLocaleString('es-CO')})`),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => { genericPriceInput.value = String(precioVideoLargo); } }, `Video > 60s ($${precioVideoLargo.toLocaleString('es-CO')})`)
+            ]),
             genericPriceInput
         ]));
     }
@@ -1269,13 +1336,13 @@ function openBillingModal(asg, callback, onCancel) {
 
                     if (isRecording) {
                         const mins = Number(minsInput.value) || 0;
-                        price = mins * 200;
-                        obs = `Cobro por grabación (${mins} minutos a $200): ${asg.title}`;
+                        price = mins * precioMinutoGrabacion;
+                        obs = `Cobro por grabación (${mins} minutos a $${precioMinutoGrabacion.toLocaleString('es-CO')}): ${asg.title}`;
 
                         if (is360) {
                             const editPrice = Number(editPriceInput.value) || 0;
                             price += editPrice;
-                            obs += ` + Edición ($${editPrice})`;
+                            obs += ` + Edición ($${editPrice.toLocaleString('es-CO')})`;
                         }
                     } else {
                         price = Number(genericPriceInput.value) || 0;
@@ -1358,11 +1425,13 @@ export function openMasterPipelineModal(context = {}) {
             editorId: form.querySelector('#mp-ed').value,
             uploaderId: form.querySelector('#mp-up').value,
             billingCam: getBilling('#mp-rate-cam'),
+            billingCamSupport: getBilling('#mp-rate-cam-support'),
             billingEd: getBilling('#mp-rate-ed'),
             billingUp: getBilling('#mp-rate-up'),
             linkedScript: finalScriptUrl,
             linkedAsset: finalAssetUrl,
             uploadLink: form.querySelector('#mp-up-link').value || '',
+            driveFolderUrl: form.querySelector('#mp-drive-link')?.value || '',
             createdBy: 'admin',
         };
         
@@ -1423,7 +1492,14 @@ export function openMasterPipelineModal(context = {}) {
 
                     <div class="form-group">
                         <label class="form-label">Instrucciones Globales (Todas las fases)</label>
-                        <textarea id="mp-desc" class="form-textarea text-xs" rows="4" required placeholder="Instrucciones que verán todos..."></textarea>
+                        <textarea id="mp-desc" class="form-textarea text-xs" rows="3" required placeholder="Instrucciones que verán todos..."></textarea>
+                    </div>
+                    <div class="form-group p-2 rounded" style="background: rgba(37,211,102,0.06); border: 1px dashed rgba(37,211,102,0.3);">
+                        <label class="form-label flex items-center gap-1" style="color: #25D366;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            Link Carpeta Drive (Opcional)
+                        </label>
+                        <input type="url" id="mp-drive-link" class="form-input text-xs" placeholder="https://drive.google.com/drive/folders/...">
                     </div>
                 </div>
 
@@ -1449,6 +1525,10 @@ export function openMasterPipelineModal(context = {}) {
                         <div class="form-group mt-2">
                             <label class="form-label text-[10px]">Apoyo (Múltiples - Solo Anotan Minutos)</label>
                             <select id="mp-cam-support" class="form-select text-[10px]" multiple size="3">${usersHtml}</select>
+                        </div>
+                        <div class="form-group mt-2" style="background: rgba(var(--warning-rgb),0.06); border: 1px dashed rgba(var(--warning-rgb),0.3); border-radius: 6px; padding: 8px;">
+                            <label class="form-label text-[10px]" style="color: var(--warning);">Tarifa de Apoyo (por persona)</label>
+                            <select id="mp-rate-cam-support" class="form-select text-[10px]">${rateOptionsHtml}</select>
                         </div>
                     </div>
 

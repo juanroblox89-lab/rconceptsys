@@ -1,10 +1,10 @@
 /**
  * Firebase Service Wrapper - Creative Production OS
  */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCbdOF_2HROLUhUbYGQdQQG_6JL2OtyCeo",
@@ -116,7 +116,7 @@ export const dbService = {
  */
 export const authService = {
     onAuthChange(callback) {
-        onAuthStateChanged(auth, async (user) => {
+        return onAuthStateChanged(auth, async (user) => {
             if (user) {
                 // Master hardcoded initial admin email (Strict exact matching to prevent privilege escalation)
                 const normalizedEmail = user.email?.toLowerCase() || '';
@@ -128,7 +128,7 @@ export const authService = {
                         // Create users/{uid} flow mandated by user
                         const newUser = {
                             uid: user.uid,
-                            nombre: user.displayName || user.email.split('@')[0],
+                            nombre: user.displayName || user.email?.split('@')[0] || 'Usuario',
                             email: user.email,
                             photoURL: user.photoURL || '',
                             createdAt: new Date().toISOString(),
@@ -150,7 +150,7 @@ export const authService = {
                     console.warn("Firestore access error fetching user, using master fallback:", err);
                     callback({
                         uid: user.uid,
-                        nombre: user.displayName || user.email.split('@')[0],
+                        nombre: user.displayName || user.email?.split('@')[0] || 'Usuario',
                         email: user.email,
                         photoURL: user.photoURL || '',
                         role: isMasterAdmin ? 'admin' : 'viewer',

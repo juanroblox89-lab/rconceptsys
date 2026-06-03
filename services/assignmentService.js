@@ -4,7 +4,7 @@
  * Includes auto-deletion logic for tasks 2 days past their deadline.
  */
 import { dbService, db } from '../firebase/service.js';
-import { onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { onSnapshot, collection } from "firebase/firestore";
 
 export const assignmentService = {
     subscribeToAssignments(callback) {

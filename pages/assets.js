@@ -84,39 +84,46 @@ export const render = () => {
             const clientVal = form.querySelector('#as-client').value;
             const formatVal = form.querySelector('#as-format').value;
             const fileInput = form.querySelector('#as-file');
+            const submitBtn = form.querySelector('button[type="submit"]');
 
             if (!fileInput.files[0]) {
                 alert("Selecciona un archivo multimedia válido.");
                 return;
             }
 
-            alert(`Subiendo archivo a Firebase Storage: assets/${clientVal}/${fileInput.files[0].name}...`);
-            const dlUrl = await storageService.uploadFile(`assets/${clientVal}/${fileInput.files[0].name}`, fileInput.files[0]);
-
-            const newObj = {
-                id: `AST-${Date.now().toString().slice(-3)}`,
-                title: fileInput.files[0].name,
-                type: fileInput.files[0].type.includes('video') ? 'video' : 'thumbnail',
-                client: clientVal,
-                format: formatVal,
-                thumbnail: dlUrl,
-                status: 'ready',
-                url: dlUrl,
-                storagePath: `assets/${clientVal}/${fileInput.files[0].name}`
-            };
-
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Subiendo...';
+            
             try {
+                // Remove alert to avoid blocking UI unnecessarily
+                const dlUrl = await storageService.uploadFile(`assets/${clientVal}/${fileInput.files[0].name}`, fileInput.files[0]);
+
+                const newObj = {
+                    id: `AST-${Date.now().toString().slice(-3)}`,
+                    title: fileInput.files[0].name,
+                    type: fileInput.files[0].type.includes('video') ? 'video' : 'thumbnail',
+                    client: clientVal,
+                    format: formatVal,
+                    thumbnail: dlUrl,
+                    status: 'ready',
+                    url: dlUrl,
+                    storagePath: `assets/${clientVal}/${fileInput.files[0].name}`
+                };
+
                 const addedAsset = await dbService.add('assets', newObj);
                 if(addedAsset && addedAsset.id) {
                     newObj.id = addedAsset.id; // Get the real Firestore document ID
                 }
+                
+                localAssetsCache.push(newObj);
+                document.body.removeChild(overlay);
+                loadAssets();
             } catch (err) {
-                console.warn("Simulated asset append local:", err);
+                console.error("Upload error", err);
+                alert("Error al subir archivo: " + err.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Subir y Almacenar';
             }
-            localAssetsCache.push(newObj);
-
-            document.body.removeChild(overlay);
-            loadAssets();
         };
 
         const form = h('form', { className: 'modal-container', onSubmit: saveAssetFlow }, [
@@ -166,22 +173,49 @@ const statusMap = {
 
 const createAssetCard = (asset, isAdmin, onDelete) => {
     const status = statusMap[asset.status] || { label: asset.status, cls: 'badge-secondary' };
+    const url = asset.url !== '#' ? asset.url : asset.thumbnail;
+
+    let mediaElement;
+    if (asset.type === 'video') {
+        mediaElement = h('video', { 
+            src: asset.thumbnail,
+            style: { width: '100%', height: '100%', objectFit: 'cover' },
+            muted: true,
+            playsinline: true,
+            preload: 'metadata'
+        });
+        // Play on hover for video
+        mediaElement.onmouseenter = () => mediaElement.play().catch(()=>{});
+        mediaElement.onmouseleave = () => {
+            mediaElement.pause();
+            mediaElement.currentTime = 0;
+        };
+    } else {
+        mediaElement = h('img', {
+            src: asset.thumbnail,
+            style: { width: '100%', height: '100%', objectFit: 'cover' }
+        });
+    }
 
     return h('div', { className: 'card interactive-card flex-column justify-between', style: { padding: '0', overflow: 'hidden' } }, [
         h('div', {
             style: {
                 height: '150px',
-                background: `url("${asset.thumbnail}") center/cover no-repeat`,
                 position: 'relative',
                 backgroundColor: 'var(--bg-tertiary)',
                 borderBottom: '1px solid var(--border)',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                overflow: 'hidden'
             },
             onClick: () => {
-                const url = asset.url !== '#' ? asset.url : asset.thumbnail;
-                openLightbox(url);
+                if(asset.type === 'video') {
+                    window.open(url, '_blank');
+                } else {
+                    openLightbox(url);
+                }
             }
         }, [
+            mediaElement,
             h('div', {
                 style: {
                     position: 'absolute', top: '8px', right: '8px',
@@ -195,7 +229,7 @@ const createAssetCard = (asset, isAdmin, onDelete) => {
                     position: 'absolute', bottom: '8px', left: '12px',
                 }
             }, [
-                h('span', { className: 'badge badge-secondary text-xs', style: { fontSize: '0.6rem', background: 'rgba(255,255,255,0.9)' } }, asset.format || 'GEN')
+                h('span', { className: 'badge badge-secondary text-xs', style: { fontSize: '0.6rem', background: 'var(--bg-primary)' } }, asset.format || 'GEN')
             ])
         ]),
         h('div', { className: 'p-4 flex-column gap-2' }, [

@@ -22,6 +22,9 @@
     overflow-y: auto;
     overflow-x: hidden;
     box-shadow: none;
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 @media (max-width: 768px) {

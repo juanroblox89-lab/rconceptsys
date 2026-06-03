@@ -252,7 +252,7 @@ function renderStep(step, idx, sop, user, isAdmin, reload) {
         });
     }
 
-    return h('div', { className: 'flex-column gap-1 p-2 rounded', style: { borderRadius: '4px', background: step.done ? 'rgba(16,185,129,0.05)' : 'var(--bg-tertiary)' } }, [
+    return h('div', { className: 'flex-column gap-1 p-2 rounded', style: { borderRadius: '4px', background: step.done ? 'rgba(var(--success-rgb), 0.05)' : 'var(--bg-tertiary)' } }, [
         h('div', { className: 'flex items-start gap-2' }, [
             checkbox,
             h('div', { className: 'flex-column gap-0.5', style: { flex: 1 } }, [

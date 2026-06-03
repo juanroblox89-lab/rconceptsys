@@ -81,29 +81,68 @@ export const skeleton = (width = '100%', height = '20px') => {
 
 /**
  * Image Lightbox Helper
- * Opens a modal with a zoomed version of the image.
+ * Opens a modal with a zoomed version of the image, with pan & zoom support.
  */
 export const openLightbox = (url) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay fade-in';
-    overlay.style.backgroundColor = 'rgba(0,0,0,0.9)';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.95)';
     overlay.style.backdropFilter = 'blur(10px)';
     overlay.style.display = 'flex';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
-    overlay.style.zIndex = '9999';
+    overlay.style.zIndex = '99999';
+    overlay.style.overflow = 'hidden';
 
     const img = document.createElement('img');
     img.src = url;
-    img.style.maxWidth = '90vw';
-    img.style.maxHeight = '90vh';
+    img.style.maxWidth = '95vw';
+    img.style.maxHeight = '95vh';
     img.style.objectFit = 'contain';
-    img.style.borderRadius = '8px';
+    img.style.borderRadius = '4px';
     img.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
-    img.style.transform = 'scale(0.95)';
-    img.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
-    
-    // Zoom in animation
+    img.style.transition = 'transform 0.1s ease-out';
+    img.style.cursor = 'grab';
+
+    let scale = 1;
+    let isDragging = false;
+    let startX, startY;
+    let translateX = 0, translateY = 0;
+
+    const updateTransform = () => {
+        img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    };
+
+    // Zoom on wheel
+    overlay.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        scale += e.deltaY * -0.005;
+        scale = Math.min(Math.max(0.5, scale), 5); // Limit zoom between 0.5x and 5x
+        updateTransform();
+    });
+
+    // Pan
+    img.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        isDragging = true;
+        img.style.cursor = 'grabbing';
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        translateX = e.clientX - startX;
+        translateY = e.clientY - startY;
+        updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+        img.style.cursor = 'grab';
+    });
+
+    // Zoom in animation initially
     setTimeout(() => { img.style.transform = 'scale(1)'; }, 10);
 
     const closeBtn = document.createElement('button');
@@ -124,7 +163,9 @@ export const openLightbox = (url) => {
         setTimeout(() => document.body.removeChild(overlay), 300);
     };
 
-    overlay.onclick = (e) => { if (e.target === overlay) close(); };
+    overlay.onclick = (e) => { 
+        if (e.target === overlay) close(); 
+    };
     closeBtn.onclick = close;
 
     overlay.appendChild(img);

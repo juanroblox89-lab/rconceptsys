@@ -3,7 +3,7 @@
  * Handles single invoice operational tracking: Employee Invoice (emp-inv-{userId}) and Admin Invoice (adm-inv-{userId}).
  */
 import { dbService, db } from '../firebase/service.js';
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { doc, updateDoc, arrayUnion, increment } from "firebase/firestore";
 export const invoiceService = {
     // --- Rate Cards Methods ---
     async getRateCards() {
@@ -45,23 +45,19 @@ export const invoiceService = {
                     employeeName: invoiceItem.employeeName || 'Empleado',
                     type: isAdminInvoice ? 'Factura Consolidada' : 'Factura por Servicios',
                     client: '',
-                    amount: 0,
+                    amount: amount,
                     observations: '',
-                    items: [],
+                    items: [invoiceItem],
                     createdAt: new Date().toISOString(),
                     status: 'Pendiente'
                 };
                 await dbService.set(collectionName, docId, existing);
+            } else {
+                await updateDoc(doc(db, collectionName, docId), {
+                    items: arrayUnion(invoiceItem),
+                    amount: increment(amount)
+                });
             }
-            
-            existing.items = existing.items || [];
-            existing.items.push(invoiceItem);
-            existing.amount = (Number(existing.amount) || 0) + amount;
-            
-            await dbService.update(collectionName, docId, {
-                items: existing.items,
-                amount: existing.amount
-            });
         } catch (err) {
             console.error("Auto-billing failed:", err);
             throw err;

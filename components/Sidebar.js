@@ -22,7 +22,6 @@ const secondaryNavItems = [
     { href: '#formats',      icon: 'film',              label: 'Formatos' },
     { href: '#scripts',      icon: 'file-text',         label: 'Guiones' },
     { href: '#hooks',        icon: 'zap',               label: 'Hooks' },
-    { href: '#sops', icon: 'file-check-2',      label: 'Guías de Trabajo (SOP)' },
     { href: '#references', icon: 'bookmark',        label: 'Referencias' },
     { href: '#aiAssistant', icon: 'sparkles',          label: 'AI Assistant' },
     { href: '#admin', icon: 'shield',            label: 'Administración' },
@@ -34,13 +33,13 @@ const checkPermission = (href) => {
     const moduleId = href.replace('#', '');
     
     if (user?.role === 'admin') {
-        const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'sops', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'marketing'];
+        const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'marketing'];
         return adminAllowed.includes(moduleId);
     }
     
     // Find role permissions
     const currentRole = (roles || []).find(r => r.id === user?.role);
-    const defaultModules = ['dashboard', 'assignments', 'sops', 'aiAssistant'];
+    const defaultModules = ['dashboard', 'assignments', 'aiAssistant'];
     const allowedModules = currentRole?.allowedModules || defaultModules;
     
     return allowedModules.includes(moduleId);

@@ -229,9 +229,11 @@ function openChangeRoleModal(w, roles, reload) {
     const activeRoles = roles.filter(r => r.active !== false && r.id !== 'admin');
 
     const select = h('select', { className: 'form-select text-xs' }, [
-        ...activeRoles.map(r => h('option', { value: r.id, selected: w.role === r.id }, r.label)),
-        (!activeRoles.find(r => r.id === w.role)) ? h('option', { value: w.role, selected: true }, w.role) : null
+        ...activeRoles.map(r => h('option', { value: r.id }, r.label)),
+        (!activeRoles.find(r => r.id === w.role)) ? h('option', { value: w.role }, w.role) : null
     ].filter(Boolean));
+    // Force correct value
+    setTimeout(() => { select.value = w.role || ''; }, 0);
 
     const modal = h('div', { className: 'modal-container', style: { maxWidth: '380px' } }, [
         h('div', { className: 'modal-header' }, [
@@ -297,7 +299,7 @@ function openAssignmentModal(existing, context) {
             h('div', { className: 'form-group' }, [
                 h('label', { className: 'form-label' }, 'Trabajador'),
                 h('select', { id: 'wasg-emp', className: 'form-select text-xs', required: true },
-                    users.map(u => h('option', { value: u.uid, selected: u.uid === (existing?.employeeId || preselectedUser) }, u.nombre || u.email))
+                    users.map(u => h('option', { value: u.uid || u.id, selected: (u.uid || u.id) === (existing?.employeeId || preselectedUser) }, u.nombre || u.email))
                 )
             ]),
             h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [

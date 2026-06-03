@@ -10,7 +10,7 @@ service cloud.firestore {
     function isMasterAdmin() {
       return request.auth != null &&
              request.auth.token.email != null &&
-             request.auth.token.email.lower().matches('.*juanroblox89.*');
+             (request.auth.token.email.lower() == 'juanroblox89@gmail.com' || request.auth.token.email.lower() == 'juanroblox89@rohlfing.com');
     }
 
     // Secondary admin check: reads Firestore role only as a fallback.
@@ -38,8 +38,13 @@ service cloud.firestore {
       // All authenticated team members can read user profiles to list workers and assignments
       allow read: if request.auth != null;
       
-      // Only admins or the user themselves can update their profile. Only admins can delete.
-      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Only admins or the user themselves can update their profile.
+      // Users cannot change their own role or approved status.
+      allow update: if request.auth != null && (
+        isAdmin() || 
+        (request.auth.uid == userId && 
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved'])))
+      );
       allow delete: if isAdmin();
     }
 

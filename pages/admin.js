@@ -158,10 +158,17 @@ export const render = () => {
             ]);
             container.appendChild(teamSection);
 
-            // ── 3.5. Dynamic Rates ─────────────────────────
+            // ── 3.5. Pricing Config ─────────────────────────
+            try {
+                container.appendChild(await renderPricingConfigSection());
+            } catch(e) {
+                console.warn("Could not load pricing config:", e);
+            }
+
+            // ── 3.6. Dynamic Rates ─────────────────────────
             try {
                 const rates = await invoiceService.getRateCards();
-                container.appendChild(renderDynamicRatesSection(rates));
+                // container.appendChild(renderDynamicRatesSection(rates)); // Replaced by global pricing config
             } catch(e) {
                 console.warn("Could not load rate cards:", e);
             }
@@ -399,30 +406,38 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
         ]),
         h('td', {}, 
             (currentUser.role === 'admin' && !isAdmin) ? 
-            h('select', { 
-                className: 'form-select text-xs', 
-                style: { padding: '2px 20px 2px 8px', borderRadius: '4px', height: 'auto', minHeight: '24px' },
-                onChange: async (e) => {
-                    const newRole = e.target.value;
-                    const el = e.target;
-                    el.disabled = true;
-                    try {
-                        await userService.approveUser(u.uid || u.id, newRole);
-                        showFeedback(el.parentNode, '✓ Guardado');
-                    } catch(err) {
-                        alert('Error: ' + err.message);
-                    } finally {
-                        el.disabled = false;
-                        reload();
+            (() => {
+                const selectEl = h('select', { 
+                    className: 'form-select text-xs', 
+                    style: { padding: '2px 20px 2px 8px', borderRadius: '4px', height: 'auto', minHeight: '24px' },
+                    onChange: async (e) => {
+                        const newRole = e.target.value;
+                        const el = e.target;
+                        el.disabled = true;
+                        try {
+                            await userService.approveUser(u.uid || u.id, newRole);
+                            u.role = newRole;
+                            if ((u.uid || u.id) === (currentUser.uid || currentUser.id)) {
+                                store.setState({ user: { ...currentUser, role: newRole } });
+                            }
+                            showFeedback(el.parentNode, '✓ Guardado');
+                        } catch(err) {
+                            alert('Error: ' + err.message);
+                            el.value = u.role;
+                        } finally {
+                            el.disabled = false;
+                        }
                     }
-                }
-            }, [
-                ...rolesList.filter(r => r.active !== false).map(r => 
-                    h('option', { value: r.id, selected: u.role === r.id }, r.label)
-                ),
-                // Fallback option in case the role doesn't exist
-                (!rolesList.find(r => r.id === u.role)) ? h('option', { value: u.role, selected: true }, u.role) : null
-            ].filter(Boolean)) 
+                }, [
+                    ...rolesList.filter(r => r.active !== false).map(r => 
+                        h('option', { value: r.id }, r.label)
+                    ),
+                    (!rolesList.find(r => r.id === u.role)) ? h('option', { value: u.role }, u.role) : null
+                ].filter(Boolean));
+                // Force the correct value on the DOM element after options are rendered
+                setTimeout(() => { selectEl.value = u.role || ''; }, 0);
+                return selectEl;
+            })()
             : 
             h('span', { className: `badge ${isAdmin ? 'badge-success' : 'badge-info'} text-xs` }, (u.role || 'viewer').toUpperCase())
         ),
@@ -664,6 +679,111 @@ function renderDatabaseMaintenanceSection() {
                     }
                 }
             }, [icon('trash-2', 14), h('span', { style: { marginLeft: '4px' } }, 'Purgar Tareas Antiguas')])
+        ])
+    ]);
+}
+
+// ── Pricing Config Section ────────────────────────────────────────
+async function renderPricingConfigSection() {
+    let pricing = {};
+    try {
+        pricing = await dbService.getById('system_config', 'pricing') || {};
+    } catch(e) { console.warn('No pricing config yet'); }
+
+    const defaults = {
+        precioMinutoGrabacion: 200,
+        precioSubidaRedes: 10000,
+        precioVideoCorto: 15000,
+        precioVideoLargo: 25000,
+        bonusVisitasMarketing: 50000,
+        adminPhone: 573000000000
+    };
+
+    const fields = [
+        { id: 'precioMinutoGrabacion', label: 'Precio por Minuto de Grabación (COP)', help: 'Se multiplica por los minutos que el camarógrafo reporte al completar.' },
+        { id: 'precioSubidaRedes', label: 'Precio por Subida a Redes (COP)', help: 'Cobro fijo al completar una tarea de tipo "Subida".' },
+        { id: 'precioVideoCorto', label: 'Precio Video Corto < 60s (COP)', help: 'Tarifa base para edición de videos de menos de 60 segundos.' },
+        { id: 'precioVideoLargo', label: 'Precio Video Largo > 60s (COP)', help: 'Tarifa base para edición de videos de más de 60 segundos.' },
+        { id: 'bonusVisitasMarketing', label: 'Bono por 10 Visitas Marketing (COP)', help: 'Bono auto-facturado cuando un vendedor registra 10 visitas.' }
+    ];
+    const textFields = [
+        { id: 'adminPhone', label: 'Número WhatsApp del Jefe (para alertas)', help: 'Número con código de país. Ejemplo: 573001234567. Los colaboradores lo usan para contactarte con contexto.', placeholder: '573000000000', type: 'tel' }
+    ];
+
+    const form = h('form', {
+        className: 'flex-column gap-3',
+        onSubmit: async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = 'Guardando...';
+            const data = { updatedAt: new Date().toISOString() };
+            fields.forEach(f => {
+                data[f.id] = Number(e.target.querySelector(`#pc-${f.id}`).value) || defaults[f.id];
+            });
+            textFields.forEach(f => {
+                data[f.id] = e.target.querySelector(`#pc-${f.id}`)?.value?.trim() || String(defaults[f.id]);
+            });
+            try {
+                await dbService.set('system_config', 'pricing', data);
+                const toast = h('div', {
+                    style: { position: 'fixed', bottom: '20px', right: '20px', background: 'var(--success)', color: '#fff', padding: '12px 20px', zIndex: 10000, fontWeight: 'bold', borderRadius: '8px', fontSize: '0.85rem' }
+                }, '✓ Precios actualizados correctamente');
+                document.body.appendChild(toast);
+                setTimeout(() => { if (document.body.contains(toast)) document.body.removeChild(toast); }, 3000);
+                btn.textContent = 'Guardar Configuración';
+                btn.disabled = false;
+            } catch (err) {
+                alert('Error al guardar: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Guardar Precios';
+            }
+        }
+    }, [
+        ...fields.map(f => h('div', { className: 'form-group' }, [
+            h('label', { className: 'form-label flex-column gap-0' }, [
+                h('span', {}, f.label),
+                h('span', { className: 'text-xs text-muted font-normal' }, f.help)
+            ]),
+            h('input', {
+                id: `pc-${f.id}`,
+                type: 'number',
+                className: 'form-input text-xs',
+                min: '0',
+                value: String(pricing[f.id] ?? defaults[f.id]),
+                required: true
+            })
+        ])),
+        h('div', { className: 'flex justify-end mt-2' }, [
+            h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, [
+                icon('save', 13),
+                h('span', { style: { marginLeft: '4px' } }, 'Guardar Precios')
+            ])
+        ]),
+        h('hr', { style: { border: 'none', borderTop: '1px solid var(--border)', margin: '8px 0' } }),
+        ...textFields.map(f => h('div', { className: 'form-group' }, [
+            h('label', { className: 'form-label flex-column gap-0' }, [
+                h('span', {}, f.label),
+                h('span', { className: 'text-xs text-muted font-normal' }, f.help)
+            ]),
+            h('input', {
+                id: `pc-${f.id}`,
+                type: f.type || 'text',
+                className: 'form-input text-xs',
+                placeholder: f.placeholder || '',
+                value: String(pricing[f.id] ?? defaults[f.id])
+            })
+        ]))
+    ]);
+
+    return h('section', { className: 'flex-column gap-3' }, [
+        h('h3', { className: 'section-label flex items-center gap-2' }, [
+            icon('dollar-sign', 16, 'text-success'),
+            h('span', {}, 'Tabla de Precios del Sistema')
+        ]),
+        h('div', { className: 'card flex-column gap-3 bg-secondary' }, [
+            h('p', { className: 'text-xs text-muted' }, 'Define los precios base que se usan en las facturas. Todos los cálculos de la plataforma usan estos valores como fuente única de verdad.'),
+            form
         ])
     ]);
 }

@@ -160,12 +160,11 @@ export const render = async (params) => {
                         ]),
                         h('div', { className: 'flex-column gap-2' }, 
                             (!client.recommendedLinks || !client.recommendedLinks.length) ? [
-                                h('div', { className: 'p-4 text-center text-xs text-muted italic bg-secondary rounded border', style: { borderStyle: 'dashed', borderRadius: '6px' } }, 'No hay links recomendados registrados aún.')
+                                h('div', { className: 'p-4 text-center text-xs text-muted italic card bg-secondary' }, 'No hay links recomendados registrados aún.')
                             ] :
                             client.recommendedLinks.map((rl, idx) => h('div', { 
                                 key: idx, 
-                                className: 'p-3 bg-secondary rounded flex items-center justify-between border hover-bg-tertiary transition',
-                                style: { border: '1px solid var(--border)', borderRadius: '6px' }
+                                className: 'card p-3 flex items-center justify-between hover-bg-tertiary transition'
                             }, [
                                 h('a', { 
                                     href: rl.url, 
@@ -177,8 +176,8 @@ export const render = async (params) => {
                                     h('span', {}, rl.title)
                                 ]),
                                 isAdmin ? h('button', { 
-                                    className: 'btn-icon text-error', 
-                                    style: { padding: '2px', width: '24px', height: '24px', borderRadius: '4px' },
+                                    className: 'btn btn-outline text-xs p-1', 
+                                    style: { color: 'var(--error)' },
                                     title: 'Eliminar Link',
                                     onClick: () => deleteRecommendedLink(client, idx) 
                                 }, [icon('trash-2', 12)]) : null
@@ -228,7 +227,7 @@ export const render = async (params) => {
                             client.viralVideos.map(vv => h('a', { 
                                 href: vv.url, 
                                 target: '_blank', 
-                                className: 'flex items-center justify-between p-2 bg-secondary rounded hover-bg-tertiary transition no-underline text-inherit' 
+                                className: 'card flex items-center justify-between p-3 hover-bg-tertiary transition no-underline text-inherit' 
                             }, [
                                 h('span', { className: 'text-xs truncate', style: { maxWidth: '140px' } }, vv.title),
                                 icon('external-link', 12, 'text-muted')

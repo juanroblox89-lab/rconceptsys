@@ -61,10 +61,7 @@ export const render = () => {
             clientsList.map(c => {
                 return h('div', { 
                     key: c.id, 
-                    className: 'card hover-bg-secondary transition relative flex items-center justify-between p-4 gap-4 flex-wrap', 
-                    style: { 
-                        minHeight: '80px'
-                    }
+                    className: 'card hover-bg-secondary transition flex items-center justify-between p-4 gap-4 flex-wrap'
                 }, [
                     // Identity section (left)
                     h('div', { className: 'flex items-center gap-3', style: { flex: '1 1 200px', minWidth: '180px' } }, [
@@ -139,14 +136,13 @@ export const render = () => {
                         
                         isAdmin ? h('div', { className: 'flex gap-0.5' }, [
                             h('button', { 
-                                className: 'btn-icon text-accent', 
-                                style: { width: '26px', height: '26px', padding: '3px' }, 
+                                className: 'btn btn-outline text-xs p-1', 
                                 title: 'Editar Cliente',
                                 onClick: () => openCreateClientModal(c) 
                             }, [icon('edit-3', 11)]),
                             h('button', { 
-                                className: 'btn-icon text-error', 
-                                style: { width: '26px', height: '26px', padding: '3px' }, 
+                                className: 'btn btn-outline text-xs p-1',
+                                style: { color: 'var(--error)' },
                                 title: 'Eliminar Cliente',
                                 onClick: (e) => {
                                     e.stopPropagation();

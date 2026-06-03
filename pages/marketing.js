@@ -30,6 +30,11 @@ export const render = async () => {
     ]);
     container.appendChild(header);
 
+    // Load dynamic pricing for admin phone
+    let systemPricing = {};
+    try { systemPricing = await dbService.getById('system_config', 'pricing') || {}; } catch(e) {}
+    const adminPhone = systemPricing.adminPhone || '573000000000';
+
     // Call to Action WhatsApp
     const whatsappBanner = h('div', { 
         className: 'card p-4 flex justify-between items-center bg-secondary border',
@@ -43,10 +48,10 @@ export const render = async () => {
             ])
         ]),
         h('a', { 
-            href: 'https://wa.me/573242123300', 
+            href: `https://wa.me/${adminPhone}`, 
             target: '_blank', 
             className: 'btn btn-primary text-xs' 
-        }, [icon('phone', 14), h('span', {}, 'Contactar +57 324 212 3300')])
+        }, [icon('phone', 14), h('span', {}, `Contactar +${adminPhone}`)])
     ]);
     container.appendChild(whatsappBanner);
 
@@ -65,6 +70,8 @@ export const render = async () => {
 
             const users = await dbService.getAll('users');
             const currentUser = users.find(u => u.uid === user.uid) || user;
+
+            const bonusVisitasMarketing = systemPricing.bonusVisitasMarketing ?? 50000;
             
             let myVisits = visitsList.filter(v => v.employeeId === currentUser.uid);
             // Sort by date descending
@@ -116,7 +123,7 @@ export const render = async () => {
                                 
                                 if (newVisitsCount >= 10) {
                                     // Auto-Bill
-                                    const bonusAmount = 50000;
+                                    const bonusAmount = bonusVisitasMarketing;
                                     let currentInv = await invoiceService.getEmployeeInvoice(currentUser.uid);
                                     if (!currentInv) currentInv = { items: [] };
                                     if (!currentInv.items) currentInv.items = [];
@@ -135,7 +142,7 @@ export const render = async () => {
                                     
                                     // Reset visits
                                     await dbService.update('users', currentUser.uid, { marketingVisits: 0 });
-                                    alert(`¡Felicidades! Completaste 10 visitas. Se ha autogenerado un cobro de $50.000 COP en tu cuenta.`);
+                                    alert(`¡Felicidades! Completaste 10 visitas. Se ha autogenerado un cobro de $${bonusAmount.toLocaleString('es-CO')} COP en tu cuenta.`);
                                 } else {
                                     await dbService.update('users', currentUser.uid, { marketingVisits: newVisitsCount });
                                 }
@@ -207,7 +214,7 @@ export const render = async () => {
                                     h('tr', { style: { borderBottom: '1px solid var(--border)' } }, [
                                         h('td', { style: { padding: '10px' }, className: 'font-bold' }, v.employeeName),
                                         h('td', { style: { padding: '10px' } }, v.businessName),
-                                        h('td', { style: { padding: '10px' } }, h('a', { href: `https://wa.me/${v.phone.replace(/[^0-9]/g,'')}`, target: '_blank', className: 'text-accent hover-underline' }, v.phone)),
+                                        h('td', { style: { padding: '10px' } }, h('a', { href: `https://wa.me/${(v.phone || '').replace(/[^0-9]/g,'')}`, target: '_blank', className: 'text-accent hover-underline' }, v.phone || 'N/A')),
                                         h('td', { style: { padding: '10px' }, className: 'text-muted' }, v.date)
                                     ])
                                 ))

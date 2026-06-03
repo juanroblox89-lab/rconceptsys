@@ -13,7 +13,6 @@ export const routes = [
     { path: 'clients', module: 'clients', title: "Clientes", subtitle: "Gestión de cuentas y estilos" },
     { path: 'client/:id', module: 'clientDetail', title: "Detalle de Cliente", subtitle: "Estrategia y assets específicos" },
     { path: 'billing', module: 'billing', title: "Pagos Pendientes", subtitle: "Control operativo y auditoría" },
-    { path: 'sops', module: 'sops', title: "SOPs", subtitle: "Procesos y estándares de calidad" },
     { path: 'assets', module: 'assets', title: "Assets", subtitle: "Gestión de producción" },
     { path: 'references', module: 'references', title: "Referencias", subtitle: "Inspiración curada" },
     { path: 'aiAssistant', module: 'aiAssistant', title: "AI Assistant", subtitle: "Inteligencia generativa y análisis" },
@@ -62,11 +61,11 @@ class Router {
             if (requiredModule === 'clientDetail') requiredModule = 'clients';
 
             if (user?.role === 'admin') {
-                const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'sops', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'clientDetail', 'marketing'];
+                const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'clientDetail', 'marketing'];
                 hasPermission = adminAllowed.includes(requiredModule);
             } else {
                 const currentRole = (roles || []).find(r => r.id === user?.role);
-                const defaultModules = ['dashboard', 'assignments', 'sops', 'aiAssistant', 'profile'];
+                const defaultModules = ['dashboard', 'assignments', 'aiAssistant', 'profile'];
                 const allowedModules = currentRole?.allowedModules || defaultModules;
                 hasPermission = allowedModules.includes(requiredModule) || requiredModule === 'profile';
             }
@@ -102,7 +101,6 @@ class Router {
                     clients: () => import('../pages/clients.js'),
                     clientDetail: () => import('../pages/clientDetail.js'),
                     billing: () => import('../pages/billing.js'),
-                    sops: () => import('../pages/sops.js'),
                     assets: () => import('../pages/assets.js'),
                     references: () => import('../pages/references.js'),
                     aiAssistant: () => import('../pages/aiAssistant.js'),
@@ -160,7 +158,7 @@ class Router {
                 } else {
                     viewContainer.innerHTML = `<div class="error-state" style="padding: 40px; text-align: center; color: #ef4444;">
                         <strong>Error cargando la página</strong><br>
-                        <code style="font-size: 0.75rem; color: #666;">${error.message}</code>
+                        <code style="font-size: 0.75rem; color: #666;">${error.message.replace(/</g, "&lt;")}</code>
                     </div>`;
                 }
             }

@@ -37,8 +37,7 @@ export const render = () => {
         const totalSum = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
 
         return h('div', { 
-            className: 'card p-4 flex-column gap-3 mb-4 shadow-sm w-full',
-            style: { background: 'var(--bg-secondary)', border: '1px solid var(--border)' }
+            className: 'card p-4 flex-column gap-3 mb-4 w-full'
         }, [
             // Header bar
             h('div', { className: 'flex justify-between items-center flex-wrap gap-2 border-bottom pb-2 mb-1' }, [
@@ -138,8 +137,8 @@ export const render = () => {
                             isEditable ? h('td', { className: 'p-2 text-center', 'data-label': 'Acciones' }, [
                                 h('button', { 
                                     type: 'button',
-                                    className: 'btn btn-outline text-xs p-1 hover-bg-tertiary border-radius-sm text-error',
-                                    style: { borderColor: 'rgba(239, 68, 68, 0.2)' },
+                                    className: 'btn btn-outline text-xs p-1 hover-bg-tertiary border-radius-sm',
+                                    style: { color: 'var(--error)' },
                                     onClick: () => {
                                         itemsArray.splice(idx, 1);
                                         drawDOM();
@@ -246,7 +245,7 @@ export const render = () => {
                     ]),
                     h('button', { 
                         className: 'btn btn-outline text-xs',
-                        style: { borderColor: 'rgba(239,68,68,0.3)', color: 'var(--error)' },
+                        style: { color: 'var(--error)' },
                         title: 'Eliminar TODAS las facturas de empleados y admin para iniciar nuevo ciclo',
                         onClick: async () => {
                             const code = Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -339,8 +338,10 @@ export const render = () => {
                 
                 h('div', { className: 'flex-column gap-2 overflow-y-auto', style: { maxHeight: '500px' } }, approvedUsers.map(member => {
                     const isSelected = member.uid === selectedUserId;
-                    const empTotal = empInvoices.find(i => i.employeeId === member.uid)?.amount || 0;
-                    const admTotal = admInvoices.find(i => i.employeeId === member.uid)?.amount || 0;
+                    const empInv = empInvoices.find(i => i.employeeId === member.uid);
+                    const empTotal = empInv ? (empInv.items && empInv.items.length > 0 ? empInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) : empInv.amount || 0) : 0;
+                    const admInv = admInvoices.find(i => i.employeeId === member.uid);
+                    const admTotal = admInv ? (admInv.items && admInv.items.length > 0 ? admInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) : admInv.amount || 0) : 0;
 
                     return h('button', {
                         className: `flex-column p-2 rounded cursor-pointer transition-all w-full text-left`,

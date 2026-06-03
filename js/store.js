@@ -31,7 +31,10 @@ class Store {
     setState(newState) {
         const nextState = { ...this.state };
         for (const key in newState) {
-            if (newState[key] && typeof newState[key] === 'object' && !Array.isArray(newState[key]) && this.state[key]) {
+            // For params, we ALWAYS want to completely overwrite to avoid orphaned keys
+            if (key === 'params') {
+                nextState[key] = newState[key];
+            } else if (newState[key] && typeof newState[key] === 'object' && !Array.isArray(newState[key]) && this.state[key]) {
                 nextState[key] = { ...this.state[key], ...newState[key] };
             } else {
                 nextState[key] = newState[key];
