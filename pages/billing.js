@@ -181,7 +181,9 @@ export const render = () => {
                         className: 'btn btn-primary text-xs py-1.5 px-4 flex items-center gap-1 font-bold',
                         onClick: () => {
                             if (itemsArray.length === 0) {
-                                alert("Por favor agrega al menos un cobro a la hoja de liquidación.");
+                                if (window.confirm("¿Estás seguro que deseas ELIMINAR completamente esta liquidación?")) {
+                                    onSave([], 0);
+                                }
                                 return;
                             }
                             const currentTotal = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
@@ -479,16 +481,20 @@ export const render = () => {
                         onSave: async (savedItems, computedTotal) => {
                             container.innerHTML = '<div class="loader mb-4"></div>';
                             try {
-                                await invoiceService.saveAdminInvoice(selectedUserId, {
-                                    employeeName: selectedUser.nombre || selectedUser.email,
-                                    type: 'Factura Consolidada',
-                                    client: savedItems[0]?.client || 'General',
-                                    amount: computedTotal,
-                                    observations: savedItems[0]?.observations || '',
-                                    items: savedItems,
-                                    createdAt: new Date().toISOString(),
-                                    status: 'Aprobado'
-                                });
+                                if (savedItems.length === 0) {
+                                    await invoiceService.deleteAdminInvoice(selectedUserId);
+                                } else {
+                                    await invoiceService.saveAdminInvoice(selectedUserId, {
+                                        employeeName: selectedUser.nombre || selectedUser.email,
+                                        type: 'Factura Consolidada',
+                                        client: savedItems[0]?.client || 'General',
+                                        amount: computedTotal,
+                                        observations: savedItems[0]?.observations || '',
+                                        items: savedItems,
+                                        createdAt: new Date().toISOString(),
+                                        status: 'Aprobado'
+                                    });
+                                }
                                 const overlay = h('div', { className: 'modal-overlay fade-in' });
                                 const modal = h('div', { className: 'modal-container' }, [
                                     h('div', { className: 'modal-header text-sm font-bold' }, 'Éxito'),
@@ -573,16 +579,20 @@ export const render = () => {
                 onSave: async (savedItems, computedTotal) => {
                     container.innerHTML = '<div class="loader mb-4"></div>';
                     try {
-                        await invoiceService.saveEmployeeInvoice(user.uid, {
-                            employeeName: user.nombre || user.email,
-                            type: savedItems[0]?.type || 'Factura de Edición de Video',
-                            client: savedItems[0]?.client || 'General',
-                            amount: computedTotal,
-                            observations: savedItems[0]?.observations || '',
-                            items: savedItems,
-                            createdAt: new Date().toISOString(),
-                            status: 'Pendiente'
-                        });
+                        if (savedItems.length === 0) {
+                            await invoiceService.deleteEmployeeInvoice(user.uid);
+                        } else {
+                            await invoiceService.saveEmployeeInvoice(user.uid, {
+                                employeeName: user.nombre || user.email,
+                                type: savedItems[0]?.type || 'Factura de Edición de Video',
+                                client: savedItems[0]?.client || 'General',
+                                amount: computedTotal,
+                                observations: savedItems[0]?.observations || '',
+                                items: savedItems,
+                                createdAt: new Date().toISOString(),
+                                status: 'Pendiente'
+                            });
+                        }
                         const overlay = h('div', { className: 'modal-overlay fade-in' });
                         const modal = h('div', { className: 'modal-container' }, [
                             h('div', { className: 'modal-header text-sm font-bold' }, 'Éxito'),

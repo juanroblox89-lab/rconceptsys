@@ -61,6 +61,15 @@ export const invoiceService = {
         }
     },
 
+    // Delete an employee's reported invoice
+    async deleteEmployeeInvoice(userId) {
+        try {
+            await dbService.delete('invoices', `emp-inv-${userId}`);
+        } catch (err) {
+            console.warn(`Error deleting employee invoice for user ${userId}:`, err);
+        }
+    },
+
     // Save/update an employee's reported invoice
     async saveEmployeeInvoice(userId, data) {
         const docId = `emp-inv-${userId}`;
@@ -93,6 +102,15 @@ export const invoiceService = {
         } catch (err) {
             console.warn(`Error fetching admin invoice for user ${userId}:`, err);
             return null;
+        }
+    },
+
+    // Delete the admin's consolidated invoice for a specific employee
+    async deleteAdminInvoice(userId) {
+        try {
+            await dbService.delete('admin_invoices', `adm-inv-${userId}`);
+        } catch (err) {
+            console.warn(`Error deleting admin invoice for user ${userId}:`, err);
         }
     },
 
