@@ -186,8 +186,9 @@ export const render = async () => {
                                                         const just = prompt('Razón para devolver la tarea:');
                                                         if (!just) return;
                                                         try {
+                                                            await assignmentService.saveAssignment({ ...asg, status: 'blocked' }); // Block original task
                                                             await assignmentService.saveAssignment({
-                                                                id: `corr-${Date.now()}`,
+                                                                id: `corr-${crypto.randomUUID().split('-')[0]}`,
                                                                 title: `Corrección: ${prevTask.title}`,
                                                                 description: `Devuelto por la fase siguiente.\n\nRazón: ${just}\n\nPor favor, sube el nuevo material corregido aquí.`,
                                                                 type: prevTask.type,
@@ -274,7 +275,7 @@ export const render = async () => {
                                                         else if (!currentInv.items) currentInv.items = [];
                                                         
                                                         const newItem = {
-                                                            id: `item-${Date.now()}`,
+                                                            id: `item-${crypto.randomUUID().split('-')[0]}`,
                                                             assignmentId: asg.id,
                                                             type: asg.type,
                                                             client: asg.client,
@@ -907,7 +908,7 @@ export const render = async () => {
                     
                     const url = await storageService.uploadFile(path, file);
                     const assetDoc = {
-                        id: 'ast_' + Date.now(), client: currentClient, title: data.title,
+                        id: 'ast_' + crypto.randomUUID().split('-')[0], client: currentClient, title: data.title,
                         url: url, type: file.type.startsWith('video') ? 'video' : 'image',
                         uploadedBy: user.uid, createdAt: new Date().toISOString()
                     };

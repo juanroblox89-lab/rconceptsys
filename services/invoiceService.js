@@ -67,6 +67,7 @@ export const invoiceService = {
             await dbService.delete('invoices', `emp-inv-${userId}`);
         } catch (err) {
             console.warn(`Error deleting employee invoice for user ${userId}:`, err);
+            throw err;
         }
     },
 
@@ -79,7 +80,7 @@ export const invoiceService = {
             employeeName: data.employeeName || 'Empleado',
             type: data.type || 'Factura de Edición de Video', // 'Factura de Edición de Video' | 'Factura de Grabación de Video' | 'Factura Consolidada'
             client: data.client || '',
-            amount: Number(data.amount) || 0,
+            amount: Math.max(0, Number(data.amount) || 0),
             observations: data.observations || '',
             items: data.items || [],
             createdAt: data.createdAt || new Date().toISOString(),
@@ -90,6 +91,7 @@ export const invoiceService = {
             await dbService.set('invoices', docId, newInv);
         } catch (err) {
             console.warn(`Error saving employee invoice ${docId}:`, err);
+            throw err;
         }
 
         return newInv;
@@ -111,6 +113,7 @@ export const invoiceService = {
             await dbService.delete('admin_invoices', `adm-inv-${userId}`);
         } catch (err) {
             console.warn(`Error deleting admin invoice for user ${userId}:`, err);
+            throw err;
         }
     },
 
@@ -123,7 +126,7 @@ export const invoiceService = {
             employeeName: data.employeeName || 'Empleado',
             type: data.type || 'Factura Consolidada',
             client: data.client || '',
-            amount: Number(data.amount) || 0,
+            amount: Math.max(0, Number(data.amount) || 0),
             observations: data.observations || '',
             items: data.items || [],
             createdAt: data.createdAt || new Date().toISOString(),
@@ -134,6 +137,7 @@ export const invoiceService = {
             await dbService.set('admin_invoices', docId, newAdmInv);
         } catch (err) {
             console.warn(`Error saving admin invoice ${docId}:`, err);
+            throw err;
         }
 
         return newAdmInv;

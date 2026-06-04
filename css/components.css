@@ -657,7 +657,7 @@ tr:hover td { background-color: var(--bg-secondary); }
     min-height: 100vh;
     position: fixed;
     inset: 0;
-    z-index: 999;
+    z-index: var(--z-loader);
     background: var(--bg-primary);
     color: var(--text-primary);
 }

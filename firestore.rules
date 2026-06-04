@@ -2,108 +2,75 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ── Helpers ──────────────────────────────────────────────
     
-    // Fast admin check: uses only the JWT token email — NO get() call needed.
-    // This breaks the circular-permission dependency that was causing 403s.
-    function isMasterAdmin() {
-      return request.auth != null &&
-             request.auth.token.email != null &&
-             (request.auth.token.email.lower() == 'juanroblox89@gmail.com' || request.auth.token.email.lower() == 'juanroblox89@rohlfing.com');
-    }
-
-    // Secondary admin check: reads Firestore role only as a fallback.
-    // Uses exists() guard to prevent crashing on missing documents.
+    // Función auxiliar para verificar si el usuario es administrador
     function isAdmin() {
-      return isMasterAdmin() ||
-             (request.auth != null &&
-              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isApprovedUser() {
-      return request.auth != null && (
-        isAdmin() ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true)
-      );
-    }
-
-    // ── USERS Collection ──────────────────────────────────────
+    // Reglas para Colección Users
     match /users/{userId} {
-      // Any authenticated user can create their own profile document
-      allow create: if request.auth != null && request.auth.uid == userId;
-      
-      // All authenticated team members can read user profiles to list workers and assignments
+      // Todos pueden leer perfiles (necesario para asignar tareas)
       allow read: if request.auth != null;
       
-      // Only admins or the user themselves can update their profile.
-      // Users cannot change their own role or approved status.
-      allow update: if request.auth != null && (
-        isAdmin() || 
-        (request.auth.uid == userId && 
-         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved'])))
-      );
+      // Creación: Sólo el propio usuario, y OBLIGADO a ser viewer/no aprobado al principio.
+      allow create: if request.auth != null 
+                    && request.auth.uid == userId 
+                    && request.resource.data.role == 'viewer' 
+                    && request.resource.data.approved == false;
+      
+      // Actualización: Sólo administradores pueden cambiar roles o aprobaciones. 
+      // El propio usuario solo puede actualizar campos básicos (nombre, teléfono).
+      allow update: if isAdmin() || (
+                      request.auth.uid == userId 
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'phone', 'updatedAt'])
+                    );
+      
       allow delete: if isAdmin();
     }
 
-    // ── INVOICES Collection ───────────────────────────────────
-    match /invoices/{invoiceId} {
-      // Standard approved employees can create/update their own invoice report, keeping their own employeeId
-      allow create, update: if isApprovedUser() && request.resource.data.employeeId == request.auth.uid && (invoiceId == 'emp-inv-' + request.auth.uid);
-      // Employees and admins can read/delete. Safe for non-existent reads.
-      allow read, delete: if isAdmin() || (isApprovedUser() && (resource == null || resource.data.employeeId == request.auth.uid || invoiceId == 'emp-inv-' + request.auth.uid));
+    // Reglas para Tareas (Assignments)
+    match /assignments/{asgId} {
+      allow read: if request.auth != null;
+      
+      allow create, delete: if isAdmin();
+      
+      // Empleados solo pueden actualizar estado, link y notas de SUS tareas.
+      allow update: if isAdmin() || (
+                      resource.data.employeeId == request.auth.uid 
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'uploadLink', 'history', 'updatedAt'])
+                    );
     }
 
-    // ── ADMIN_INVOICES Collection ─────────────────────────────
-    match /admin_invoices/{adminInvoiceId} {
-      // Approved standard users can read their official consolidations. Safe for non-existent reads.
-      allow read: if isAdmin() || (isApprovedUser() && (resource == null || resource.data.employeeId == request.auth.uid || adminInvoiceId == 'adm-inv-' + request.auth.uid));
+    // Facturas y Configuración (Admin Only)
+    match /invoices/{invId} {
+      allow read: if request.auth != null && (isAdmin() || resource.data.employeeId == request.auth.uid);
+      allow write: if isAdmin() || (request.auth != null && request.resource.data.employeeId == request.auth.uid);
+    }
+
+    match /admin_invoices/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /rate_cards/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    match /system_config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    match /chats_limit/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if isAdmin();
     }
 
-    // ── ASSIGNMENTS Collection ───────────────────────────────
-    match /assignments/{asgId} {
-      allow read: if isApprovedUser();
-      allow create: if isAdmin();
-      // Approved workers can update their own assignments (e.g. status)
-      allow update: if isAdmin() || (isApprovedUser() && (resource != null && resource.data.employeeId == request.auth.uid));
-      allow delete: if isAdmin();
-    }
-
-    // ── GENERAL Collections ──
-    match /clients/{docId} { 
-      allow read: if isApprovedUser(); 
-      // Only Admin can create/update/delete client profiles and special fields
-      allow write: if isAdmin(); 
-    }
-    match /system_config/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /formats/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /hooks/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /assets/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /sops/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /references/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /scripts/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /system_rules/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /roles/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /metrics/{docId} { allow read: if isApprovedUser(); allow write: if isAdmin(); }
-    match /sop_submissions/{docId} {
-      allow read: if isApprovedUser() && (isAdmin() || resource == null || resource.data.userId == request.auth.uid);
-      allow create, update: if isApprovedUser() && request.resource.data.userId == request.auth.uid;
-      allow delete: if isAdmin();
-    }
-    // ── CHATS and CHATS_LIMIT Collections ────────────────────
-    match /chats/{chatId} {
-      allow read, write: if request.auth != null && (
-        resource == null || 
-        resource.data.userId == request.auth.uid || 
-        request.resource.data.userId == request.auth.uid ||
-        isMasterAdmin()
-      );
-    }
-    match /chats_limit/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || isMasterAdmin());
+    // Default para el resto (Clients, Scripts, Assets, SOPs, etc.)
+    match /{document=**} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }

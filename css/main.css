@@ -42,8 +42,11 @@
     --z-header: 150;
     --z-overlay: 190;
     --z-sidebar: 200;
+    --z-loader: 250;
     --z-modal: 300;
     --z-toast: 400;
+    --z-palette: 500;
+    --z-lightbox: 600;
 
     /* Shadows (Layered Premium) */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
