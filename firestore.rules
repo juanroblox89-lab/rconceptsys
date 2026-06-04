@@ -5,7 +5,7 @@ service cloud.firestore {
     
     // Función maestra que identifica a los administradores
     function isAdmin() {
-      let email = request.auth.token.email.toLowerCase();
+      let email = request.auth.token.email;
       return request.auth != null && (
         email == 'juanroblox89@gmail.com' || 
         email == 'juanroblox89@rohlfing.com' ||
