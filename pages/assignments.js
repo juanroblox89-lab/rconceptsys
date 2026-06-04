@@ -10,6 +10,15 @@ import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
 import { invoiceService } from '../services/invoiceService.js';
 
+// Pre-declare regex to prevent es-module-lexer parse issues
+const RE_BRACKET_PREFIX = /\[.*?\]\s*/g;
+const RE_NON_NUMERIC = /[^0-9]/g;
+const RE_UNICODE_ACCENT = /[\u0300-\u036f]/g;
+const RE_WHITESPACE = /\s+/g;
+const RE_SAFE_FILENAME = /[^a-zA-Z0-9.\-_]/g;
+const RE_SAFE_ID = /[^a-z0-9-]/g;
+const RE_QUOTE = /"/g;
+
 export const render = async () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
@@ -209,7 +218,7 @@ export const render = async () => {
                                                     className: 'btn btn-icon text-muted p-1',
                                                     title: 'Contactar por WhatsApp',
                                                     onClick: () => {
-                                                        const phone = prevWorker?.phone ? prevWorker.phone.replace(/[^0-9]/g, '') : adminPhone;
+                                                        const phone = prevWorker?.phone ? prevWorker.phone.replace(RE_NON_NUMERIC, '') : adminPhone;
                                                         const msg = prevWorker ? `Hola ${prevWorker.nombre.split(' ')[0]}, el material de la tarea *${asg.title}* está incompleto o tiene un problema. ¿Puedes revisarlo?` : `Hola, reporto un problema con los materiales de la tarea *${asg.title}*.`;
                                                         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                                     }
@@ -684,7 +693,7 @@ export const render = async () => {
                             let displayTitle = asg.title;
                             if (asg.projectId && asg.title.length < 15) {
                                 // Attempt to find the pipeline context
-                                const pipelineContext = assignments.find(a => a.projectId === asg.projectId && a.id !== asg.id)?.title.replace(/\[.*?\]\s*/g, '') || asg.projectId;
+                                const pipelineContext = assignments.find(a => a.projectId === asg.projectId && a.id !== asg.id)?.title.replace(RE_BRACKET_PREFIX, '') || asg.projectId;
                                 displayTitle = `${asg.title} - ${pipelineContext}`;
                             }
                             
@@ -723,7 +732,7 @@ export const render = async () => {
                                         }, [icon('pen-tool', 12)]),
                                         (function(){
                                             const w = approvedUsers.find(u => u.uid === asg.employeeId || u.id === asg.employeeId);
-                                            const phone = w?.phone ? w.phone.replace(/[^0-9]/g, '') : null;
+                                            const phone = w?.phone ? w.phone.replace(RE_NON_NUMERIC, '') : null;
                                             if (!phone) return null;
                                             
                                             const generalMsg = encodeURIComponent(`Hola ${w.nombre.split(' ')[0]}, sobre la tarea *${asg.title}*...`);
@@ -851,7 +860,7 @@ export const render = async () => {
             showMiniModal('Nuevo Cliente', [
                 { id: 'name', label: 'Nombre del Cliente', placeholder: 'Ej. Villa Grande' }
             ], async (data) => {
-                const id = data.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                const id = data.name.toLowerCase().normalize("NFD").replace(RE_UNICODE_ACCENT, "").replace(RE_WHITESPACE, '-').replace(RE_SAFE_ID, '');
                 await dbService.set('clients', id, { id, name: data.name, active: true });
                 
                 const sel = form.querySelector('#asg-client');
@@ -904,8 +913,9 @@ export const render = async () => {
                 showMiniModal('Detalles del Asset', [
                     { id: 'title', label: 'Título / Descripción', placeholder: 'Ej. Referencia de color' }
                 ], async (data) => {
-                    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-                    const path = `assets/${currentClient.replace(/\s+/g, '-')}/${Date.now()}_${safeName}`;
+                    const safeName = file.name.replace(RE_SAFE_FILENAME, '');
+                    const safeClient = currentClient.replace(RE_WHITESPACE, '-');
+                    const path = `assets/${safeClient}/${Date.now()}_${safeName}`;
                     
                     const url = await storageService.uploadFile(path, file);
                     const assetDoc = {
@@ -1726,6 +1736,9 @@ export function openMasterPipelineModal(context = {}) {
     const rateOptionsEdCorto = `<option value="default">Auto ($${pEdCorto.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
     const rateOptionsEdLargo = `<option value="default">Auto ($${pEdLargo.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
     const rateOptionsUp = `<option value="default">Auto ($${pSubida.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
+    // Pre-escape for safe use inside HTML attribute onchange
+    const rateOptionsEdLargoEsc = rateOptionsEdLargo.replace(RE_QUOTE, '&quot;');
+    const rateOptionsEdCortoEsc = rateOptionsEdCorto.replace(RE_QUOTE, '&quot;');
     
     const modalHTML = `
         <form class="modal-container" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
@@ -1819,7 +1832,7 @@ export function openMasterPipelineModal(context = {}) {
                             </div>
                             <div class="form-group">
                                 <label class="form-label text-[10px]">Duración</label>
-                                <select id="mp-ed-length" class="form-select text-[10px]" onchange="document.getElementById('mp-rate-ed').innerHTML = this.value === 'long' ? '${rateOptionsEdLargo.replace(/"/g, '&quot;')}' : '${rateOptionsEdCorto.replace(/"/g, '&quot;')}';">
+                                <select id="mp-ed-length" class="form-select text-[10px]" onchange="document.getElementById('mp-rate-ed').innerHTML = this.value === 'long' ? '${rateOptionsEdLargoEsc}' : '${rateOptionsEdCortoEsc}';">
                                     <option value="short">Corto (< 60s)</option>
                                     <option value="long">Largo (> 60s)</option>
                                 </select>
