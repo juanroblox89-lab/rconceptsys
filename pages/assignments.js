@@ -529,7 +529,7 @@ export const render = async () => {
                     h('button', { 
                         className: 'btn btn-primary text-xs',
                         style: { background: 'var(--success)', borderColor: 'var(--success)' },
-                        onClick: () => openMasterPipelineModal({ users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [] })
+                        onClick: () => openMasterPipelineModal({ users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], rates: rates || [], systemPricing: adminConfig })
                     }, [icon('git-commit', 14), h('span', {}, 'Asignación Maestra')]),
                     h('button', { 
                         className: 'btn btn-primary text-xs',
@@ -840,6 +840,7 @@ export const render = async () => {
             
             miniOverlay.appendChild(mForm);
             document.body.appendChild(miniOverlay);
+            if (window.updateDefaultRateLabel) window.updateDefaultRateLabel();
             setTimeout(() => {
                 const firstInput = mForm.querySelector('input, textarea, select');
                 if (firstInput) firstInput.focus();
@@ -954,7 +955,8 @@ export const render = async () => {
                 status: form.querySelector('#asg-status') ? form.querySelector('#asg-status').value : (existing?.status || 'Pendiente'),
                 createdBy: existing?.createdBy || user.uid,
                 linkedScript: form.querySelector('#asg-link-script').value,
-                linkedAsset: form.querySelector('#asg-link-asset').value
+                linkedAsset: form.querySelector('#asg-link-asset').value,
+                videoLength: form.querySelector('#asg-video-length')?.value || 'short'
             };
             
             const isCustomRate = form.querySelector('input[name="rate-type"]:checked')?.value === 'custom';
@@ -979,6 +981,25 @@ export const render = async () => {
             }
         };
 
+        window.updateDefaultRateLabel = () => {
+            if (!form) return;
+            const type = form.querySelector('#asg-type')?.value;
+            const length = form.querySelector('#asg-video-length')?.value;
+            let autoPrice = 0;
+            if (type === 'Grabación' || type === 'Creador 360° (Grabación + Edición)') autoPrice = context.systemPricing?.precioMinutoGrabacion || 0;
+            else if (type === 'Edición') autoPrice = length === 'long' ? (context.systemPricing?.precioVideoLargo || 0) : (context.systemPricing?.precioVideoCorto || 0);
+            else if (type === 'Subida') autoPrice = context.systemPricing?.precioSubidaRedes || 0;
+            
+            const labelEl = form.querySelector('#default-rate-label');
+            if (labelEl) {
+                if (type === 'Grabación' || type === 'Creador 360° (Grabación + Edición)') {
+                    labelEl.textContent = `Auto ($${autoPrice.toLocaleString('es-CO')} / min)`;
+                } else {
+                    labelEl.textContent = `Auto ($${autoPrice.toLocaleString('es-CO')})`;
+                }
+            }
+        };
+
         form = h('form', { className: 'modal-container', onSubmit: submit }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title' }, existing ? 'Editar Asignación' : 'Nueva Asignación'),
@@ -994,13 +1015,33 @@ export const render = async () => {
                     ]),
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Tipo'),
-                        h('select', { id: 'asg-type', className: 'form-select text-xs' }, [
+                        h('select', { id: 'asg-type', className: 'form-select text-xs', onchange: () => {
+                            const t = form.querySelector('#asg-type').value;
+                            const vlEl = form.querySelector('#asg-video-length-container');
+                            if(vlEl) vlEl.style.display = t === 'Edición' ? 'block' : 'none';
+                            if (window.updateDefaultRateLabel) window.updateDefaultRateLabel();
+                        } }, [
                             h('option', { value: 'Grabación', selected: existing?.type === 'Grabación' }, 'Grabación'),
                             h('option', { value: 'Edición', selected: existing?.type === 'Edición' }, 'Edición'),
-                            h('option', { value: 'Creador 360° (Grabación + Edición)', selected: existing?.type === 'Creador 360° (Grabación + Edición)' }, 'Creador 360° (Grabación + Edición)')
+                            h('option', { value: 'Creador 360° (Grabación + Edición)', selected: existing?.type === 'Creador 360° (Grabación + Edición)' }, 'Creador 360° (Grabación + Edición)'),
+                            h('option', { value: 'Diseño', selected: existing?.type === 'Diseño' }, 'Diseño Gráfico'),
+                            h('option', { value: 'Animación', selected: existing?.type === 'Animación' }, 'Animación (After Effects)'),
+                            h('option', { value: 'Subida', selected: existing?.type === 'Subida' }, 'Subida a Redes (Uploader)'),
+                            h('option', { value: 'Estrategia', selected: existing?.type === 'Estrategia' }, 'Estrategia y Guiones'),
+                            h('option', { value: 'Revisión', selected: existing?.type === 'Revisión' }, 'Revisión de Calidad (QA)')
                         ])
-                    ]),
-                    user.role === 'admin' ? h('div', { className: 'form-group' }, [
+                    ])
+                ]),
+                h('div', { id: 'asg-video-length-container', className: 'form-group mb-2', style: { display: existing?.type === 'Edición' ? 'block' : 'none' } }, [
+                    h('label', { className: 'form-label' }, 'Duración del Video (Afecta tarifa automática)'),
+                    h('select', { id: 'asg-video-length', className: 'form-select text-xs', onchange: () => {
+                        if (window.updateDefaultRateLabel) window.updateDefaultRateLabel();
+                    } }, [
+                        h('option', { value: 'short', selected: existing?.videoLength !== 'long' }, 'Corto (< 60s)'),
+                        h('option', { value: 'long', selected: existing?.videoLength === 'long' }, 'Largo (> 60s)')
+                    ])
+                ]),
+                user.role === 'admin' ? h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Estado'),
                         h('select', { id: 'asg-status', className: 'form-select text-xs text-info font-bold' }, [
                             h('option', { value: 'blocked', selected: existing?.status === 'blocked' }, 'En espera (Blocked)'),
@@ -1095,28 +1136,40 @@ export const render = async () => {
                         h('div', { className: 'flex-column gap-2', style: { background: 'var(--bg-tertiary)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' } }, [
                             h('label', { className: 'flex items-center gap-2 text-xs cursor-pointer' }, [
                                 h('input', { type: 'radio', name: 'rate-type', value: 'default', checked: !existing?.billing?.customPrice, onchange: (e) => {
-                                    form.querySelector('#asg-custom-price').disabled = true;
-                                    form.querySelector('#asg-custom-price').style.opacity = '0.5';
+                                    form.querySelector('#asg-custom-price-container').style.display = 'none';
                                 } }),
-                                h('span', {}, 'Tarifa Predeterminada (Dinámica por Sistema)')
+                                h('span', { id: 'default-rate-label', className: 'font-bold text-primary' }, 'Auto ($0)')
                             ]),
                             h('label', { className: 'flex items-center gap-2 text-xs cursor-pointer mt-1' }, [
                                 h('input', { type: 'radio', name: 'rate-type', value: 'custom', checked: !!existing?.billing?.customPrice, onchange: (e) => {
-                                    form.querySelector('#asg-custom-price').disabled = false;
-                                    form.querySelector('#asg-custom-price').style.opacity = '1';
+                                    form.querySelector('#asg-custom-price-container').style.display = 'flex';
                                     form.querySelector('#asg-custom-price').focus();
                                 } }),
-                                h('span', {}, 'Tarifa Personalizada:')
+                                h('span', {}, 'Precio personalizado (Fijo o por minuto)')
                             ]),
-                            h('input', {
-                                id: 'asg-custom-price',
-                                type: 'number',
-                                className: 'form-input text-xs',
-                                placeholder: 'Ingresa valor en COP',
-                                defaultValue: existing?.billing?.customPrice || '',
-                                disabled: !existing?.billing?.customPrice,
-                                style: { opacity: existing?.billing?.customPrice ? '1' : '0.5', marginLeft: '24px', width: 'calc(100% - 24px)' }
-                            })
+                            h('div', {
+                                id: 'asg-custom-price-container',
+                                className: 'flex items-center gap-2',
+                                style: { 
+                                    display: existing?.billing?.customPrice ? 'flex' : 'none', 
+                                    marginLeft: '24px', 
+                                    marginTop: '8px',
+                                    background: 'var(--bg-primary)',
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    border: '1px dashed var(--border)'
+                                }
+                            }, [
+                                h('span', { className: 'text-xs text-muted font-bold' }, '$'),
+                                h('input', {
+                                    id: 'asg-custom-price',
+                                    type: 'number',
+                                    className: 'form-input text-xs font-bold text-accent',
+                                    placeholder: 'Valor',
+                                    defaultValue: existing?.billing?.customPrice || '',
+                                    style: { flex: '1', border: 'none', background: 'transparent', outline: 'none' }
+                                })
+                            ])
                         ])
                     ])
                 ]),
@@ -1309,6 +1362,15 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                 
                 if (hasExplicitCustomPrice) {
                     billingAmount = asg.billing.customPrice;
+                } else if (asg.billing?.rateCardId === 'default') {
+                    const systemPricing = await dbService.getById('system_config', 'pricing') || {};
+                    if (asg.type === 'Grabación' || asg.type === 'Creador 360° (Grabación + Edición)') {
+                        billingAmount = (systemPricing.precioMinutoGrabacion || 25000) * (asg.billing.minutes || 0);
+                    } else if (asg.type === 'Edición') {
+                        billingAmount = asg.videoLength === 'long' ? (systemPricing.precioVideoLargo || 25000) : (systemPricing.precioVideoCorto || 15000);
+                    } else if (asg.type === 'Subida') {
+                        billingAmount = systemPricing.precioSubidaRedes || 5000;
+                    }
                 } else if (asg.billing?.rateCardId) {
                     const rates = await invoiceService.getRateCards();
                     const rate = rates.find(r => r.id === asg.billing.rateCardId);
@@ -1630,6 +1692,7 @@ export function openMasterPipelineModal(context = {}) {
             billingCam: getBilling('#mp-rate-cam'),
             billingCamSupport: getBilling('#mp-rate-cam-support'),
             billingEd: getBilling('#mp-rate-ed'),
+            videoLengthEd: form.querySelector('#mp-ed-length')?.value || 'short',
             billingUp: getBilling('#mp-rate-up'),
             linkedScript: finalScriptUrl,
             linkedAsset: finalAssetUrl,
@@ -1654,9 +1717,16 @@ export function openMasterPipelineModal(context = {}) {
     const clientsHtml = (context.clients || []).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     const scriptsHtml = (context.scripts || []).map(s => `<option value="${s.script}">[${s.client}] ${s.title}</option>`).join('');
     const assetsHtml = (context.assets || []).map(a => `<option value="${a.url || a.thumbnail}">[${a.client}] ${a.title}</option>`).join('');
-    const ratesHtml = (context.rates || []).map(r => `<option value="${r.id}">${r.name} ($${r.basePrice})</option>`).join('');
-    const rateOptionsHtml = `<option value="">-- Sin Tarifa (Manual) --</option>${ratesHtml}<option value="custom">Precio Personalizado</option>`;
+    const pGrab = context.systemPricing?.precioMinutoGrabacion || 25000;
+    const pEdCorto = context.systemPricing?.precioVideoCorto || 15000;
+    const pEdLargo = context.systemPricing?.precioVideoLargo || 25000;
+    const pSubida = context.systemPricing?.precioSubidaRedes || 5000;
 
+    const rateOptionsCam = `<option value="default">Auto ($${pGrab.toLocaleString('es-CO')} / min)</option><option value="custom">Precio Personalizado</option>`;
+    const rateOptionsEdCorto = `<option value="default">Auto ($${pEdCorto.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
+    const rateOptionsEdLargo = `<option value="default">Auto ($${pEdLargo.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
+    const rateOptionsUp = `<option value="default">Auto ($${pSubida.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
+    
     const modalHTML = `
         <form class="modal-container" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header" style="background: linear-gradient(135deg, var(--success), #10b981); color: white;">
@@ -1722,7 +1792,7 @@ export function openMasterPipelineModal(context = {}) {
                             </div>
                             <div class="form-group">
                                 <label class="form-label text-[10px]">Tarifa Principal</label>
-                                <select id="mp-rate-cam" class="form-select text-[10px]">${rateOptionsHtml}</select>
+                                <select id="mp-rate-cam" class="form-select text-[10px]">${rateOptionsCam}</select>
                             </div>
                         </div>
                         <div class="form-group mt-2">
@@ -1731,7 +1801,7 @@ export function openMasterPipelineModal(context = {}) {
                         </div>
                         <div class="form-group mt-2" style="background: rgba(var(--warning-rgb),0.06); border: 1px dashed rgba(var(--warning-rgb),0.3); border-radius: 6px; padding: 8px;">
                             <label class="form-label text-[10px]" style="color: var(--warning);">Tarifa de Apoyo (por persona)</label>
-                            <select id="mp-rate-cam-support" class="form-select text-[10px]">${rateOptionsHtml}</select>
+                            <select id="mp-rate-cam-support" class="form-select text-[10px]">${rateOptionsCam}</select>
                         </div>
                     </div>
 
@@ -1742,14 +1812,21 @@ export function openMasterPipelineModal(context = {}) {
                             <h4 class="text-xs font-bold">Fase 2: Edición (Automática)</h4>
                             <input type="date" id="mp-due-ed" class="form-input text-[10px]" style="width:110px; padding:2px;" required>
                         </div>
-                        <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+                        <div class="grid gap-2" style="grid-template-columns: 1fr 1fr 1fr;">
                             <div class="form-group">
                                 <label class="form-label text-[10px]">Asignar a</label>
                                 <select id="mp-ed" class="form-select text-[10px]"><option value="">-- Omitir Fase --</option>${usersHtml}</select>
                             </div>
                             <div class="form-group">
+                                <label class="form-label text-[10px]">Duración</label>
+                                <select id="mp-ed-length" class="form-select text-[10px]" onchange="document.getElementById('mp-rate-ed').innerHTML = this.value === 'long' ? '${rateOptionsEdLargo.replace(/"/g, '&quot;')}' : '${rateOptionsEdCorto.replace(/"/g, '&quot;')}';">
+                                    <option value="short">Corto (< 60s)</option>
+                                    <option value="long">Largo (> 60s)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label text-[10px]">Tarifa</label>
-                                <select id="mp-rate-ed" class="form-select text-[10px]">${rateOptionsHtml}</select>
+                                <select id="mp-rate-ed" class="form-select text-[10px]">${rateOptionsEdCorto}</select>
                             </div>
                         </div>
                     </div>
@@ -1768,7 +1845,7 @@ export function openMasterPipelineModal(context = {}) {
                             </div>
                             <div class="form-group">
                                 <label class="form-label text-[10px]">Tarifa</label>
-                                <select id="mp-rate-up" class="form-select text-[10px]">${rateOptionsHtml}</select>
+                                <select id="mp-rate-up" class="form-select text-[10px]">${rateOptionsUp}</select>
                             </div>
                         </div>
                         <div class="form-group mt-2">

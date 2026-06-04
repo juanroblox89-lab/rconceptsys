@@ -162,7 +162,8 @@ export const assignmentService = {
                 createdBy: 'system_automator',
                 linkedScript: data.linkedScript || '',
                 linkedAsset: data.linkedAsset || '',
-                billing: data.billingEd || null
+                billing: data.billingEd || null,
+                videoLength: data.videoLengthEd || 'short'
             });
         }
 
