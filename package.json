@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --port 5173 --open",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clean": "node -e \"const fs=require('fs'); ['dist','node_modules/.vite'].forEach(p=>fs.existsSync(p)&&fs.rmSync(p,{recursive:true,force:true}));\""
   },
   "devDependencies": {
     "vite": "^5.2.0"
