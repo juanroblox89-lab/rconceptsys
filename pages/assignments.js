@@ -1040,18 +1040,8 @@ export const render = async () => {
                             h('option', { value: 'Estrategia', selected: existing?.type === 'Estrategia' }, 'Estrategia y Guiones'),
                             h('option', { value: 'Revisión', selected: existing?.type === 'Revisión' }, 'Revisión de Calidad (QA)')
                         ])
-                    ])
-                ]),
-                h('div', { id: 'asg-video-length-container', className: 'form-group mb-2', style: { display: existing?.type === 'Edición' ? 'block' : 'none' } }, [
-                    h('label', { className: 'form-label' }, 'Duración del Video (Afecta tarifa automática)'),
-                    h('select', { id: 'asg-video-length', className: 'form-select text-xs', onchange: () => {
-                        if (window.updateDefaultRateLabel) window.updateDefaultRateLabel();
-                    } }, [
-                        h('option', { value: 'short', selected: existing?.videoLength !== 'long' }, 'Corto (< 60s)'),
-                        h('option', { value: 'long', selected: existing?.videoLength === 'long' }, 'Largo (> 60s)')
-                    ])
-                ]),
-                user.role === 'admin' ? h('div', { className: 'form-group' }, [
+                    ]),
+                    user.role === 'admin' ? h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Estado'),
                         h('select', { id: 'asg-status', className: 'form-select text-xs text-info font-bold' }, [
                             h('option', { value: 'blocked', selected: existing?.status === 'blocked' }, 'En espera (Blocked)'),
@@ -1063,6 +1053,15 @@ export const render = async () => {
                         ])
                     ]) : null
                 ].filter(Boolean)),
+                h('div', { id: 'asg-video-length-container', className: 'form-group mb-2', style: { display: existing?.type === 'Edición' ? 'block' : 'none' } }, [
+                    h('label', { className: 'form-label' }, 'Duración del Video (Afecta tarifa automática)'),
+                    h('select', { id: 'asg-video-length', className: 'form-select text-xs', onchange: () => {
+                        if (window.updateDefaultRateLabel) window.updateDefaultRateLabel();
+                    } }, [
+                        h('option', { value: 'short', selected: existing?.videoLength !== 'long' }, 'Corto (< 60s)'),
+                        h('option', { value: 'long', selected: existing?.videoLength === 'long' }, 'Largo (> 60s)')
+                    ])
+                ]),
                 h('div', { className: 'form-group' }, [
                     h('div', { className: 'flex justify-between items-center w-full mb-1' }, [
                         h('label', { className: 'form-label m-0' }, 'Cliente'),
