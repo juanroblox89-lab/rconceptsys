@@ -176,15 +176,14 @@ export const assignmentService = {
                 type: 'Subida',
                 client: data.client || 'General',
                 title: `[Subida] ${data.title}`,
-                description: data.description || '',
+                description: (data.description || '') + (data.uploadLink ? `\n\n📌 Instrucciones de Subida:\n${data.uploadLink}` : ''),
                 assignedDate: new Date().toISOString(),
                 dueDate: data.dueDateUp || data.dueDate,
                 status: stagesToCreate.filter(s => s.stageIndex >= 0).length === 0 ? 'Pendiente' : 'blocked',
                 createdBy: 'system_automator',
                 linkedScript: data.linkedScript || '',
                 linkedAsset: data.linkedAsset || '',
-                billing: data.billingUp || null,
-                uploadLink: data.uploadLink || ''
+                billing: data.billingUp || null
             });
         }
 

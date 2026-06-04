@@ -582,7 +582,7 @@ export const render = async () => {
                                     ]),
                                     allDone ? h('span', { className: 'badge badge-success text-[10px]' }, 'Finalizado') : null
                                 ]),
-                                h('div', { className: 'flex items-center w-full gap-2 relative' }, [
+                                h('div', { className: 'flex items-center w-full gap-2 relative', style: { overflowX: 'auto', paddingBottom: '8px' } }, [
                                     // Connecting line
                                     h('div', { 
                                         className: 'absolute', 
@@ -642,7 +642,7 @@ export const render = async () => {
                                         className: 'btn btn-outline text-[10px] py-1 px-2 flex-1 mr-2',
                                         style: { borderColor: 'var(--accent)', color: 'var(--accent)' },
                                         onClick: () => {
-                                            window.location.hash = `#ai-assistant?client=${tasks[0]?.client || ''}&context=Pipeline_${pid}`;
+                                            window.location.hash = `#aiAssistant?client=${tasks[0]?.client || ''}&context=Pipeline_${pid}`;
                                         }
                                     }, [icon('bot', 12), h('span', {}, 'Preguntar a RIA')]),
                                     user?.role === 'admin' ? h('button', {
@@ -1183,7 +1183,7 @@ export const render = async () => {
                                 btn.disabled = true;
                                 btn.textContent = 'Archivando...';
                                 try {
-                                    await assignmentService.updateAssignment(existing.id, { status: 'Archivado' });
+                                    await dbService.update('assignments', existing.id, { status: 'Archivado' });
                                     document.body.removeChild(overlay);
                                     loadAndRender();
                                 } catch(err) {
