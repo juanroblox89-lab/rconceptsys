@@ -4,7 +4,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     function isMasterAdmin() {
-      return request.auth != null && request.auth.token.email != null && (request.auth.token.email.toLowerCase() == 'juanroblox89@gmail.com' || request.auth.token.email.toLowerCase() == 'juanroblox89@rohlfing.com');
+      let email = request.auth.token.email.toLowerCase();
+      return request.auth != null && request.auth.token.email != null && (
+        email == 'juanroblox89@gmail.com' || 
+        email == 'juanroblox89@rohlfing.com' ||
+        email == 'samuelrohlfing49@gmail.com'
+      );
     }
 
     // Función auxiliar para verificar si el usuario es administrador

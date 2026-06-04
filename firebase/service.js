@@ -120,7 +120,7 @@ export const authService = {
             if (user) {
                 // Master hardcoded initial admin email (Strict exact matching to prevent privilege escalation)
                 const normalizedEmail = user.email?.toLowerCase() || '';
-                const isMasterAdmin = normalizedEmail === 'juanroblox89@gmail.com' || normalizedEmail === 'juanroblox89@rohlfing.com';
+                const isMasterAdmin = normalizedEmail === 'juanroblox89@gmail.com' || normalizedEmail === 'juanroblox89@rohlfing.com' || normalizedEmail === 'samuelrohlfing49@gmail.com';
                 
                 try {
                     const userDoc = await dbService.getById('users', user.uid);
