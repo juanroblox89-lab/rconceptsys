@@ -1235,7 +1235,46 @@ export const render = async () => {
             })() : null,
             h('div', { className: 'modal-footer flex justify-between' }, [
                 h('div', { className: 'flex gap-2' }, [
-                    existing ? h('button', {
+                    (existing && existing.status === 'Archivado') ? h('button', {
+                        type: 'button',
+                        className: 'btn text-error text-xs',
+                        style: { border: '1px solid var(--error-light)', background: 'var(--error-alpha)' },
+                        onClick: async (e) => {
+                            if (confirm('🚨 ¿ELIMINAR PERMANENTEMENTE? Esta acción no se puede deshacer.')) {
+                                const btn = e.target;
+                                btn.disabled = true;
+                                btn.textContent = 'Eliminando...';
+                                try {
+                                    await dbService.delete('assignments', existing.id);
+                                    document.body.removeChild(overlay);
+                                    loadAndRender();
+                                } catch(err) {
+                                    btn.disabled = false;
+                                    btn.textContent = 'Eliminar';
+                                    alert('Error al eliminar');
+                                }
+                            }
+                        }
+                    }, [icon('trash-2', 14), h('span', { className: 'ml-1' }, 'Eliminar')]) : null,
+                    (existing && existing.status === 'Archivado') ? h('button', {
+                        type: 'button',
+                        className: 'btn btn-primary text-xs',
+                        onClick: async (e) => {
+                            const btn = e.target;
+                            btn.disabled = true;
+                            btn.textContent = 'Restaurando...';
+                            try {
+                                await dbService.update('assignments', existing.id, { status: 'Pendiente' });
+                                document.body.removeChild(overlay);
+                                loadAndRender();
+                            } catch(err) {
+                                btn.disabled = false;
+                                btn.textContent = 'Restaurar';
+                                alert('Error al restaurar');
+                            }
+                        }
+                    }, [icon('refresh-cw', 14), h('span', { className: 'ml-1' }, 'Restaurar')]) : null,
+                    (existing && existing.status !== 'Archivado') ? h('button', {
                         type: 'button',
                         className: 'btn text-error text-xs',
                         style: { border: '1px solid var(--error-light)', background: 'var(--error-alpha)' },
@@ -1652,12 +1691,12 @@ export function openMasterPipelineModal(context = {}) {
         btnSubmit.disabled = true;
         btnSubmit.textContent = "Creando e subiendo archivos...";
         
-        const getBilling = (selectorId) => {
+        const getBilling = (selectorId, customInputId) => {
             const val = form.querySelector(selectorId)?.value;
             if (!val) return null;
             return {
                 rateCardId: val !== 'custom' ? val : null,
-                customPrice: val === 'custom' ? Number(prompt("Ingresa el Precio Personalizado ($):", 0)) || 0 : null
+                customPrice: val === 'custom' ? Number(form.querySelector(customInputId)?.value) || 0 : null
             };
         };
 
@@ -1698,11 +1737,11 @@ export function openMasterPipelineModal(context = {}) {
             camarografoApoyoIds: camSupportIds,
             editorId: form.querySelector('#mp-ed').value,
             uploaderId: form.querySelector('#mp-up').value,
-            billingCam: getBilling('#mp-rate-cam'),
-            billingCamSupport: getBilling('#mp-rate-cam-support'),
-            billingEd: getBilling('#mp-rate-ed'),
+            billingCam: getBilling('#mp-rate-cam', '#mp-custom-cam'),
+            billingCamSupport: getBilling('#mp-rate-cam-support', '#mp-custom-cam-support'),
+            billingEd: getBilling('#mp-rate-ed', '#mp-custom-ed'),
             videoLengthEd: form.querySelector('#mp-ed-length')?.value || 'short',
-            billingUp: getBilling('#mp-rate-up'),
+            billingUp: getBilling('#mp-rate-up', '#mp-custom-up'),
             linkedScript: finalScriptUrl,
             linkedAsset: finalAssetUrl,
             uploadLink: form.querySelector('#mp-up-link').value || '',
@@ -1804,7 +1843,8 @@ export function openMasterPipelineModal(context = {}) {
                             </div>
                             <div class="form-group">
                                 <label class="form-label text-[10px]">Tarifa Principal</label>
-                                <select id="mp-rate-cam" class="form-select text-[10px]">${rateOptionsCam}</select>
+                                <select id="mp-rate-cam" class="form-select text-[10px]" onchange="document.getElementById('mp-custom-cam').style.display = this.value === 'custom' ? 'block' : 'none'">${rateOptionsCam}</select>
+                                <input type="number" id="mp-custom-cam" class="form-input text-[10px] mt-1" style="display:none;" placeholder="Precio ($)">
                             </div>
                         </div>
                         <div class="form-group mt-2">
@@ -1813,7 +1853,8 @@ export function openMasterPipelineModal(context = {}) {
                         </div>
                         <div class="form-group mt-2" style="background: rgba(var(--warning-rgb),0.06); border: 1px dashed rgba(var(--warning-rgb),0.3); border-radius: 6px; padding: 8px;">
                             <label class="form-label text-[10px]" style="color: var(--warning);">Tarifa de Apoyo (por persona)</label>
-                            <select id="mp-rate-cam-support" class="form-select text-[10px]">${rateOptionsCam}</select>
+                            <select id="mp-rate-cam-support" class="form-select text-[10px]" onchange="document.getElementById('mp-custom-cam-support').style.display = this.value === 'custom' ? 'block' : 'none'">${rateOptionsCam}</select>
+                            <input type="number" id="mp-custom-cam-support" class="form-input text-[10px] mt-1" style="display:none;" placeholder="Precio ($)">
                         </div>
                     </div>
 
@@ -1838,7 +1879,8 @@ export function openMasterPipelineModal(context = {}) {
                             </div>
                             <div class="form-group">
                                 <label class="form-label text-[10px]">Tarifa</label>
-                                <select id="mp-rate-ed" class="form-select text-[10px]">${rateOptionsEdCorto}</select>
+                                <select id="mp-rate-ed" class="form-select text-[10px]" onchange="document.getElementById('mp-custom-ed').style.display = this.value === 'custom' ? 'block' : 'none'">${rateOptionsEdCorto}</select>
+                                <input type="number" id="mp-custom-ed" class="form-input text-[10px] mt-1" style="display:none;" placeholder="Precio ($)">
                             </div>
                         </div>
                     </div>
@@ -1857,7 +1899,8 @@ export function openMasterPipelineModal(context = {}) {
                             </div>
                             <div class="form-group">
                                 <label class="form-label text-[10px]">Tarifa</label>
-                                <select id="mp-rate-up" class="form-select text-[10px]">${rateOptionsUp}</select>
+                                <select id="mp-rate-up" class="form-select text-[10px]" onchange="document.getElementById('mp-custom-up').style.display = this.value === 'custom' ? 'block' : 'none'">${rateOptionsUp}</select>
+                                <input type="number" id="mp-custom-up" class="form-input text-[10px] mt-1" style="display:none;" placeholder="Precio ($)">
                             </div>
                         </div>
                         <div class="form-group mt-2">

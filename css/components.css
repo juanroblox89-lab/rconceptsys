@@ -9,11 +9,13 @@
 .sidebar {
     width: var(--sidebar-width);
     height: 100vh;
+    height: 100dvh; /* iOS safe area fix */
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border);
     position: fixed;
     left: 0;
     top: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
     padding: 20px 12px;
@@ -25,11 +27,14 @@
     will-change: transform;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
+    overscroll-behavior: contain;
 }
 
 @media (max-width: 768px) {
     .sidebar {
         z-index: var(--z-modal); /* Ensure it stays above everything when open on mobile */
+        height: 100%;
+        bottom: 0;
     }
 }
 
