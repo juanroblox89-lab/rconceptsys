@@ -4,7 +4,7 @@
  * Includes auto-deletion logic for tasks 2 days past their deadline.
  */
 import { dbService, db } from '../firebase/service.js';
-import { onSnapshot, collection } from "firebase/firestore";
+import { onSnapshot, collection, doc } from "firebase/firestore";
 
 export const assignmentService = {
     subscribeToAssignments(callback) {
@@ -189,9 +189,12 @@ export const assignmentService = {
         }
 
         try {
+            const batch = dbService.batch();
             for (const stage of stagesToCreate) {
-                await dbService.set('assignments', stage.id, stage);
+                const docRef = doc(db, 'assignments', stage.id);
+                batch.set(docRef, { ...stage, updatedAt: new Date().toISOString() }, { merge: true });
             }
+            await batch.commit();
         } catch (err) {
             console.warn("Error saving pipeline assignments to DB:", err);
         }

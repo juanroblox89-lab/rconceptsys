@@ -216,6 +216,15 @@ export const render = () => {
                 logoUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&q=80';
             }
 
+            let packageVal = form.querySelector('#cli-package').value === 'Personalizado' ? Number(form.querySelector('#cli-custom-limit').value || 0) : Number(form.querySelector('#cli-package').value || 0);
+            
+            if (packageVal < 0 || isNaN(packageVal)) {
+                alert("El paquete mensual debe ser un número válido mayor o igual a 0.");
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Guardar Perfil';
+                return;
+            }
+
             const payload = {
                 id: clientId,
                 name: nameVal,
@@ -227,7 +236,7 @@ export const render = () => {
                 assets: existingClient?.assets || [],
                 logo: logoUrl,
                 recommendedLinks: existingClient?.recommendedLinks || [],
-                packageLimit: form.querySelector('#cli-package').value === 'Personalizado' ? Number(form.querySelector('#cli-custom-limit').value || 0) : Number(form.querySelector('#cli-package').value || 0),
+                packageLimit: packageVal,
                 videosCompleted: existingClient?.videosCompleted || 0,
                 driveFolderUrl: form.querySelector('#cli-drive-url')?.value || existingClient?.driveFolderUrl || ''
             };

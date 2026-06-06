@@ -4,36 +4,36 @@
 */
 
 :root {
-    /* Colors - Premium Neutrals (Linear/Apple inspired) */
-    --bg-primary: #ffffff;
-    --bg-secondary: #fafafa;
-    --bg-tertiary: #f4f4f5;
-    --bg-elevated: #ffffff;
+    /* Colors - Premium Neutrals (Linear/Apple inspired) - Dark Mode by Default */
+    --bg-primary: #08090a;
+    --bg-secondary: #0e1012;
+    --bg-tertiary: #16191d;
+    --bg-elevated: #111316;
     
-    --accent-glow: rgba(0, 0, 0, 0.04);
-    --accent-glow-strong: rgba(0, 0, 0, 0.08);
+    --accent-glow: rgba(0, 0, 0, 0.4);
+    --accent-glow-strong: rgba(255, 255, 255, 0.05);
     
-    --success: #059669; /* refined green */
-    --success-bg: #d1fae5;
-    --warning: #d97706; /* refined amber */
-    --warning-bg: #fef3c7;
-    --error: #dc2626; /* refined red */
-    --error-bg: #fee2e2;
-    --info: #2563eb; /* refined blue */
-    --info-bg: #dbeafe;
+    --success: #10b981; /* refined green */
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --warning: #f59e0b; /* refined amber */
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --error: #ef4444; /* refined red */
+    --error-bg: rgba(239, 68, 68, 0.15);
+    --info: #3b82f6; /* refined blue */
+    --info-bg: rgba(59, 130, 246, 0.15);
 
     /* Refined Typography Colors */
-    --text-primary: #09090b; /* zinc-950 */
-    --text-secondary: #52525b; /* zinc-600 */
-    --text-muted: #71717a; /* zinc-500 for better contrast */
+    --text-primary: #f4f4f5; /* zinc-100 */
+    --text-secondary: #a1a1aa; /* zinc-400 */
+    --text-muted: #71717a; /* zinc-500 */
     
-    --accent: #000000; /* Sophisticated black accent */
-    --accent-hover: #27272a;
-    --bg-accent: #f4f4f5;
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --bg-accent: #1e293b;
 
-    --border: rgba(0, 0, 0, 0.06);
-    --border-hover: rgba(0, 0, 0, 0.12);
-    --border-light: rgba(0, 0, 0, 0.03);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.15);
+    --border-light: rgba(255, 255, 255, 0.04);
 
     /* Z-Index Scale */
     --z-below: -1;
@@ -49,12 +49,12 @@
     --z-lightbox: 600;
 
     /* Shadows (Layered Premium) */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
-    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.06), 0 4px 8px rgba(0, 0, 0, 0.04), 0 0 0 1px var(--border);
-    --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.08), 0 8px 16px rgba(0, 0, 0, 0.04), 0 0 0 1px var(--border);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--border);
+    --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--border);
     --shadow-glow: 0 0 20px var(--accent-glow);
-    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.04);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
 
     /* Layout */
     --sidebar-width: 250px;
@@ -62,8 +62,8 @@
     --bottom-nav-height: 68px;
     --radius-sm: 6px;
     --radius-md: 10px;
-    --radius-lg: 16px;
-    --radius-xl: 24px;
+    --radius-lg: 12px;
+    --radius-xl: 20px;
     --radius-full: 9999px;
 
     /* Animation - Springy and snappy */
@@ -216,19 +216,19 @@ a, input, select, textarea {
    GLASS & PREMIUM MATERIALS
 ================================ */
 .glass {
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(10, 12, 16, 0.75);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: var(--shadow-glass), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-glass), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .glass-panel {
-    background: linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
+    background: linear-gradient(145deg, rgba(14, 16, 20, 0.9) 0%, rgba(8, 9, 10, 0.7) 100%);
     backdrop-filter: blur(24px) saturate(200%);
     -webkit-backdrop-filter: blur(24px) saturate(200%);
     border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 1);
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.04);
     border-radius: var(--radius-lg);
 }
 

@@ -15,21 +15,52 @@ service cloud.firestore {
       );
     }
 
-    // Protegemos únicamente lo más crítico (facturas globales y configuración maestra)
     match /admin_invoices/{docId} {
       allow read, write: if isAdmin();
     }
-    
     match /system_config/{docId} {
       allow read, write: if isAdmin();
     }
+    match /roles/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /clients/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /sops/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      // Admins can do anything. Users can create their own profile, and update their own data but CANNOT escalate privileges.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if isAdmin() || (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'allowedClients', 'marketingVisits']));
+      allow delete: if isAdmin();
+    }
 
-    // 🔓 REGLA LIBERADA:
-    // Para todas las demás colecciones (assignments, users, invoices de empleados, assets, chats, etc.),
-    // cualquier usuario que haya iniciado sesión (request.auth != null) puede leer y escribir.
-    // Esto erradica por completo los errores de "Missing or insufficient permissions" para los empleados.
-    // La seguridad recae en que la interfaz de usuario (el frontend) no les muestra botones que no deben tocar.
-    match /{document=**} {
+    match /chats/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /invoices/{docId} {
+      allow read, write: if request.auth != null; // Employees manage their own invoices
+    }
+
+    // Para tareas, assets, y otros elementos operativos del día a día, permitimos lectura/escritura a miembros
+    match /assignments/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /assets/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /visits/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /sop_submissions/{docId} {
       allow read, write: if request.auth != null;
     }
   }

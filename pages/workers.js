@@ -1,6 +1,6 @@
 /**
  * Workers Page - Creative Production OS
- * Admin-only: team management with role-based views, embedded assignments, and SOP progress.
+ * Admin-only: team management with role-based views, linear-style assignments, and detailed profiles.
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
@@ -16,6 +16,8 @@ const ROLE_META = {
     'administración digital': { label: 'Administración Digital', color: '#ec4899', icon: 'monitor', invoiceType: 'Factura Administrativa' },
     admin: { label: 'Administrador', color: '#ef4444', icon: 'shield', invoiceType: 'Factura Consolidada' }
 };
+
+let selectedWorkerId = null;
 
 export const render = () => {
     const { user } = store.getState();
@@ -49,6 +51,17 @@ export const render = () => {
 
         const workers = allUsers.filter(u => u.approved && u.role !== 'admin');
         container.innerHTML = '';
+
+        if (selectedWorkerId) {
+            const worker = workers.find(w => (w.uid || w.id) === selectedWorkerId);
+            if (worker) {
+                renderWorkerDetail(container, worker, assignments, clients, sops, roles, load);
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            } else {
+                selectedWorkerId = null;
+            }
+        }
 
         // Header
         container.appendChild(h('div', { className: 'content-header flex justify-between items-center w-full' }, [
@@ -101,9 +114,9 @@ export const render = () => {
             return;
         }
 
-        const grid = h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' } });
-        workers.forEach(w => grid.appendChild(renderWorkerCard(w, assignments, clients, sops, roles, load)));
-        container.appendChild(grid);
+        const listContainer = h('div', { className: 'flex-column gap-3 w-full' });
+        workers.forEach(w => listContainer.appendChild(renderWorkerRow(w, assignments, clients, sops, roles, load)));
+        container.appendChild(listContainer);
         if (window.lucide) window.lucide.createIcons();
     };
 
@@ -111,7 +124,8 @@ export const render = () => {
     return container;
 };
 
-function renderWorkerCard(w, assignments, clients, sops, roles, reload) {
+// Render worker horizontal card (Linear Style)
+function renderWorkerRow(w, assignments, clients, sops, roles, reload) {
     const roleDef = roles.find(r => r.id === w.role);
     const meta = {
         label: roleDef ? roleDef.label : w.role,
@@ -120,96 +134,248 @@ function renderWorkerCard(w, assignments, clients, sops, roles, reload) {
         invoiceType: (ROLE_META[w.role] && ROLE_META[w.role].invoiceType) ? ROLE_META[w.role].invoiceType : 'Factura General'
     };
     const myAsgs = assignments.filter(a => a.employeeId === (w.uid || w.id));
-    const pending = myAsgs.filter(a => a.status !== 'Completado');
-    const done = myAsgs.filter(a => a.status === 'Completado');
-
-    // SOP progress for this role
-    const roleSops = sops.filter(s => !s.targetRole || s.targetRole === w.role || s.targetRole === 'all');
-    const completedSteps = roleSops.reduce((sum, s) => sum + (s.steps || []).filter(st => st.done).length, 0);
-    const totalSteps = roleSops.reduce((sum, s) => sum + (s.steps || []).length, 0);
-    const sopPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    const pendingEditions = myAsgs.filter(a => a.status !== 'Completado' && a.type === 'Edición');
+    const pendingRecordings = myAsgs.filter(a => a.status !== 'Completado' && a.type === 'Grabación');
+    
+    // Build descriptive details
+    let summaryText = 'Sin tareas pendientes';
+    if (pendingEditions.length > 0 || pendingRecordings.length > 0) {
+        const parts = [];
+        if (pendingEditions.length > 0) {
+            const clientsStr = Array.from(new Set(pendingEditions.map(a => a.client))).slice(0, 2).join(', ');
+            parts.push(`${pendingEditions.length} Edición${pendingEditions.length > 1 ? 'es' : ''} pendiente${pendingEditions.length > 1 ? 's' : ''} (${clientsStr})`);
+        }
+        if (pendingRecordings.length > 0) {
+            const clientsStr = Array.from(new Set(pendingRecordings.map(a => a.client))).slice(0, 2).join(', ');
+            parts.push(`${pendingRecordings.length} Grabación${pendingRecordings.length > 1 ? 'es' : ''} programada${pendingRecordings.length > 1 ? 's' : ''} (${clientsStr})`);
+        }
+        summaryText = parts.join(' · ');
+    }
 
     const avatar = w.photoURL
-        ? h('img', { src: w.photoURL, style: { width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0 } })
+        ? h('img', { src: w.photoURL, style: { width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0 } })
         : h('div', {
             style: {
-                width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0, fontSize: '0.8rem',
+                width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0, fontSize: '0.75rem',
                 background: meta.color + '22', color: meta.color, display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontWeight: 700, border: `2px solid ${meta.color}44`
             }
         }, (w.nombre || w.email || 'US').slice(0, 2).toUpperCase());
 
-    return h('div', { className: 'card p-0 flex-column hover-border transition', style: { overflow: 'hidden' } }, [
-        // Color top strip
-        h('div', { style: { height: '3px', background: meta.color } }),
-        h('div', { className: 'p-4 flex-column gap-3' }, [
-            // Top: avatar + info + role badge
-            h('div', { className: 'flex items-center gap-3' }, [
-                avatar,
-                h('div', { className: 'flex-column gap-0.5', style: { flex: 1, minWidth: 0 } }, [
-                    h('span', { className: 'font-bold text-sm text-primary truncate' }, w.nombre || w.email?.split('@')[0]),
-                    h('span', { className: 'text-xs text-muted truncate' }, w.email),
-                    h('span', { className: 'badge text-xs mt-1', style: { background: meta.color + '22', color: meta.color, border: `1px solid ${meta.color}44`, width: 'fit-content' } }, meta.label)
+    return h('div', {
+        className: 'worker-horizontal-card',
+        onClick: () => { selectedWorkerId = w.uid || w.id; reload(); }
+    }, [
+        // Left: Profile & Avatar
+        h('div', { className: 'flex items-center gap-3', style: { flex: '1', minWidth: '220px' } }, [
+            avatar,
+            h('div', { className: 'flex-column gap-0.5' }, [
+                h('span', { className: 'font-bold text-sm text-primary' }, w.nombre || w.email?.split('@')[0]),
+                h('span', { className: 'text-xs text-muted' }, w.email)
+            ])
+        ]),
+
+        // Middle: Role Badge & Active Tasks summary
+        h('div', { className: 'flex items-center gap-4', style: { flex: '2', minWidth: '300px' } }, [
+            h('span', { className: 'badge text-xs', style: { background: meta.color + '15', color: meta.color, border: `1px solid ${meta.color}33`, width: 'fit-content' } }, meta.label),
+            h('span', { className: 'text-xs text-muted truncate', style: { maxWidth: '380px' } }, summaryText)
+        ]),
+
+        // Right: Control Buttons
+        h('div', { className: 'flex items-center gap-2', onClick: (e) => e.stopPropagation() }, [
+            h('button', {
+                className: 'btn btn-outline text-xs',
+                title: 'Ver Factura Personal',
+                onClick: () => { window.location.hash = `#billing`; }
+            }, [icon('credit-card', 12), h('span', { className: 'ml-1' }, 'Factura')]),
+            h('button', {
+                className: 'btn btn-outline text-xs',
+                title: 'Editar Asignaciones',
+                onClick: () => openWorkerAssignmentsPanel(w, myAsgs, clients, reload)
+            }, [icon('edit-3', 12)]),
+            h('button', {
+                className: 'btn btn-outline text-xs',
+                title: 'Cambiar Rol',
+                onClick: () => openChangeRoleModal(w, roles, reload)
+            }, [icon('refresh-cw', 12)])
+        ])
+    ]);
+}
+
+// 9. PERFIL COMPLETO DE EMPLEADO (Full Page)
+function renderWorkerDetail(container, w, assignments, clients, sops, roles, reload) {
+    const roleDef = roles.find(r => r.id === w.role);
+    const meta = {
+        label: roleDef ? roleDef.label : w.role,
+        color: (ROLE_META[w.role] && ROLE_META[w.role].color) ? ROLE_META[w.role].color : '#64748b',
+        icon: (ROLE_META[w.role] && ROLE_META[w.role].icon) ? ROLE_META[w.role].icon : 'user',
+        invoiceType: (ROLE_META[w.role] && ROLE_META[w.role].invoiceType) ? ROLE_META[w.role].invoiceType : 'Factura General'
+    };
+
+    const myAsgs = assignments.filter(a => a.employeeId === (w.uid || w.id));
+    const activeAsgs = myAsgs.filter(a => a.status !== 'Completado');
+    const doneAsgs = myAsgs.filter(a => a.status === 'Completado');
+    const lateAsgs = activeAsgs.filter(a => new Date(a.dueDate) < new Date());
+
+    // Clients assigned
+    const assignedClients = Array.from(new Set(myAsgs.map(a => a.client)));
+
+    // SOP status for employee's role
+    const roleSops = sops.filter(s => !s.targetRole || s.targetRole === w.role || s.targetRole === 'all');
+    const completedSteps = roleSops.reduce((sum, s) => sum + (s.steps || []).filter(st => st.done).length, 0);
+    const totalSteps = roleSops.reduce((sum, s) => sum + (s.steps || []).length, 0);
+    const sopPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+    // Header Back Row
+    container.appendChild(h('div', { className: 'flex items-center gap-2 mb-2' }, [
+        h('button', {
+            className: 'btn btn-outline text-xs flex items-center gap-1',
+            onClick: () => { selectedWorkerId = null; reload(); }
+        }, [icon('arrow-left', 12), h('span', {}, 'Volver a Workers')])
+    ]));
+
+    // 1. Hero completo
+    const avatarLarge = w.photoURL
+        ? h('img', { src: w.photoURL, style: { width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' } })
+        : h('div', {
+            style: {
+                width: '80px', height: '80px', borderRadius: '50%', fontSize: '1.8rem',
+                background: meta.color + '22', color: meta.color, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontWeight: 700, border: `3px solid ${meta.color}44`
+            }
+        }, (w.nombre || w.email || 'US').slice(0, 2).toUpperCase());
+
+    const hero = h('div', {
+        className: 'card p-6 flex justify-between items-center flex-wrap gap-4 w-full',
+        style: { background: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0) 100%)', borderLeft: `4px solid ${meta.color}` }
+    }, [
+        h('div', { className: 'flex items-center gap-4' }, [
+            avatarLarge,
+            h('div', { className: 'flex-column gap-1' }, [
+                h('div', { className: 'flex items-center gap-2' }, [
+                    h('h1', { className: 'text-xl font-bold m-0 text-primary' }, w.nombre || w.email?.split('@')[0]),
+                    h('span', { className: 'badge text-xs', style: { background: meta.color + '15', color: meta.color, border: `1px solid ${meta.color}33` } }, meta.label)
                 ]),
-                h('div', { className: 'flex gap-1' }, [
-                    h('button', { className: 'btn-icon text-muted', title: 'Ver Factura', onClick: () => window.location.hash = '#billing' }, [icon('credit-card', 14)]),
-                    h('button', { className: 'btn-icon text-muted', title: 'Gestionar Asignaciones', onClick: () => openWorkerAssignmentsPanel(w, myAsgs, clients, reload) }, [icon('list-checks', 14)])
-                ])
+                h('span', { className: 'text-xs text-muted' }, w.email),
+                h('span', { className: 'text-xs text-muted' }, `Estado: Activo · Trabajando con la agencia desde hace ${w.createdAt ? Math.max(1, Math.round((Date.now() - new Date(w.createdAt)) / (1000 * 60 * 60 * 24))) : 30} días`)
+            ])
+        ]),
+        h('div', { className: 'flex gap-2' }, [
+            h('button', {
+                className: 'btn btn-primary text-xs',
+                onClick: () => openAssignmentModal(null, { users: [w], preselectedUser: w.uid || w.id, clients, assignments: myAsgs, reload: () => renderWorkerDetail(container, w, assignments, clients, sops, roles, reload), sops })
+            }, [icon('plus', 12), h('span', {}, 'Asignar Trabajo')]),
+            h('button', {
+                className: 'btn btn-outline text-xs',
+                onClick: () => openChangeRoleModal(w, roles, () => reload())
+            }, 'Cambiar Rol')
+        ])
+    ]);
+    container.appendChild(hero);
+
+    // 2. Métricas
+    const metricsGrid = h('div', {
+        style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', width: '100%' }
+    }, [
+        h('div', { className: 'card p-4 flex-column gap-1 text-center' }, [
+            h('span', { className: 'text-2xl font-bold text-success' }, doneAsgs.filter(a => a.type === 'Edición').length),
+            h('span', { className: 'text-xs text-muted font-medium' }, 'Videos Editados')
+        ]),
+        h('div', { className: 'card p-4 flex-column gap-1 text-center' }, [
+            h('span', { className: 'text-2xl font-bold text-accent' }, doneAsgs.filter(a => a.type === 'Grabación').length),
+            h('span', { className: 'text-xs text-muted font-medium' }, 'Grabaciones')
+        ]),
+        h('div', { className: 'card p-4 flex-column gap-1 text-center' }, [
+            h('span', { className: 'text-2xl font-bold text-warning' }, myAsgs.filter(a => a.status === 'blocked').length),
+            h('span', { className: 'text-xs text-muted font-medium' }, 'Correcciones / Bloqueadas')
+        ]),
+        h('div', { className: 'card p-4 flex-column gap-1 text-center' }, [
+            h('span', { className: `text-2xl font-bold ${lateAsgs.length > 0 ? 'text-error' : 'text-muted'}` }, lateAsgs.length),
+            h('span', { className: 'text-xs text-muted font-medium' }, 'Retrasos Acumulados')
+        ])
+    ]);
+    container.appendChild(metricsGrid);
+
+    // Split Layout below
+    const columns = h('div', { style: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', width: '100%' } }, [
+        // Left Column
+        h('div', { className: 'flex-column gap-4' }, [
+            // Active assignments
+            h('div', { className: 'card p-5 flex-column gap-3' }, [
+                h('h3', { className: 'text-sm font-bold border-bottom pb-2' }, 'Asignaciones Activas'),
+                activeAsgs.length === 0
+                    ? h('p', { className: 'text-xs text-muted italic p-2' }, 'Sin asignaciones activas en este momento.')
+                    : h('div', { className: 'flex-column gap-2' }, activeAsgs.map(a => {
+                        const statusClass = a.status === 'En Proceso' ? 'info' : 'warning';
+                        return h('div', { className: 'p-3 bg-tertiary rounded flex justify-between items-center', style: { border: '1px solid var(--border)' } }, [
+                            h('div', { className: 'flex-column gap-0.5' }, [
+                                h('span', { className: 'text-xs font-bold text-primary' }, `${a.client}: ${a.title}`),
+                                h('span', { className: 'text-xs text-muted' }, `Fecha Límite: ${new Date(a.dueDate).toLocaleDateString('es-ES')}`)
+                            ]),
+                            h('div', { className: 'flex items-center gap-2' }, [
+                                h('span', { className: `badge badge-${statusClass} text-xs` }, a.status),
+                                h('button', {
+                                    className: 'btn btn-outline text-xs p-1',
+                                    title: 'Editar Asignación',
+                                    onClick: () => openAssignmentModal(a, { users: [w], preselectedUser: w.uid || w.id, clients, reload: () => reload() })
+                                }, [icon('edit-2', 12)])
+                            ])
+                        ]);
+                    }))
             ]),
 
-            // Stats row
-            h('div', { className: 'flex gap-3 text-xs', style: { borderTop: '1px solid var(--border)', paddingTop: '10px' } }, [
-                h('div', { className: 'flex-column items-center gap-0.5', style: { flex: 1, textAlign: 'center' } }, [
-                    h('span', { className: 'font-bold text-primary' }, pending.length),
-                    h('span', { className: 'text-muted', style: { fontSize: '0.6rem' } }, 'Pendientes')
+            // History
+            h('div', { className: 'card p-5 flex-column gap-3' }, [
+                h('h3', { className: 'text-sm font-bold border-bottom pb-2' }, 'Historial Reciente'),
+                doneAsgs.length === 0
+                    ? h('p', { className: 'text-xs text-muted italic p-2' }, 'No hay historial de tareas completadas.')
+                    : h('div', { className: 'flex-column gap-2' }, doneAsgs.slice(0, 5).map(a => 
+                        h('div', { className: 'p-3 bg-tertiary rounded flex justify-between items-center', style: { border: '1px solid var(--border)', opacity: 0.8 } }, [
+                            h('div', { className: 'flex-column gap-0.5' }, [
+                                h('span', { className: 'text-xs font-bold text-primary' }, `${a.client}: ${a.title}`),
+                                h('span', { className: 'text-xs text-muted' }, `Completada el ${new Date(a.createdAt || Date.now()).toLocaleDateString('es-ES')}`)
+                            ]),
+                            h('span', { className: 'badge badge-success text-xs' }, 'Completado')
+                        ])
+                    ))
+            ])
+        ]),
+
+        // Right Column
+        h('div', { className: 'flex-column gap-4' }, [
+            // Billing Summary
+            h('div', { className: 'card p-5 flex-column gap-3' }, [
+                h('h3', { className: 'text-sm font-bold border-bottom pb-2' }, 'Facturación (Mes Actual)'),
+                h('div', { className: 'flex justify-between items-center text-xs' }, [
+                    h('span', { className: 'text-muted' }, 'Tipo de Cobro:'),
+                    h('span', { className: 'font-semibold' }, meta.invoiceType)
                 ]),
-                h('div', { style: { width: '1px', background: 'var(--border)' } }),
-                h('div', { className: 'flex-column items-center gap-0.5', style: { flex: 1, textAlign: 'center' } }, [
-                    h('span', { className: 'font-bold text-success' }, done.length),
-                    h('span', { className: 'text-muted', style: { fontSize: '0.6rem' } }, 'Completadas')
+                h('div', { className: 'flex justify-between items-center text-xs' }, [
+                    h('span', { className: 'text-muted' }, 'SOP Completados:'),
+                    h('span', { className: 'font-semibold text-accent' }, `${sopPct}%`)
                 ]),
-                h('div', { style: { width: '1px', background: 'var(--border)' } }),
-                h('div', { className: 'flex-column items-center gap-0.5', style: { flex: 1, textAlign: 'center' } }, [
-                    h('span', { className: 'font-bold text-accent' }, `${sopPct}%`),
-                    h('span', { className: 'text-muted', style: { fontSize: '0.6rem' } }, 'SOPs')
-                ])
-            ]),
-
-            // Pending tasks preview
-            pending.length > 0 ? h('div', { className: 'flex-column gap-1', style: { borderTop: '1px solid var(--border)', paddingTop: '10px' } },
-                pending.slice(0, 2).map(a => {
-                    const due = new Date(a.dueDate);
-                    const isLate = due < new Date();
-                    return h('div', { className: 'flex justify-between items-center text-xs p-2 rounded', style: { background: 'var(--bg-tertiary)', borderRadius: '4px' } }, [
-                        h('span', { className: 'truncate text-secondary font-medium', style: { maxWidth: '200px' } }, `${a.client}: ${a.title}`),
-                        h('span', { className: isLate ? 'text-error font-bold' : 'text-muted', style: { fontSize: '0.6rem', flexShrink: 0 } },
-                            due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }))
-                    ]);
-                })
-            ) : null,
-
-            // Invoice type info
-            h('div', { className: 'flex items-center gap-2 text-xs', style: { borderTop: '1px solid var(--border)', paddingTop: '8px' } }, [
-                icon('file-text', 11, 'text-muted'),
-                h('span', { className: 'text-muted' }, meta.invoiceType),
-                h('a', { href: '#billing', className: 'ml-auto text-accent', style: { fontSize: '0.6rem' } }, 'Ver factura →')
-            ]),
-
-            // Actions
-            h('div', { className: 'flex gap-2', style: { borderTop: '1px solid var(--border)', paddingTop: '10px' } }, [
+                h('div', { className: 'flex justify-between items-center text-xs border-top pt-2 mt-1' }, [
+                    h('span', { className: 'font-bold' }, 'Total Facturado:'),
+                    h('span', { className: 'font-bold text-success text-sm' }, `$${(doneAsgs.length * 15000).toLocaleString('es-CO')} COP`)
+                ]),
                 h('button', {
-                    className: 'btn btn-outline text-xs flex-1',
-                    style: { fontSize: '0.65rem' },
-                    onClick: () => openAssignmentModal(null, { users: [w], preselectedUser: w.uid || w.id, clients, assignments: myAsgs, reload, sops })
-                }, [icon('plus', 11), h('span', {}, 'Asignar')]),
-                h('button', {
-                    className: 'btn btn-outline text-xs flex-1',
-                    style: { fontSize: '0.65rem' },
-                    onClick: () => openChangeRoleModal(w, roles, reload)
-                }, [icon('refresh-cw', 11), h('span', {}, 'Cambiar Rol')])
+                    className: 'btn btn-outline text-xs w-full justify-center mt-2',
+                    onClick: () => { window.location.hash = '#billing'; }
+                }, 'Ir a Pagos Pendientes')
+            ]),
+
+            // Assigned Clients
+            h('div', { className: 'card p-5 flex-column gap-3' }, [
+                h('h3', { className: 'text-sm font-bold border-bottom pb-2' }, 'Clientes Asignados'),
+                assignedClients.length === 0
+                    ? h('p', { className: 'text-xs text-muted italic' }, 'Sin clientes asignados.')
+                    : h('div', { className: 'flex gap-1.5 flex-wrap' }, assignedClients.map(c => 
+                        h('span', { className: 'badge badge-secondary text-xs' }, c)
+                    ))
             ])
         ])
     ]);
+    container.appendChild(columns);
 }
 
 function openWorkerAssignmentsPanel(w, asgs, clients, reload) {
@@ -270,7 +436,6 @@ function openChangeRoleModal(w, roles, reload) {
         ...activeRoles.map(r => h('option', { value: r.id }, r.label)),
         (!activeRoles.find(r => r.id === w.role)) ? h('option', { value: w.role }, w.role) : null
     ].filter(Boolean));
-    // Force correct value
     setTimeout(() => { select.value = w.role || ''; }, 0);
 
     const modal = h('div', { className: 'modal-container', style: { maxWidth: '380px' } }, [

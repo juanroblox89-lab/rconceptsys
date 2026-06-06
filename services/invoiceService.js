@@ -172,7 +172,7 @@ export const invoiceService = {
                         `"${inv.employeeName || inv.employeeId || ''}"`,
                         `"${item.type || inv.type || ''}"`,
                         `"${item.client || inv.client || ''}"`,
-                        item.amount || 0,
+                        `"${String(item.amount || 0).replace('.', ',')}"`,
                         `"${item.createdAt ? new Date(item.createdAt).toLocaleDateString('es-CO') : ''}"`,
                         `"${inv.status || ''}"`,
                         `"${(item.observations || '').replace(/"/g, '""')}"`
@@ -183,7 +183,7 @@ export const invoiceService = {
                     `"${inv.employeeName || inv.employeeId || ''}"`,
                     `"${inv.type || ''}"`,
                     `"${inv.client || ''}"`,
-                    inv.amount || 0,
+                    `"${String(inv.amount || 0).replace('.', ',')}"`,
                     `"${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('es-CO') : ''}"`,
                     `"${inv.status || ''}"`,
                     `"${(inv.observations || '').replace(/"/g, '""')}"`
@@ -213,12 +213,16 @@ export const invoiceService = {
                 dbService.getAll('admin_invoices').catch(() => [])
             ]);
 
-            const deletePromises = [
-                ...empInvoices.map(inv => dbService.delete('invoices', inv.id)),
-                ...admInvoices.map(inv => dbService.delete('admin_invoices', inv.id))
-            ];
+            const batch = dbService.batch();
+            
+            empInvoices.forEach(inv => {
+                batch.delete(doc(db, 'invoices', inv.id));
+            });
+            admInvoices.forEach(inv => {
+                batch.delete(doc(db, 'admin_invoices', inv.id));
+            });
 
-            await Promise.all(deletePromises);
+            await batch.commit();
             return { deleted: empInvoices.length + admInvoices.length };
         } catch (err) {
             console.error("Error resetting invoices:", err);

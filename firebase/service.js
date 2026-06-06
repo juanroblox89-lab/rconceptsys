@@ -2,7 +2,7 @@
  * Firebase Service Wrapper - Creative Production OS
  */
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
@@ -108,6 +108,10 @@ export const dbService = {
             console.error(`Error deleting ${collectionName}/${id}:`, error);
             throw error;
         }
+    },
+    
+    batch() {
+        return writeBatch(db);
     }
 };
 

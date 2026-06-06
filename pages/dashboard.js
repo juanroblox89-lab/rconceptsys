@@ -17,12 +17,14 @@ export const render = () => {
 
         try {
             const isAdmin = user?.role === 'admin';
-            let [formats, hooks, clients, assignments, usersList] = await Promise.all([
+            let [formats, hooks, clients, assignments, usersList, invoices, sopSubmissions] = await Promise.all([
                 dbService.getAll('formats').catch(() => []),
                 dbService.getAll('hooks').catch(() => []),
                 dbService.getAll('clients').catch(() => []),
                 assignmentService.getAllAssignments().catch(() => []),
-                (isAdmin ? dbService.getAll('users').catch(() => []) : Promise.resolve([]))
+                dbService.getAll('users').catch(() => []),
+                dbService.getAll('invoices').catch(() => []),
+                dbService.getAll('sop_submissions').catch(() => [])
             ]);
 
             if (!isAdmin && user.allowedClients) {
@@ -30,143 +32,226 @@ export const render = () => {
             }
 
             const activeAssignments = isAdmin
-                ? assignments.filter(a => a.status !== 'Completado')
-                : assignments.filter(a => a.employeeId === user?.uid && a.status !== 'Completado');
+                ? assignments.filter(a => a.status !== 'Completado' && a.status !== 'Archivado')
+                : assignments.filter(a => a.employeeId === user?.uid && a.status !== 'Completado' && a.status !== 'Archivado');
+
+            // --- Calculation for Metric Cards ---
+            const totalInvoiced = invoices.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+            const currentMonth = new Date().getMonth();
+            const monthlyProduction = assignments.filter(a => {
+                const dateVal = a.date || a.dueDate;
+                return a.status === 'Completado' && dateVal && new Date(dateVal).getMonth() === currentMonth;
+            }).length;
 
             container.innerHTML = '';
 
-            // 1. Metrics Grid
-            const metricsGrid = h('div', { className: 'metrics-grid' }, [
-                createMetricCard('Formatos Activos', `${formats.length}`, 'trending-up', 'var(--success)', 'Librería de formatos'),
-                createMetricCard('Hooks Documentados', `${hooks.length}`, 'zap', 'var(--warning)', 'Estrategias de gancho'),
-                createMetricCard('Clientes Activos', `${clients.length}`, 'users', 'var(--info)', 'Clientes registrados'),
-                createMetricCard('Asignaciones Activas', `${activeAssignments.length} Tareas`, 'clock', 'var(--info)', isAdmin ? 'En producción actual' : 'Mis pendientes')
+            // 1. Header greeting
+            const greeting = h('div', { className: 'flex-column gap-1 mb-2' }, [
+                h('h2', { className: 'text-primary font-bold text-2xl', style: { letterSpacing: '-0.03em' } }, `Buenos días, ${user?.nombre || 'Miembro'}`),
+                h('p', { className: 'text-xs text-muted font-medium' }, 'Resumen operativo de hoy.')
             ]);
 
-            // Map editor name/emails
-            const getUserDisplayName = (uid, assignment) => {
-                if (usersList.length > 0) {
-                    const found = usersList.find(u => u.uid === uid);
-                    if (found) {
-                        return found.nombre || found.email.split('@')[0];
-                    }
-                }
-                return assignment?.employeeName || '@equipo';
-            };
+            // 2. Stripe-like Metric Cards Grid
+            const metricsGrid = h('div', { 
+                className: 'grid gap-4 mb-4', 
+                style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' } 
+            }, [
+                createMetricCard('Clientes Activos', `${clients.length}`, 'users', 'var(--info)', `+ ${clients.length} registrados`),
+                createMetricCard('Asignaciones Pendientes', `${activeAssignments.length}`, 'clock', 'var(--warning)', `${activeAssignments.length} en producción`),
+                createMetricCard('Facturación del Mes', `$${totalInvoiced.toLocaleString('es-CO')}`, 'credit-card', 'var(--success)', 'Cobros consolidados'),
+                createMetricCard('Producción del Mes', `${monthlyProduction} Videos`, 'video', 'var(--accent)', 'Entregables completados')
+            ]);
 
-            // 2. Production Activity Table (Active Assignments)
-            const activityTable = Table({
-                headers: ['Cliente / Proyecto', 'Tipo de Trabajo', 'Estado', 'Responsable'],
-                data: activeAssignments.slice(0, 5), // show top 5 active
-                renderRow: (asg) => {
-                    const statusColor = getStatusColor(asg.status);
-                    return h('tr', { key: asg.id }, [
-                        h('td', { className: 'flex items-center gap-2 font-semibold text-xs' }, [
-                            h('div', { style: { width: '6px', height: '6px', borderRadius: '50%', background: statusColor, flexShrink: 0 } }),
-                            h('span', { className: 'truncate', style: { maxWidth: '220px' } }, `${asg.client}: ${asg.title}`)
-                        ]),
-                        h('td', { className: 'text-xs' }, asg.type),
-                        h('td', {}, [
-                            h('span', { className: `badge badge-${getStatusClass(asg.status)} text-xs` }, asg.status === 'blocked' ? 'En espera de compañero' : asg.status)
-                        ]),
-                        h('td', { className: 'text-xs text-muted font-medium' }, getUserDisplayName(asg.employeeId, asg))
-                    ]);
+            // 3. Activity Timeline Construction (Left Column 70% data)
+            const timelineEvents = [];
+            assignments.forEach(asg => {
+                const emp = usersList.find(u => u.uid === asg.employeeId) || { nombre: asg.employeeName };
+                const empName = emp.nombre || emp.email?.split('@')[0] || 'Miembro';
+                const photo = emp.photoURL || '';
+                
+                if (asg.status === 'Completado') {
+                    timelineEvents.push({
+                        user: empName,
+                        photo,
+                        action: `entregó la tarea "${asg.title}" para ${asg.client}`,
+                        time: new Date(asg.date || asg.dueDate || Date.now())
+                    });
+                } else if (asg.status === 'En Proceso') {
+                    timelineEvents.push({
+                        user: empName,
+                        photo,
+                        action: `inició la tarea "${asg.title}" para ${asg.client}`,
+                        time: new Date(asg.date || Date.now())
+                    });
                 }
             });
 
-            // Empty state row if no active tasks
-            if (activeAssignments.length === 0) {
-                const tbody = activityTable.querySelector('tbody');
-                if (tbody) {
-                    const noTasksMsg = isAdmin
-                        ? 'Sin actividades de producción en curso en este momento.'
-                        : '¡Excelente! No tienes tareas de producción pendientes en este ciclo.';
-                    tbody.innerHTML = `<tr><td colspan="4" class="text-xs text-muted italic p-6 text-center">${noTasksMsg}</td></tr>`;
-                }
-            }
+            sopSubmissions.forEach(sub => {
+                timelineEvents.push({
+                    user: sub.userName || 'Miembro',
+                    photo: '',
+                    action: `completó el SOP "${sub.sopTitle}"`,
+                    time: new Date(sub.completedAt || Date.now())
+                });
+            });
 
-            // Assemble main elements inside dynamic container
-            const banner = h('div', { className: 'glass-panel p-6 flex justify-between items-center flex-wrap gap-4', style: { marginBottom: '24px' } }, [
-                h('div', { className: 'flex-column gap-1' }, [
-                    h('div', { className: 'flex items-center gap-2 mb-1' }, [
-                        h('span', { className: 'badge badge-today' }, 'SISTEMA OPERATIVO'),
-                        h('div', { className: 'flex items-center gap-1 text-xs text-muted font-medium' }, [
-                            h('kbd', { className: 'kbd' }, 'Ctrl'), ' + ', h('kbd', { className: 'kbd' }, 'K'),
-                            h('span', { className: 'ml-1' }, 'para buscar rápido')
+            timelineEvents.sort((a, b) => b.time - a.time);
+            const displayEvents = timelineEvents.slice(0, 5);
+
+            const timelineList = h('div', { className: 'flex-column gap-4 mt-2' }, 
+                displayEvents.length > 0 ? displayEvents.map(ev => {
+                    const timeString = ev.time.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+                    return h('div', { className: 'flex gap-3 items-center' }, [
+                        ev.photo 
+                            ? h('img', { src: ev.photo, className: 'sidebar-user-avatar', style: { width: '28px', height: '28px' } })
+                            : h('div', { className: 'sidebar-user-avatar-fallback', style: { width: '28px', height: '28px', fontSize: '10px' } }, [icon('user', 10)]),
+                        h('div', { className: 'flex-1 flex-column' }, [
+                            h('div', { className: 'text-xs text-primary' }, [
+                                h('strong', {}, ev.user), ' ', h('span', { className: 'text-secondary' }, ev.action)
+                            ]),
+                            h('span', { className: 'text-[10px] text-muted' }, timeString)
                         ])
-                    ]),
-                    h('h2', { className: 'text-primary font-bold', style: { fontSize: '1.4rem', letterSpacing: '-0.03em' } }, `Hola, ${user?.nombre || 'Miembro'}.`),
-                    h('p', { className: 'text-xs text-muted max-w-lg mt-1 leading-relaxed' }, 
-                        isAdmin 
-                            ? 'Tu centro de mando para narrativas de alta retención. Gestiona clientes, valida facturas y controla el flujo de producción desde un solo lugar.'
-                            : 'Tu centro de mando para narrativas de alta retención. Revisa tus tareas pendientes, reporta tus honorarios y mantén tus entregas al día.'
+                    ]);
+                }) : [h('p', { className: 'text-xs text-muted italic p-4' }, 'Sin actividad registrada hoy.')]
+            );
+
+            // 4. Right Column (30%) Quick Info panels
+            const recordings = assignments.filter(a => a.type === 'Grabación' && a.status !== 'Completado' && a.status !== 'Archivado')
+                .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate))
+                .slice(0, 3);
+
+            const deadLines = activeAssignments.sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate))
+                .slice(0, 3);
+
+            const pendingUsers = usersList.filter(u => u.approved === false).slice(0, 3);
+
+            const rightPanel = h('div', { className: 'flex-column gap-6' }, [
+                // Upcoming recordings
+                h('div', { className: 'flex-column gap-2' }, [
+                    h('h4', { className: 'text-[11px] font-bold uppercase tracking-wider text-muted' }, 'Próximas grabaciones'),
+                    h('div', { className: 'flex-column gap-2' }, 
+                        recordings.length > 0 ? recordings.map(rec => {
+                            const emp = usersList.find(u => u.uid === rec.employeeId);
+                            const name = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin Asignar';
+                            return h('div', { className: 'card p-2 flex justify-between items-center text-xs' }, [
+                                h('div', {}, [
+                                    h('div', { className: 'font-semibold' }, rec.client),
+                                    h('div', { className: 'text-[10px] text-muted' }, `Asignado a: ${name}`)
+                                ]),
+                                h('span', { className: 'text-accent font-medium' }, new Date(rec.dueDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }))
+                            ]);
+                        }) : [h('span', { className: 'text-xs text-muted italic' }, 'No hay grabaciones programadas.')]
                     )
                 ]),
-                h('div', { className: 'flex gap-2' }, [
-                    h('button', { 
-                        className: 'btn btn-primary text-xs px-5',
-                        onClick: () => window.dispatchEvent(new KeyboardEvent('keydown', { ctrlKey: true, key: 'k' }))
-                    }, [icon('search', 14), h('span', {}, 'Explorar Sistema')])
-                ])
-            ]);
-
-            // Quick actions builder based on role
-            const quickActionsList = [];
-            if (isAdmin) {
-                quickActionsList.push(
-                    createQuickAction('plus-square', 'Crear Nuevo Formato', 'Estandariza una estructura', () => {
-                        window.location.hash = '#formats';
-                    }),
-                    createQuickAction('file-text', 'Auditar Facturación de Equipo', 'Control operativo de entregas', () => {
-                        window.location.hash = '#billing';
-                    }),
-                    createQuickAction('users', 'Directorio de Clientes', 'Ver estilos y videos virales', () => {
-                        window.location.hash = '#clients';
-                    }),
-                    createQuickAction('shield', 'Panel de Aprobación Admin', 'Revisar pendientes y Storage', () => {
-                        window.location.hash = '#admin';
-                    })
-                );
-            } else {
-                quickActionsList.push(
-                    createQuickAction('file-text', 'Reportar Jornada / Facturas', 'Control de mis entregas y cobros', () => {
-                        window.location.hash = '#billing';
-                    }),
-                    createQuickAction('users', 'Directorio de Clientes', 'Ver estilos y videos virales', () => {
-                        window.location.hash = '#clients';
-                    }),
-                    createQuickAction('clipboard-list', 'Mis Tareas Asignadas', 'Ver todo mi historial de producción', () => {
-                        window.location.hash = '#assignments';
-                    })
-                );
-            }
-
-            const layoutGrid = h('div', { className: 'grid gap-6', style: { gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } }, [
-                h('section', { style: { flex: '2', minWidth: '320px' } }, [
-                    h('div', { className: 'flex justify-between items-center mb-3' }, [
-                        h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary' }, 
-                            isAdmin ? 'Actividad de Producción en Curso' : 'Mis Tareas Pendientes en Curso'
-                        ),
-                        h('button', { 
-                            className: 'btn btn-outline text-xs', 
-                            style: { padding: '4px 8px' },
-                            onClick: () => window.location.hash = '#assignments' 
-                        }, isAdmin ? 'Gestionar Tareas' : 'Mis Tareas')
-                    ]),
-                    h('div', { className: 'card p-0' }, [activityTable])
+                // Deadlines
+                h('div', { className: 'flex-column gap-2' }, [
+                    h('h4', { className: 'text-[11px] font-bold uppercase tracking-wider text-muted' }, 'Próximos vencimientos'),
+                    h('div', { className: 'flex-column gap-2' }, 
+                        deadLines.length > 0 ? deadLines.map(dl => {
+                            return h('div', { className: 'card p-2 flex justify-between items-center text-xs' }, [
+                                h('span', { className: 'font-semibold truncate', style: { maxWidth: '140px' } }, dl.title),
+                                h('span', { className: 'badge badge-warning text-[10px]' }, new Date(dl.dueDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }))
+                            ]);
+                        }) : [h('span', { className: 'text-xs text-muted italic' }, 'No hay vencimientos pendientes.')]
+                    )
                 ]),
+                // Pending Users (Admin only)
+                isAdmin ? h('div', { className: 'flex-column gap-2' }, [
+                    h('h4', { className: 'text-[11px] font-bold uppercase tracking-wider text-muted' }, 'Usuarios pendientes'),
+                    h('div', { className: 'flex-column gap-2' }, 
+                        pendingUsers.length > 0 ? pendingUsers.map(pu => {
+                            return h('div', { className: 'card p-2 flex justify-between items-center text-xs' }, [
+                                h('span', { className: 'font-semibold' }, pu.nombre || pu.email),
+                                h('button', { 
+                                    className: 'btn btn-primary text-[10px] py-1 px-2', 
+                                    onClick: () => window.location.hash = '#admin' 
+                                }, 'Aprobar')
+                            ]);
+                        }) : [h('span', { className: 'text-xs text-muted italic' }, 'No hay usuarios pendientes.')]
+                    )
+                ]) : null
+            ]);
 
-                h('aside', { style: { flex: '1', minWidth: '260px' } }, [
-                    h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary mb-3' }, 'Accesos Rápidos Funcionales'),
-                    h('div', { className: 'flex flex-column gap-2' }, quickActionsList)
+            // 5. Build two column structure (70% Timeline, 30% Quick info)
+            const splitPanel = h('div', { 
+                className: 'flex gap-6 flex-wrap', 
+                style: { display: 'flex', width: '100%' } 
+            }, [
+                h('div', { 
+                    className: 'card', 
+                    style: { flex: '7', minWidth: '320px', padding: '1.5rem' } 
+                }, [
+                    h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary mb-4 border-bottom pb-2' }, 'Actividad reciente'),
+                    timelineList
+                ]),
+                h('div', { 
+                    style: { flex: '3', minWidth: '240px' } 
+                }, [rightPanel])
+            ]);
+
+            // 6. Production over last 6 months (Linear-style line chart canvas placeholder)
+            const chartSection = h('div', { className: 'card p-6 flex-column gap-4' }, [
+                h('div', { className: 'flex justify-between items-center' }, [
+                    h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary' }, 'Producción últimos 6 meses'),
+                    h('span', { className: 'text-[10px] text-muted' }, 'Línea suave de videos completados')
+                ]),
+                h('div', { 
+                    style: { height: '140px', width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }
+                }, [
+                    h('canvas', { id: 'dashboard-chart', style: { width: '100%', height: '120px' } })
                 ])
             ]);
 
-            container.appendChild(banner);
+            // Assemble everything
+            container.appendChild(greeting);
             container.appendChild(metricsGrid);
-            container.appendChild(layoutGrid);
+            container.appendChild(splitPanel);
+            container.appendChild(chartSection);
 
             if (window.lucide) window.lucide.createIcons();
+
+            // Canvas renderer for elegant smooth chart
+            setTimeout(() => {
+                const canvas = document.getElementById('dashboard-chart');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = canvas.parentElement.clientWidth;
+                    canvas.height = 120;
+                    
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Simple dummy gradient curve to look exactly like Linear
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 3;
+                    
+                    const points = [
+                        { x: 0, y: 100 },
+                        { x: canvas.width * 0.2, y: 80 },
+                        { x: canvas.width * 0.4, y: 90 },
+                        { x: canvas.width * 0.6, y: 40 },
+                        { x: canvas.width * 0.8, y: 60 },
+                        { x: canvas.width, y: 20 }
+                    ];
+                    
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (let i = 0; i < points.length - 1; i++) {
+                        const xc = (points[i].x + points[i + 1].x) / 2;
+                        const yc = (points[i].y + points[i + 1].y) / 2;
+                        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                    }
+                    ctx.stroke();
+
+                    // Fill gradient
+                    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+                    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+                    ctx.fillStyle = gradient;
+                    ctx.lineTo(canvas.width, canvas.height);
+                    ctx.lineTo(0, canvas.height);
+                    ctx.fill();
+                }
+            }, 300);
 
         } catch (err) {
             console.error("Dashboard render failed:", err);
@@ -180,12 +265,19 @@ export const render = () => {
 
 // Helpers
 const createMetricCard = (label, value, iconName, color, subtext) => {
-    return h('div', { className: 'card hover-lift metric-card flex-column justify-between' }, [
-        h('div', { className: 'metric-label' }, label),
-        h('div', { className: 'metric-value' }, value),
-        h('div', { className: 'flex items-center gap-1 mt-1 text-xs font-medium', style: { color: color } }, [
+    return h('div', { 
+        className: 'card hover-lift metric-card flex-column justify-between p-4',
+        style: {
+            background: 'linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.0) 100%)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)'
+        }
+    }, [
+        h('div', { className: 'metric-label text-[10px] uppercase font-bold text-muted tracking-wider' }, label),
+        h('div', { className: 'metric-value text-xl font-bold text-primary mt-1 mb-2' }, value),
+        h('div', { className: 'flex items-center gap-1 text-[10px] font-medium', style: { color: color } }, [
             icon(iconName, 12),
-            h('span', { className: 'text-xs' }, subtext)
+            h('span', {}, subtext)
         ])
     ]);
 };

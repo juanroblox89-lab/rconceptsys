@@ -10,7 +10,7 @@
     width: var(--sidebar-width);
     height: 100vh;
     height: 100dvh; /* iOS safe area fix */
-    background-color: var(--bg-secondary);
+    background-color: #0b0c0e;
     border-right: 1px solid var(--border);
     position: fixed;
     left: 0;
@@ -35,6 +35,7 @@
         z-index: var(--z-modal); /* Ensure it stays above everything when open on mobile */
         height: 100%;
         bottom: 0;
+        padding-bottom: 100px; /* Space for bottom nav and to allow scrolling past the end */
     }
 }
 
@@ -90,10 +91,10 @@
 }
 
 .nav-item.active {
-    background-color: #ffffff;
+    background-color: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
     font-weight: 600;
 }
 
@@ -340,7 +341,10 @@
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    min-width: 0;
+    word-break: break-word;
 }
+
 
 .card:hover {
     border-color: var(--border-hover);
@@ -1268,6 +1272,9 @@ tr:hover td { background-color: var(--bg-secondary); }
     cursor: grab;
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 .kanban-card:active {
@@ -1296,3 +1303,483 @@ tr:hover td { background-color: var(--bg-secondary); }
     margin-top: 8px;
 }
 .hover-scale:hover { transform: scale(1.02); transition: transform 0.2s ease; }
+
+/* ==========================================================================
+   CREATIVEOS PREMIUM DETAILED VIEWS (Fase 2 Redesign)
+   ========================================================================== */
+
+/* Layouts & Containers */
+.premium-detail-page {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 24px;
+    animation: fadeIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    color: var(--text-primary);
+}
+
+.premium-split-layout {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 992px) {
+    .premium-split-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Master Pipeline Progress & Timeline */
+.pipeline-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.pipeline-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, #a855f7 100%);
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-horizontal-giant {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 16px 0;
+    overflow-x: auto;
+    position: relative;
+}
+
+.timeline-horizontal-giant::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 40px;
+    right: 40px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.timeline-giant-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    z-index: 2;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.stage-bubble-giant {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #15181e;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: all 0.25s ease;
+    color: var(--text-muted);
+}
+
+.timeline-giant-stage.completed .stage-bubble-giant {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.timeline-giant-stage.active .stage-bubble-giant {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: #3b82f6;
+    color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    transform: scale(1.1);
+}
+
+.timeline-giant-stage.future .stage-bubble-giant {
+    background: #111317;
+    border-color: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+}
+
+/* Linear-style Info Cards & Checklists */
+.premium-info-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.sop-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.01);
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.sop-checklist-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.sop-checklist-item.checked {
+    border-color: rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.03);
+}
+
+.checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.sop-checklist-item.checked .checkbox-custom {
+    background: #10b981;
+    border-color: #10b981;
+    color: #000;
+}
+
+/* Activity Feed (Right Column) */
+.activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    padding-left: 16px;
+}
+
+.activity-feed::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 4px;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.activity-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.activity-dot {
+    position: absolute;
+    left: -16px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 2px solid var(--bg-primary);
+}
+
+.activity-dot.success { background: #10b981; }
+.activity-dot.accent { background: #3b82f6; }
+
+/* Client profile Hero & Tabs */
+.client-hero-container {
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.06) 0%, rgba(0, 0, 0, 0) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.tab-nav-premium {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 8px;
+    overflow-x: auto;
+}
+
+.tab-btn-premium {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-btn-premium.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+/* Ficha de Inteligencia (Hooks & Formats) */
+.intel-card-premium {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.005) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.intel-stat-large {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--text-primary);
+}
+
+/* CRM Stepper Funnel */
+.funnel-stepper-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.funnel-step-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    position: relative;
+}
+
+.funnel-step-arrow {
+    align-self: center;
+    color: rgba(255, 255, 255, 0.15);
+    margin: 4px 0;
+}
+
+/* ==========================================================================
+   PHASE 2 PREMIUM OS DESIGN COMPONENTS
+   ========================================================================== */
+
+/* 1. Worker Cards & Employee Profiles */
+.worker-horizontal-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+}
+.worker-horizontal-card:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+/* 2. Google Drive Style Assets & Collapsible Drawer */
+.assets-drive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+.asset-card-drive {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.asset-card-drive:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.03);
+}
+.asset-thumbnail-container {
+    height: 130px;
+    background: #121316;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.asset-thumbnail-container img, 
+.asset-thumbnail-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.drawer-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    background: #0d0e12;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1000;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto;
+}
+.drawer-container.open {
+    transform: translateX(0);
+}
+.drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.drawer-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 3. RIA Assistant Layout (3 Columns) */
+.ria-layout-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr 280px;
+    gap: 20px;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+}
+@media (max-width: 1024px) {
+    .ria-layout-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow: visible;
+    }
+}
+.ria-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+}
+.ria-sidebar-panel {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+/* Agent Action Proposal Cards */
+.action-proposal-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.action-payload-preview {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #a7f3d0;
+    max-height: 120px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+/* 4. Admin Center of Control Grid */
+.admin-control-center-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+/* 5. CRM Funnel Board */
+.crm-funnel-board {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    height: 60vh;
+}
+.crm-funnel-column {
+    flex: 1;
+    min-width: 250px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+.crm-lead-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+.crm-lead-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.035);
+}
+.crm-lead-card:active {
+    cursor: grabbing;
+}
+
+

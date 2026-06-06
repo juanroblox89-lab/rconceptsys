@@ -1,17 +1,20 @@
 /**
  * Assets Page - Creative Production OS
- * Notion Light UI presenting video production deliveries, thumbnails, and cloud storage controls.
+ * Google Drive-style file manager for video production deliveries, thumbnails, and cloud storage controls.
  */
 import { h, icon, openLightbox } from '../utils/dom.js';
 import { dbService, storageService } from '../firebase/service.js';
 import { store } from '../js/store.js';
 
-let localAssetsCache = [];
+let selectedAsset = null;
+let filterClient = '';
+let filterType = 'all';
+let filterFormat = '';
 
 export const render = () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
-    const container = h('div', { className: 'fade-in flex-column gap-4' });
+    const container = h('div', { className: 'fade-in flex-column gap-4 w-full', style: { position: 'relative' } });
 
     const loadAssets = async () => {
         container.innerHTML = '<div class="loader mb-4"></div>';
@@ -26,54 +29,100 @@ export const render = () => {
 
         container.innerHTML = '';
 
-        const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-4', style: { paddingBottom: '1rem' } }, [
+        // 1. Header
+        const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-3' }, [
             h('div', {}, [
-                h('h1', {}, 'Librería de Producción y Assets en Storage'),
-                h('p', { className: 'text-xs text-muted mt-1' }, 'Materiales audiovisuales curados, miniaturas de alta retención y recursos compartidos.')
+                h('h1', {}, 'Librería de Assets'),
+                h('p', { className: 'text-xs text-muted mt-1' }, 'Almacén de entregables, miniaturas y material crudo en Firebase Storage.')
             ]),
             h('div', { className: 'flex gap-2' }, [
                 isAdmin ? h('button', { 
                     className: 'btn btn-primary text-xs',
                     onClick: () => openAssetUploadModal() 
-                }, [icon('upload', 14), h('span', {}, 'Subir Asset a Storage')]) : null
+                }, [icon('upload', 14), h('span', {}, 'Subir Asset')]) : null
             ])
         ]);
-
-        const handleDelete = async (asset) => {
-            if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el archivo "${asset.title}" de Firebase Storage y de la base de datos?`)) return;
-
-            container.innerHTML = '<div class="loader mb-4"></div>';
-
-            try {
-                // 1. Delete from Firebase Storage if it has storagePath
-                const storagePath = asset.storagePath || `assets/${asset.client}/${asset.title}`;
-                await storageService.deleteFile(storagePath);
-
-                // 2. Delete from Firestore Database
-                if (asset.id) {
-                    await dbService.delete('assets', asset.id);
-                }
-
-                // 3. Remove from local cache
-                localAssetsCache = localAssetsCache.filter(a => a.id !== asset.id);
-
-                alert("¡Asset eliminado exitosamente de Storage y Firestore!");
-            } catch (err) {
-                console.error("Error deleting asset:", err);
-                alert(`Error al eliminar asset: ${err.message}`);
-            }
-
-            loadAssets();
-        };
-
-        const grid = h('div', {
-            className: 'grid gap-4',
-            style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }
-        }, assetsList.map(asset => createAssetCard(asset, isAdmin, handleDelete)));
-
         container.appendChild(header);
-        container.appendChild(grid);
+
+        // 2. Filters Row
+        const filtersRow = h('div', {
+            className: 'card p-3 flex gap-3 items-center flex-wrap w-full mb-2',
+            style: { background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }
+        }, [
+            h('div', { className: 'flex-column gap-1', style: { flex: '1', minWidth: '150px' } }, [
+                h('label', { className: 'text-xs font-semibold text-muted' }, 'Cliente'),
+                h('input', {
+                    type: 'text',
+                    className: 'form-input text-xs',
+                    placeholder: 'Filtrar cliente...',
+                    value: filterClient,
+                    onInput: (e) => { filterClient = e.target.value; applyFiltersAndRender(); }
+                })
+            ]),
+            h('div', { className: 'flex-column gap-1', style: { width: '120px' } }, [
+                h('label', { className: 'text-xs font-semibold text-muted' }, 'Tipo'),
+                h('select', {
+                    className: 'form-select text-xs',
+                    onChange: (e) => { filterType = e.target.value; applyFiltersAndRender(); }
+                }, [
+                    h('option', { value: 'all', selected: filterType === 'all' }, 'Todos'),
+                    h('option', { value: 'video', selected: filterType === 'video' }, 'Video'),
+                    h('option', { value: 'thumbnail', selected: filterType === 'thumbnail' }, 'Miniatura')
+                ])
+            ]),
+            h('div', { className: 'flex-column gap-1', style: { flex: '1', minWidth: '150px' } }, [
+                h('label', { className: 'text-xs font-semibold text-muted' }, 'Formato'),
+                h('input', {
+                    type: 'text',
+                    className: 'form-input text-xs',
+                    placeholder: 'Ej: RC-01...',
+                    value: filterFormat,
+                    onInput: (e) => { filterFormat = e.target.value; applyFiltersAndRender(); }
+                })
+            ]),
+            h('button', {
+                className: 'btn btn-outline text-xs',
+                style: { alignSelf: 'flex-end', height: '32px' },
+                onClick: () => { filterClient = ''; filterType = 'all'; filterFormat = ''; loadAssets(); }
+            }, 'Limpiar')
+        ]);
+        container.appendChild(filtersRow);
+
+        // Apply filters
+        const filteredAssets = assetsList.filter(asset => {
+            if (filterClient && !asset.client?.toLowerCase().includes(filterClient.toLowerCase())) return false;
+            if (filterType !== 'all' && asset.type !== filterType) return false;
+            if (filterFormat && !asset.format?.toLowerCase().includes(filterFormat.toLowerCase())) return false;
+            return true;
+        });
+
+        // 3. Grid of files
+        const grid = h('div', { className: 'assets-drive-grid w-full' });
+        filteredAssets.forEach(asset => {
+            grid.appendChild(createDriveCard(asset, () => {
+                selectedAsset = asset;
+                openSideDrawer(asset, assetsList, loadAssets, isAdmin);
+            }));
+        });
+
+        if (filteredAssets.length === 0) {
+            container.appendChild(h('div', { className: 'card p-10 text-center text-xs text-muted w-full' }, 'No se encontraron assets con los filtros aplicados.'));
+        } else {
+            container.appendChild(grid);
+        }
+
+        // 4. Slide Drawer Backdrop & Container (rendered hidden initially)
+        const backdrop = h('div', { className: 'drawer-backdrop', onClick: () => closeSideDrawer() });
+        const drawer = h('div', { className: 'drawer-container', id: 'asset-side-drawer' });
+        
+        container.appendChild(backdrop);
+        container.appendChild(drawer);
+
         if (window.lucide) window.lucide.createIcons();
+    };
+
+    const applyFiltersAndRender = () => {
+        loadAssets();
     };
 
     const openAssetUploadModal = () => {
@@ -95,7 +144,6 @@ export const render = () => {
             submitBtn.innerHTML = 'Subiendo...';
             
             try {
-                // Remove alert to avoid blocking UI unnecessarily
                 const dlUrl = await storageService.uploadFile(`assets/${clientVal}/${fileInput.files[0].name}`, fileInput.files[0]);
 
                 const newObj = {
@@ -107,15 +155,13 @@ export const render = () => {
                     thumbnail: dlUrl,
                     status: 'ready',
                     url: dlUrl,
-                    storagePath: `assets/${clientVal}/${fileInput.files[0].name}`
+                    size: `${Math.round(fileInput.files[0].size / (1024 * 1024) * 10) / 10} MB`,
+                    description: '',
+                    storagePath: `assets/${clientVal}/${fileInput.files[0].name}`,
+                    createdAt: new Date().toISOString()
                 };
 
-                const addedAsset = await dbService.add('assets', newObj);
-                if(addedAsset && addedAsset.id) {
-                    newObj.id = addedAsset.id; // Get the real Firestore document ID
-                }
-                
-                localAssetsCache.push(newObj);
+                await dbService.add('assets', newObj);
                 document.body.removeChild(overlay);
                 loadAssets();
             } catch (err) {
@@ -128,20 +174,20 @@ export const render = () => {
 
         const form = h('form', { className: 'modal-container', onSubmit: saveAssetFlow }, [
             h('div', { className: 'modal-header' }, [
-                h('span', { className: 'modal-title text-sm' }, 'Subir Nuevo Asset a Firebase Storage'),
+                h('span', { className: 'modal-title text-sm' }, 'Subir Nuevo Asset a Storage'),
                 h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Cliente Asignado'),
-                    h('input', { id: 'as-client', className: 'form-input', placeholder: 'Ej. Gimnasio Elite', required: true })
+                    h('input', { id: 'as-client', className: 'form-input', placeholder: 'Ej. Villa Grande', required: true })
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Formato Narrativo Relacionado'),
                     h('input', { id: 'as-format', className: 'form-input', placeholder: 'Ej. RC-01', required: true })
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Seleccionar Archivo Multimedia (Se almacenará en Storage)'),
+                    h('label', { className: 'form-label' }, 'Seleccionar Archivo (Video o Imagen)'),
                     h('input', { id: 'as-file', type: 'file', className: 'form-input text-xs', accept: 'video/*,image/*', required: true })
                 ])
             ]),
@@ -156,35 +202,20 @@ export const render = () => {
     };
 
     loadAssets();
-    
-    // Auto-refresh icons observer since assets are dynamic
-    setTimeout(() => {
-        if (window.lucide) window.lucide.createIcons();
-    }, 100);
-    
     return container;
 };
 
-const statusMap = {
-    ready: { label: 'Listo', cls: 'badge-success' },
-    editing: { label: 'En Edición', cls: 'badge-warning' },
-    review: { label: 'En Revisión', cls: 'badge-error' }
-};
-
-const createAssetCard = (asset, isAdmin, onDelete) => {
-    const status = statusMap[asset.status] || { label: asset.status, cls: 'badge-secondary' };
-    const url = asset.url !== '#' ? asset.url : asset.thumbnail;
-
+// Create a drive-style card
+const createDriveCard = (asset, onClick) => {
     let mediaElement;
     if (asset.type === 'video') {
         mediaElement = h('video', { 
-            src: asset.thumbnail,
+            src: asset.thumbnail || asset.url,
             style: { width: '100%', height: '100%', objectFit: 'cover' },
             muted: true,
             playsinline: true,
             preload: 'metadata'
         });
-        // Play on hover for video
         mediaElement.onmouseenter = () => mediaElement.play().catch(()=>{});
         mediaElement.onmouseleave = () => {
             mediaElement.pause();
@@ -192,81 +223,171 @@ const createAssetCard = (asset, isAdmin, onDelete) => {
         };
     } else {
         mediaElement = h('img', {
-            src: asset.thumbnail,
+            src: asset.thumbnail || asset.url,
             style: { width: '100%', height: '100%', objectFit: 'cover' }
         });
     }
 
-    return h('div', { className: 'card interactive-card flex-column justify-between', style: { padding: '0', overflow: 'hidden' } }, [
-        h('div', {
-            style: {
-                height: '150px',
-                position: 'relative',
-                backgroundColor: 'var(--bg-tertiary)',
-                borderBottom: '1px solid var(--border)',
-                cursor: 'pointer',
-                overflow: 'hidden'
-            },
-            onClick: () => {
-                if(asset.type === 'video') {
-                    window.open(url, '_blank');
-                } else {
-                    openLightbox(url);
-                }
-            }
-        }, [
+    return h('div', { className: 'asset-card-drive', onClick }, [
+        h('div', { className: 'asset-thumbnail-container' }, [
             mediaElement,
-            h('div', {
-                style: {
-                    position: 'absolute', top: '8px', right: '8px',
-                    display: 'flex', gap: '4px'
-                }
-            }, [
-                h('span', { className: `badge ${status.cls} text-xs`, style: { fontSize: '0.6rem' } }, status.label)
-            ]),
-            h('div', {
-                style: {
-                    position: 'absolute', bottom: '8px', left: '12px',
-                }
-            }, [
-                h('span', { className: 'badge badge-secondary text-xs', style: { fontSize: '0.6rem', background: 'var(--bg-primary)' } }, asset.format || 'GEN')
-            ])
+            h('span', { 
+                className: 'badge text-xs', 
+                style: { position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'var(--text-primary)' } 
+            }, asset.type === 'video' ? 'VIDEO' : 'IMG'),
+            h('span', {
+                className: 'badge text-xs',
+                style: { position: 'absolute', bottom: '8px', left: '8px', background: 'var(--bg-primary)' }
+            }, asset.format || 'GEN')
         ]),
-        h('div', { className: 'p-4 flex-column gap-2' }, [
+        h('div', { className: 'p-3 flex-column gap-1' }, [
             h('div', { className: 'font-bold text-xs text-primary truncate' }, asset.title),
-            h('div', { className: 'text-xs text-muted font-medium' }, asset.client || 'General'),
-            h('div', { className: 'flex justify-between items-center mt-2 pt-2 border-top flex-wrap gap-2' }, [
-                h('a', { 
-                    href: asset.url !== '#' ? asset.url : asset.thumbnail, 
-                    target: '_blank', 
-                    className: 'btn btn-outline text-xs', 
-                    style: { padding: '4px 8px', textDecoration: 'none' } 
-                }, [icon('external-link', 12), h('span', { className: 'ml-1' }, 'Abrir Media')]),
-                
-                h('div', { className: 'flex items-center gap-1' }, [
-                    h('button', { 
-                        className: 'btn-icon text-xs', 
-                        style: { width: '26px', height: '26px' }, 
-                        title: 'Descargar Original',
-                        onClick: () => {
-                            const link = document.createElement('a');
-                            link.href = asset.url !== '#' ? asset.url : asset.thumbnail;
-                            link.target = '_blank';
-                            link.download = asset.title || 'asset';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        }
-                    }, [icon('download', 12)]),
-                    
-                    isAdmin ? h('button', { 
-                        className: 'btn-icon text-error text-xs hover-bg-tertiary', 
-                        style: { width: '26px', height: '26px', color: 'var(--error)' }, 
-                        title: 'Eliminar de Storage',
-                        onClick: () => onDelete(asset)
-                    }, [icon('trash-2', 12)]) : null
-                ])
+            h('div', { className: 'flex justify-between items-center text-xs text-muted' }, [
+                h('span', {}, asset.client || 'General'),
+                h('span', { style: { fontSize: '0.65rem' } }, asset.size || 'N/A')
             ])
         ])
     ]);
 };
+
+// Open the collapsible Side Drawer
+function openSideDrawer(asset, allAssets, reload, isAdmin) {
+    const drawer = document.getElementById('asset-side-drawer');
+    const backdrop = document.querySelector('.drawer-backdrop');
+    if (!drawer || !backdrop) return;
+
+    drawer.innerHTML = '';
+
+    // Close Button
+    const header = h('div', { className: 'flex justify-between items-center pb-2 border-bottom' }, [
+        h('h3', { className: 'text-sm font-bold text-primary truncate', style: { maxWidth: '280px' } }, asset.title),
+        h('button', { 
+            className: 'btn-icon text-muted text-sm font-bold', 
+            style: { border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer' },
+            onClick: () => closeSideDrawer() 
+        }, '×')
+    ]);
+    drawer.appendChild(header);
+
+    // Media Preview
+    let previewEl;
+    if (asset.type === 'video') {
+        previewEl = h('video', {
+            src: asset.url,
+            controls: true,
+            style: { width: '100%', borderRadius: '6px', maxHeight: '180px', background: '#000' }
+        });
+    } else {
+        previewEl = h('img', {
+            src: asset.url,
+            style: { width: '100%', borderRadius: '6px', cursor: 'pointer', maxHeight: '180px', objectFit: 'contain' },
+            onClick: () => openLightbox(asset.url)
+        });
+    }
+    drawer.appendChild(previewEl);
+
+    // Details Grid
+    const details = h('div', { className: 'flex-column gap-2 text-xs', style: { borderBottom: '1px solid var(--border)', paddingBottom: '16px' } }, [
+        h('div', { className: 'flex justify-between' }, [h('span', { className: 'text-muted' }, 'Cliente:'), h('span', { className: 'font-semibold' }, asset.client || 'General')]),
+        h('div', { className: 'flex justify-between' }, [h('span', { className: 'text-muted' }, 'Formato:'), h('span', { className: 'font-semibold text-accent' }, asset.format || 'N/A')]),
+        h('div', { className: 'flex justify-between' }, [h('span', { className: 'text-muted' }, 'Peso:'), h('span', { className: 'font-semibold' }, asset.size || 'N/A')]),
+        h('div', { className: 'flex justify-between' }, [h('span', { className: 'text-muted' }, 'Tipo:'), h('span', { className: 'font-semibold uppercase' }, asset.type)]),
+        h('div', { className: 'flex justify-between' }, [h('span', { className: 'text-muted' }, 'Fecha:'), h('span', { className: 'font-semibold' }, asset.createdAt ? new Date(asset.createdAt).toLocaleDateString('es-ES') : 'N/A')])
+    ]);
+    drawer.appendChild(details);
+
+    // Editable Description Block
+    const descTextarea = h('textarea', {
+        className: 'form-textarea text-xs',
+        rows: 3,
+        placeholder: 'Añadir una descripción...',
+        value: asset.description || ''
+    });
+    const saveDescBtn = h('button', {
+        className: 'btn btn-primary text-xs w-full justify-center',
+        onClick: async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.textContent = 'Guardando...';
+            try {
+                await dbService.update('assets', asset.id, { description: descTextarea.value });
+                asset.description = descTextarea.value;
+                alert('Descripción guardada.');
+            } catch (err) {
+                alert('Error al guardar descripción: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Guardar Descripción';
+            }
+        }
+    }, 'Guardar Descripción');
+
+    drawer.appendChild(h('div', { className: 'flex-column gap-2' }, [
+        h('label', { className: 'text-xs font-semibold text-primary' }, 'Descripción / Uso de Asset'),
+        descTextarea,
+        saveDescBtn
+    ]));
+
+    // Related Assets
+    const relatedList = allAssets.filter(a => a.client === asset.client && a.id !== asset.id).slice(0, 3);
+    const relatedContainer = h('div', { className: 'flex-column gap-2 mt-2' }, [
+        h('label', { className: 'text-xs font-semibold text-primary' }, 'Videos / Assets Relacionados'),
+        relatedList.length === 0
+            ? h('span', { className: 'text-xs text-muted italic' }, 'No hay otros videos relacionados.')
+            : h('div', { className: 'flex-column gap-1.5' }, relatedList.map(ra => {
+                return h('div', { 
+                    className: 'p-2 rounded bg-tertiary flex items-center justify-between text-xs cursor-pointer hover-bg-secondary',
+                    style: { border: '1px solid var(--border)' },
+                    onClick: () => { openSideDrawer(ra, allAssets, reload, isAdmin); }
+                }, [
+                    h('span', { className: 'truncate font-medium text-secondary', style: { maxWidth: '180px' } }, ra.title),
+                    h('span', { className: 'text-muted', style: { fontSize: '0.65rem' } }, ra.size || 'N/A')
+                ]);
+            }))
+    ]);
+    drawer.appendChild(relatedContainer);
+
+    // Footer Actions (Download and delete)
+    const deleteBtn = isAdmin ? h('button', {
+        className: 'btn btn-outline text-xs text-error w-full justify-center',
+        style: { borderColor: 'var(--error)', color: 'var(--error)', background: 'transparent' },
+        onClick: async () => {
+            if (!confirm(`¿Eliminar definitivamente "${asset.title}"?`)) return;
+            try {
+                await storageService.deleteFile(asset.storagePath || `assets/${asset.client}/${asset.title}`);
+                await dbService.delete('assets', asset.id);
+                closeSideDrawer();
+                reload();
+            } catch (err) {
+                alert('Error al eliminar: ' + err.message);
+            }
+        }
+    }, [icon('trash-2', 12), h('span', { className: 'ml-1' }, 'Eliminar de Storage')]) : null;
+
+    const downloadBtn = h('a', {
+        href: asset.url,
+        target: '_blank',
+        download: asset.title,
+        className: 'btn btn-primary text-xs w-full justify-center items-center gap-1',
+        style: { textDecoration: 'none' }
+    }, [icon('download', 12), h('span', {}, 'Descargar Original')]);
+
+    drawer.appendChild(h('div', { className: 'flex-column gap-2 mt-auto pt-4 border-top' }, [
+        downloadBtn,
+        deleteBtn
+    ].filter(Boolean)));
+
+    // Open animations
+    drawer.classList.add('open');
+    backdrop.classList.add('open');
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+function closeSideDrawer() {
+    const drawer = document.getElementById('asset-side-drawer');
+    const backdrop = document.querySelector('.drawer-backdrop');
+    if (drawer) drawer.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+    selectedAsset = null;
+}

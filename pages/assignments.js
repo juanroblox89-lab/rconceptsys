@@ -19,6 +19,449 @@ const RE_SAFE_FILENAME = /[^a-zA-Z0-9.\-_]/g;
 const RE_SAFE_ID = /[^a-z0-9-]/g;
 const RE_QUOTE = /"/g;
 
+let selectedProjectId = null;
+let selectedAssignmentId = null;
+let selectedPipelineStageIdx = 0; // default to stage 0 for split screen
+
+const renderPipelineDetail = (pid, assignments, approvedUsers, finalClients, adminConfig, loadAndRender) => {
+    const { user } = store.getState();
+    const tasks = assignments.filter(a => a.projectId === pid).sort((a, b) => a.stageIndex - b.stageIndex);
+    if (tasks.length === 0) {
+        selectedProjectId = null;
+        loadAndRender();
+        return;
+    }
+    const sampleTask = tasks[0];
+    const clientName = sampleTask.client || 'General';
+    const title = sampleTask.title.replace('[Grabación] ', '').replace('[Edición] ', '').replace('[Subida] ', '') || pid;
+    
+    // Progress calculation
+    const completedTasks = tasks.filter(t => t.status === 'Completado').length;
+    const progressPct = Math.round((completedTasks / tasks.length) * 100);
+
+    const activeStage = tasks[selectedPipelineStageIdx] || tasks[0];
+
+    const detailContainer = h('div', { className: 'premium-detail-page' }, [
+        // Top breadcrumb and actions
+        h('div', { className: 'flex justify-between items-center border-bottom pb-4' }, [
+            h('div', { className: 'flex items-center gap-2' }, [
+                h('button', { 
+                    className: 'btn btn-outline text-xs',
+                    onClick: () => { selectedProjectId = null; loadAndRender(); }
+                }, [icon('arrow-left', 14), h('span', {}, 'Volver')]),
+                h('span', { className: 'text-muted text-xs' }, 'Proyectos / ' + clientName)
+            ]),
+            h('span', { className: 'badge badge-info text-xs' }, sampleTask.status || 'En producción')
+        ]),
+
+        // Project Hero info
+        h('div', { className: 'grid gap-4', style: { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' } }, [
+            h('div', {}, [
+                h('h1', { className: 'text-2xl font-bold m-0 text-primary' }, title),
+                h('p', { className: 'text-xs text-muted mt-1' }, `Cliente: ${clientName}`)
+            ]),
+            h('div', { className: 'flex-column gap-1' }, [
+                h('span', { className: 'text-[10px] text-muted uppercase font-bold' }, 'Progreso General'),
+                h('div', { className: 'flex items-center gap-2' }, [
+                    h('div', { className: 'pipeline-progress-bar', style: { flex: 1 } }, [
+                        h('div', { className: 'pipeline-progress-fill', style: { width: `${progressPct}%` } })
+                    ]),
+                    h('span', { className: 'text-xs font-mono font-bold' }, `${progressPct}%`)
+                ])
+            ]),
+            h('div', { className: 'flex gap-4' }, [
+                h('div', { className: 'flex-column' }, [
+                    h('span', { className: 'text-[10px] text-muted font-bold' }, 'FECHA INICIO'),
+                    h('span', { className: 'text-xs font-medium' }, sampleTask.createdAt ? new Date(sampleTask.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '1 mayo')
+                ]),
+                h('div', { className: 'flex-column' }, [
+                    h('span', { className: 'text-[10px] text-muted font-bold' }, 'FECHA LÍMITE'),
+                    h('span', { className: 'text-xs font-medium text-warning' }, sampleTask.dueDate ? new Date(sampleTask.dueDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '17 mayo')
+                ])
+            ])
+        ]),
+
+        // Giant horizontal timeline
+        h('div', { className: 'timeline-horizontal-giant' }, 
+            tasks.map((t, idx) => {
+                const isCompleted = t.status === 'Completado';
+                const isActive = idx === selectedPipelineStageIdx;
+                const isFuture = !isCompleted && !isActive;
+
+                let stateClass = 'future';
+                if (isCompleted) stateClass = 'completed';
+                else if (isActive) stateClass = 'active';
+
+                const emp = approvedUsers.find(u => u.uid === t.employeeId);
+                const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin asignar';
+
+                return h('div', { 
+                    className: `timeline-giant-stage ${stateClass}`,
+                    onClick: () => {
+                        selectedPipelineStageIdx = idx;
+                        loadAndRender();
+                    }
+                }, [
+                    h('div', { className: 'stage-bubble-giant' }, [
+                        isCompleted ? icon('check', 16) : h('span', {}, idx + 1)
+                    ]),
+                    h('span', { className: 'text-xs font-bold' }, t.type),
+                    h('span', { className: 'text-[10px] text-muted' }, empName)
+                ]);
+            })
+        ),
+
+        // Split view when stage clicked
+        h('div', { className: 'premium-split-layout mt-4' }, [
+            // Left Column: Information
+            h('div', { className: 'premium-info-section flex-column gap-4' }, [
+                h('div', { className: 'border-bottom pb-3' }, [
+                    h('h3', { className: 'text-sm font-bold text-primary flex items-center gap-2' }, [
+                        icon('info', 16),
+                        h('span', {}, `Detalles de la Etapa: ${activeStage.type}`)
+                    ]),
+                    h('p', { className: 'text-xs text-secondary mt-2' }, activeStage.title)
+                ]),
+
+                h('div', { className: 'flex-column gap-2' }, [
+                    h('span', { className: 'text-[10px] text-muted font-bold' }, 'DESCRIPCIÓN / INSTRUCCIONES'),
+                    h('p', { className: 'text-xs bg-tertiary p-3 rounded border text-secondary leading-relaxed' }, activeStage.description || 'Sin instrucciones adicionales.')
+                ]),
+
+                activeStage.linkedScript ? h('div', { className: 'flex-column gap-2' }, [
+                    h('span', { className: 'text-[10px] text-muted font-bold' }, 'GUIÓN VINCULADO'),
+                    h('div', { className: 'flex items-center gap-2 bg-secondary p-2 rounded border' }, [
+                        icon('file-text', 14),
+                        h('a', { href: activeStage.linkedScript, target: '_blank', className: 'text-xs text-accent hover-underline truncate', style: { maxWidth: '280px' } }, 'Ver archivo de guion'),
+                        h('button', {
+                            className: 'btn btn-outline text-[10px] py-1 px-2 ml-auto',
+                            onClick: () => {
+                                navigator.clipboard.writeText(activeStage.linkedScript);
+                                alert('Link copiado al portapapeles');
+                            }
+                        }, 'Copiar Link')
+                    ])
+                ]) : null,
+
+                activeStage.linkedAsset ? h('div', { className: 'flex-column gap-2' }, [
+                    h('span', { className: 'text-[10px] text-muted font-bold' }, 'ASSETS / RECURSOS DE APOYO'),
+                    h('div', { className: 'flex items-center gap-2 bg-secondary p-2 rounded border' }, [
+                        icon('image', 14),
+                        h('a', { href: activeStage.linkedAsset, target: '_blank', className: 'text-xs text-accent hover-underline truncate', style: { maxWidth: '280px' } }, 'Ver asset principal'),
+                        h('button', {
+                            className: 'btn btn-outline text-[10px] py-1 px-2 ml-auto',
+                            onClick: () => {
+                                navigator.clipboard.writeText(activeStage.linkedAsset);
+                                alert('Link copiado al portapapeles');
+                            }
+                        }, 'Copiar Link')
+                    ])
+                ]) : null,
+
+                // Quick buttons to modify status
+                h('div', { className: 'flex gap-2 pt-2 border-top' }, [
+                    h('button', {
+                        className: 'btn btn-outline text-xs',
+                        onClick: () => {
+                            selectedAssignmentId = activeStage.id;
+                            loadAndRender();
+                        }
+                    }, 'Abrir Detalle Completo de Tarea'),
+                    user?.role === 'admin' ? h('button', {
+                        className: 'btn btn-primary text-xs',
+                        style: { background: 'var(--success)', borderColor: 'var(--success)' },
+                        onClick: async () => {
+                            if (confirm('¿Marcar esta fase como completada?')) {
+                                await dbService.update('assignments', activeStage.id, { status: 'Completado' });
+                                loadAndRender();
+                            }
+                        }
+                    }, 'Completar Etapa') : null
+                ])
+            ]),
+
+            // Right Column: Activity
+            h('div', { className: 'premium-info-section flex-column gap-4' }, [
+                h('h3', { className: 'text-sm font-bold text-primary flex items-center gap-2 border-bottom pb-3 m-0' }, [
+                    icon('message-square', 16),
+                    h('span', {}, 'Actividad & Comentarios')
+                ]),
+
+                // Activity timeline
+                h('div', { className: 'activity-feed mt-2' }, [
+                    h('div', { className: 'activity-item' }, [
+                        h('div', { className: 'activity-dot success' }),
+                        h('span', { className: 'text-[11px] font-bold text-secondary' }, 'Proyecto Iniciado'),
+                        h('span', { className: 'text-[10px] text-muted' }, sampleTask.createdAt ? new Date(sampleTask.createdAt).toLocaleString() : '')
+                    ]),
+                    ...(activeStage.comments || []).map(c => {
+                        return h('div', { className: 'activity-item' }, [
+                            h('div', { className: 'activity-dot accent' }),
+                            h('div', { className: 'flex justify-between items-center w-full' }, [
+                                h('span', { className: 'text-[11px] font-bold text-primary' }, c.author),
+                                h('span', { className: 'text-[9px] text-muted' }, new Date(c.date).toLocaleString())
+                            ]),
+                            h('p', { className: 'text-xs text-secondary bg-secondary p-2 rounded border m-0 leading-relaxed' }, c.text)
+                        ]);
+                    })
+                ]),
+
+                // Add comment form
+                h('form', {
+                    className: 'flex-column gap-2 mt-4 pt-3 border-top',
+                    onSubmit: async (e) => {
+                        e.preventDefault();
+                        const input = e.target.querySelector('input');
+                        if (!input.value.trim()) return;
+                        
+                        const comments = activeStage.comments || [];
+                        comments.push({
+                            author: user.nombre || user.email,
+                            text: input.value.trim(),
+                            date: new Date().toISOString(),
+                            role: user.role
+                        });
+                        
+                        await dbService.update('assignments', activeStage.id, { comments });
+                        input.value = '';
+                        loadAndRender();
+                    }
+                }, [
+                    h('input', { type: 'text', placeholder: 'Escribe un comentario o actualización...', className: 'form-input text-xs', required: true }),
+                    h('button', { type: 'submit', className: 'btn btn-outline text-xs' }, 'Enviar')
+                ])
+            ])
+        ])
+    ]);
+
+    return detailContainer;
+};
+
+const renderAssignmentDetail = (asgId, assignments, approvedUsers, finalClients, adminConfig, loadAndRender) => {
+    const { user } = store.getState();
+    const asg = assignments.find(a => a.id === asgId);
+    if (!asg) {
+        selectedAssignmentId = null;
+        loadAndRender();
+        return;
+    }
+
+    const emp = approvedUsers.find(u => u.uid === asg.employeeId);
+    const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin asignar';
+
+    // Standard SOP items fallbacks
+    const steps = [
+        "Seleccionar hook adecuado",
+        "Sincronizar y recortar subtítulos",
+        "Corregir color y gradación premium",
+        "Exportar en H.264 / 1080p vertical"
+    ];
+    const checkedSteps = asg.checkedSteps || [];
+    const isCompleted = checkedSteps.length === steps.length;
+
+    const detailContainer = h('div', { className: 'premium-detail-page' }, [
+        // Top navbar
+        h('div', { className: 'flex justify-between items-center border-bottom pb-4' }, [
+            h('div', { className: 'flex items-center gap-2' }, [
+                h('button', { 
+                    className: 'btn btn-outline text-xs',
+                    onClick: () => { selectedAssignmentId = null; loadAndRender(); }
+                }, [icon('arrow-left', 14), h('span', {}, 'Volver')]),
+                h('span', { className: 'text-muted text-xs' }, 'Asignaciones / Tarea / ' + asg.type)
+            ]),
+            h('div', { className: 'flex items-center gap-2' }, [
+                asg.projectId ? h('button', {
+                    className: 'btn btn-outline text-xs',
+                    onClick: () => {
+                        selectedProjectId = asg.projectId;
+                        selectedAssignmentId = null;
+                        loadAndRender();
+                    }
+                }, 'Ver Pipeline Completo') : null,
+                h('span', { className: 'badge badge-accent text-xs' }, asg.status)
+            ])
+        ]),
+
+        // Title and meta
+        h('div', { className: 'grid gap-4 border-bottom pb-4', style: { gridTemplateColumns: '1.5fr 1fr' } }, [
+            h('div', {}, [
+                h('span', { className: 'text-xs text-accent uppercase font-bold' }, asg.type),
+                h('h1', { className: 'text-2xl font-bold m-0 mt-1 text-primary' }, asg.title)
+            ]),
+            h('div', { className: 'grid gap-3 text-xs', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                h('div', {}, [
+                    h('span', { className: 'text-[10px] text-muted block uppercase font-bold' }, 'Cliente'),
+                    h('span', { className: 'font-medium' }, asg.client)
+                ]),
+                h('div', {}, [
+                    h('span', { className: 'text-[10px] text-muted block uppercase font-bold' }, 'Responsable'),
+                    h('span', { className: 'font-medium' }, empName)
+                ]),
+                h('div', {}, [
+                    h('span', { className: 'text-[10px] text-muted block uppercase font-bold' }, 'Fecha Límite'),
+                    h('span', { className: 'font-medium text-warning' }, asg.dueDate ? new Date(asg.dueDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }) : '')
+                ]),
+                h('div', {}, [
+                    h('span', { className: 'text-[10px] text-muted block uppercase font-bold' }, 'Precio Pactado'),
+                    h('span', { className: 'font-medium text-success' }, asg.price ? `$${Number(asg.price).toLocaleString()}` : '$0')
+                ])
+            ])
+        ]),
+
+        // Split Layout
+        h('div', { className: 'premium-split-layout' }, [
+            // Left Column: Details & Checklist SOP
+            h('div', { className: 'flex-column gap-5' }, [
+                h('div', { className: 'premium-info-section flex-column gap-3' }, [
+                    h('h3', { className: 'text-xs font-bold text-muted uppercase m-0' }, 'Información & Brief'),
+                    h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, asg.description || 'Sin descripción o instrucciones detalladas.')
+                ]),
+
+                // Checklist SOP
+                h('div', { className: 'premium-info-section flex-column gap-3' }, [
+                    h('div', { className: 'flex justify-between items-center' }, [
+                        h('h3', { className: 'text-xs font-bold text-muted uppercase m-0' }, 'Checklist SOP Obligatorio'),
+                        h('span', { className: 'text-[10px] text-muted' }, `${checkedSteps.length} de ${steps.length} completados`)
+                    ]),
+                    
+                    // Checklist progress bar
+                    h('div', { className: 'pipeline-progress-bar' }, [
+                        h('div', { className: 'pipeline-progress-fill', style: { width: `${(checkedSteps.length / steps.length) * 100}%` } })
+                    ]),
+
+                    h('div', { className: 'flex-column gap-2 mt-2' }, 
+                        steps.map((step, idx) => {
+                            const isChecked = checkedSteps.includes(idx);
+                            return h('div', {
+                                className: `sop-checklist-item ${isChecked ? 'checked' : ''}`,
+                                onClick: async () => {
+                                    const nextChecked = [...checkedSteps];
+                                    if (isChecked) {
+                                        const i = nextChecked.indexOf(idx);
+                                        if (i > -1) nextChecked.splice(i, 1);
+                                    } else {
+                                        nextChecked.push(idx);
+                                    }
+                                    await dbService.update('assignments', asg.id, { checkedSteps: nextChecked });
+                                    loadAndRender();
+                                }
+                            }, [
+                                h('div', { className: 'checkbox-custom' }, [
+                                    isChecked ? icon('check', 12) : null
+                                ]),
+                                h('span', { className: 'text-xs text-primary' }, step)
+                            ]);
+                        })
+                    )
+                ]),
+
+                // Entregables / Links
+                h('div', { className: 'premium-info-section flex-column gap-3' }, [
+                    h('h3', { className: 'text-xs font-bold text-muted uppercase m-0' }, 'Entregables & Recursos relacionados'),
+                    h('div', { className: 'grid gap-2' }, [
+                        h('div', { className: 'flex items-center gap-2 bg-secondary p-2 rounded border' }, [
+                            icon('link', 14),
+                            h('span', { className: 'text-xs text-secondary font-bold' }, 'Material original (Drive):'),
+                            asg.sourceFilesLink ? h('a', { href: asg.sourceFilesLink, target: '_blank', className: 'text-xs text-accent hover-underline truncate' }, asg.sourceFilesLink) : h('span', { className: 'text-xs text-muted' }, 'No adjuntado')
+                        ]),
+                        h('div', { className: 'flex items-center gap-2 bg-secondary p-2 rounded border' }, [
+                            icon('video', 14),
+                            h('span', { className: 'text-xs text-secondary font-bold' }, 'Link de Entregable (Frame.io/Drive):'),
+                            asg.uploadLink ? h('a', { href: asg.uploadLink, target: '_blank', className: 'text-xs text-accent hover-underline truncate' }, asg.uploadLink) : h('span', { className: 'text-xs text-muted' }, 'No adjuntado')
+                        ])
+                    ]),
+
+                    // Submission Form (Employee action)
+                    asg.status !== 'Completado' ? h('form', {
+                        className: 'flex-column gap-2 mt-4 pt-3 border-top',
+                        onSubmit: async (e) => {
+                            e.preventDefault();
+                            const linkVal = e.target.querySelector('#submit-link').value;
+                            
+                            // Check SOP completion first
+                            if (checkedSteps.length < steps.length) {
+                                alert("Por favor completa todos los pasos del Checklist SOP antes de entregar.");
+                                return;
+                            }
+
+                            // We finalize the completion
+                            const confirmCompletion = async () => {
+                                await dbService.update('assignments', asg.id, { 
+                                    status: 'Completado',
+                                    uploadLink: linkVal,
+                                    completedAt: new Date().toISOString()
+                                });
+                                // Trigger billing item addition
+                                await invoiceService.autoBilledItem(asg);
+                                selectedAssignmentId = null;
+                                loadAndRender();
+                            };
+
+                            confirmCompletion();
+                        }
+                    }, [
+                        h('label', { className: 'form-label text-[10px] font-bold text-muted uppercase' }, 'Enviar Entregable Final'),
+                        h('input', { id: 'submit-link', type: 'url', placeholder: 'Pega el link final del video (Frame.io, Google Drive, Veed.io)', className: 'form-input text-xs', required: true }),
+                        h('button', { type: 'submit', className: 'btn btn-primary text-xs w-full', style: { background: 'var(--success)', borderColor: 'var(--success)' } }, 'Completar & Cobrar')
+                    ]) : null
+                ])
+            ]),
+
+            // Right Column: Comments & Activity
+            h('div', { className: 'premium-info-section flex-column gap-4' }, [
+                h('h3', { className: 'text-sm font-bold text-primary flex items-center gap-2 border-bottom pb-3 m-0' }, [
+                    icon('message-square', 16),
+                    h('span', {}, 'Actividad & Comentarios')
+                ]),
+
+                h('div', { className: 'activity-feed mt-2' }, [
+                    h('div', { className: 'activity-item' }, [
+                        h('div', { className: 'activity-dot success' }),
+                        h('span', { className: 'text-[11px] font-bold text-secondary' }, 'Tarea creada'),
+                        h('span', { className: 'text-[10px] text-muted' }, asg.createdAt ? new Date(asg.createdAt).toLocaleString() : '')
+                    ]),
+                    ...(asg.comments || []).map(c => {
+                        return h('div', { className: 'activity-item' }, [
+                            h('div', { className: 'activity-dot accent' }),
+                            h('div', { className: 'flex justify-between items-center w-full' }, [
+                                h('span', { className: 'text-[11px] font-bold text-primary' }, c.author),
+                                h('span', { className: 'text-[9px] text-muted' }, new Date(c.date).toLocaleString())
+                            ]),
+                            h('p', { className: 'text-xs text-secondary bg-secondary p-2 rounded border m-0 leading-relaxed' }, c.text)
+                        ]);
+                    })
+                ]),
+
+                h('form', {
+                    className: 'flex-column gap-2 mt-4 pt-3 border-top',
+                    onSubmit: async (e) => {
+                        e.preventDefault();
+                        const input = e.target.querySelector('input');
+                        if (!input.value.trim()) return;
+
+                        const comments = asg.comments || [];
+                        comments.push({
+                            author: user.nombre || user.email,
+                            text: input.value.trim(),
+                            date: new Date().toISOString(),
+                            role: user.role
+                        });
+
+                        await dbService.update('assignments', asg.id, { comments });
+                        input.value = '';
+                        loadAndRender();
+                    }
+                }, [
+                    h('input', { type: 'text', placeholder: 'Escribe un comentario...', className: 'form-input text-xs', required: true }),
+                    h('button', { type: 'submit', className: 'btn btn-outline text-xs' }, 'Comentar')
+                ])
+            ])
+        ])
+    ]);
+
+    return detailContainer;
+};
+
 export const render = async () => {
     const { user } = store.getState();
     const isAdmin = user?.role === 'admin';
@@ -50,6 +493,18 @@ export const render = async () => {
             }
             
             container.innerHTML = '';
+
+            // Handle sub-pages
+            if (selectedProjectId) {
+                container.appendChild(renderPipelineDetail(selectedProjectId, assignments, approvedUsers, finalClients, adminConfig, loadAndRender));
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
+            if (selectedAssignmentId) {
+                container.appendChild(renderAssignmentDetail(selectedAssignmentId, assignments, approvedUsers, finalClients, adminConfig, loadAndRender));
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
 
             if (!isAdmin) {
                 // Regular Employee Task Management Flow
@@ -143,7 +598,8 @@ export const render = async () => {
 
                     return h('div', { 
                         key: asg.id, 
-                        className: 'card p-4 flex-column gap-3 interactive-card w-full'
+                        className: 'card p-4 flex-column gap-3 interactive-card w-full cursor-pointer',
+                        onClick: () => { selectedAssignmentId = asg.id; loadAndRender(); }
                     }, [
                         h('div', { className: 'flex justify-between items-start flex-wrap gap-2' }, [
                             h('div', { className: 'flex-column gap-1' }, [
@@ -584,7 +1040,10 @@ export const render = async () => {
                                     opacity: allDone ? '0.7' : '1'
                                 }
                             }, [
-                                h('div', { className: 'flex justify-between items-start' }, [
+                                h('div', { 
+                                    className: 'flex justify-between items-start cursor-pointer hover-underline', 
+                                    onClick: () => { selectedProjectId = pid; selectedPipelineStageIdx = 0; loadAndRender(); }
+                                }, [
                                     h('div', { className: 'flex-column' }, [
                                         h('span', { className: 'font-bold text-xs', style: { wordBreak: 'break-all' } }, title),
                                         h('span', { className: 'text-[10px] text-muted' }, `ID: ${pid}`)
@@ -624,11 +1083,8 @@ export const render = async () => {
                                             style: { zIndex: 2 },
                                             title: `Ver detalles de ${t.title}`,
                                             onClick: () => {
-                                                if(isDone) {
-                                                    alert("Las tareas completadas no se pueden editar para mantener la integridad de los registros y facturas.");
-                                                    return;
-                                                }
-                                                openAssignmentModal(t, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig, assignments });
+                                                selectedAssignmentId = t.id;
+                                                loadAndRender();
                                             }
                                         }, [
                                             h('div', { 
@@ -700,8 +1156,8 @@ export const render = async () => {
                             return h('div', { 
                                 className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
                                 onClick: () => {
-                                    // Allow clicking to view, but we will disable save button inside the modal if it's completed
-                                    openAssignmentModal(asg, { users: approvedUsers, clients: finalClients, scripts: scripts || [], assets: assets || [], systemPricing: adminConfig, assignments });
+                                    selectedAssignmentId = asg.id;
+                                    loadAndRender();
                                 }
                             }, [
                                 h('div', { className: 'flex justify-between items-start mb-1' }, [

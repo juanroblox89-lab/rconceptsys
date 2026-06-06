@@ -199,7 +199,17 @@ export const render = () => {
                     h('div', { className: 'flex gap-1' }, [
                         h('button', { 
                             className: 'btn-icon text-muted', style: { width: '20px', height: '20px' },
-                            onClick: (e) => { e.stopPropagation(); navigator.clipboard.writeText(content); const b = e.currentTarget; b.innerHTML = icon('check',11).outerHTML; setTimeout(()=>{b.innerHTML=icon('copy',11).outerHTML;},1500); }
+                            onClick: async (e) => { 
+                                e.stopPropagation(); 
+                                try {
+                                    await navigator.clipboard.writeText(content); 
+                                    const b = e.currentTarget; 
+                                    b.innerHTML = icon('check',11).outerHTML; 
+                                    setTimeout(()=>{b.innerHTML=icon('copy',11).outerHTML;},1500); 
+                                } catch (err) {
+                                    alert('Error al copiar: ' + err.message);
+                                }
+                            }
                         }, [icon('copy', 11)]),
                         isAdmin ? h('button', { className: 'btn-icon text-accent', style: { width: '20px', height: '20px' }, onClick: (e) => { e.stopPropagation(); openScriptModal(s, { clients: clientsList }); } }, [icon('edit-3', 11)]) : null,
                         isAdmin ? h('button', { className: 'btn-icon text-error', style: { width: '20px', height: '20px' }, onClick: (e) => { e.stopPropagation(); deleteScriptFlow(s); } }, [icon('trash-2', 11)]) : null
@@ -267,7 +277,14 @@ export const render = () => {
                 ]) : null
             ]),
             h('div', { className: 'modal-footer flex gap-2' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs flex items-center gap-1', onClick: () => { navigator.clipboard.writeText(content); alert('¡Guión copiado!'); } }, [icon('copy', 12), h('span', {}, 'Copiar Guión')]),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs flex items-center gap-1', onClick: async () => { 
+                    try {
+                        await navigator.clipboard.writeText(content); 
+                        alert('¡Guión copiado!'); 
+                    } catch (err) {
+                        alert('Error al copiar: ' + err.message);
+                    }
+                } }, [icon('copy', 12), h('span', {}, 'Copiar Guión')]),
                 h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cerrar')
             ])
         ]);
@@ -299,9 +316,14 @@ export const render = () => {
                 recommendedFormat: fmtVal || '', recommendedHook: hookVal || ''
             };
 
-            try { await dbService.set('scripts', scriptId, newScript); } catch (err) { console.warn("Save error:", err); }
-            document.body.removeChild(overlay);
-            loadScripts();
+            try { 
+                await dbService.set('scripts', scriptId, newScript); 
+                document.body.removeChild(overlay);
+                loadScripts();
+            } catch (err) { 
+                console.warn("Save error:", err); 
+                alert("Error al guardar: " + err.message);
+            }
         };
 
         const form = h('form', { className: 'modal-container', style: { maxWidth: '600px' }, onSubmit: saveScriptFlow }, [

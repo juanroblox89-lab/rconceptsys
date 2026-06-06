@@ -1,6 +1,7 @@
 /**
  * Client Detail Page - Creative Production OS
  * Deep dive into client strategy, assets, and recommended scripts.
+ * Premium redesigned layout featuring tabs: Info, Videos, Hooks, Formatos, Assets, IA.
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
@@ -13,6 +14,7 @@ export const render = async (params) => {
     const isAdmin = user?.role === 'admin';
     
     const container = h('div', { className: 'fade-in flex-column gap-6' });
+    let currentTab = 'informacion';
 
     const loadClient = async () => {
         container.innerHTML = '<div class="loader"></div>';
@@ -38,239 +40,240 @@ export const render = async (params) => {
 
             container.innerHTML = '';
 
-            // Header with Back Button and clickable logo image uploader (Admin only)
-            const header = h('div', { className: 'flex justify-between items-center mb-4' }, [
+            // 1. Client Premium Hero
+            const hero = h('div', { className: 'client-hero-container flex-column gap-4' }, [
+                h('div', { className: 'flex justify-between items-center w-full border-bottom pb-4' }, [
+                    h('div', { className: 'flex items-center gap-3' }, [
+                        h('button', { 
+                            className: 'btn btn-outline text-xs py-1.5 px-3', 
+                            onClick: () => window.location.hash = '#clients' 
+                        }, [icon('arrow-left', 14), h('span', {}, 'Volver')]),
+                        h('span', { className: 'text-muted text-xs' }, 'Clientes / ' + client.name)
+                    ]),
+                    isAdmin ? h('button', { 
+                        className: 'btn btn-outline text-xs',
+                        onClick: () => editEstrategia(client)
+                    }, [icon('edit-3', 14), h('span', {}, 'Editar Info')]) : null
+                ]),
+
                 h('div', { className: 'flex items-center gap-4' }, [
-                    h('button', { 
-                        className: 'btn-icon', 
-                        onClick: () => window.location.hash = '#clients' 
-                    }, [icon('arrow-left', 18)]),
-                    h('div', { className: 'flex items-center gap-3 relative group' }, [
-                        // Clickable uploader frame
-                        h('div', { 
-                            className: 'relative overflow-hidden border-radius-sm', 
-                            style: { width: '44px', height: '44px', borderRadius: '8px', border: '1px solid var(--border)' } 
-                        }, [
-                            h('img', { 
-                                src: client.logo || '/logo-icon.svg', 
-                                style: { width: '100%', height: '100%', objectFit: 'cover' } 
-                            }),
-                            isAdmin ? h('label', { 
-                                className: 'absolute inset-0 bg-black bg-opacity-65 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity',
-                                style: { transition: 'opacity 0.2s ease' }
-                            }, [
-                                icon('camera', 14, 'text-white'),
-                                h('input', { 
-                                    type: 'file', 
-                                    accept: 'image/*', 
-                                    style: { display: 'none' },
-                                    onChange: async (e) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            const loader = h('div', { className: 'absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center' }, [
-                                                h('div', { className: 'loader', style: { width: '16px', height: '16px', borderWidth: '2px', borderColor: '#fff', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' } })
-                                            ]);
-                                            e.target.parentElement.appendChild(loader);
-                                            try {
-                                                const uploadedUrl = await storageService.uploadFile(`client-logos/${client.id}`, file);
-                                                await dbService.update('clients', client.id, { logo: uploadedUrl });
-                                                client.logo = uploadedUrl;
-                                                const overlay = h('div', { className: 'modal-overlay fade-in' });
-                                                const modal = h('div', { className: 'modal-container' }, [
-                                                    h('div', { className: 'modal-header text-sm font-bold' }, 'Éxito'),
-                                                    h('div', { className: 'modal-body text-xs' }, '¡Foto de perfil del cliente actualizada exitosamente!'),
-                                                    h('div', { className: 'modal-footer' }, [
-                                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => {
-                                                            document.body.removeChild(overlay);
-                                                            loadClient();
-                                                        }}, 'Aceptar')
-                                                    ])
-                                                ]);
-                                                overlay.appendChild(modal);
-                                                document.body.appendChild(overlay);
-                                            } catch (err) {
-                                                console.error(err);
-                                                const overlay = h('div', { className: 'modal-overlay fade-in' });
-                                                const modal = h('div', { className: 'modal-container' }, [
-                                                    h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
-                                                    h('div', { className: 'modal-body text-xs' }, 'Error al subir la imagen.'),
-                                                    h('div', { className: 'modal-footer' }, [
-                                                        h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
-                                                    ])
-                                                ]);
-                                                overlay.appendChild(modal);
-                                                document.body.appendChild(overlay);
-                                            } finally {
-                                                loader.remove();
-                                            }
-                                        }
-                                    }
-                                })
-                            ]) : null
-                        ]),
-                        h('div', {}, [
-                            h('h1', { className: 'text-xl font-bold flex items-center gap-2' }, [
-                                h('span', {}, client.name)
-                            ]),
-                            h('span', { className: 'badge badge-secondary text-xs mt-1', style: { fontSize: '0.65rem' } }, client.businessType)
-                        ])
-                    ])
-                ]),
-                isAdmin ? h('button', { 
-                    className: 'btn btn-outline text-xs',
-                    onClick: () => editEstrategia(client)
-                }, [icon('edit-3', 14), h('span', {}, 'Editar Estrategia')]) : null
-            ]);
-
-            // Top Summary Section
-            const summaryGrid = h('div', { className: 'client-detail-grid' }, [
-                // Main Content
-                h('div', { className: 'flex-column gap-6' }, [
-                    // Resumen del Negocio
-                    h('section', { className: 'card p-6 flex-column gap-3' }, [
-                        h('div', { className: 'flex items-center gap-2 mb-1' }, [icon('briefcase', 16, 'text-accent'), h('h3', { className: 'text-sm font-bold' }, 'Resumen del Negocio')]),
-                        h('p', { className: 'text-sm text-muted leading-relaxed' }, client.description || 'Sin descripción detallada.')
+                    h('div', { 
+                        className: 'relative overflow-hidden border', 
+                        style: { width: '64px', height: '64px', borderRadius: '12px', background: 'var(--bg-secondary)', borderColor: 'rgba(255,255,255,0.08)' } 
+                    }, [
+                        h('img', { 
+                            src: client.logo || '/logo-icon.svg', 
+                            style: { width: '100%', height: '100%', objectFit: 'cover' } 
+                        })
                     ]),
-
-                    // Guión Recomendado → Redirect to Scripts page
-                    h('section', { className: 'card p-6 flex-column gap-3' }, [
-                        h('div', { className: 'flex justify-between items-center mb-1' }, [
-                            h('div', { className: 'flex items-center gap-2' }, [icon('file-text', 16, 'text-success'), h('h3', { className: 'text-sm font-bold' }, 'Guiones Recomendados')]),
-                            h('a', { 
-                                href: '#scripts', 
-                                className: 'btn btn-outline text-xs flex items-center gap-1',
-                                style: { textDecoration: 'none', padding: '4px 10px' }
-                            }, [icon('external-link', 12), h('span', {}, 'Ver en Guiones')])
-                        ]),
-                        h('p', { className: 'text-xs text-muted italic' }, 'Los guiones de este cliente se gestionan desde la sección de Guiones. Haz clic en "Ver en Guiones" para ver, crear o editar los guiones recomendados.')
-                    ]),
-
-                    // Links Recomendados de Referencia (Admin Dynamic List)
-                    h('section', { className: 'card p-6 flex-column gap-3' }, [
-                        h('div', { className: 'flex justify-between items-center mb-1' }, [
-                            h('div', { className: 'flex items-center gap-2' }, [
-                                icon('link', 16, 'text-warning'), 
-                                h('h3', { className: 'text-sm font-bold' }, 'Links Recomendados de Referencia')
-                            ]),
-                            isAdmin ? h('button', { 
-                                className: 'btn btn-primary text-xs',
-                                style: { padding: '4px 8px' },
-                                onClick: () => addRecommendedLink(client) 
-                            }, [icon('plus', 12), h('span', { className: 'ml-1' }, 'Añadir Link')]) : null
-                        ]),
-                        h('div', { className: 'flex-column gap-2' }, 
-                            (!client.recommendedLinks || !client.recommendedLinks.length) ? [
-                                h('div', { className: 'p-4 text-center text-xs text-muted italic card bg-secondary' }, 'No hay links recomendados registrados aún.')
-                            ] :
-                            client.recommendedLinks.map((rl, idx) => h('div', { 
-                                key: idx, 
-                                className: 'card p-3 flex items-center justify-between hover-bg-tertiary transition'
-                            }, [
-                                h('a', { 
-                                    href: rl.url, 
-                                    target: '_blank', 
-                                    className: 'flex items-center gap-2 text-xs font-semibold text-primary hover-underline no-underline',
-                                    style: { color: 'inherit' }
-                                }, [
-                                    icon('external-link', 12, 'text-muted'),
-                                    h('span', {}, rl.title)
-                                ]),
-                                isAdmin ? h('button', { 
-                                    className: 'btn btn-outline text-xs p-1', 
-                                    style: { color: 'var(--error)' },
-                                    title: 'Eliminar Link',
-                                    onClick: () => deleteRecommendedLink(client, idx) 
-                                }, [icon('trash-2', 12)]) : null
-                            ]))
-                        )
-                    ]),
-
-                    // Connected Data: Active Assignments
-                    h('section', { className: 'card p-6 flex-column gap-3' }, [
-                        h('div', { className: 'flex justify-between items-center mb-1' }, [
-                            h('div', { className: 'flex items-center gap-2' }, [icon('clock', 16, 'text-info'), h('h3', { className: 'text-sm font-bold' }, 'Asignaciones Activas')]),
-                            h('button', { className: 'text-xs text-info font-bold', onClick: () => window.location.hash = '#assignments' }, 'Ver Todas')
-                        ]),
-                        h('div', { id: 'client-active-assignments', className: 'flex-column gap-2' }, [h('div', { className: 'loader' })])
-                    ]),
-
-                    // Formatos y Hooks Efectivos
-                    h('div', { className: 'client-two-column-grid' }, [
-                        h('div', { className: 'card p-5' }, [
-                            h('h4', { className: 'text-xs font-bold uppercase tracking-wider text-muted mb-3' }, 'Formatos Asignados'),
-                            h('div', { className: 'flex gap-2 flex-wrap' }, (client.assignedFormats || []).map(f => h('span', { className: 'badge badge-info text-xs' }, f)))
-                        ]),
-                        h('div', { className: 'card p-5' }, [
-                            h('h4', { className: 'text-xs font-bold uppercase tracking-wider text-muted mb-3' }, 'Hooks Validados'),
-                            h('div', { className: 'flex gap-2 flex-wrap' }, (client.usedHooks || []).map(hk => h('span', { className: 'badge badge-secondary text-xs' }, hk)))
-                        ])
-                    ])
-                ]),
-
-                // Sidebar Info
-                h('div', { className: 'flex-column gap-6' }, [
-                    // Estilo Visual
-                    h('section', { className: 'card p-5 flex-column gap-3' }, [
-                        h('h3', { className: 'text-xs font-bold uppercase text-muted' }, 'Estilo Visual'),
-                        h('div', { className: 'flex-column gap-2' }, [
-                            h('div', { className: 'flex items-center gap-2' }, [h('div', { style: { width: '12px', height: '12px', borderRadius: '2px', background: 'var(--text-primary)' } }), h('span', { className: 'text-xs' }, 'Dinámico')]),
-                            h('div', { className: 'flex items-center gap-2' }, [h('div', { style: { width: '12px', height: '12px', borderRadius: '2px', background: 'var(--text-muted)' } }), h('span', { className: 'text-xs' }, 'Premium/Limpio')]),
-                            h('p', { className: 'text-xs text-muted mt-2 italic' }, client.visualStyle || 'Subtítulos grandes, transiciones rápidas, música trending.')
-                        ])
-                    ]),
-
-                    // Videos Virales
-                    h('section', { className: 'card p-5 flex-column gap-3' }, [
-                        h('h3', { className: 'text-xs font-bold uppercase text-muted' }, 'Videos Virales'),
-                        h('div', { className: 'flex-column gap-2' }, 
-                            (!client.viralVideos || !client.viralVideos.length) ? [h('span', { className: 'text-xs text-muted' }, 'Sin videos registrados.')] :
-                            client.viralVideos.map(vv => h('a', { 
-                                href: vv.url, 
-                                target: '_blank', 
-                                className: 'card flex items-center justify-between p-3 hover-bg-tertiary transition no-underline text-inherit' 
-                            }, [
-                                h('span', { className: 'text-xs truncate', style: { maxWidth: '140px' } }, vv.title),
-                                icon('external-link', 12, 'text-muted')
-                            ]))
-                        )
-                    ]),
-
-                    // Assets
-                    h('section', { className: 'card p-5 flex-column gap-3' }, [
-                        h('h3', { className: 'text-xs font-bold uppercase text-muted' }, 'Assets Rápidos'),
-                        h('div', { className: 'flex gap-2 flex-wrap' }, 
-                            (client.assets || []).map(as => h('span', { className: 'badge badge-outline text-xs' }, as.title))
-                        )
+                    h('div', { className: 'flex-column gap-1' }, [
+                        h('h1', { className: 'text-xl font-bold m-0' }, client.name),
+                        h('span', { className: 'text-xs text-muted' }, `Tipo: ${client.businessType || 'Servicios'} • Relación: ${client.relationTime || '8 meses con la agencia'}`)
                     ])
                 ])
             ]);
 
-            container.appendChild(header);
-            container.appendChild(summaryGrid);
+            // 2. Tab Navigation
+            const tabs = [
+                { id: 'informacion', label: 'Información', icon: 'info' },
+                { id: 'videos', label: 'Videos', icon: 'video' },
+                { id: 'hooks', label: 'Hooks', icon: 'zap' },
+                { id: 'formatos', label: 'Formatos', icon: 'layout' },
+                { id: 'assets', label: 'Assets', icon: 'folder' },
+                { id: 'ia', label: 'RIA Inteligencia', icon: 'bot' }
+            ];
 
-            // Hydrate Connected Assignments
-            setTimeout(async () => {
-                const asgs = await assignmentService.getAssignmentsByClient(client.name);
-                const asgList = document.getElementById('client-active-assignments');
-                if (asgList) {
-                    asgList.innerHTML = '';
-                    const actives = asgs.filter(a => a.status !== 'Completado');
-                    if (actives.length === 0) {
-                        asgList.innerHTML = '<p class="text-xs text-muted italic">Sin tareas activas para este cliente.</p>';
-                    } else {
-                        actives.forEach(a => {
-                            const isUrgent = new Date(a.dueDate) < new Date() || (new Date(a.dueDate) - new Date() < 86400000);
-                            asgList.appendChild(h('div', { className: 'flex justify-between items-center p-3 bg-secondary border-radius-sm', style: { border: '1px solid var(--border)' } }, [
-                                h('div', { className: 'flex-column' }, [
-                                    h('span', { className: 'text-xs font-bold' }, a.title),
-                                    h('span', { className: 'text-xs text-muted' }, a.type)
-                                ]),
-                                h('span', { className: `badge ${isUrgent ? 'badge-urgent' : 'badge-today'} text-xs` }, isUrgent ? 'URGENTE' : 'PROXIMO')
-                            ]));
-                        });
-                    }
-                }
-            }, 50);
+            const tabNav = h('div', { className: 'tab-nav-premium' }, 
+                tabs.map(t => h('button', {
+                    className: `tab-btn-premium ${currentTab === t.id ? 'active' : ''} flex items-center gap-2`,
+                    onClick: () => { currentTab = t.id; loadClient(); }
+                }, [icon(t.icon, 14), h('span', {}, t.label)]))
+            );
+
+            // 3. Tab Body Content
+            let tabContent = h('div', { className: 'fade-in flex-column gap-4' });
+
+            if (currentTab === 'informacion') {
+                tabContent = h('div', { className: 'grid gap-4', style: { gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' } }, [
+                    h('div', { className: 'premium-info-section flex-column gap-3' }, [
+                        h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider' }, 'Identidad de Marca'),
+                        h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, client.identidad || client.description || 'Especialistas en ofrecer experiencias premium a comensales y amantes del buen vivir.'),
+                        h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider mt-3' }, 'Posicionamiento'),
+                        h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, client.posicionamiento || 'Referente local de gastronomía y ambiente exclusivo en la ciudad.')
+                    ]),
+                    h('div', { className: 'premium-info-section flex-column gap-3' }, [
+                        h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider' }, 'Cliente Ideal (Buyer Persona)'),
+                        h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, client.clienteIdeal || 'Adultos de 25-45 años, profesionales, apasionados por la comida de autor, fotos estéticas y reuniones sociales.'),
+                        h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider mt-3' }, 'Personalidad de la Cuenta'),
+                        h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, client.personalidad || 'Sofisticada, alegre, provocativa visualmente, atenta al detalle y cercana.')
+                    ])
+                ]);
+            } 
+            else if (currentTab === 'videos') {
+                const videoItems = [
+                    { title: "Campaña Día de la Madre", views: "145K", date: "Hace 2 semanas", format: "RC-01 Recorrido Comercial", hook: "HK-07 Descubrimiento Local" },
+                    { title: "Detrás de Cámaras Cocina", views: "87K", date: "Hace 3 semanas", format: "Narrativa Rápida", hook: "HK-02 Curiosidad Estructurada" },
+                    { title: "Presentación de Postre Especial", views: "210K", date: "Hace 1 mes", format: "ASMR Gastronómico", hook: "HK-09 Sonido Provocativo" }
+                ];
+
+                tabContent = h('div', { className: 'flex-column gap-4' }, [
+                    h('h3', { className: 'text-sm font-bold text-primary mb-1' }, 'Historial de Producciones de Video'),
+                    h('div', { className: 'grid gap-4', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' } }, 
+                        videoItems.map(vid => h('div', { className: 'card p-3 flex-column gap-3 relative overflow-hidden', style: { border: '1px solid rgba(255,255,255,0.08)' } }, [
+                            h('div', { className: 'relative rounded-lg overflow-hidden flex items-center justify-center', style: { height: '140px', background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(168,85,247,0.15) 100%)' } }, [
+                                icon('play-circle', 40, 'text-accent opacity-80'),
+                                h('span', { className: 'absolute bottom-2 right-2 badge badge-secondary text-[10px]' }, vid.views)
+                            ]),
+                            h('div', { className: 'flex-column gap-1' }, [
+                                h('h4', { className: 'text-xs font-bold text-primary m-0' }, vid.title),
+                                h('p', { className: 'text-[10px] text-muted m-0' }, `${vid.date} • Formato: ${vid.format}`),
+                                h('span', { className: 'text-[10px] text-accent mt-2 font-bold' }, `Hook: ${vid.hook}`)
+                            ])
+                        ]))
+                    )
+                ]);
+            }
+            else if (currentTab === 'hooks') {
+                const hookItems = [
+                    { id: 'HK-07', title: 'Descubrimiento Local', retention: '87%', uses: 43 },
+                    { id: 'HK-02', title: 'Storytelling de Fracaso a Éxito', retention: '79%', uses: 22 },
+                    { id: 'HK-12', title: 'Cuestionamiento del Status Quo', retention: '74%', uses: 15 }
+                ];
+                tabContent = h('div', { className: 'flex-column gap-4' }, [
+                    h('h3', { className: 'text-sm font-bold text-primary' }, 'Hooks Validados y Retención Histórica'),
+                    h('div', { className: 'grid gap-3' }, 
+                        hookItems.map(hk => h('div', { className: 'card p-4 flex justify-between items-center', style: { border: '1px solid rgba(255,255,255,0.08)' } }, [
+                            h('div', { className: 'flex items-center gap-3' }, [
+                                h('span', { className: 'badge badge-accent font-mono' }, hk.id),
+                                h('div', {}, [
+                                    h('h4', { className: 'text-xs font-bold text-primary m-0' }, hk.title),
+                                    h('p', { className: 'text-[10px] text-muted m-0' }, `Cantidad de usos: ${hk.uses} veces`)
+                                ])
+                            ]),
+                            h('div', { className: 'text-right' }, [
+                                h('span', { className: 'intel-stat-large block text-success', style: { fontSize: '1.8rem' } }, hk.retention),
+                                h('span', { className: 'text-[9px] text-muted' }, 'Retención Promedio')
+                            ])
+                        ]))
+                    )
+                ]);
+            }
+            else if (currentTab === 'formatos') {
+                tabContent = h('div', { className: 'grid gap-4', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'premium-info-section flex-column gap-3' }, [
+                        h('h3', { className: 'text-xs font-bold text-success uppercase tracking-wider flex items-center gap-2' }, [
+                            icon('check-circle', 14),
+                            h('span', {}, 'Formatos que funcionan')
+                        ]),
+                        h('ul', { className: 'flex-column gap-2 text-xs text-secondary pl-4 m-0' }, [
+                            h('li', {}, 'RC-01 Recorrido Comercial (Alta conversión)'),
+                            h('li', {}, 'ASMR Dinámico de preparación (Gran retención)'),
+                            h('li', {}, 'Entrevistas rápidas de 3 preguntas a clientes')
+                        ])
+                    ]),
+                    h('div', { className: 'premium-info-section flex-column gap-3' }, [
+                        h('h3', { className: 'text-xs font-bold text-error uppercase tracking-wider flex items-center gap-2' }, [
+                            icon('x-circle', 14),
+                            h('span', {}, 'Formatos que no funcionan')
+                        ]),
+                        h('ul', { className: 'flex-column gap-2 text-xs text-secondary pl-4 m-0' }, [
+                            h('li', {}, 'Videos explicativos largos (> 90 segundos)'),
+                            h('li', {}, 'Tendencias de baile genéricas sin producto'),
+                            h('li', {}, 'Vlogs institucionales de directivos')
+                        ])
+                    ])
+                ]);
+            }
+            else if (currentTab === 'assets') {
+                tabContent = h('div', { className: 'premium-info-section flex-column gap-4' }, [
+                    h('div', { className: 'flex justify-between items-center border-bottom pb-3' }, [
+                        h('h3', { className: 'text-sm font-bold text-primary' }, 'Biblioteca de Assets del Cliente'),
+                        isAdmin ? h('button', { 
+                            className: 'btn btn-primary text-xs',
+                            onClick: () => addRecommendedLink(client) 
+                        }, [icon('plus', 12), h('span', { className: 'ml-1' }, 'Añadir Asset Link')]) : null
+                    ]),
+                    h('div', { className: 'grid gap-2' }, 
+                        (!client.recommendedLinks || !client.recommendedLinks.length) ? [
+                            h('div', { className: 'p-4 text-center text-xs text-muted italic card bg-secondary' }, 'No hay links de assets o referencias registrados aún.')
+                        ] :
+                        client.recommendedLinks.map((rl, idx) => h('div', { 
+                            key: idx, 
+                            className: 'card p-3 flex items-center justify-between hover-bg-tertiary transition'
+                        }, [
+                            h('a', { 
+                                href: rl.url, 
+                                target: '_blank', 
+                                className: 'flex items-center gap-2 text-xs font-semibold text-primary hover-underline no-underline',
+                                style: { color: 'inherit' }
+                            }, [
+                                icon('external-link', 12, 'text-muted'),
+                                h('span', {}, rl.title)
+                            ]),
+                            isAdmin ? h('button', { 
+                                className: 'btn btn-outline text-xs p-1', 
+                                style: { color: 'var(--error)' },
+                                title: 'Eliminar Asset',
+                                onClick: () => deleteRecommendedLink(client, idx) 
+                            }, [icon('trash-2', 12)]) : null
+                        ]))
+                    )
+                ]);
+            }
+            else if (currentTab === 'ia') {
+                // Inline miniature bot
+                const chatContainer = h('div', { className: 'flex-column gap-3 bg-secondary p-4 rounded-lg border' }, [
+                    h('div', { className: 'flex items-center gap-2 border-bottom pb-2' }, [
+                        icon('bot', 20, 'text-accent'),
+                        h('div', {}, [
+                            h('h4', { className: 'text-xs font-bold text-primary m-0' }, 'RIA Asistente Contextual'),
+                            h('p', { className: 'text-[9px] text-muted m-0' }, `Consultando contexto para ${client.name}`)
+                        ])
+                    ]),
+                    h('div', { id: 'ia-chat-box', className: 'flex-column gap-2 overflow-y-auto p-2 bg-tertiary rounded border', style: { height: '220px' } }, [
+                        h('div', { className: 'text-xs text-secondary bg-secondary p-2.5 rounded border self-start max-w-xs' }, `¡Hola! Soy RIA. Puedo ayudarte con guiones, ideas de ganchos (hooks) y formatos ideales para *${client.name}*. ¿Qué deseas crear hoy?`)
+                    ]),
+                    h('form', {
+                        className: 'flex gap-2 items-center border-top pt-2',
+                        onSubmit: (e) => {
+                            e.preventDefault();
+                            const input = e.target.querySelector('input');
+                            const val = input.value.trim();
+                            if(!val) return;
+
+                            const box = document.getElementById('ia-chat-box');
+                            
+                            // Append user msg
+                            box.appendChild(h('div', { className: 'text-xs text-white bg-accent p-2.5 rounded self-end max-w-xs ml-auto' }, val));
+                            input.value = '';
+
+                            // Mock bot response based on keywords
+                            setTimeout(() => {
+                                let reply = `Tomando en cuenta la personalidad sofisticada de *${client.name}*, te recomiendo estructurar un video usando el Formato RC-01 Recorrido Comercial acoplado con el gancho HK-07 Descubrimiento Local.`;
+                                if (val.toLowerCase().includes('gancho') || val.toLowerCase().includes('hook')) {
+                                    reply = `Para *${client.name}*, los hooks de tipo curiosidad local como "El secreto gastronómico mejor guardado de la ciudad..." tienen un 87% de retención validada.`;
+                                } else if (val.toLowerCase().includes('guion') || val.toLowerCase().includes('script')) {
+                                    reply = `Aquí tienes una estructura rápida:\n1. Hook (0-3s): "No vas a creer este postre..."\n2. Cuerpo (3-15s): Muestra visual en cámara lenta del bizcocho mojado.\n3. CTA: "Link en bio para reservar."`;
+                                }
+                                box.appendChild(h('div', { className: 'text-xs text-secondary bg-secondary p-2.5 rounded border self-start max-w-xs' }, reply));
+                                box.scrollTop = box.scrollHeight;
+                            }, 700);
+                        }
+                    }, [
+                        h('input', { type: 'text', placeholder: 'Pregúntale a la IA sobre esta cuenta...', className: 'form-input text-xs flex-1', required: true }),
+                        h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Preguntar')
+                    ])
+                ]);
+
+                tabContent = h('div', { className: 'flex-column gap-3' }, [
+                    h('h3', { className: 'text-sm font-bold text-primary' }, 'Chat Contextual Creativo IA'),
+                    chatContainer
+                ]);
+            }
+
+            container.appendChild(hero);
+            container.appendChild(tabNav);
+            container.appendChild(tabContent);
 
             // Initialize Lucide icons
             if (window.lucide) window.lucide.createIcons();
@@ -280,66 +283,52 @@ export const render = async (params) => {
         }
     };
 
-    const editGuion = (client) => {
-        const overlay = h('div', { className: 'modal-overlay' });
-        const form = h('form', { 
-            className: 'modal-container', 
-            onSubmit: async (e) => {
-                e.preventDefault();
-                const newVal = form.querySelector('textarea').value;
-                client.guionRecomendado = newVal;
-                await dbService.set('clients', client.id, client);
-                document.body.removeChild(overlay);
-                loadClient();
-            }
-        }, [
-            h('div', { className: 'modal-header' }, [h('span', { className: 'modal-title' }, 'Editar Guión Recomendado'), h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')]),
-            h('div', { className: 'modal-body' }, [
-                h('textarea', { className: 'form-textarea', style: { minHeight: '300px' }, required: true }, client.guionRecomendado || '')
-            ]),
-            h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
-                h('button', { type: 'submit', className: 'btn btn-primary' }, 'Guardar Cambios')
-            ])
-        ]);
-        overlay.appendChild(form);
-        document.body.appendChild(overlay);
-    };
-
     const editEstrategia = (client) => {
         const overlay = h('div', { className: 'modal-overlay' });
         const form = h('form', { 
             className: 'modal-container', 
             onSubmit: async (e) => {
                 e.preventDefault();
-                const descVal = form.querySelector('#cli-strat-desc').value;
-                const styleVal = form.querySelector('#cli-strat-style').value;
+                client.description = form.querySelector('#cli-strat-desc').value;
+                client.identidad = form.querySelector('#cli-strat-id').value;
+                client.posicionamiento = form.querySelector('#cli-strat-pos').value;
+                client.clienteIdeal = form.querySelector('#cli-strat-buyer').value;
+                client.personalidad = form.querySelector('#cli-strat-pers').value;
                 
-                client.description = descVal;
-                client.visualStyle = styleVal;
-                
-                await dbService.set('clients', client.id, client);
+                await dbService.update('clients', client.id, client);
                 document.body.removeChild(overlay);
                 loadClient();
             }
         }, [
             h('div', { className: 'modal-header' }, [
-                h('span', { className: 'modal-title' }, `Editar Estrategia: ${client.name}`), 
+                h('span', { className: 'modal-title' }, `Editar Información: ${client.name}`), 
                 h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Descripción Estratégica del Negocio'),
-                    h('textarea', { id: 'cli-strat-desc', className: 'form-textarea', style: { minHeight: '120px' }, required: true }, client.description || '')
+                    h('label', { className: 'form-label text-xs' }, 'Resumen / Descripción'),
+                    h('textarea', { id: 'cli-strat-desc', className: 'form-textarea text-xs', style: { minHeight: '80px' }, required: true }, client.description || '')
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Directrices de Estilo Visual / Edición'),
-                    h('input', { id: 'cli-strat-style', className: 'form-input', value: client.visualStyle || 'Subtítulos dinámicos, transiciones de compás rápido, música trending.', required: true })
+                    h('label', { className: 'form-label text-xs' }, 'Identidad de Marca'),
+                    h('input', { id: 'cli-strat-id', className: 'form-input text-xs', value: client.identidad || '', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label text-xs' }, 'Posicionamiento'),
+                    h('input', { id: 'cli-strat-pos', className: 'form-input text-xs', value: client.posicionamiento || '', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label text-xs' }, 'Cliente Ideal'),
+                    h('input', { id: 'cli-strat-buyer', className: 'form-input text-xs', value: client.clienteIdeal || '', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label text-xs' }, 'Personalidad de la Cuenta'),
+                    h('input', { id: 'cli-strat-pers', className: 'form-input text-xs', value: client.personalidad || '', required: true })
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
-                h('button', { type: 'submit', className: 'btn btn-primary' }, 'Guardar Estrategia')
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Guardar Cambios')
             ])
         ]);
         overlay.appendChild(form);
@@ -364,22 +353,22 @@ export const render = async (params) => {
             }
         }, [
             h('div', { className: 'modal-header' }, [
-                h('span', { className: 'modal-title' }, 'Añadir Link Recomendado'), 
+                h('span', { className: 'modal-title' }, 'Añadir Link de Asset / Recurso'), 
                 h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'Título o Nombre del Link'),
-                    h('input', { id: 'link-title', className: 'form-input', placeholder: 'Ej. Carpeta de Material Bruto Drive', required: true })
+                    h('label', { className: 'form-label text-xs' }, 'Título o Nombre'),
+                    h('input', { id: 'link-title', className: 'form-input text-xs', placeholder: 'Ej. Carpeta de Material Bruto Drive', required: true })
                 ]),
                 h('div', { className: 'form-group' }, [
-                    h('label', { className: 'form-label' }, 'URL del Link'),
-                    h('input', { id: 'link-url', type: 'url', className: 'form-input', placeholder: 'https://...', required: true })
+                    h('label', { className: 'form-label text-xs' }, 'URL del Link'),
+                    h('input', { id: 'link-url', type: 'url', className: 'form-input text-xs', placeholder: 'https://...', required: true })
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
-                h('button', { type: 'submit', className: 'btn btn-primary' }, 'Añadir Link')
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Añadir')
             ])
         ]);
         overlay.appendChild(form);

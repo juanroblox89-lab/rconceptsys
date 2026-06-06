@@ -177,6 +177,13 @@ export const Sidebar = () => {
         store.setState({ ui: { ...store.getState().ui, sidebarOpen: false } });
     });
 
+    sidebar.addEventListener('click', (e) => {
+        const navItem = e.target.closest('.nav-item');
+        if (navItem && window.innerWidth <= 768) {
+            store.setState({ ui: { ...store.getState().ui, sidebarOpen: false } });
+        }
+    });
+
     // ─── Bottom Nav (mobile) ───────────────────────────────
     const bottomNav = h('nav', { className: 'bottom-nav', 'aria-label': 'Navegación principal' }, [
         ...primaryNavItems
