@@ -2463,7 +2463,7 @@ export function openEditPipelineModal(pid, tasks, context = {}) {
                     }).join('')}
                 </div>
 
-                <div class="card p-4 flex-column gap-3 mt-4" style="border: 1px solid var(--error-transparent);">
+                <div class="card p-4 flex-column gap-3 mt-4" style="border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.02);">
                     <h3 class="text-sm font-bold text-error flex items-center gap-2">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         Zona de Peligro

@@ -1597,17 +1597,33 @@ tr:hover td { background-color: var(--bg-secondary); }
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
     padding: 16px 20px;
-    background: rgba(255, 255, 255, 0.015);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 10px;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
 }
 .worker-horizontal-card:hover {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: var(--bg-tertiary);
+    border-color: var(--border-hover);
     transform: translateY(-1px);
+}
+.worker-horizontal-card > div {
+    min-width: 0;
+}
+@media (max-width: 768px) {
+    .worker-horizontal-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .worker-horizontal-card > div {
+        width: 100%;
+        min-width: 0 !important;
+    }
 }
 
 /* 2. Google Drive Style Assets & Collapsible Drawer */

@@ -356,6 +356,7 @@ function openSideDrawer(asset, allAssets, reload, isAdmin) {
             try {
                 await storageService.deleteFile(asset.storagePath || `assets/${asset.client}/${asset.title}`);
                 await dbService.delete('assets', asset.id);
+                alert("¡Asset eliminado exitosamente!");
                 closeSideDrawer();
                 reload();
             } catch (err) {
