@@ -727,15 +727,7 @@ export const render = () => {
                     
                     if (selectedUserId) {
                         const userAdmInv = admInvoices.find(i => i.employeeId === selectedUserId);
-                        currentAdmItems = JSON.parse(JSON.stringify(userAdmInv?.items || [
-                            {
-                                type: userAdmInv?.type || 'Factura Consolidada',
-                                client: userAdmInv?.client || 'General',
-                                amount: userAdmInv?.amount || 0,
-                                observations: userAdmInv?.observations || '',
-                                createdAt: userAdmInv?.createdAt || new Date().toISOString()
-                            }
-                        ]));
+                        currentAdmItems = JSON.parse(JSON.stringify(userAdmInv?.items || []));
                     }
                 } else {
                     const [myEmpInv, myAdmInv] = await Promise.all([
@@ -743,15 +735,7 @@ export const render = () => {
                         invoiceService.getAdminInvoice(user.uid).catch(() => null)
                     ]);
                     
-                    currentEmpItems = myEmpInv?.items || [
-                        {
-                            type: myEmpInv?.type || 'Factura de Edición de Video',
-                            client: myEmpInv?.client || 'General',
-                            amount: myEmpInv?.amount || 0,
-                            observations: myEmpInv?.observations || '',
-                            createdAt: myEmpInv?.createdAt || new Date().toISOString()
-                        }
-                    ];
+                    currentEmpItems = myEmpInv?.items || [];
                     employeeAdmInvoice = myAdmInv;
                 }
             } catch (err) {

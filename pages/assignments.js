@@ -2167,15 +2167,26 @@ export function openMasterPipelineModal(context = {}) {
             } catch(e) { console.error('Error uploading asset:', e); }
         }
 
-        let finalScriptUrl = form.querySelector('#mp-script').value;
-        const scriptFileInput = form.querySelector('#mp-script-file');
-        if (scriptFileInput?.files[0]) {
+        let finalScriptUrl = '';
+        const scriptTitleVal = form.querySelector('#mp-script-title').value.trim();
+        const scriptBodyVal = form.querySelector('#mp-script-body').value.trim();
+        if (scriptBodyVal) {
             try {
-                const { storageService } = await import('../firebase/service.js');
-                finalScriptUrl = await storageService.uploadFile(`scripts/${clientVal}/${scriptFileInput.files[0].name}`, scriptFileInput.files[0]);
-            } catch(e) { console.error('Error uploading script:', e); }
+                const scriptId = 'scr_' + Date.now();
+                const { dbService } = await import('../firebase/service.js');
+                await dbService.set('scripts', scriptId, {
+                    id: scriptId,
+                    client: clientVal,
+                    title: scriptTitleVal || `Guión: ${titleVal}`,
+                    script: scriptBodyVal,
+                    createdBy: 'admin',
+                    createdAt: new Date().toISOString()
+                });
+                finalScriptUrl = scriptBodyVal;
+            } catch(e) {
+                console.error('Error saving new script:', e);
+            }
         }
-        // --------------------
 
         const camSupportSelect = form.querySelector('#mp-cam-support');
         const camSupportIds = Array.from(camSupportSelect.selectedOptions).map(opt => opt.value).filter(Boolean);
@@ -2254,12 +2265,12 @@ export function openMasterPipelineModal(context = {}) {
                     </div>
                     
                     <div class="form-group p-2 rounded" style="background: var(--bg-tertiary); border: 1px dashed var(--border);">
-                        <label class="form-label flex justify-between items-center">
-                            Guion (Script)
+                        <label class="form-label flex justify-between items-center" style="margin-bottom: 4px;">
+                            Guion (Script Copy-Paste)
                             <button type="button" class="text-xs text-accent font-bold bg-transparent border-none cursor-pointer" onclick="window.location.hash='#aiAssistant'; document.querySelector('.modal-overlay').remove();">[+ Pedir a RIA]</button>
                         </label>
-                        <select id="mp-script" class="form-select text-xs mb-1"><option value="">-- Existente --</option>${scriptsHtml}</select>
-                        <input type="file" id="mp-script-file" class="form-input text-xs" accept=".pdf,.doc,.docx,.txt" title="O subir un archivo nuevo">
+                        <input type="text" id="mp-script-title" class="form-input text-xs mb-1" placeholder="Título del guion (Ej. Guión Promocional)">
+                        <textarea id="mp-script-body" class="form-textarea text-xs" rows="4" placeholder="Pega el guión aquí..."></textarea>
                     </div>
                     
                     <div class="form-group p-2 rounded" style="background: var(--bg-tertiary); border: 1px dashed var(--border);">
