@@ -2461,13 +2461,13 @@ export function openEditPipelineModal(pid, tasks, context = {}) {
                     }).join('')}
                 </div>
 
-                <div class="card p-4 flex-column gap-3 mt-4" style="border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.02);">
-                    <h3 class="text-sm font-bold text-error flex items-center gap-2">
+                <div class="flex-column gap-3 mt-4 p-4" style="border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.04); border-radius: var(--radius-md); display: flex; flex-direction: column;">
+                    <h3 class="text-sm font-bold text-error flex items-center gap-2" style="margin: 0; color: var(--error); display: flex; align-items: center;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         Zona de Peligro
                     </h3>
-                    <p class="text-xs text-muted mb-2">Eliminar este flujo borrará permanentemente todas las tareas y fases asociadas. Esta acción no se puede deshacer.</p>
-                    <button type="button" id="btn-delete-pipeline" class="btn btn-primary text-xs py-2 w-full" style="background: var(--error); border-color: var(--error); color: white;">
+                    <p class="text-xs text-muted mb-2" style="margin: 0; color: var(--text-muted); display: block;">Eliminar este flujo borrará permanentemente todas las tareas y fases asociadas. Esta acción no se puede deshacer.</p>
+                    <button type="button" id="btn-delete-pipeline" class="btn text-xs py-2 w-full" style="background: var(--error); border-color: var(--error); color: white; display: block; width: 100%; border: 1px solid var(--error); border-radius: var(--radius-sm); cursor: pointer; text-align: center;">
                         Eliminar Pipeline Completo
                     </button>
                 </div>
