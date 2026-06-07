@@ -354,7 +354,12 @@ function openSideDrawer(asset, allAssets, reload, isAdmin) {
         onClick: async () => {
             if (!confirm(`¿Eliminar definitivamente "${asset.title}"?`)) return;
             try {
-                await storageService.deleteFile(asset.storagePath || `assets/${asset.client}/${asset.title}`);
+                // Try deleting from storage but don't fail the database deletion if it fails
+                try {
+                    await storageService.deleteFile(asset.storagePath || `assets/${asset.client}/${asset.title}`);
+                } catch (storageErr) {
+                    console.warn("Could not delete file from storage (it might not exist), proceeding to delete database document:", storageErr);
+                }
                 await dbService.delete('assets', asset.id);
                 alert("¡Asset eliminado exitosamente!");
                 closeSideDrawer();

@@ -55,9 +55,7 @@
 
 .sidebar-logo img {
     object-fit: contain;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    max-height: 48px;
 }
 
 .sidebar-nav {
@@ -297,12 +295,12 @@
 /* ================================
    HIDE / SHOW HELPERS
 ================================ */
-.md-hide { display: none; }
-.sm-hide { display: block; }
+.md-hide { display: none !important; }
+.sm-hide { display: block !important; }
 
 @media (max-width: 768px) {
-    .md-hide { display: flex; }
-    .sm-hide { display: none; }
+    .md-hide { display: flex !important; }
+    .sm-hide { display: none !important; }
 }
 
 /* ================================
@@ -1612,6 +1610,18 @@ tr:hover td { background-color: var(--bg-secondary); }
    ========================================================================== */
 
 /* 1. Worker Cards & Employee Profiles */
+.worker-detail-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    width: 100%;
+}
+@media (max-width: 1024px) {
+    .worker-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .worker-horizontal-card {
     display: flex;
     align-items: center;

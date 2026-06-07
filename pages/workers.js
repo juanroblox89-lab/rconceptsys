@@ -297,7 +297,7 @@ function renderWorkerDetail(container, w, assignments, clients, sops, roles, rel
     container.appendChild(metricsGrid);
 
     // Split Layout below
-    const columns = h('div', { style: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', width: '100%' } }, [
+    const columns = h('div', { className: 'worker-detail-grid' }, [
         // Left Column
         h('div', { className: 'flex-column gap-4' }, [
             // Active assignments

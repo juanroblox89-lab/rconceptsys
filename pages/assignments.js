@@ -1096,7 +1096,7 @@ export const render = async () => {
                                                 isDone ? icon('check', 12) : isBlocked ? icon('lock', 12) : icon('clock', 12)
                                             ]),
                                             h('span', { className: 'text-[9px] font-bold mt-1 text-center', style: { color: textColor } }, t.type),
-                                            h('span', { className: 'text-[9px] text-muted text-center', style: { maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, emp ? (emp.nombre || emp.email.split('@')[0]) : '?')
+                                            h('span', { className: 'text-[9px] text-muted text-center', style: { maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, emp ? (emp.nombre || emp.email.split('@')[0]) : '?')
                                         ]);
                                     })
                                 ]),
