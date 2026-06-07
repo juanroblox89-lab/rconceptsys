@@ -21,7 +21,7 @@ export const render = () => {
                 dbService.getAll('formats').catch(() => []),
                 dbService.getAll('hooks').catch(() => []),
                 dbService.getAll('clients').catch(() => []),
-                assignmentService.getAllAssignments().catch(() => []),
+                isAdmin ? assignmentService.getAllAssignments().catch(() => []) : assignmentService.getAssignmentsByEmployee(user?.uid).catch(() => []),
                 dbService.getAll('users').catch(() => []),
                 dbService.getAll('invoices').catch(() => []),
                 dbService.getAll('sop_submissions').catch(() => [])

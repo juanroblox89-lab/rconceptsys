@@ -2,7 +2,7 @@
  * Firebase Service Wrapper - Creative Production OS
  */
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { getFirestore, collection, addDoc, setDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc, writeBatch, increment } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
@@ -24,7 +24,7 @@ const storage = getStorage(app);
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
 
-export { db, auth, storage };
+export { db, auth, storage, increment };
 
 /**
  * Generic Database Service
@@ -142,12 +142,6 @@ export const authService = {
                         await setDoc(doc(db, 'users', user.uid), newUser);
                         callback(newUser);
                     } else {
-                        // If user is master admin but document doesn't reflect admin, fix it once
-                        if (isMasterAdmin && userDoc.role !== 'admin') {
-                            await dbService.update('users', user.uid, { role: 'admin', approved: true });
-                            userDoc.role = 'admin';
-                            userDoc.approved = true;
-                        }
                         callback(userDoc);
                     }
                 } catch (err) {

@@ -213,17 +213,22 @@ export const invoiceService = {
                 dbService.getAll('admin_invoices').catch(() => [])
             ]);
 
-            const batch = dbService.batch();
-            
-            empInvoices.forEach(inv => {
-                batch.delete(doc(db, 'invoices', inv.id));
-            });
-            admInvoices.forEach(inv => {
-                batch.delete(doc(db, 'admin_invoices', inv.id));
-            });
+            const allDocs = [
+                ...empInvoices.map(inv => ({ col: 'invoices', id: inv.id })),
+                ...admInvoices.map(inv => ({ col: 'admin_invoices', id: inv.id }))
+            ];
 
-            await batch.commit();
-            return { deleted: empInvoices.length + admInvoices.length };
+            const batchSize = 400; // conservative batch limit (Firestore max is 500)
+            for (let i = 0; i < allDocs.length; i += batchSize) {
+                const batch = dbService.batch();
+                const chunk = allDocs.slice(i, i + batchSize);
+                chunk.forEach(item => {
+                    batch.delete(doc(db, item.col, item.id));
+                });
+                await batch.commit();
+            }
+
+            return { deleted: allDocs.length };
         } catch (err) {
             console.error("Error resetting invoices:", err);
             throw err;

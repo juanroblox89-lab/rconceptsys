@@ -391,8 +391,6 @@ const renderAssignmentDetail = (asgId, assignments, approvedUsers, finalClients,
                                     uploadLink: linkVal,
                                     completedAt: new Date().toISOString()
                                 });
-                                // Trigger billing item addition
-                                await invoiceService.autoBilledItem(asg);
                                 selectedAssignmentId = null;
                                 loadAndRender();
                             };
@@ -475,7 +473,7 @@ export const render = async () => {
             // 1. Load Data
             const [users, assignments, clients, scripts, assets, rates, mySopSubmissions, systemPricing] = await Promise.all([
                 userService.getAllUsers(),
-                assignmentService.getAllAssignments(),
+                isAdmin ? assignmentService.getAllAssignments() : assignmentService.getAssignmentsByEmployee(user.uid),
                 dbService.getAll('clients').catch(() => []),
                 dbService.getAll('scripts').catch(() => []),
                 dbService.getAll('assets').catch(() => []),

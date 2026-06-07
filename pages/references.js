@@ -98,6 +98,7 @@ export const render = () => {
                         h('a', { 
                             href: refItem.url, 
                             target: '_blank', 
+                            rel: 'noopener noreferrer',
                             className: 'btn btn-primary text-xs flex items-center justify-center gap-1',
                             style: { padding: '6px 12px', textDecoration: 'none', background: 'var(--primary)' } 
                         }, [icon('external-link', 12), h('span', {}, 'Ver Video')]),
@@ -152,7 +153,7 @@ export const render = () => {
                     icon('bookmark', 16, 'text-primary'),
                     h('span', {}, 'Análisis Visual de Referencia')
                 ]),
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+                h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { 
@@ -189,9 +190,24 @@ export const render = () => {
                         }),
                         h('button', {
                             className: 'btn btn-outline text-xs',
-                            onClick: () => {
-                                navigator.clipboard.writeText(refItem.url);
-                                alert("¡Enlace copiado al portapapeles!");
+                            onClick: async () => {
+                                try {
+                                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                                        await navigator.clipboard.writeText(refItem.url);
+                                    } else {
+                                        const textArea = document.createElement("textarea");
+                                        textArea.value = refItem.url;
+                                        textArea.style.position = "fixed";
+                                        document.body.appendChild(textArea);
+                                        textArea.focus();
+                                        textArea.select();
+                                        document.execCommand('copy');
+                                        document.body.removeChild(textArea);
+                                    }
+                                    alert("¡Enlace copiado al portapapeles!");
+                                } catch (err) {
+                                    alert("Error al copiar: " + err.message);
+                                }
                             }
                         }, 'Copiar')
                     ])
@@ -205,7 +221,7 @@ export const render = () => {
                         if (confirm('¿Eliminar esta referencia permanentemente?')) {
                             try {
                                 await dbService.delete('references', refItem.id);
-                                document.body.removeChild(overlay);
+                                overlay.remove();
                                 loadReferences();
                             } catch (err) {
                                 console.error("Error deleting reference:", err);
@@ -216,13 +232,14 @@ export const render = () => {
                 h('a', { 
                     href: refItem.url, 
                     target: '_blank', 
+                    rel: 'noopener noreferrer',
                     className: 'btn btn-primary text-xs no-underline flex items-center gap-1 flex-1 justify-center',
                     style: { padding: '8px 16px' }
                 }, [icon('external-link', 14), h('span', {}, 'Ver en Plataforma')]),
                 h('button', { 
                     type: 'button', 
                     className: 'btn btn-outline text-xs', 
-                    onClick: () => document.body.removeChild(overlay) 
+                    onClick: () => overlay.remove() 
                 }, 'Cerrar')
             ])
         ]);
@@ -266,13 +283,13 @@ export const render = () => {
                     console.error("Failed to save reference:", err);
                 }
 
-                document.body.removeChild(overlay);
+                overlay.remove();
                 loadReferences();
             }
         }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title' }, isEdit ? 'Editar Referencia Visual' : 'Añadir Nueva Referencia'),
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+                h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'form-group' }, [
@@ -304,7 +321,7 @@ export const render = () => {
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, isEdit ? 'Guardar Cambios' : 'Crear Referencia')
             ])
         ]);

@@ -29,6 +29,13 @@ export const h = (tag, attrs = {}, children = []) => {
         } else if (key === 'value') {
             el.value = value;
             el.setAttribute(key, value);
+        } else if (key === 'checked' || key === 'disabled' || key === 'selected') {
+            el[key] = !!value;
+            if (value) {
+                el.setAttribute(key, '');
+            } else {
+                el.removeAttribute(key);
+            }
         } else {
             el.setAttribute(key, value);
         }

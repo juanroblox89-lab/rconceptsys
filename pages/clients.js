@@ -4,7 +4,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { dbService, storageService } from '../firebase/service.js';
+import { dbService, storageService, increment } from '../firebase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 
 export const render = () => {
@@ -99,8 +99,8 @@ export const render = () => {
                                         style: { padding: '0 4px', cursor: 'pointer', background: 'none', border: 'none' },
                                         onClick: async (e) => {
                                             e.stopPropagation();
-                                            const newVal = Math.max(0, (c.videosCompleted || 0) - 1);
-                                            await dbService.update('clients', c.id, { videosCompleted: newVal });
+                                            if ((c.videosCompleted || 0) <= 0) return;
+                                            await dbService.update('clients', c.id, { videosCompleted: increment(-1) });
                                             await loadAndRenderClients();
                                         }
                                     }, '-'),
@@ -110,8 +110,7 @@ export const render = () => {
                                         style: { padding: '0 4px', cursor: 'pointer', background: 'none', border: 'none' },
                                         onClick: async (e) => {
                                             e.stopPropagation();
-                                            const newVal = (c.videosCompleted || 0) + 1;
-                                            await dbService.update('clients', c.id, { videosCompleted: newVal });
+                                            await dbService.update('clients', c.id, { videosCompleted: increment(1) });
                                             await loadAndRenderClients();
                                         }
                                     }, '+')

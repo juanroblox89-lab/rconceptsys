@@ -301,7 +301,8 @@ export const assignmentService = {
                 const refDate = createdAtDate || dueDate;
                 if (!refDate) continue;
                 
-                const diffTime = Math.abs(now - refDate);
+                const diffTime = now - refDate;
+                if (diffTime <= 0) continue; // In the future, do not purge
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
                 if (diffDays > 30) {

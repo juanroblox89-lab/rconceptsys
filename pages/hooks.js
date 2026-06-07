@@ -103,7 +103,7 @@ const renderHookDetail = (hkId, hooksList, loadHooks) => {
                         h('div', { className: 'relative rounded-lg overflow-hidden flex items-center justify-center', style: { height: '100px', background: 'linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(168,85,247,0.06) 100%)' } }, [
                             icon('play-circle', 30, 'text-accent opacity-80')
                         ]),
-                        h('a', { href: ex.url, target: '_blank', className: 'text-xs font-bold text-primary m-0 hover-underline truncate' }, ex.label),
+                        h('a', { href: ex.url, target: '_blank', rel: 'noopener noreferrer', className: 'text-xs font-bold text-primary m-0 hover-underline truncate' }, ex.label),
                         h('p', { className: 'text-[9px] text-success m-0 font-bold' }, ex.stats || 'Resultado excelente')
                     ]))
                 )
@@ -216,13 +216,13 @@ export const render = () => {
                     console.warn("Error saving hook:", err);
                 }
 
-                document.body.removeChild(overlay);
+                overlay.remove();
                 loadHooks();
             }
         }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title' }, 'Añadir Nuevo Hook Gancho'), 
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+                h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'form-group' }, [
@@ -239,7 +239,7 @@ export const render = () => {
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, 'Crear Hook')
             ])
         ]);

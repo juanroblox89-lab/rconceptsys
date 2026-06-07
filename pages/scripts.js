@@ -202,7 +202,18 @@ export const render = () => {
                             onClick: async (e) => { 
                                 e.stopPropagation(); 
                                 try {
-                                    await navigator.clipboard.writeText(content); 
+                                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                                        await navigator.clipboard.writeText(content); 
+                                    } else {
+                                        const textArea = document.createElement("textarea");
+                                        textArea.value = content;
+                                        textArea.style.position = "fixed";
+                                        document.body.appendChild(textArea);
+                                        textArea.focus();
+                                        textArea.select();
+                                        document.execCommand('copy');
+                                        document.body.removeChild(textArea);
+                                    }
                                     const b = e.currentTarget; 
                                     b.innerHTML = icon('check',11).outerHTML; 
                                     setTimeout(()=>{b.innerHTML=icon('copy',11).outerHTML;},1500); 
@@ -246,7 +257,7 @@ export const render = () => {
                     h('span', { className: 'modal-title' }, s.title || 'Guión'),
                     h('span', { className: 'text-xs text-muted' }, `Cliente: ${s.client || 'General'}`)
                 ]),
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
+                h('button', { type: 'button', onClick: () => overlay.remove(), style: { fontWeight: 'bold' } }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3', style: { overflowY: 'auto', flex: 1 } }, [
                 // Tags
@@ -279,13 +290,24 @@ export const render = () => {
             h('div', { className: 'modal-footer flex gap-2' }, [
                 h('button', { type: 'button', className: 'btn btn-outline text-xs flex items-center gap-1', onClick: async () => { 
                     try {
-                        await navigator.clipboard.writeText(content); 
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(content); 
+                        } else {
+                            const textArea = document.createElement("textarea");
+                            textArea.value = content;
+                            textArea.style.position = "fixed";
+                            document.body.appendChild(textArea);
+                            textArea.focus();
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                        }
                         alert('¡Guión copiado!'); 
                     } catch (err) {
                         alert('Error al copiar: ' + err.message);
                     }
                 } }, [icon('copy', 12), h('span', {}, 'Copiar Guión')]),
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cerrar')
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cerrar')
             ])
         ]);
 
@@ -310,6 +332,7 @@ export const render = () => {
 
             const scriptId = editingScript ? editingScript.id : `SCR-${crypto.randomUUID().split('-')[0]}`;
             const newScript = {
+                ...(editingScript || {}),
                 id: scriptId, title: titleVal, client: clientVal,
                 content: scriptVal, script: scriptVal,
                 sceneDirections: sceneVal, recommendations: recVal,
@@ -318,7 +341,7 @@ export const render = () => {
 
             try { 
                 await dbService.set('scripts', scriptId, newScript); 
-                document.body.removeChild(overlay);
+                overlay.remove();
                 loadScripts();
             } catch (err) { 
                 console.warn("Save error:", err); 
@@ -329,7 +352,7 @@ export const render = () => {
         const form = h('form', { className: 'modal-container', style: { maxWidth: '600px' }, onSubmit: saveScriptFlow }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title text-sm' }, editingScript ? 'Editar Guión' : 'Crear Nuevo Guión'),
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
+                h('button', { type: 'button', onClick: () => overlay.remove(), style: { fontWeight: 'bold' } }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3', style: { maxHeight: '65vh', overflowY: 'auto' } }, [
                 h('div', { className: 'form-group' }, [
@@ -372,7 +395,7 @@ export const render = () => {
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, editingScript ? 'Guardar Cambios' : 'Crear y Publicar')
             ])
         ]);

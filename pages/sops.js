@@ -48,7 +48,7 @@ const renderSopDetail = (sopId, sopsList, user, load) => {
         };
 
         await dbService.set('sop_submissions', subId, submissionData);
-        load();
+        load(false);
     };
 
     const detailContainer = h('div', { 
@@ -179,8 +179,10 @@ export const render = () => {
     const isAdmin = user?.role === 'admin';
     const container = h('div', { className: 'fade-in flex-column gap-4' });
 
-    const load = async () => {
-        container.innerHTML = '<div class="loader mb-4"></div>';
+    const load = async (showLoader = true) => {
+        if (showLoader) {
+            container.innerHTML = '<div class="loader mb-4"></div>';
+        }
         let sopsList = [];
         let myActiveSubmissions = [];
         try { 
@@ -356,7 +358,7 @@ function renderStep(step, idx, sop, user, isAdmin, reload) {
 
         await dbService.set('sop_submissions', subId, submissionData);
         if (updates.done !== undefined) {
-            reload();
+            reload(false);
         }
     };
 

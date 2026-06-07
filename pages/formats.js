@@ -270,13 +270,13 @@ export const render = () => {
                     console.warn("Error saving format:", err);
                 }
 
-                document.body.removeChild(overlay);
+                overlay.remove();
                 loadFormats();
             }
         }, [
             h('div', { className: 'modal-header' }, [
                 h('span', { className: 'modal-title' }, editingFormat ? 'Editar Formato de Video' : 'Crear Nuevo Formato de Video'), 
-                h('button', { type: 'button', onClick: () => document.body.removeChild(overlay) }, '×')
+                h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
             ]),
             h('div', { className: 'modal-body flex-column gap-3' }, [
                 h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 2fr' } }, [
@@ -343,7 +343,7 @@ export const render = () => {
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => overlay.remove() }, 'Cancelar'),
                 h('button', { type: 'submit', className: 'btn btn-primary text-xs' }, editingFormat ? 'Guardar' : 'Crear')
             ])
         ]);
