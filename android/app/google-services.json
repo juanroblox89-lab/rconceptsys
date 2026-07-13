@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "276644443381",
+    "project_id": "rconceptsys-creativeos",
+    "storage_bucket": "rconceptsys-creativeos.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:276644443381:android:42a4eacd086fd5ad29c1bc",
+        "android_client_info": {
+          "package_name": "com.rconcept.creativeos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbdOF_2HROLUhUbYGQdQQG_6JL2OtyCeo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
