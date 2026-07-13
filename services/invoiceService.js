@@ -4,6 +4,7 @@
  */
 import { dbService, db } from '../supabase/service.js';
 import { increment } from '../supabase/service.js';
+import { notificationService } from './notificationService.js';
 export const invoiceService = {
     // --- Rate Cards Methods ---
     async getRateCards() {
@@ -52,6 +53,13 @@ export const invoiceService = {
                 items: newItems,
                 status: 'Pendiente'
             });
+
+            // Show local notification for new billing event
+            notificationService.notifyBillingEvent(
+                'new_invoice',
+                amount,
+                invoiceItem.client || invoiceItem.title || 'Servicio'
+            );
         } catch (err) {
             console.error("Auto-billing failed:", err);
             throw err;

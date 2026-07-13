@@ -4,6 +4,7 @@
  * Includes auto-deletion logic for tasks 2 days past their deadline.
  */
 import { dbService, db } from '../supabase/service.js';
+import { notificationService } from './notificationService.js';
 
 export const assignmentService = {
     subscribeToAssignments(callback) {
@@ -76,7 +77,12 @@ export const assignmentService = {
 
         try {
             await dbService.set('assignments', id, newAsg);
-            
+
+            // Schedule deadline reminders (native only)
+            if (newAsg.dueDate && newAsg.status !== 'Completado') {
+                notificationService.scheduleDeadlineReminder(newAsg);
+            }
+
             // Auto-advance pipeline if completed
             if (newAsg.status === 'Completado' && newAsg.projectId && typeof newAsg.stageIndex !== 'undefined') {
                 await this._advancePipeline(newAsg.projectId, newAsg.stageIndex);
@@ -266,7 +272,10 @@ export const assignmentService = {
         try {
             // First fetch the assignment to get its title for invoice cleanup
             const asg = await dbService.getById('assignments', id);
-            
+
+            // Cancel any scheduled deadline reminders
+            notificationService.cancelDeadlineReminders(id);
+
             // Delete the assignment
             await dbService.delete('assignments', id);
             

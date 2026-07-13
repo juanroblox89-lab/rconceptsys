@@ -8,6 +8,7 @@ import { authService, dbService } from '../supabase/service.js';
 import { Sidebar } from '../components/Sidebar.js';
 import { Header } from '../components/layout/Header.js';
 import { CommandPalette } from '../components/ui/CommandPalette.js';
+import { notificationService } from '../services/notificationService.js';
 
 const escapeHTML = (str) => String(str || '').replace(/[&<>'"]/g, 
     tag => ({
@@ -75,6 +76,8 @@ class App {
                     store.setState({ user, authLoading: false });
                     if (user.approved === true) {
                         this.renderAuthenticatedApp();
+                        // Initialize notifications after successful auth (native only)
+                        notificationService.init();
                     } else {
                         this.renderPendingApprovalScreen(user);
                     }

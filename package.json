@@ -10,9 +10,17 @@
     "clean": "node -e \"const fs=require('fs'); ['dist','node_modules/.vite'].forEach(p=>fs.existsSync(p)&&fs.rmSync(p,{recursive:true,force:true}));\""
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
     "vite": "^5.2.0"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/local-notifications": "^8.2.0",
+    "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@supabase/supabase-js": "^2.110.3"
   }
 }

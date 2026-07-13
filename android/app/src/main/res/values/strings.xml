@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CreativeOS</string>
+    <string name="title_activity_main">CreativeOS</string>
+    <string name="package_name">com.rconcept.creativeos</string>
+    <string name="custom_url_scheme">com.rconcept.creativeos</string>
+</resources>
