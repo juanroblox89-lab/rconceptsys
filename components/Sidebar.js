@@ -4,7 +4,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { authService, storageService, dbService } from '../firebase/service.js';
+import { authService, storageService, dbService } from '../supabase/service.js';
 
 // Primary nav (shown in sidebar AND bottom nav)
 const primaryNavItems = [

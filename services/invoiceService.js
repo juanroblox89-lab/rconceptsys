@@ -2,8 +2,8 @@
  * Invoice Service - Creative Production OS
  * Handles single invoice operational tracking: Employee Invoice (emp-inv-{userId}) and Admin Invoice (adm-inv-{userId}).
  */
-import { dbService, db } from '../firebase/service.js';
-import { doc, updateDoc, arrayUnion, increment, setDoc } from "firebase/firestore";
+import { dbService, db } from '../supabase/service.js';
+import { increment } from '../supabase/service.js';
 export const invoiceService = {
     // --- Rate Cards Methods ---
     async getRateCards() {
@@ -36,16 +36,22 @@ export const invoiceService = {
         invoiceItem.timestamp = new Date().toISOString();
 
         try {
-            await setDoc(doc(db, collectionName, docId), {
+            // Fetch existing invoice to append items and sum amount (Supabase has no arrayUnion/increment)
+            const existing = await dbService.getById(collectionName, docId);
+            const existingItems = (existing && existing.items) || [];
+            const existingAmount = (existing && Number(existing.amount)) || 0;
+            const newItems = [...existingItems, invoiceItem];
+            const newAmount = existingAmount + amount;
+
+            await dbService.set(collectionName, docId, {
                 id: docId,
                 employeeId: userId,
                 employeeName: invoiceItem.employeeName || 'Empleado',
                 type: isAdminInvoice ? 'Factura Consolidada' : 'Factura por Servicios',
-                amount: increment(amount),
-                items: arrayUnion(invoiceItem),
+                amount: newAmount,
+                items: newItems,
                 status: 'Pendiente'
-                // Omitimos createdAt para no sobreescribir si ya existe. En un mundo ideal usaríamos serverTimestamp(), pero esto resuelve el race condition principal.
-            }, { merge: true });
+            });
         } catch (err) {
             console.error("Auto-billing failed:", err);
             throw err;
@@ -213,22 +219,13 @@ export const invoiceService = {
                 dbService.getAll('admin_invoices').catch(() => [])
             ]);
 
-            const allDocs = [
-                ...empInvoices.map(inv => ({ col: 'invoices', id: inv.id })),
-                ...admInvoices.map(inv => ({ col: 'admin_invoices', id: inv.id }))
-            ];
+            // Supabase: delete in parallel (no batch needed)
+            const empDeletes = empInvoices.map(inv => dbService.delete('invoices', inv.id).catch(() => {}));
+            const admDeletes = admInvoices.map(inv => dbService.delete('admin_invoices', inv.id).catch(() => {}));
 
-            const batchSize = 400; // conservative batch limit (Firestore max is 500)
-            for (let i = 0; i < allDocs.length; i += batchSize) {
-                const batch = dbService.batch();
-                const chunk = allDocs.slice(i, i + batchSize);
-                chunk.forEach(item => {
-                    batch.delete(doc(db, item.col, item.id));
-                });
-                await batch.commit();
-            }
+            await Promise.all([...empDeletes, ...admDeletes]);
 
-            return { deleted: allDocs.length };
+            return { deleted: empInvoices.length + admInvoices.length };
         } catch (err) {
             console.error("Error resetting invoices:", err);
             throw err;

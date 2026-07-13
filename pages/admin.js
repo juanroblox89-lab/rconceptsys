@@ -5,7 +5,7 @@
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { userService } from '../services/userService.js';
-import { storageService, dbService } from '../firebase/service.js';
+import { storageService, dbService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
 
 let activeAdminTab = 'members'; // members, financial, roles, system

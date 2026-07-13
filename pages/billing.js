@@ -7,7 +7,7 @@ import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { userService } from '../services/userService.js';
-import { dbService } from '../firebase/service.js';
+import { dbService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 
 export const render = () => {
@@ -231,7 +231,7 @@ export const render = () => {
                                 const overlay = h('div', { className: 'modal-overlay fade-in' });
                                 const modal = h('div', { className: 'modal-container' }, [
                                     h('div', { className: 'modal-header text-sm font-bold' }, 'Error'),
-                                    h('div', { className: 'modal-body text-xs text-muted' }, 'Error al guardar la configuración. (Revisa tus reglas de Firebase)'),
+                                    h('div', { className: 'modal-body text-xs text-muted' }, 'Error al guardar la configuración. (Revisa los permisos de Supabase)'),
                                     h('div', { className: 'modal-footer' }, [
                                         h('button', { className: 'btn btn-primary text-xs', onClick: () => document.body.removeChild(overlay) }, 'Aceptar')
                                     ])

@@ -4,7 +4,7 @@
  * Premium redesigned layout with Ficha de Inteligencia detail page views.
  */
 import { h, icon } from '../utils/dom.js';
-import { dbService } from '../firebase/service.js';
+import { dbService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 
 let selectedHookId = null;

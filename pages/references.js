@@ -3,7 +3,7 @@
  * Notion Light UI presenting curated visual and conceptual reference links for video editing inspiration.
  */
 import { h, icon } from '../utils/dom.js';
-import { dbService } from '../firebase/service.js';
+import { dbService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 
 export const render = () => {

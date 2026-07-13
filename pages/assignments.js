@@ -5,7 +5,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { dbService, storageService } from '../firebase/service.js';
+import { dbService, storageService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
 import { invoiceService } from '../services/invoiceService.js';
@@ -2157,12 +2157,12 @@ export function openMasterPipelineModal(context = {}) {
         const clientVal = form.querySelector('#mp-client').value;
         const titleVal = form.querySelector('#mp-title').value;
 
-        // --- File Uploads ---
+        // --- File Uploads ---`
         let finalAssetUrl = form.querySelector('#mp-asset').value;
         const assetFileInput = form.querySelector('#mp-asset-file');
         if (assetFileInput?.files[0]) {
             try {
-                const { storageService } = await import('../firebase/service.js');
+                const { storageService } = await import('../supabase/service.js');
                 finalAssetUrl = await storageService.uploadFile(`assets/${clientVal}/${assetFileInput.files[0].name}`, assetFileInput.files[0]);
             } catch(e) { console.error('Error uploading asset:', e); }
         }
@@ -2173,7 +2173,7 @@ export function openMasterPipelineModal(context = {}) {
         if (scriptBodyVal) {
             try {
                 const scriptId = 'scr_' + Date.now();
-                const { dbService } = await import('../firebase/service.js');
+                const { dbService } = await import('../supabase/service.js');
                 await dbService.set('scripts', scriptId, {
                     id: scriptId,
                     client: clientVal,

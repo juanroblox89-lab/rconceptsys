@@ -3,18 +3,29 @@
  * Handles operational task assignments for recordings and edits.
  * Includes auto-deletion logic for tasks 2 days past their deadline.
  */
-import { dbService, db } from '../firebase/service.js';
-import { onSnapshot, collection, doc } from "firebase/firestore";
+import { dbService, db } from '../supabase/service.js';
 
 export const assignmentService = {
     subscribeToAssignments(callback) {
-        return onSnapshot(collection(db, 'assignments'), (snapshot) => {
-            const assignments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            callback(assignments);
-        }, (error) => {
-            console.warn("Error in real-time assignments subscription:", error);
-            callback([]);
-        });
+        // Supabase realtime subscription (replaces Firestore onSnapshot)
+        const channel = db
+            .channel('assignments-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'assignments' },
+                async () => {
+                    // Refetch all assignments on any change
+                    const assignments = await this.getAllAssignments();
+                    callback(assignments);
+                }
+            )
+            .subscribe();
+
+        // Initial fetch
+        this.getAllAssignments().then(callback);
+
+        // Return unsubscribe function (mirrors Firebase onSnapshot return)
+        return () => db.removeChannel(channel);
     },
 
     async getAllAssignments() {
@@ -191,8 +202,7 @@ export const assignmentService = {
         try {
             const batch = dbService.batch();
             for (const stage of stagesToCreate) {
-                const docRef = doc(db, 'assignments', stage.id);
-                batch.set(docRef, { ...stage, updatedAt: new Date().toISOString() }, { merge: true });
+                batch.set({ _collection: 'assignments' }, { ...stage, updatedAt: new Date().toISOString() }, { merge: true });
             }
             await batch.commit();
         } catch (err) {

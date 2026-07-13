@@ -23,7 +23,7 @@ export default defineConfig({
   // Exclude project source files from Vite's dep optimization
   // to prevent es-module-lexer from failing on complex JS patterns
   optimizeDeps: {
-    exclude: ['firebase', 'firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+    exclude: ['@supabase/supabase-js', '@supabase/ssr'],
     esbuildOptions: {
       target: 'es2020'
     }

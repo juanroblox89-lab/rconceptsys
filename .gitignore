@@ -2,6 +2,7 @@ node_modules/
 dist/
 .DS_Store
 .env
+.env.local
 .firebase/
 .vscode/
 npm-debug.log*
@@ -9,3 +10,4 @@ yarn-debug.log*
 yarn-error.log*
 .temp/
 *.log
+nvidia-keys.md

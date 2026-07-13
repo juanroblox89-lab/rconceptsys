@@ -3,7 +3,7 @@
  * Notion-style SOP builder with per-role targeting and interactive checklist detail views.
  */
 import { h, icon } from '../utils/dom.js';
-import { dbService, storageService } from '../firebase/service.js';
+import { dbService, storageService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 
 const ICONS = ['check-square', 'video', 'scissors', 'mic', 'pen-tool', 'monitor', 'camera', 'file-text', 'layers', 'zap'];

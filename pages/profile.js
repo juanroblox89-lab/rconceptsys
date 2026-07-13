@@ -4,7 +4,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { dbService, storageService } from '../firebase/service.js';
+import { dbService, storageService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { router } from '../js/router.js';

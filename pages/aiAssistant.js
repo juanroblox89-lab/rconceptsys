@@ -4,7 +4,7 @@
  * Updated: 3-column layout (History, Chat, Context), action proposal preview/confirm/execute pipeline.
  */
 import { h, icon } from '../utils/dom.js';
-import { dbService } from '../firebase/service.js';
+import { dbService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { store } from '../js/store.js';
 
@@ -404,9 +404,10 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                         id,
                         title: action.payload.title,
                         iconName: 'check-square',
-                        steps: stepsArr.length ? stepsArr : [{ text: 'Punto de verificación inicial', done: false }]
+                        steps: stepsArr.length ? stepsArr : [{ text: 'Punto de verificación inicial', done: false }],
+                        createdAt: new Date().toISOString()
                     });
-                } 
+                }
                 else if (action.type === 'create_format') {
                     const id = action.payload.id || action.payload.name.toLowerCase().replace(/\s+/g, '-');
                     await dbService.set('formats', id, {
@@ -436,7 +437,9 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                     });
                 }
                 else if (action.type === 'create_script') {
-                    await dbService.set(`script-${Date.now().toString().slice(-6)}`, {
+                    const scriptId = `script-${Date.now().toString().slice(-6)}`;
+                    await dbService.set('scripts', scriptId, {
+                        id: scriptId,
                         title: action.payload.title,
                         client: action.payload.client,
                         content: action.payload.content,

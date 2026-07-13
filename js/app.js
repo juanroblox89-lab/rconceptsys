@@ -4,7 +4,7 @@
  */
 import { store } from './store.js';
 import { router } from './router.js';
-import { authService, dbService } from '../firebase/service.js';
+import { authService, dbService } from '../supabase/service.js';
 import { Sidebar } from '../components/Sidebar.js';
 import { Header } from '../components/layout/Header.js';
 import { CommandPalette } from '../components/ui/CommandPalette.js';

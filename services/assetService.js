@@ -1,7 +1,7 @@
 /**
  * Asset Service - Creative Production OS
  */
-import { dbService, storageService } from '../firebase/service.js';
+import { dbService, storageService } from '../supabase/service.js';
 
 export const assetService = {
     async getAssetsByClient(clientId) {

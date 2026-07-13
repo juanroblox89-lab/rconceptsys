@@ -3,7 +3,7 @@
  * Google Drive-style file manager for video production deliveries, thumbnails, and cloud storage controls.
  */
 import { h, icon, openLightbox } from '../utils/dom.js';
-import { dbService, storageService } from '../firebase/service.js';
+import { dbService, storageService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 
 let selectedAsset = null;
@@ -33,7 +33,7 @@ export const render = () => {
         const header = h('div', { className: 'content-header flex justify-between items-center w-full mb-3' }, [
             h('div', {}, [
                 h('h1', {}, 'Librería de Assets'),
-                h('p', { className: 'text-xs text-muted mt-1' }, 'Almacén de entregables, miniaturas y material crudo en Firebase Storage.')
+                h('p', { className: 'text-xs text-muted mt-1' }, 'Almacén de entregables, miniaturas y material crudo en Supabase Storage.')
             ]),
             h('div', { className: 'flex gap-2' }, [
                 isAdmin ? h('button', { 

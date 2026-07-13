@@ -3,7 +3,7 @@
  * Handles real user validation, pending users flow, and admin role assignments.
  * Contains strictly one hardcoded Admin master fallback account.
  */
-import { dbService } from '../firebase/service.js';
+import { dbService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 
 export const userService = {

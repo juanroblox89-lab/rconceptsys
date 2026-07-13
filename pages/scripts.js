@@ -3,7 +3,7 @@
  * Redesigned: expandable detail view, scene directions, cross-references to formats/hooks.
  */
 import { h, icon } from '../utils/dom.js';
-import { dbService } from '../firebase/service.js';
+import { dbService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';

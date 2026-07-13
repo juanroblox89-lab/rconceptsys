@@ -1,5 +1,5 @@
 import { h, icon } from '../utils/dom.js';
-import { dbService } from '../firebase/service.js';
+import { dbService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { store } from '../js/store.js';
 

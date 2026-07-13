@@ -5,7 +5,7 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
-import { dbService, storageService } from '../firebase/service.js';
+import { dbService, storageService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 
 export const render = async (params) => {
