@@ -28,7 +28,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // Disabled to avoid clock skew issues with URL-issued sessions
+    flowType: 'pkce',
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   },
   realtime: {
     params: { eventsPerSecond: 10 },
