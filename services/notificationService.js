@@ -13,6 +13,7 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { dbService } from '../supabase/service.js';
 import { store } from '../js/store.js';
+import { formatCurrency } from '../utils/format.js';
 
 const isNative = () => {
   return typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform();
@@ -319,7 +320,7 @@ export const notificationService = {
 
     await this.showLocal({
       title: titles[type] || '📋 Actualización de facturación',
-      body: `$${amount.toLocaleString('es-CO')} - ${clientName}`,
+      body: `${formatCurrency(amount)} - ${clientName}`,
       channelId: 'creativeos-billing',
       data: { type: 'billing' },
     });

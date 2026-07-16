@@ -5,18 +5,15 @@
 import { dbService, db } from '../supabase/service.js';
 import { increment } from '../supabase/service.js';
 import { notificationService } from './notificationService.js';
+import { generateId } from '../utils/id.js';
+import { formatDate } from '../utils/format.js';
 export const invoiceService = {
     // --- Rate Cards Methods ---
     async getRateCards() {
-        try {
-            return await dbService.getAll('rate_cards') || [];
-        } catch (err) {
-            console.warn("Error fetching rate cards:", err);
-            return [];
-        }
+        return dbService.getAllSafe('rate_cards');
     },
     async saveRateCard(data) {
-        const id = data.id || `rate-${crypto.randomUUID().split('-')[0]}`;
+        const id = data.id || generateId('rate');
         await dbService.set('rate_cards', id, { id, ...data });
         return id;
     },
@@ -67,12 +64,7 @@ export const invoiceService = {
     },
     // Get an employee's reported invoice
     async getEmployeeInvoice(userId) {
-        try {
-            return await dbService.getById('invoices', `emp-inv-${userId}`);
-        } catch (err) {
-            console.warn(`Error fetching employee invoice for user ${userId}:`, err);
-            return null;
-        }
+        return dbService.getByIdSafe('invoices', `emp-inv-${userId}`);
     },
 
     // Delete an employee's reported invoice
@@ -113,12 +105,7 @@ export const invoiceService = {
 
     // Get the admin's consolidated invoice for a specific employee
     async getAdminInvoice(userId) {
-        try {
-            return await dbService.getById('admin_invoices', `adm-inv-${userId}`);
-        } catch (err) {
-            console.warn(`Error fetching admin invoice for user ${userId}:`, err);
-            return null;
-        }
+        return dbService.getByIdSafe('admin_invoices', `adm-inv-${userId}`);
     },
 
     // Delete the admin's consolidated invoice for a specific employee
@@ -159,13 +146,7 @@ export const invoiceService = {
 
     // Get all invoices in a collection
     async getAllInvoices(collectionName) {
-        try {
-            const list = await dbService.getAll(collectionName);
-            return list || [];
-        } catch (err) {
-            console.warn(`Error fetching all from ${collectionName}:`, err);
-            return [];
-        }
+        return dbService.getAllSafe(collectionName);
     },
 
     exportToCsv(invoices, typeFilter) {
@@ -187,7 +168,7 @@ export const invoiceService = {
                         `"${item.type || inv.type || ''}"`,
                         `"${item.client || inv.client || ''}"`,
                         `"${String(item.amount || 0).replace('.', ',')}"`,
-                        `"${item.createdAt ? new Date(item.createdAt).toLocaleDateString('es-CO') : ''}"`,
+                        `"${formatDate(item.createdAt)}"`,
                         `"${inv.status || ''}"`,
                         `"${(item.observations || '').replace(/"/g, '""')}"`
                     ]);
@@ -198,7 +179,7 @@ export const invoiceService = {
                     `"${inv.type || ''}"`,
                     `"${inv.client || ''}"`,
                     `"${String(inv.amount || 0).replace('.', ',')}"`,
-                    `"${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('es-CO') : ''}"`,
+                    `"${formatDate(inv.createdAt)}"`,
                     `"${inv.status || ''}"`,
                     `"${(inv.observations || '').replace(/"/g, '""')}"`
                 ]);

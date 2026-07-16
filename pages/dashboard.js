@@ -7,6 +7,7 @@ import { store } from '../js/store.js';
 import { Table } from '../components/ui/Table.js';
 import { dbService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
+import { formatCurrency, formatDate } from '../utils/format.js';
 
 export const render = () => {
     const { user } = store.getState();
@@ -58,7 +59,7 @@ export const render = () => {
             }, [
                 createMetricCard('Clientes Activos', `${clients.length}`, 'users', 'var(--info)', `+ ${clients.length} registrados`),
                 createMetricCard('Asignaciones Pendientes', `${activeAssignments.length}`, 'clock', 'var(--warning)', `${activeAssignments.length} en producción`),
-                createMetricCard('Facturación del Mes', `$${totalInvoiced.toLocaleString('es-CO')}`, 'credit-card', 'var(--success)', 'Cobros consolidados'),
+                createMetricCard('Facturación del Mes', `${formatCurrency(totalInvoiced)}`, 'credit-card', 'var(--success)', 'Cobros consolidados'),
                 createMetricCard('Producción del Mes', `${monthlyProduction} Videos`, 'video', 'var(--accent)', 'Entregables completados')
             ]);
 
@@ -138,7 +139,7 @@ export const render = () => {
                                     h('div', { className: 'font-semibold' }, rec.client),
                                     h('div', { className: 'text-[10px] text-muted' }, `Asignado a: ${name}`)
                                 ]),
-                                h('span', { className: 'text-accent font-medium' }, new Date(rec.dueDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }))
+                                h('span', { className: 'text-accent font-medium' }, formatDate(rec.dueDate, { day: 'numeric', month: 'short' }))
                             ]);
                         }) : [h('span', { className: 'text-xs text-muted italic' }, 'No hay grabaciones programadas.')]
                     )
@@ -150,7 +151,7 @@ export const render = () => {
                         deadLines.length > 0 ? deadLines.map(dl => {
                             return h('div', { className: 'card p-2 flex justify-between items-center text-xs' }, [
                                 h('span', { className: 'font-semibold truncate', style: { maxWidth: '140px' } }, dl.title),
-                                h('span', { className: 'badge badge-warning text-[10px]' }, new Date(dl.dueDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }))
+                                h('span', { className: 'badge badge-warning text-[10px]' }, formatDate(dl.dueDate, { day: 'numeric', month: 'short' }))
                             ]);
                         }) : [h('span', { className: 'text-xs text-muted italic' }, 'No hay vencimientos pendientes.')]
                     )

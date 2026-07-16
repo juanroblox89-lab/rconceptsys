@@ -9,6 +9,8 @@ import { dbService, storageService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
 import { invoiceService } from '../services/invoiceService.js';
+import { generateId } from '../utils/id.js';
+import { formatCurrency } from '../utils/format.js';
 
 // Pre-declare regex to prevent es-module-lexer parse issues
 const RE_BRACKET_PREFIX = /\[.*?\]\s*/g;
@@ -651,7 +653,7 @@ export const render = async () => {
                                                         try {
                                                             await assignmentService.saveAssignment({ ...asg, status: 'blocked' }); // Block original task
                                                             await assignmentService.saveAssignment({
-                                                                id: `corr-${crypto.randomUUID().split('-')[0]}`,
+                                                                id: generateId('corr'),
                                                                 title: `Corrección: ${prevTask.title}`,
                                                                 description: `Devuelto por la fase siguiente.\n\nRazón: ${just}\n\nPor favor, sube el nuevo material corregido aquí.`,
                                                                 type: prevTask.type,
@@ -738,7 +740,7 @@ export const render = async () => {
                                                         else if (!currentInv.items) currentInv.items = [];
                                                         
                                                         const newItem = {
-                                                            id: `item-${crypto.randomUUID().split('-')[0]}`,
+                                                            id: generateId('item'),
                                                             assignmentId: asg.id,
                                                             type: asg.type,
                                                             client: asg.client,
@@ -1373,7 +1375,7 @@ export const render = async () => {
                     
                     const url = await storageService.uploadFile(path, file);
                     const assetDoc = {
-                        id: 'ast_' + crypto.randomUUID().split('-')[0], client: currentClient, title: data.title,
+                        id: generateId('ast', '_'), client: currentClient, title: data.title,
                         url: url, type: file.type.startsWith('video') ? 'video' : 'image',
                         uploadedBy: user.uid, createdAt: new Date().toISOString()
                     };
@@ -1457,9 +1459,9 @@ export const render = async () => {
             const labelEl = form.querySelector('#default-rate-label');
             if (labelEl) {
                 if (type === 'Grabación' || type === 'Creador 360° (Grabación + Edición)') {
-                    labelEl.textContent = `Auto ($${autoPrice.toLocaleString('es-CO')} / min)`;
+                    labelEl.textContent = `Auto (${formatCurrency(autoPrice)} / min)`;
                 } else {
-                    labelEl.textContent = `Auto ($${autoPrice.toLocaleString('es-CO')})`;
+                    labelEl.textContent = `Auto (${formatCurrency(autoPrice)})`;
                 }
             }
         };
@@ -2051,7 +2053,7 @@ async function openBillingModal(asg, callback, onCancel) {
     if (isRecording) {
         contentDiv.appendChild(h('div', { className: 'flex-column gap-1' }, [
             h('label', { className: 'text-xs font-bold' }, 'Minutos de Grabación:'),
-            h('span', { className: 'text-xs text-muted mb-1' }, `(Se multiplicará por $${precioMinutoGrabacion.toLocaleString('es-CO')} COP/min automáticamente)`),
+            h('span', { className: 'text-xs text-muted mb-1' }, `(Se multiplicará por ${formatCurrency(precioMinutoGrabacion)} COP/min automáticamente)`),
             minsInput
         ]));
 
@@ -2064,7 +2066,7 @@ async function openBillingModal(asg, callback, onCancel) {
         }
     } else if (isUpload) {
         contentDiv.appendChild(h('div', { className: 'card p-3 flex-column gap-2', style: { background: 'var(--bg-tertiary)' } }, [
-            h('span', { className: 'text-xs text-muted' }, `Tarifa de subida a redes: $${precioSubidaRedes.toLocaleString('es-CO')} COP (fijo)`),
+            h('span', { className: 'text-xs text-muted' }, `Tarifa de subida a redes: ${formatCurrency(precioSubidaRedes)} COP (fijo)`),
         ]));
         genericPriceInput.value = String(precioSubidaRedes);
         contentDiv.appendChild(h('div', { className: 'flex-column gap-1 mt-2' }, [
@@ -2076,8 +2078,8 @@ async function openBillingModal(asg, callback, onCancel) {
         contentDiv.appendChild(h('div', { className: 'flex-column gap-1' }, [
             h('label', { className: 'text-xs font-bold' }, 'Monto a Cobrar (COP):'),
             h('div', { className: 'flex gap-2 mb-1' }, [
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => { genericPriceInput.value = String(precioVideoCorto); } }, `Video < 60s ($${precioVideoCorto.toLocaleString('es-CO')})`),
-                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => { genericPriceInput.value = String(precioVideoLargo); } }, `Video > 60s ($${precioVideoLargo.toLocaleString('es-CO')})`)
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => { genericPriceInput.value = String(precioVideoCorto); } }, `Video < 60s (${formatCurrency(precioVideoCorto)})`),
+                h('button', { type: 'button', className: 'btn btn-outline text-xs', onClick: () => { genericPriceInput.value = String(precioVideoLargo); } }, `Video > 60s (${formatCurrency(precioVideoLargo)})`)
             ]),
             genericPriceInput
         ]));
@@ -2104,12 +2106,12 @@ async function openBillingModal(asg, callback, onCancel) {
                     if (isRecording) {
                         const mins = Number(minsInput.value) || 0;
                         price = mins * precioMinutoGrabacion;
-                        obs = `Cobro por grabación (${mins} minutos a $${precioMinutoGrabacion.toLocaleString('es-CO')}): ${asg.title}`;
+                        obs = `Cobro por grabación (${mins} minutos a ${formatCurrency(precioMinutoGrabacion)}): ${asg.title}`;
 
                         if (is360) {
                             const editPrice = Number(editPriceInput.value) || 0;
                             price += editPrice;
-                            obs += ` + Edición ($${editPrice.toLocaleString('es-CO')})`;
+                            obs += ` + Edición (${formatCurrency(editPrice)})`;
                         }
                     } else {
                         price = Number(genericPriceInput.value) || 0;
@@ -2235,10 +2237,10 @@ export function openMasterPipelineModal(context = {}) {
     const pEdLargo = context.systemPricing?.precioVideoLargo || 25000;
     const pSubida = context.systemPricing?.precioSubidaRedes || 5000;
 
-    const rateOptionsCam = `<option value="default">Auto ($${pGrab.toLocaleString('es-CO')} / min)</option><option value="custom">Precio Personalizado</option>`;
-    const rateOptionsEdCorto = `<option value="default">Auto ($${pEdCorto.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
-    const rateOptionsEdLargo = `<option value="default">Auto ($${pEdLargo.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
-    const rateOptionsUp = `<option value="default">Auto ($${pSubida.toLocaleString('es-CO')})</option><option value="custom">Precio Personalizado</option>`;
+    const rateOptionsCam = `<option value="default">Auto (${formatCurrency(pGrab)} / min)</option><option value="custom">Precio Personalizado</option>`;
+    const rateOptionsEdCorto = `<option value="default">Auto (${formatCurrency(pEdCorto)})</option><option value="custom">Precio Personalizado</option>`;
+    const rateOptionsEdLargo = `<option value="default">Auto (${formatCurrency(pEdLargo)})</option><option value="custom">Precio Personalizado</option>`;
+    const rateOptionsUp = `<option value="default">Auto (${formatCurrency(pSubida)})</option><option value="custom">Precio Personalizado</option>`;
     // Pre-escape for safe use inside HTML attribute onchange
     const rateOptionsEdLargoEsc = rateOptionsEdLargo.replace(RE_QUOTE, '&quot;');
     const rateOptionsEdCortoEsc = rateOptionsEdCorto.replace(RE_QUOTE, '&quot;');

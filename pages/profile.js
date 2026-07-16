@@ -8,6 +8,7 @@ import { dbService, storageService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { router } from '../js/router.js';
+import { formatCurrency, formatDate } from '../utils/format.js';
 
 export const render = () => {
     const { user, roles } = store.getState();
@@ -66,7 +67,7 @@ export const render = () => {
             ]),
             h('div', { className: 'card p-4 flex-column items-center gap-1 text-center' }, [
                 icon('dollar-sign', 24, 'text-success'),
-                h('span', { className: 'text-2xl font-bold text-success mt-1' }, `$${totalBilled.toLocaleString('es-CO')}`),
+                h('span', { className: 'text-2xl font-bold text-success mt-1' }, `${formatCurrency(totalBilled)}`),
                 h('span', { className: 'text-xs text-muted' }, 'Total Facturado COP')
             ]),
             h('div', { className: 'card p-4 flex-column items-center gap-1 text-center' }, [
@@ -157,9 +158,9 @@ export const render = () => {
                         h('div', { className: 'flex-column gap-0.5' }, [
                             h('span', { className: 'text-xs font-bold text-primary' }, item.title || item.type || 'Pago'),
                             h('span', { className: 'text-xs text-muted' }, item.client ? `Cliente: ${item.client}` : (item.observations || '')),
-                            h('span', { className: 'text-xs text-muted', style: { fontSize: '0.65rem' } }, item.date ? new Date(item.date).toLocaleDateString('es-CO') : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('es-CO') : ''))
+                            h('span', { className: 'text-xs text-muted', style: { fontSize: '0.65rem' } }, formatDate(item.date || item.createdAt))
                         ]),
-                        h('span', { className: 'font-bold text-success text-sm', style: { whiteSpace: 'nowrap' } }, `$${(Number(item.amount) || 0).toLocaleString('es-CO')}`)
+                        h('span', { className: 'font-bold text-success text-sm', style: { whiteSpace: 'nowrap' } }, `${formatCurrency((Number(item.amount) || 0))}`)
                     ])
                 )),
             h('a', { 

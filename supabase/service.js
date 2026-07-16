@@ -48,6 +48,44 @@ export const dbService = {
     }
   },
 
+  /**
+   * Error-tolerant variant of getAll. Logs a warning and returns `fallback`
+   * (default empty array) instead of throwing. Consolidates the try/catch
+   * boilerplate repeated across the service layer.
+   */
+  async getAllSafe(collectionName, fallback = []) {
+    try {
+      return (await this.getAll(collectionName)) || fallback;
+    } catch (error) {
+      console.warn(`Error fetching all from ${collectionName}:`, error);
+      return fallback;
+    }
+  },
+
+  /**
+   * Error-tolerant variant of getById. Returns `fallback` (default null) on error.
+   */
+  async getByIdSafe(collectionName, id, fallback = null) {
+    try {
+      return (await this.getById(collectionName, id)) ?? fallback;
+    } catch (error) {
+      console.warn(`Error fetching ${collectionName}/${id}:`, error);
+      return fallback;
+    }
+  },
+
+  /**
+   * Error-tolerant variant of getByQuery. Returns `fallback` (default empty array) on error.
+   */
+  async getByQuerySafe(collectionName, field, operator, value, fallback = []) {
+    try {
+      return (await this.getByQuery(collectionName, field, operator, value)) || fallback;
+    } catch (error) {
+      console.warn(`Error querying ${collectionName}:`, error);
+      return fallback;
+    }
+  },
+
   async getByQuery(collectionName, field, operator, value) {
     try {
       let query = supabase.from(collectionName).select('*');

@@ -2,6 +2,7 @@ import { h, icon } from '../utils/dom.js';
 import { dbService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { store } from '../js/store.js';
+import { formatCurrency } from '../utils/format.js';
 
 export const render = async () => {
     const { user, roles } = store.getState();
@@ -203,7 +204,7 @@ export const render = async () => {
                         status: 'Pendiente',
                         updatedAt: new Date().toISOString()
                     });
-                    alert(`¡Bono completado! Se ha auto-facturado $${bonusVisitas.toLocaleString('es-CO')} COP en tu cuenta.`);
+                    alert(`¡Bono completado! Se ha auto-facturado ${formatCurrency(bonusVisitas)} COP en tu cuenta.`);
                 } else {
                     await dbService.add('marketing_visits', visitObj);
                     await dbService.update('users', currentUser.uid, { marketingVisits: newVisitsCount });

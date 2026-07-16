@@ -6,6 +6,8 @@ import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { dbService, storageService, increment } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
+import { generateId } from '../utils/id.js';
+import { confirmDialog } from '../utils/modal.js';
 
 export const render = () => {
     const { user } = store.getState();
@@ -145,30 +147,25 @@ export const render = () => {
                                 title: 'Eliminar Cliente',
                                 onClick: (e) => {
                                     e.stopPropagation();
-                                    const overlay = h('div', { className: 'modal-overlay fade-in' });
-                                    const modal = h('div', { className: 'modal-container' }, [
-                                        h('div', { className: 'modal-header text-sm font-bold' }, 'Eliminar Cliente'),
-                                        h('div', { className: 'modal-body text-xs' }, `¿Estás seguro de eliminar a ${c.name}?`),
-                                        h('div', { className: 'modal-footer' }, [
-                                            h('button', { className: 'btn btn-outline text-xs', onClick: () => document.body.removeChild(overlay) }, 'Cancelar'),
-                                            h('button', { className: 'btn text-xs', style: { color: 'var(--error)', borderColor: 'var(--error)' }, onClick: async () => {
-                                                document.body.removeChild(overlay);
-                                                try {
-                                                    // Cascada de eliminación: Tareas asociadas
-                                                    const asgs = await assignmentService.getAssignmentsByClient(c.name);
-                                                    for (const asg of asgs) {
-                                                        await assignmentService.deleteAssignment(asg.id);
-                                                    }
-                                                    await dbService.delete('clients', c.id);
-                                                    await loadAndRenderClients();
-                                                } catch (err) {
-                                                    console.error(err);
+                                    confirmDialog({
+                                        title: 'Eliminar Cliente',
+                                        message: `¿Estás seguro de eliminar a ${c.name}?`,
+                                        confirmText: 'Eliminar',
+                                        danger: true,
+                                        onConfirm: async () => {
+                                            try {
+                                                // Cascada de eliminación: Tareas asociadas
+                                                const asgs = await assignmentService.getAssignmentsByClient(c.name);
+                                                for (const asg of asgs) {
+                                                    await assignmentService.deleteAssignment(asg.id);
                                                 }
-                                            }}, 'Eliminar')
-                                        ])
-                                    ]);
-                                    overlay.appendChild(modal);
-                                    document.body.appendChild(overlay);
+                                                await dbService.delete('clients', c.id);
+                                                await loadAndRenderClients();
+                                            } catch (err) {
+                                                console.error(err);
+                                            }
+                                        }
+                                    });
                                 } 
                             }, [icon('trash-2', 11)])
                         ]) : null
@@ -199,7 +196,7 @@ export const render = () => {
             const logoUrlVal = form.querySelector('#cli-logo-url').value.trim();
             const logoFile = form.querySelector('#cli-logo-file').files[0];
 
-            const clientId = existingClient?.id || `CLI-${crypto.randomUUID().split('-')[0]}`;
+            const clientId = existingClient?.id || generateId('CLI');
             let logoUrl = logoUrlVal || existingClient?.logo || '';
 
             if (logoFile) {
