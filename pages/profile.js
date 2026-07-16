@@ -2,7 +2,7 @@
  * Profile Page - Creative Production OS
  * Enhanced profile with metrics: completed tasks, total billed, payment history.
  */
-import { h, icon } from '../utils/dom.js';
+import { h, icon, sumInvoiceItems } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { dbService, storageService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
@@ -37,7 +37,7 @@ export const render = () => {
             invoice = inv;
         } catch(e) { console.warn('Could not load stats:', e); }
 
-        const totalBilled = invoice?.items?.reduce((s, i) => s + (Number(i.amount) || 0), 0) || 0;
+        const totalBilled = sumInvoiceItems(invoice);
         const recentItems = (invoice?.items || []).slice(-5).reverse();
 
         container.innerHTML = '';

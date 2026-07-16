@@ -7,14 +7,21 @@
 const DEFAULT_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 
 export default async function handler(req, res) {
-    // Add CORS headers
+    // CORS: Only allow requests from the production domain or localhost for dev
+    const origin = req.headers.origin || '';
+    const allowedOrigins = [
+        'https://rconcept.vercel.app',
+        'https://rconceptsys.vercel.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+    ];
+    const isAllowedOrigin = allowedOrigins.some(o => origin.startsWith(o)) || !origin;
+    const corsOrigin = isAllowedOrigin ? (origin || '*') : allowedOrigins[0];
+
     res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-    );
+    res.setHeader('Access-Control-Allow-Origin', corsOrigin);
+    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     if (req.method === 'OPTIONS') {
         res.status(200).end();
@@ -26,21 +33,33 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { messages, contextPrompt, apiKey } = req.body;
+        const { messages, contextPrompt } = req.body;
 
-        const anthropicKey = apiKey?.trim() || process.env.ANTHROPIC_API_KEY || DEFAULT_API_KEY;
+        // Always use server-side API key (never accept from client)
+        const anthropicKey = process.env.ANTHROPIC_API_KEY || DEFAULT_API_KEY;
 
         if (!anthropicKey) {
-            return res.status(400).json({ error: 'Falta la clave API de Anthropic. Agrégala en las Variables de Entorno de Vercel o en el engranaje de configuración.' });
+            return res.status(400).json({ error: 'Falta la clave API de Anthropic. Agrégala en las Variables de Entorno de Vercel.' });
         }
 
         // Defensive validation: Ensure the key is ASCII-only and starts with 'sk-'
         const isAscii = (str) => /^[\x00-\x7F]*$/.test(str);
         if (!isAscii(anthropicKey) || !anthropicKey.startsWith("sk-")) {
-            return res.status(400).json({ 
-                error: "La clave API de Anthropic configurada no es válida. Asegúrate de haber copiado la clave correcta (debe empezar con 'sk-' y no contener emojis, textos de error ni espacios)." 
+            return res.status(400).json({
+                error: "La clave API de Anthropic configurada no es válida."
             });
         }
+
+        // Simple rate limiting: max 20 requests per minute per IP
+        const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+        const now = Date.now();
+        if (!globalThis._rateLimitMap) globalThis._rateLimitMap = {};
+        const hits = (globalThis._rateLimitMap[clientIp] || []).filter(t => now - t < 60000);
+        if (hits.length >= 20) {
+            return res.status(429).json({ error: 'Límite de solicitudes alcanzado. Intenta de nuevo en un minuto.' });
+        }
+        hits.push(now);
+        globalThis._rateLimitMap[clientIp] = hits;
 
         // 1. Anthropic Compliance: Filter and slice messages so it starts STRICTLY with a 'user' role
         let apiMessages = messages.map(m => ({

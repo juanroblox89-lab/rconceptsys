@@ -353,6 +353,9 @@ function openSideDrawer(asset, allAssets, reload, isAdmin) {
         style: { borderColor: 'var(--error)', color: 'var(--error)', background: 'transparent' },
         onClick: async () => {
             if (!confirm(`¿Eliminar definitivamente "${asset.title}"?`)) return;
+            const { promptModal } = await import('../components/ui/PromptModal.js');
+            const confirmText = await promptModal({ title: 'Confirmar eliminación', message: `Escribe "Eliminar" para borrar "${asset.title}" permanentemente.`, placeholder: 'Eliminar' });
+            if (confirmText !== 'Eliminar') return;
             try {
                 // Try deleting from storage but don't fail the database deletion if it fails
                 try {

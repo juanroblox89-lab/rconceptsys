@@ -7,6 +7,7 @@ import { store } from '../js/store.js';
 import { userService } from '../services/userService.js';
 import { storageService, dbService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
+import { isMasterAdmin } from '../services/permissionsService.js';
 
 let activeAdminTab = 'members'; // members, financial, roles, system
 
@@ -266,21 +267,23 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
     }
 
     if (!isAdmin && !isCurrentUser) {
-        actions.push(h('button', {
-            className: 'btn btn-primary text-xs',
-            style: { padding: '3px 8px', fontSize: '0.65rem' },
-            onClick: async (e) => {
-                if (!window.confirm(`¿Promover a ${u.nombre || u.email} como Administrador?`)) return;
-                const btn = e.currentTarget;
-                try {
-                    await userService.approveUser(u.uid || u.id, 'admin');
-                    showFeedback(btn, '✓ Promovido');
-                    setTimeout(() => reload(), 1200);
-                } catch (err) {
-                    showFeedback(btn, '✗ Error', 'error');
+        if (isMasterAdmin()) {
+            actions.push(h('button', {
+                className: 'btn btn-primary text-xs',
+                style: { padding: '3px 8px', fontSize: '0.65rem' },
+                onClick: async (e) => {
+                    if (!window.confirm(`¿Promover a ${u.nombre || u.email} como Administrador?`)) return;
+                    const btn = e.currentTarget;
+                    try {
+                        await userService.approveUser(u.uid || u.id, 'admin');
+                        showFeedback(btn, '✓ Promovido');
+                        setTimeout(() => reload(), 1200);
+                    } catch (err) {
+                        showFeedback(btn, '✗ Error', 'error');
+                    }
                 }
-            }
-        }, 'Hacer Admin'));
+            }, 'Hacer Admin'));
+        }
     }
 
     if (!isCurrentUser && !isAdmin) {
@@ -288,10 +291,12 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
             className: 'btn btn-outline text-xs text-error',
             style: { padding: '3px 8px', fontSize: '0.65rem', borderColor: 'var(--error)' },
             onClick: async () => {
-                if (window.confirm(`¿Eliminar a ${u.nombre || u.email} permanentemente?`)) {
-                    await userService.rejectUser(u.uid || u.id);
-                    reload();
-                }
+                if (!window.confirm(`¿Eliminar a ${u.nombre || u.email} permanentemente?`)) return;
+                const { promptModal } = await import('../components/ui/PromptModal.js');
+                const confirmText = await promptModal({ title: 'Confirmar eliminación', message: `Escribe "Eliminar" para confirmar la eliminación de ${u.nombre || u.email}.`, placeholder: 'Eliminar' });
+                if (confirmText !== 'Eliminar') return;
+                await userService.rejectUser(u.uid || u.id);
+                reload();
             }
         }, 'Eliminar'));
     }
@@ -534,10 +539,14 @@ function renderDatabaseMaintenanceSection() {
             className: 'btn btn-primary text-xs w-full justify-center',
             style: { background: 'var(--error)', borderColor: 'var(--error)' },
             onClick: async () => {
-                if (confirm("¿Purgar permanentemente las tareas de más de 30 días? Esta acción no se puede deshacer.") && prompt("Escribe 'Aceptar' para confirmar") === 'Aceptar') {
-                    const { assignmentService } = await import('../services/assignmentService.js');
-                    const count = await assignmentService.purgeOldAssignments();
-                    alert(`✅ Purga exitosa. Se eliminaron ${count} tareas antiguas.`);
+                if (confirm("¿Purgar permanentemente las tareas de más de 30 días? Esta acción no se puede deshacer.")) {
+                    const { promptModal } = await import('../components/ui/PromptModal.js');
+                    const confirmText = await promptModal({ title: 'Confirmar purga', message: "Escribe 'Aceptar' para confirmar la purga permanente.", placeholder: 'Aceptar' });
+                    if (confirmText === 'Aceptar') {
+                        const { assignmentService } = await import('../services/assignmentService.js');
+                        const count = await assignmentService.purgeOldAssignments();
+                        alert(`✅ Purga exitosa. Se eliminaron ${count} tareas antiguas.`);
+                    }
                 }
             }
         }, [icon('trash-2', 12), h('span', { className: 'ml-1' }, 'Purgar Tareas Antiguas')])

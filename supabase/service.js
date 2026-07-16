@@ -359,27 +359,37 @@ export const storageService = {
 
       if (error) throw error;
 
-      // Return public URL
-      const { data: urlData } = supabase.storage
+      // Return signed URL (1 hour expiry)
+      const { data: urlData, error: urlError } = await supabase.storage
         .from(bucket)
-        .getPublicUrl(data.path);
+        .createSignedUrl(data.path, 3600);
 
-      return urlData.publicUrl;
+      if (urlError) throw urlError;
+      return urlData.signedUrl;
     } catch (err) {
       console.error('Supabase Storage upload error:', err);
       throw new Error('No se pudo subir el archivo: ' + err.message);
     }
   },
 
-  async getLogoUrl() {
+  async getSignedUrl(path) {
     try {
-      const { data } = supabase.storage
-        .from(BUCKETS.LOGOS)
-        .getPublicUrl('rohlfing-concept-logo.jpg');
-      return data?.publicUrl || null;
+      const bucket = path.startsWith('logos/') ? BUCKETS.LOGOS : BUCKETS.ASSETS;
+      const cleanPath = path.replace(/^(assets|logos)\//, '');
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(cleanPath, 3600);
+
+      if (error) throw error;
+      return data.signedUrl;
     } catch (err) {
       return null;
     }
+  },
+
+  async getLogoUrl() {
+    return this.getSignedUrl('logos/rohlfing-concept-logo.jpg');
   },
 
   async deleteFile(path) {
