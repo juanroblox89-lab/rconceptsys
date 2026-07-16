@@ -296,6 +296,7 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                             'Propuesta ejecutada en Supabase',
                         ])
                     );
+                    if (window.lucide) window.lucide.createIcons();
                 } catch (err) {
                     alert("Error de permisos o conexión: " + err.message);
                     btn.disabled = false;
