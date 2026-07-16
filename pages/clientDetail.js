@@ -279,7 +279,7 @@ export const render = async (params) => {
             if (window.lucide) window.lucide.createIcons();
 
         } catch (err) {
-            container.innerHTML = `<div class="p-10 text-center text-error">${err.message}</div>`;
+            container.innerHTML = `<div class="p-10 text-center text-error">${String(err.message || '').replace(/</g, "&lt;")}</div>`;
         }
     };
 

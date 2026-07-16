@@ -240,7 +240,7 @@ export const render = () => {
 
         } catch (err) {
             console.error("Dashboard render failed:", err);
-            container.innerHTML = `<div class="error-state text-sm p-10">${err.message}</div>`;
+            container.innerHTML = `<div class="error-state text-sm p-10">${String(err.message || '').replace(/</g, "&lt;")}</div>`;
         }
     };
 

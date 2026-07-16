@@ -651,6 +651,9 @@ async function openSopHistory(sop) {
         });
         if (window.lucide) window.lucide.createIcons();
     } catch(e) {
-        modal.querySelector('.modal-body').innerHTML = `<p class="text-error text-xs p-4">Error cargando historial: ${e.message}</p>`;
+        const errorBody = modal.querySelector('.modal-body');
+        errorBody.replaceChildren(
+            h('p', { className: 'text-error text-xs p-4' }, `Error cargando historial: ${e.message}`)
+        );
     }
 }

@@ -5,7 +5,7 @@
  * Exports the same API surface (dbService, authService, storageService, db, increment)
  * so existing services and pages work without changes.
  */
-import { supabase, MASTER_ADMIN_EMAILS, BUCKETS } from './client.js';
+import { supabase, BUCKETS } from './client.js';
 
 // Re-export supabase client as `db` (replaces Firestore `db` import)
 export { supabase as db, supabase };
@@ -216,9 +216,6 @@ export const authService = {
       return;
     }
 
-    const normalizedEmail = (authUser.email || '').toLowerCase();
-    const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(normalizedEmail);
-
     try {
       // Fetch the app user profile from public.users
       const userDoc = await dbService.getById('users', authUser.id);
@@ -236,8 +233,10 @@ export const authService = {
           email: authUser.email,
           photoURL: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '',
           createdAt: new Date().toISOString(),
-          approved: isMasterAdmin,
-          role: isMasterAdmin ? 'admin' : 'viewer',
+          // New accounts are always unapproved viewers. Admin roles and approval
+          // are granted server-side (SQL/service role), never by client code.
+          approved: false,
+          role: 'viewer',
         };
         await dbService.set('users', authUser.id, newUser);
         callback(newUser);
@@ -245,7 +244,9 @@ export const authService = {
         callback(userDoc);
       }
     } catch (err) {
-      console.warn('Supabase access error fetching user, using master fallback:', err);
+      console.warn('Supabase access error fetching user profile:', err);
+      // Fail closed: never grant admin/approval on error. Treat as an
+      // unapproved viewer so a DB failure cannot escalate privileges.
       callback({
         uid: authUser.id,
         id: authUser.id,
@@ -255,8 +256,8 @@ export const authService = {
           'Usuario',
         email: authUser.email,
         photoURL: authUser.user_metadata?.avatar_url || '',
-        role: isMasterAdmin ? 'admin' : 'viewer',
-        approved: isMasterAdmin,
+        role: 'viewer',
+        approved: false,
       });
     }
   },

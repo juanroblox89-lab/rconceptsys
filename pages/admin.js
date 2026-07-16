@@ -7,7 +7,7 @@ import { store } from '../js/store.js';
 import { userService } from '../services/userService.js';
 import { storageService, dbService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
-import { isMasterAdmin } from '../services/permissionsService.js';
+import { canManageAdmins } from '../services/permissionsService.js';
 
 let activeAdminTab = 'members'; // members, financial, roles, system
 
@@ -145,7 +145,7 @@ export const render = () => {
 
         } catch (err) {
             console.error('[Admin] Load failed:', err);
-            container.innerHTML = `<div class="card p-8 text-center text-danger">⚠️ Error al cargar el panel de control: ${err.message}</div>`;
+            container.innerHTML = `<div class="card p-8 text-center text-danger">⚠️ Error al cargar el panel de control: ${String(err.message || '').replace(/</g, "&lt;")}</div>`;
         }
     };
 
@@ -267,7 +267,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
     }
 
     if (!isAdmin && !isCurrentUser) {
-        if (isMasterAdmin()) {
+        if (canManageAdmins()) {
             actions.push(h('button', {
                 className: 'btn btn-primary text-xs',
                 style: { padding: '3px 8px', fontSize: '0.65rem' },

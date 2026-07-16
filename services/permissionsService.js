@@ -3,7 +3,6 @@
  * Centralized permission logic for router and sidebar.
  */
 import { store } from '../js/store.js';
-import { MASTER_ADMIN_EMAILS } from '../supabase/client.js';
 
 const ADMIN_MODULES = [
     'dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'references',
@@ -31,8 +30,6 @@ export function isAdmin() {
     return user?.role === 'admin';
 }
 
-export function isMasterAdmin() {
-    const { user } = store.getState();
-    if (!user?.email) return false;
-    return MASTER_ADMIN_EMAILS.includes(user.email.toLowerCase());
+export function canManageAdmins() {
+    return isAdmin();
 }
