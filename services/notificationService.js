@@ -123,7 +123,7 @@ export const notificationService = {
 
     // On registration success -> save FCM token to Supabase
     PushNotifications.addListener('registration', async (token) => {
-      console.log('[Notifications] FCM Token:', token.value);
+      console.log('[Notifications] FCM token registered.');
       const { user } = store.getState();
       if (user) {
         try {

@@ -4,7 +4,7 @@
  * Updated: 3-column layout (History, Chat, Context), action proposal preview/confirm/execute pipeline.
  */
 import { h, icon } from '../utils/dom.js';
-import { dbService } from '../supabase/service.js';
+import { dbService, supabase } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { store } from '../js/store.js';
 
@@ -12,6 +12,13 @@ let activeConversation = [];
 let currentThreadId = null;
 let chatThreadsList = [];
 let isAssistantLoading = false;
+const AGENT_ACTION_TYPES = new Set([
+    'create_sop',
+    'create_format',
+    'create_assignment',
+    'create_hook',
+    'create_script',
+]);
 
 export const render = (params = {}) => {
     const { user } = store.getState();
@@ -216,9 +223,13 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                     }
 
                     try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const headers = { "Content-Type": "application/json" };
+                        if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
                         const response = await fetch("/api/chat", {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers,
                             body: JSON.stringify({
                                 messages: activeConversation.slice(-6), // Send last few messages to prevent token limits
                                 contextPrompt
@@ -272,6 +283,26 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                 inputForm.querySelector('button[type="submit"]').disabled = disabled;
             };
 
+            const executePendingAgentAction = async (btn, actionJsonEncoded) => {
+                const action = JSON.parse(decodeURIComponent(actionJsonEncoded));
+                btn.disabled = true;
+                btn.textContent = "Ejecutando...";
+
+                try {
+                    await executeAgentAction(action);
+                    btn.parentNode.replaceChildren(
+                        h('span', { className: 'text-xs font-semibold flex items-center gap-1 text-success' }, [
+                            icon('check-circle', 12),
+                            'Propuesta ejecutada en Supabase',
+                        ])
+                    );
+                } catch (err) {
+                    alert("Error de permisos o conexión: " + err.message);
+                    btn.disabled = false;
+                    btn.textContent = "Confirmar y Ejecutar";
+                }
+            };
+
             const renderChatFeed = () => {
                 chatFeed.innerHTML = '';
                 
@@ -300,6 +331,11 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                     });
 
                     bubble.innerHTML = formatMarkdown(msg.content);
+                    bubble.querySelectorAll('.js-agent-action').forEach((button) => {
+                        button.addEventListener('click', () => {
+                            executePendingAgentAction(button, button.dataset.action);
+                        });
+                    });
 
                     const row = h('div', { 
                         className: `flex gap-3 w-full my-1 items-start ${isAI ? 'justify-start' : 'justify-end flex-row-reverse'}`
@@ -375,26 +411,12 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                 }
             };
 
-            // Expose the executor handler to the global window registry
-            window.executePendingAgentAction = async (btn, actionJsonEncoded) => {
-                const action = JSON.parse(decodeURIComponent(actionJsonEncoded));
-                btn.disabled = true;
-                btn.textContent = "Ejecutando...";
-                
-                try {
-                    await executeAgentAction(action);
-                    btn.parentNode.innerHTML = `<span class="text-xs font-semibold flex items-center gap-1 text-success">${icon('check-circle', 12).outerHTML} Propuesta ejecutada en Firestore</span>`;
-                    if (window.lucide) window.lucide.createIcons();
-                } catch (err) {
-                    alert("Error de permisos o conexión: " + err.message);
-                    btn.disabled = false;
-                    btn.textContent = "Confirmar y Ejecutar";
-                }
-            };
-
             const executeAgentAction = async (action) => {
                 if (user?.role !== 'admin') {
                     throw new Error("Se requieren permisos de Administrador para realizar esta operación.");
+                }
+                if (!AGENT_ACTION_TYPES.has(action?.type) || !action.payload || typeof action.payload !== 'object' || Array.isArray(action.payload)) {
+                    throw new Error("La propuesta de acción no es válida.");
                 }
 
                 if (action.type === 'create_sop') {
@@ -463,17 +485,21 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
                 html = html.replace(/```agency-action([\s\S]*?)```/g, (match, jsonText) => {
                     try {
                         const action = JSON.parse(jsonText.trim());
+                        if (!AGENT_ACTION_TYPES.has(action?.type) || !action.payload || typeof action.payload !== 'object' || Array.isArray(action.payload)) {
+                            throw new Error("Invalid action");
+                        }
                         const encoded = encodeURIComponent(JSON.stringify(action));
-                        const btnId = `btn-${Math.random().toString(36).slice(2, 9)}`;
+                        const esc = (v) => String(v ?? '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+                        const actionLabel = esc(String(action.type || '').toUpperCase().replace('_', ' '));
 
                         return `
                         <div class="action-proposal-card">
                             <span class="text-xs font-bold text-primary flex items-center gap-1">
-                                ${icon('sparkles', 12).outerHTML} Propuesta de Acción: ${action.type.toUpperCase().replace('_', ' ')}
+                                ${icon('sparkles', 12).outerHTML} Propuesta de Acción: ${actionLabel}
                             </span>
-                            <div class="action-payload-preview">${JSON.stringify(action.payload, null, 2)}</div>
+                            <div class="action-payload-preview">${esc(JSON.stringify(action.payload, null, 2))}</div>
                             <div class="flex gap-2">
-                                <button class="btn btn-primary text-xs flex-1 justify-center" id="${btnId}" onclick="window.executePendingAgentAction(this, '${encoded}')">
+                                <button class="btn btn-primary text-xs flex-1 justify-center js-agent-action" data-action="${encoded}">
                                     Confirmar y Ejecutar
                                 </button>
                             </div>
@@ -498,7 +524,7 @@ Cuando quieras crear, actualizar o modificar elementos en la base de datos de la
 
         } catch (err) {
             console.error(err);
-            container.innerHTML = `<div class="card p-8 text-center text-danger">Error: ${err.message}</div>`;
+            container.innerHTML = `<div class="card p-8 text-center text-danger">Error: ${String(err.message || '').replace(/</g, "&lt;")}</div>`;
         }
     };
 

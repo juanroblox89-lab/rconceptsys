@@ -144,7 +144,7 @@ export const render = () => {
 
         } catch (err) {
             console.error('[Admin] Load failed:', err);
-            container.innerHTML = `<div class="card p-8 text-center text-danger">⚠️ Error al cargar el panel de control: ${err.message}</div>`;
+            container.innerHTML = `<div class="card p-8 text-center text-danger">⚠️ Error al cargar el panel de control: ${String(err.message || '').replace(/</g, "&lt;")}</div>`;
         }
     };
 

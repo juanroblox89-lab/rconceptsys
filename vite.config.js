@@ -8,7 +8,6 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,           // Auto-open browser
-    cors: true,
     headers: {
       'Cache-Control': 'no-cache'  // Prevent stale module caching
     }

@@ -1,23 +1,136 @@
 /**
  * Serverless Vercel Function: Claude API Proxy
  * Handles dynamic marketing copywriting prompts by integrating agency-wide customer metrics and script styles.
- * Tailored with a 4-tier model fallback pipeline and helpful error translator.
+ * Tailored with a 2-tier model fallback pipeline and helpful error translator.
+ *
+ * Security:
+ * - Requires a valid Supabase session (Bearer access token) so the proxy cannot be
+ *   abused anonymously to drain the agency's Anthropic credits.
+ * - CORS is restricted to an explicit allowlist (ALLOWED_ORIGINS) instead of "*".
  */
 
-const DEFAULT_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+
+// Comma-separated list of origins allowed to call this endpoint via CORS.
+// Same-origin browser calls (the app itself) do not require any of these.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+const MAX_MESSAGES = 12;
+const MAX_MESSAGE_LENGTH = 8_000;
+const MAX_TOTAL_MESSAGE_LENGTH = 40_000;
+const MAX_CONTEXT_LENGTH = 30_000;
+
+const applyCorsHeaders = (req, res) => {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader("Vary", "Origin");
+    }
+    res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.setHeader("Cache-Control", "no-store");
+};
+
+const getAuthenticatedUser = async (req) => {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!token) return null;
+
+    try {
+        const resp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch {
+        return null;
+    }
+};
+
+const isApprovedUser = async (userId, token) => {
+    try {
+        const params = new URLSearchParams({
+            id: `eq.${userId}`,
+            select: "approved",
+        });
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/users?${params}`, {
+            headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        if (!response.ok) return false;
+        const profiles = await response.json();
+        return profiles.length === 1 && profiles[0].approved === true;
+    } catch {
+        return false;
+    }
+};
+
+const validateRequest = (body) => {
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return { error: "Cuerpo de solicitud inválido." };
+    }
+
+    const { messages, contextPrompt = "" } = body;
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) {
+        return { error: `Envía entre 1 y ${MAX_MESSAGES} mensajes.` };
+    }
+    if (typeof contextPrompt !== "string" || contextPrompt.length > MAX_CONTEXT_LENGTH) {
+        return { error: "El contexto enviado es demasiado largo." };
+    }
+
+    let totalLength = 0;
+    const normalizedMessages = [];
+    for (const message of messages) {
+        if (!message || typeof message !== "object" || Array.isArray(message)) {
+            return { error: "Formato de mensajes inválido." };
+        }
+        if (!["user", "assistant"].includes(message.role)) {
+            return { error: "Rol de mensaje inválido." };
+        }
+        if (typeof message.content !== "string" || message.content.trim().length === 0) {
+            return { error: "Cada mensaje debe contener texto." };
+        }
+        if (message.content.length > MAX_MESSAGE_LENGTH) {
+            return { error: "Uno de los mensajes es demasiado largo." };
+        }
+        totalLength += message.content.length;
+        if (totalLength > MAX_TOTAL_MESSAGE_LENGTH) {
+            return { error: "La conversación enviada es demasiado larga." };
+        }
+        normalizedMessages.push({
+            role: message.role,
+            content: message.content,
+        });
+    }
+
+    const firstUserIndex = normalizedMessages.findIndex((message) => message.role === "user");
+    if (firstUserIndex === -1) {
+        return { error: "La conversación debe contener al menos un mensaje del usuario." };
+    }
+
+    return {
+        messages: normalizedMessages.slice(firstUserIndex),
+        contextPrompt,
+    };
+};
 
 export default async function handler(req, res) {
-    // Add CORS headers
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-    );
+    applyCorsHeaders(req, res);
 
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
+        res.status(204).end();
         return;
     }
 
@@ -25,34 +138,36 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    try {
-        const { messages, contextPrompt, apiKey } = req.body;
+    // Fail closed: reject if the Supabase auth backend is not configured.
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        console.error("Auth not configured: missing SUPABASE_URL / SUPABASE_ANON_KEY.");
+        return res.status(500).json({ error: 'El servidor no está configurado para autenticar solicitudes.' });
+    }
 
-        const anthropicKey = apiKey?.trim() || process.env.ANTHROPIC_API_KEY || DEFAULT_API_KEY;
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+        return res.status(401).json({ error: 'No autorizado. Inicia sesión para usar el asistente.' });
+    }
+    if (!(await isApprovedUser(user.id, token))) {
+        return res.status(403).json({ error: 'Tu cuenta aún no está aprobada para usar el asistente.' });
+    }
+
+    try {
+        const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
 
         if (!anthropicKey) {
-            return res.status(400).json({ error: 'Falta la clave API de Anthropic. Agrégala en las Variables de Entorno de Vercel o en el engranaje de configuración.' });
+            return res.status(500).json({ error: 'Falta la clave API de Anthropic. Agrégala en las Variables de Entorno de Vercel.' });
         }
 
-        // Defensive validation: Ensure the key is ASCII-only and starts with 'sk-'
-        const isAscii = (str) => /^[\x00-\x7F]*$/.test(str);
-        if (!isAscii(anthropicKey) || !anthropicKey.startsWith("sk-")) {
-            return res.status(400).json({ 
-                error: "La clave API de Anthropic configurada no es válida. Asegúrate de haber copiado la clave correcta (debe empezar con 'sk-' y no contener emojis, textos de error ni espacios)." 
-            });
+        const validated = validateRequest(req.body);
+        if (validated.error) {
+            return res.status(400).json({ error: validated.error });
         }
+        const { messages, contextPrompt } = validated;
 
-        // 1. Anthropic Compliance: Filter and slice messages so it starts STRICTLY with a 'user' role
-        let apiMessages = messages.map(m => ({
-            role: m.role === 'assistant' ? 'assistant' : 'user',
-            content: m.content
-        }));
-
-        const firstUserIdx = apiMessages.findIndex(m => m.role === 'user');
-        if (firstUserIdx === -1) {
-            return res.status(400).json({ error: 'La conversación debe contener al menos un mensaje del usuario.' });
-        }
-        apiMessages = apiMessages.slice(firstUserIdx);
+        const apiMessages = messages;
 
         // Custom system prompt driven by marketing expertise
         const systemPrompt = `Eres "RConcept AI Studio", un asistente de Inteligencia Artificial de nivel elite, experto en Marketing Digital de Alto Rendimiento, Estrategia de Contenidos Virales, Copywriting persuasivo (estilos como Alex Hormozi, GaryVee, MrBeast), y Guiones de Corto Formato de alta retención.
@@ -112,7 +227,7 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
             },
             body: JSON.stringify({
                 model: "claude-sonnet-4-20250514",
-                max_tokens: 8192,
+                max_tokens: 4096,
                 system: systemPrompt,
                 messages: apiMessages
             })
@@ -134,7 +249,7 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
                     },
                     body: JSON.stringify({
                         model: "claude-3-5-sonnet-20241022",
-                        max_tokens: 8192,
+                        max_tokens: 4096,
                         system: systemPrompt,
                         messages: apiMessages
                     })
@@ -146,28 +261,29 @@ Habla con un tono de alta costura creativa, seguro de ti mismo, práctico y enfo
         if (!response.ok) {
             lastErrorText = await extractErrorText(response);
             console.error("Anthropic API Pipeline Final Failure:", lastErrorText);
-            
-            let errMsg = lastErrorText || 'Error al comunicarse con la API de Inteligencia Artificial.';
 
-            // User-friendly credit balance check
-            if (errMsg.includes("credit_balance_zero") || errMsg.includes("billing") || errMsg.includes("credit") || errMsg.includes("balance")) {
-                errMsg = "Tu cuenta de Anthropic no tiene saldo de créditos disponible. Para activar tu API Key, por favor inicia sesión en tu consola de Anthropic (https://console.anthropic.com/settings/billing) y añade un saldo inicial mínimo (ej. $5 USD) en la sección de facturación.";
-            } else if (errMsg.includes("rate_limit")) {
+            const lowerError = lastErrorText.toLowerCase();
+            let errMsg = 'No se pudo obtener una respuesta del proveedor de IA.';
+
+            if (lowerError.includes("credit_balance_zero") || lowerError.includes("billing") || lowerError.includes("credit") || lowerError.includes("balance")) {
+                errMsg = "La cuenta de Anthropic no tiene créditos disponibles.";
+            } else if (lowerError.includes("rate_limit")) {
                 errMsg = "Límite de velocidad superado. Espera unos segundos e intenta nuevamente.";
-            } else if (errMsg.includes("invalid") && (errMsg.includes("key") || errMsg.includes("auth"))) {
-                errMsg = "La API Key ingresada no es válida o ha sido revocada. Por favor, verifica que la hayas copiado completa y correctamente desde tu consola de Anthropic.";
+            } else if (lowerError.includes("invalid") && (lowerError.includes("key") || lowerError.includes("auth"))) {
+                errMsg = "La API Key configurada en el servidor no es válida o ha sido revocada.";
             }
 
-            return res.status(response.status).json({ error: errMsg });
+            const status = response.status >= 400 && response.status < 500 ? response.status : 502;
+            return res.status(status).json({ error: errMsg });
         }
 
         const data = await response.json();
         const text = data.content?.[0]?.text || '';
-        
+
         return res.status(200).json({ text });
 
     } catch (err) {
         console.error("Serverless Claude Proxy error:", err);
-        return res.status(500).json({ error: 'Error interno del servidor proxy: ' + err.message });
+        return res.status(500).json({ error: 'Error interno del servidor proxy.' });
     }
 }

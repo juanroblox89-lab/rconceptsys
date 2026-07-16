@@ -20,20 +20,23 @@ const escapeHTML = (str) => String(str || '').replace(/[&<>'"]/g,
     }[tag])
 );
 
-// Debugging helper for headless testing
-window.debugLog = [];
-const originalLog = console.log;
-console.log = (...args) => {
-    window.debugLog.push(`[LOG] ${args.join(' ')}`);
-    if(window.debugLog.length > 500) window.debugLog.shift();
-    originalLog(...args);
-};
-const originalError = console.error;
-console.error = (...args) => {
-    window.debugLog.push(`[ERR] ${args.join(' ')}`);
-    if(window.debugLog.length > 500) window.debugLog.shift();
-    originalError(...args);
-};
+// Debugging helper for local/headless testing only. Production errors may
+// contain user or operational data and must not be exposed on window.
+if (import.meta.env.DEV) {
+    window.debugLog = [];
+    const originalLog = console.log;
+    console.log = (...args) => {
+        window.debugLog.push(`[LOG] ${args.join(' ')}`);
+        if(window.debugLog.length > 500) window.debugLog.shift();
+        originalLog(...args);
+    };
+    const originalError = console.error;
+    console.error = (...args) => {
+        window.debugLog.push(`[ERR] ${args.join(' ')}`);
+        if(window.debugLog.length > 500) window.debugLog.shift();
+        originalError(...args);
+    };
+}
 
 class App {
     constructor() {

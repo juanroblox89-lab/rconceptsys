@@ -37,12 +37,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// --- Master Admin Emails (auto-approved on first login) ---
-export const MASTER_ADMIN_EMAILS = [
-  'juanroblox89@gmail.com',
-  'juanroblox89@rohlfing.com',
-  'samuelrohlfing49@gmail.com',
-].map((e) => e.toLowerCase());
+// --- Admin bootstrap ---
+// Admin role and account approval are NOT granted by client code. Promote the
+// initial admin(s) directly in the database (SQL editor / service role), e.g.:
+//   update public.users set role = 'admin', approved = true where email = '<email>';
+// This prevents client-side privilege escalation.
 
 // --- Storage Bucket Names ---
 export const BUCKETS = {

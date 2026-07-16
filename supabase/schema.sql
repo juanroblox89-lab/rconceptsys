@@ -216,6 +216,43 @@ create table if not exists public.marketing_visits (
 );
 
 -- ============================================================
+-- SECURITY HELPERS
+-- ============================================================
+-- SECURITY DEFINER so it can read public.users regardless of the caller's RLS.
+-- Used by policies/triggers to gate admin-only operations on the server side
+-- instead of trusting client-side JavaScript role checks.
+create or replace function public.is_approved()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.users
+    where id = auth.uid() and approved = true
+  );
+$$;
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.users
+    where id = auth.uid() and approved = true and role = 'admin'
+  );
+$$;
+
+revoke all on function public.is_approved() from public;
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_approved() to authenticated;
+grant execute on function public.is_admin() to authenticated;
+
+-- ============================================================
 -- ROW LEVEL SECURITY (RLS) - Basic policies
 -- ============================================================
 alter table public.users enable row level security;
@@ -234,69 +271,133 @@ alter table public.sops enable row level security;
 alter table public.chats enable row level security;
 alter table public.marketing_visits enable row level security;
 
--- Authenticated users can read all tables (app is internal)
-create policy "Authenticated read access" on public.users
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.roles
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.clients
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.assignments
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.invoices
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.admin_invoices
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.rate_cards
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.formats
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.hooks
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.scripts
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.assets
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.references
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.sops
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.chats
-  for select to authenticated using (true);
-create policy "Authenticated read access" on public.marketing_visits
-  for select to authenticated using (true);
+create policy "Users read own or approved team" on public.users
+  for select to authenticated using (id = auth.uid() or public.is_approved());
+create policy "Approved users read roles" on public.roles
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read clients" on public.clients
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read assignments" on public.assignments
+  for select to authenticated using (public.is_approved());
+create policy "Users read own invoices" on public.invoices
+  for select to authenticated using (public.is_admin() or (public.is_approved() and "employeeId" = auth.uid()::text));
+create policy "Users read own admin invoices" on public.admin_invoices
+  for select to authenticated using (public.is_admin() or (public.is_approved() and "employeeId" = auth.uid()::text));
+create policy "Approved users read rate cards" on public.rate_cards
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read formats" on public.formats
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read hooks" on public.hooks
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read scripts" on public.scripts
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read assets" on public.assets
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read references" on public.references
+  for select to authenticated using (public.is_approved());
+create policy "Approved users read sops" on public.sops
+  for select to authenticated using (public.is_approved());
+create policy "Users read own chats" on public.chats
+  for select to authenticated using (public.is_admin() or (public.is_approved() and "userId" = auth.uid()::text));
+create policy "Users read own marketing visits" on public.marketing_visits
+  for select to authenticated using (public.is_admin() or (public.is_approved() and "userId" = auth.uid()::text));
 
--- Authenticated users can insert/update/delete (app manages permissions in JS)
-create policy "Authenticated write access" on public.users
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.roles
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.clients
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.assignments
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.invoices
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.admin_invoices
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.rate_cards
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.formats
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.hooks
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.scripts
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.assets
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.references
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.sops
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.chats
-  for all to authenticated using (true) with check (true);
-create policy "Authenticated write access" on public.marketing_visits
-  for all to authenticated using (true) with check (true);
+create policy "Users insert own profile" on public.users
+  for insert to authenticated with check (id = auth.uid() or public.is_admin());
+create policy "Users update own profile" on public.users
+  for update to authenticated using (id = auth.uid() or public.is_admin())
+  with check (id = auth.uid() or public.is_admin());
+create policy "Admins delete users" on public.users
+  for delete to authenticated using (public.is_admin());
+
+create policy "Admins manage roles" on public.roles
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage clients" on public.clients
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins create assignments" on public.assignments
+  for insert to authenticated with check (public.is_admin());
+create policy "Admins or assignees update assignments" on public.assignments
+  for update to authenticated
+  using (public.is_admin() or (public.is_approved() and "employeeId" = auth.uid()::text))
+  with check (public.is_admin() or (public.is_approved() and "employeeId" = auth.uid()::text));
+create policy "Admins delete assignments" on public.assignments
+  for delete to authenticated using (public.is_admin());
+create policy "Users manage own invoices" on public.invoices
+  for all to authenticated
+  using (public.is_admin() or (public.is_approved() and "employeeId" = auth.uid()::text))
+  with check (public.is_admin() or (public.is_approved() and "employeeId" = auth.uid()::text));
+create policy "Admins manage admin invoices" on public.admin_invoices
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage rate cards" on public.rate_cards
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage formats" on public.formats
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage hooks" on public.hooks
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage scripts" on public.scripts
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Approved users manage assets" on public.assets
+  for all to authenticated using (public.is_approved()) with check (public.is_approved());
+create policy "Admins manage references" on public.references
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage sops" on public.sops
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Users manage own chats" on public.chats
+  for all to authenticated
+  using (public.is_admin() or (public.is_approved() and "userId" = auth.uid()::text))
+  with check (public.is_admin() or (public.is_approved() and "userId" = auth.uid()::text));
+create policy "Users manage own marketing visits" on public.marketing_visits
+  for all to authenticated
+  using (public.is_admin() or (public.is_approved() and "userId" = auth.uid()::text))
+  with check (public.is_admin() or (public.is_approved() and "userId" = auth.uid()::text));
+
+-- ============================================================
+-- PRIVILEGE ESCALATION GUARD
+-- ============================================================
+-- Even though users can update their own profile, they must NOT be able to
+-- change their own role or approval status. Only admins (or the service role
+-- running with RLS bypass) may alter these fields.
+create or replace function public.enforce_user_privilege_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Only constrain end users. The service role / SQL editor (used to bootstrap
+  -- the first admin and manage approvals) is allowed through.
+  if auth.role() <> 'authenticated' then
+    return new;
+  end if;
+
+  if public.is_admin() then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    new.uid := auth.uid()::text;
+    new.email := auth.jwt() ->> 'email';
+    new.role := 'viewer';
+    new.approved := false;
+    return new;
+  end if;
+
+  if new.role is distinct from old.role
+     or new.approved is distinct from old.approved
+     or new.id is distinct from old.id
+     or new.uid is distinct from old.uid
+     or new.email is distinct from old.email
+     or new."createdAt" is distinct from old."createdAt" then
+    raise exception 'No autorizado para modificar el rol o el estado de aprobación.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists users_privilege_guard on public.users;
+create trigger users_privilege_guard
+  before insert or update on public.users
+  for each row execute function public.enforce_user_privilege_guard();
 
 -- ============================================================
 -- STORAGE BUCKETS
@@ -313,11 +414,27 @@ on conflict (id) do nothing;
 create policy "Public read access" on storage.objects
   for select using (bucket_id in ('assets', 'logos'));
 
-create policy "Authenticated upload access" on storage.objects
-  for insert to authenticated with check (bucket_id in ('assets', 'logos'));
+create policy "Approved upload access" on storage.objects
+  for insert to authenticated
+  with check (bucket_id in ('assets', 'logos') and public.is_approved());
 
-create policy "Authenticated delete access" on storage.objects
-  for delete to authenticated using (bucket_id in ('assets', 'logos'));
+create policy "Owners update uploads" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id in ('assets', 'logos')
+    and (public.is_admin() or (public.is_approved() and owner_id::text = auth.uid()::text))
+  )
+  with check (
+    bucket_id in ('assets', 'logos')
+    and (public.is_admin() or (public.is_approved() and owner_id::text = auth.uid()::text))
+  );
+
+create policy "Owners delete uploads" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id in ('assets', 'logos')
+    and (public.is_admin() or (public.is_approved() and owner_id::text = auth.uid()::text))
+  );
 
 -- ============================================================
 -- REALTIME PUBLICATION (for onSnapshot equivalent)
