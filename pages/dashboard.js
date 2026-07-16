@@ -2,7 +2,7 @@
  * Dashboard Page - Creative Production OS
  * Notion Light UI supporting core dynamic operations triggers and real-time production analytics.
  */
-import { h, icon } from '../utils/dom.js';
+import { h, icon, sumInvoiceItems } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { Table } from '../components/ui/Table.js';
 import { dbService } from '../supabase/service.js';
@@ -36,8 +36,14 @@ export const render = () => {
                 : assignments.filter(a => a.employeeId === user?.uid && a.status !== 'Completado' && a.status !== 'Archivado');
 
             // --- Calculation for Metric Cards ---
-            const totalInvoiced = invoices.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
-            const currentMonth = new Date().getMonth();
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const totalInvoiced = invoices.filter(inv => {
+                const invDate = inv.createdAt || inv.date;
+                if (!invDate) return false;
+                const d = new Date(invDate);
+                return d.getMonth() === currentMonth && d.getFullYear() === now.getFullYear();
+            }).reduce((sum, inv) => sum + sumInvoiceItems(inv), 0);
             const monthlyProduction = assignments.filter(a => {
                 const dateVal = a.date || a.dueDate;
                 return a.status === 'Completado' && dateVal && new Date(dateVal).getMonth() === currentMonth;
@@ -189,17 +195,39 @@ export const render = () => {
                 }, [rightPanel])
             ]);
 
-            // 6. Production over last 6 months (Linear-style line chart canvas placeholder)
+            // 6. Production over last 6 months (real data)
+            const monthNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const last6Months = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const month = d.getMonth();
+                const year = d.getFullYear();
+                const count = assignments.filter(a => {
+                    if (a.status !== 'Completado') return false;
+                    const dateVal = a.date || a.dueDate;
+                    if (!dateVal) return false;
+                    const ad = new Date(dateVal);
+                    return ad.getMonth() === month && ad.getFullYear() === year;
+                }).length;
+                last6Months.push({ label: `${monthNames[month]} ${year.toString().slice(-2)}`, count });
+            }
+            const maxCount = Math.max(...last6Months.map(m => m.count), 1);
+
             const chartSection = h('div', { className: 'card p-6 flex-column gap-4' }, [
                 h('div', { className: 'flex justify-between items-center' }, [
                     h('h3', { className: 'text-xs font-bold uppercase tracking-wider text-secondary' }, 'Producción últimos 6 meses'),
-                    h('span', { className: 'text-[10px] text-muted' }, 'Línea suave de videos completados')
+                    h('span', { className: 'text-[10px] text-muted' }, 'Videos completados por mes')
                 ]),
                 h('div', { 
-                    style: { height: '140px', width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }
-                }, [
-                    h('canvas', { id: 'dashboard-chart', style: { width: '100%', height: '120px' } })
-                ])
+                    style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px', height: '120px', padding: '10px 0', borderBottom: '1px solid var(--border)' }
+                }, last6Months.map(m => {
+                    const barHeight = Math.max((m.count / maxCount) * 100, 4);
+                    return h('div', { style: { flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' } }, [
+                        h('span', { className: 'text-[10px] font-bold text-primary' }, `${m.count}`),
+                        h('div', { style: { width: '100%', height: `${barHeight}px`, background: 'linear-gradient(180deg, #3b82f6, #60a5fa)', borderRadius: '4px 4px 0 0', transition: 'height 0.3s ease' } }),
+                        h('span', { className: 'text-[9px] text-muted font-medium' }, m.label)
+                    ]);
+                }))
             ]);
 
             // Assemble everything
@@ -209,49 +237,6 @@ export const render = () => {
             container.appendChild(chartSection);
 
             if (window.lucide) window.lucide.createIcons();
-
-            // Canvas renderer for elegant smooth chart
-            setTimeout(() => {
-                const canvas = document.getElementById('dashboard-chart');
-                if (canvas) {
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = canvas.parentElement.clientWidth;
-                    canvas.height = 120;
-                    
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Simple dummy gradient curve to look exactly like Linear
-                    ctx.beginPath();
-                    ctx.strokeStyle = '#3b82f6';
-                    ctx.lineWidth = 3;
-                    
-                    const points = [
-                        { x: 0, y: 100 },
-                        { x: canvas.width * 0.2, y: 80 },
-                        { x: canvas.width * 0.4, y: 90 },
-                        { x: canvas.width * 0.6, y: 40 },
-                        { x: canvas.width * 0.8, y: 60 },
-                        { x: canvas.width, y: 20 }
-                    ];
-                    
-                    ctx.moveTo(points[0].x, points[0].y);
-                    for (let i = 0; i < points.length - 1; i++) {
-                        const xc = (points[i].x + points[i + 1].x) / 2;
-                        const yc = (points[i].y + points[i + 1].y) / 2;
-                        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-                    }
-                    ctx.stroke();
-
-                    // Fill gradient
-                    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-                    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
-                    ctx.fillStyle = gradient;
-                    ctx.lineTo(canvas.width, canvas.height);
-                    ctx.lineTo(0, canvas.height);
-                    ctx.fill();
-                }
-            }, 300);
 
         } catch (err) {
             console.error("Dashboard render failed:", err);

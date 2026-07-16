@@ -184,3 +184,23 @@ export const openLightbox = (url) => {
     overlay.appendChild(closeBtn);
     document.body.appendChild(overlay);
 };
+
+/**
+ * Sum the `amount` field of all items in an invoice.
+ * Handles both `items` array and flat `amount` fallback.
+ */
+export function sumInvoiceItems(invoice) {
+    if (!invoice) return 0;
+    if (invoice.items && invoice.items.length > 0) {
+        return invoice.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    }
+    return Number(invoice.amount) || 0;
+}
+
+/**
+ * Sum the `amount` field of all items in a plain array.
+ */
+export function sumItems(items) {
+    if (!items || items.length === 0) return 0;
+    return items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+}

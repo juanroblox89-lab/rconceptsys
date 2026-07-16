@@ -3,6 +3,7 @@
  * ESM Compatible - Works without Vite if needed.
  */
 import { store } from './store.js';
+import { hasPermission as checkModulePermission } from '../services/permissionsService.js';
 
 export const routes = [
     { path: 'dashboard', module: 'dashboard', title: "Dashboard", subtitle: "Resumen de operaciones" },
@@ -55,26 +56,16 @@ class Router {
             const { route, params } = match;
             
             // --- Permisos ---
-            const { user, roles } = store.getState();
+            const { user } = store.getState();
             if (!user) {
                 viewContainer.innerHTML = '<div class="flex items-center justify-center p-20"><div class="loader" style="width:24px;height:24px; border: 2px solid #333; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div></div>';
                 return;
             }
-            let hasPermission = false;
             let requiredModule = route.module;
             if (requiredModule === 'clientDetail') requiredModule = 'clients';
+            const userHasPermission = checkModulePermission(requiredModule);
 
-            if (user.role === 'admin') {
-                const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'clientDetail', 'marketing', 'profile'];
-                hasPermission = adminAllowed.includes(requiredModule);
-            } else {
-                const currentRole = (roles || []).find(r => r.id === user.role);
-                const defaultModules = ['dashboard', 'assignments', 'aiAssistant', 'profile'];
-                const allowedModules = currentRole?.allowedModules || defaultModules;
-                hasPermission = allowedModules.includes(requiredModule) || requiredModule === 'profile';
-            }
-
-            if (!hasPermission) {
+            if (!userHasPermission) {
                 viewContainer.innerHTML = `
                     <div class="card p-8 text-center flex-column items-center gap-3" style="max-width: 400px; margin: 40px auto;">
                         <span style="font-size:3rem">🔒</span>
