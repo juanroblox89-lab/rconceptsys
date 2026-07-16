@@ -32,7 +32,8 @@ export const render = async () => {
 
     // Get system configuration for WhatsApp contact
     let systemPricing = {};
-    try { systemPricing = await dbService.getById('system_config', 'pricing') || {}; } catch(e) {}
+    try { systemPricing = await dbService.getById('system_config', 'pricing') || {}; }
+    catch(e) { console.warn('Could not load system pricing config, using defaults:', e); }
     const adminPhone = systemPricing.adminPhone || '573000000000';
     const bonusVisitasMarketing = systemPricing.bonusVisitasMarketing ?? 50000;
 

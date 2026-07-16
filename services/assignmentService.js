@@ -88,7 +88,8 @@ export const assignmentService = {
                 await this._advancePipeline(newAsg.projectId, newAsg.stageIndex);
             }
         } catch (err) {
-            console.warn("Error saving assignment to DB:", err);
+            console.error("Error saving assignment to DB:", err);
+            throw err;
         }
 
         return newAsg;
@@ -212,7 +213,8 @@ export const assignmentService = {
             }
             await batch.commit();
         } catch (err) {
-            console.warn("Error saving pipeline assignments to DB:", err);
+            console.error("Error saving pipeline assignments to DB:", err);
+            throw err;
         }
 
         return projectId;
@@ -230,7 +232,8 @@ export const assignmentService = {
                 }
             }
         } catch (err) {
-            console.warn(`Error updating status for assignment ${id}:`, err);
+            console.error(`Error updating status for assignment ${id}:`, err);
+            throw err;
         }
     },
 
@@ -296,7 +299,8 @@ export const assignmentService = {
                 console.warn("Could not cleanup SOP submissions:", e);
             }
         } catch (err) {
-            console.warn("Error deleting assignment from DB:", err);
+            console.error("Error deleting assignment from DB:", err);
+            throw err;
         }
     },
 
