@@ -5,6 +5,8 @@
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { authService, storageService, dbService } from '../supabase/service.js';
+import { assignmentService } from '../services/assignmentService.js';
+import { hasPermission } from '../services/permissionsService.js';
 
 // Primary nav (shown in sidebar AND bottom nav)
 const primaryNavItems = [
@@ -29,23 +31,11 @@ const secondaryNavItems = [
 ];
 
 const checkPermission = (href) => {
-    const { user, roles } = store.getState();
     const moduleId = href.replace('#', '');
-    
-    if (user?.role === 'admin') {
-        const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'marketing'];
-        return adminAllowed.includes(moduleId);
-    }
-    
-    // Find role permissions
-    const currentRole = (roles || []).find(r => r.id === user?.role);
-    const defaultModules = ['dashboard', 'assignments', 'aiAssistant'];
-    const allowedModules = currentRole?.allowedModules || defaultModules;
-    
-    return allowedModules.includes(moduleId);
+    return hasPermission(moduleId);
 };
 
-const createNavItem = ({ href, icon: iconName, label }) => {
+const createNavItem = ({ href, icon: iconName, label, badge }) => {
     if (!checkPermission(href)) return null;
 
     const currentHash = window.location.hash || '#dashboard';
@@ -53,7 +43,8 @@ const createNavItem = ({ href, icon: iconName, label }) => {
     
     return h('a', { href, className: `nav-item${isActive ? ' active' : ''}` }, [
         icon(iconName, 17),
-        h('span', {}, label)
+        h('span', {}, label),
+        badge ? h('span', { className: 'badge badge-error text-[9px] ml-auto', style: { padding: '1px 6px', borderRadius: '10px', background: 'var(--error)', color: '#fff', fontWeight: '700' } }, `${badge}`) : null
     ]);
 };
 
@@ -105,6 +96,30 @@ export const Sidebar = () => {
         console.warn("Using text fallback for logo:", err);
     });
 
+    // ─── Overdue tasks badge ──────────────────────────────
+    let overdueCount = 0;
+    const today = new Date().toISOString().slice(0, 10);
+    assignmentService.getAllAssignments().then(assignments => {
+        overdueCount = assignments.filter(a => {
+            if (a.status === 'Completado' || a.status === 'Archivado') return false;
+            return a.dueDate && a.dueDate.slice(0, 10) < today;
+        }).length;
+        // Update badge if sidebar is already rendered
+        const badge = sidebar.querySelector('.nav-item[href="#assignments"] .badge');
+        if (badge) {
+            badge.textContent = overdueCount;
+            badge.style.display = overdueCount > 0 ? 'inline' : 'none';
+        } else if (overdueCount > 0) {
+            const assignLink = sidebar.querySelector('.nav-item[href="#assignments"]');
+            if (assignLink) {
+                assignLink.appendChild(h('span', {
+                    className: 'badge text-[9px] ml-auto',
+                    style: { padding: '1px 6px', borderRadius: '10px', background: 'var(--error)', color: '#fff', fontWeight: '700' }
+                }, `${overdueCount}`));
+            }
+        }
+    }).catch(() => {});
+
     // ─── Sidebar container ─────────────────────────────────
     const sidebar = h('aside', {
         id: 'sidebar-root',
@@ -144,7 +159,7 @@ export const Sidebar = () => {
                         onClick: async () => {
                             await authService.logout();
                             store.setState({ user: null });
-                            window.location.reload();
+                            window.location.hash = '#dashboard';
                         }
                     }, [icon('log-out', 13)])
                 ])

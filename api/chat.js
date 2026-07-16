@@ -161,11 +161,26 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'Falta la clave API de Anthropic. Agrégala en las Variables de Entorno de Vercel.' });
         }
 
+        const isAscii = (value) => /^[\x00-\x7F]*$/.test(value);
+        if (!isAscii(anthropicKey) || !anthropicKey.startsWith("sk-")) {
+            return res.status(500).json({ error: "La clave API de Anthropic configurada no es válida." });
+        }
+
         const validated = validateRequest(req.body);
         if (validated.error) {
             return res.status(400).json({ error: validated.error });
         }
         const { messages, contextPrompt } = validated;
+
+        const rateLimitKey = user.id;
+        const now = Date.now();
+        if (!globalThis._rateLimitMap) globalThis._rateLimitMap = {};
+        const hits = (globalThis._rateLimitMap[rateLimitKey] || []).filter(t => now - t < 60_000);
+        if (hits.length >= 20) {
+            return res.status(429).json({ error: 'Límite de solicitudes alcanzado. Intenta de nuevo en un minuto.' });
+        }
+        hits.push(now);
+        globalThis._rateLimitMap[rateLimitKey] = hits;
 
         const apiMessages = messages;
 

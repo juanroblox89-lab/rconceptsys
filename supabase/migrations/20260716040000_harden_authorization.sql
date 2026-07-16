@@ -61,6 +61,44 @@ drop policy if exists "Authenticated write access" on public.sops;
 drop policy if exists "Authenticated write access" on public.chats;
 drop policy if exists "Authenticated write access" on public.marketing_visits;
 
+drop policy if exists "users_select" on public.users;
+drop policy if exists "users_update_own" on public.users;
+drop policy if exists "users_admin_insert" on public.users;
+drop policy if exists "users_admin_delete" on public.users;
+drop policy if exists "users_admin_update" on public.users;
+drop policy if exists "roles_select" on public.roles;
+drop policy if exists "roles_admin_all" on public.roles;
+drop policy if exists "clients_select" on public.clients;
+drop policy if exists "clients_admin_all" on public.clients;
+drop policy if exists "assignments_select" on public.assignments;
+drop policy if exists "assignments_admin_all" on public.assignments;
+drop policy if exists "assignments_employee_update" on public.assignments;
+drop policy if exists "invoices_select" on public.invoices;
+drop policy if exists "invoices_employee_all" on public.invoices;
+drop policy if exists "invoices_admin_all" on public.invoices;
+drop policy if exists "admin_invoices_select" on public.admin_invoices;
+drop policy if exists "admin_invoices_admin_all" on public.admin_invoices;
+drop policy if exists "rate_cards_select" on public.rate_cards;
+drop policy if exists "rate_cards_admin_all" on public.rate_cards;
+drop policy if exists "formats_select" on public.formats;
+drop policy if exists "formats_admin_all" on public.formats;
+drop policy if exists "hooks_select" on public.hooks;
+drop policy if exists "hooks_admin_all" on public.hooks;
+drop policy if exists "scripts_select" on public.scripts;
+drop policy if exists "scripts_admin_all" on public.scripts;
+drop policy if exists "assets_select" on public.assets;
+drop policy if exists "assets_admin_all" on public.assets;
+drop policy if exists "references_select" on public.references;
+drop policy if exists "references_admin_all" on public.references;
+drop policy if exists "sops_select" on public.sops;
+drop policy if exists "sops_admin_all" on public.sops;
+drop policy if exists "chats_select" on public.chats;
+drop policy if exists "chats_user_all" on public.chats;
+drop policy if exists "chats_admin_all" on public.chats;
+drop policy if exists "marketing_select" on public.marketing_visits;
+drop policy if exists "marketing_user_all" on public.marketing_visits;
+drop policy if exists "marketing_admin_all" on public.marketing_visits;
+
 drop policy if exists "Users read own or approved team" on public.users;
 drop policy if exists "Approved users read roles" on public.roles;
 drop policy if exists "Approved users read clients" on public.clients;
@@ -217,6 +255,9 @@ drop policy if exists "Authenticated delete access" on storage.objects;
 drop policy if exists "Approved upload access" on storage.objects;
 drop policy if exists "Owners update uploads" on storage.objects;
 drop policy if exists "Owners delete uploads" on storage.objects;
+drop policy if exists "storage_auth_read" on storage.objects;
+drop policy if exists "storage_auth_insert" on storage.objects;
+drop policy if exists "storage_admin_delete" on storage.objects;
 
 create policy "Approved upload access" on storage.objects
   for insert to authenticated

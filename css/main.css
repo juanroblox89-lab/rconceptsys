@@ -1,39 +1,53 @@
 /* 
   Creative Production OS - Design System
-  Mobile-First. Premium Light. Inspired by Notion, Linear & Apple.
+  Mobile-First. Hallmark Design. Anti-AI-Slop.
 */
 
+/* Display Font - DM Serif Display for headings */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
+
 :root {
-    /* Colors - Premium Neutrals (Linear/Apple inspired) */
-    --bg-primary: #ffffff;
-    --bg-secondary: #fafafa;
-    --bg-tertiary: #f4f4f5;
-    --bg-elevated: #ffffff;
+    /* OKLCH Color Tokens - Blue-tinted neutrals (hue ~250) */
+    --paper: oklch(0.99 0.005 250);        /* Warm white, not pure white */
+    --paper-secondary: oklch(0.97 0.006 250);
+    --paper-tertiary: oklch(0.95 0.008 250);
+    --ink: oklch(0.13 0.01 250);           /* Near-black, tinted blue */
+    --ink-secondary: oklch(0.45 0.015 250);
+    --ink-muted: oklch(0.55 0.01 250);
     
-    --accent-glow: rgba(0, 0, 0, 0.04);
-    --accent-glow-strong: rgba(0, 0, 0, 0.08);
+    /* Accent - Single blue accent */
+    --accent: oklch(0.62 0.18 250);        /* Vibrant blue */
+    --accent-hover: oklch(0.55 0.2 250);
+    --accent-light: oklch(0.92 0.05 250);
     
-    --success: #059669; /* refined green */
-    --success-bg: #d1fae5;
-    --warning: #d97706; /* refined amber */
-    --warning-bg: #fef3c7;
-    --error: #dc2626; /* refined red */
-    --error-bg: #fee2e2;
-    --info: #2563eb; /* refined blue */
-    --info-bg: #dbeafe;
+    /* Semantic Colors */
+    --success: oklch(0.62 0.15 155);
+    --success-bg: oklch(0.92 0.06 155);
+    --warning: oklch(0.75 0.15 75);
+    --warning-bg: oklch(0.95 0.06 75);
+    --error: oklch(0.62 0.2 25);
+    --error-bg: oklch(0.93 0.06 25);
 
-    /* Refined Typography Colors */
-    --text-primary: #09090b; /* zinc-950 */
-    --text-secondary: #52525b; /* zinc-600 */
-    --text-muted: #71717a; /* zinc-500 for better contrast */
+    /* Backgrounds - Blue-tinted paper tones */
+    --bg-primary: var(--paper);
+    --bg-secondary: var(--paper-secondary);
+    --bg-tertiary: var(--paper-tertiary);
+    --bg-elevated: var(--paper);
+    --bg-accent: var(--accent-light);
     
-    --accent: #000000; /* Sophisticated black accent */
-    --accent-hover: #27272a;
-    --bg-accent: #f4f4f5;
+    /* Typography Colors */
+    --text-primary: var(--ink);
+    --text-secondary: var(--ink-secondary);
+    --text-muted: var(--ink-muted);
+    
+    /* Accent (alias for compatibility) */
+    --accent-glow: oklch(0.13 0.01 250 / 0.04);
+    --accent-glow-strong: oklch(0.13 0.01 250 / 0.08);
 
-    --border: rgba(0, 0, 0, 0.06);
-    --border-hover: rgba(0, 0, 0, 0.12);
-    --border-light: rgba(0, 0, 0, 0.03);
+    /* Borders - Blue-tinted */
+    --border: oklch(0.13 0.01 250 / 0.06);
+    --border-hover: oklch(0.13 0.01 250 / 0.12);
+    --border-light: oklch(0.13 0.01 250 / 0.03);
 
     /* Z-Index Scale */
     --z-below: -1;
@@ -85,7 +99,12 @@
 :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
+}
+
+/* Remove default outline for mouse users */
+:focus:not(:focus-visible) {
+    outline: none;
 }
 
 html {
@@ -110,11 +129,12 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
-/* Typography */
+/* Typography - DM Serif Display for headings, Inter for body */
 h1, h2, h3, h4 {
-    font-weight: 700;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-weight: 400; /* DM Serif Display is inherently bold */
     color: var(--text-primary);
-    line-height: 1.1;
+    line-height: 1.15;
 }
 
 h1 { 
@@ -216,19 +236,19 @@ a, input, select, textarea {
    GLASS & PREMIUM MATERIALS
 ================================ */
 .glass {
-    background: rgba(255, 255, 255, 0.7);
+    background: oklch(0.99 0.005 250 / 0.7);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: var(--shadow-glass), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    border: 1px solid oklch(0.99 0.005 250 / 0.5);
+    box-shadow: var(--shadow-glass);
 }
 
 .glass-panel {
-    background: linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
+    background: oklch(0.99 0.005 250 / 0.85); /* Solid, no gradient */
     backdrop-filter: blur(24px) saturate(200%);
     -webkit-backdrop-filter: blur(24px) saturate(200%);
     border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 1);
+    box-shadow: var(--shadow-md);
     border-radius: var(--radius-lg);
 }
 
@@ -372,7 +392,7 @@ a, input, select, textarea {
 
 .elevation-2 {
     box-shadow: var(--shadow-lg);
-    background: rgba(255, 255, 255, 0.85);
+    background: oklch(0.99 0.005 250 / 0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
 }

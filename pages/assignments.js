@@ -5,19 +5,13 @@
  */
 import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
+import { router } from '../js/router.js';
 import { dbService, storageService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
 import { invoiceService } from '../services/invoiceService.js';
-
-// Pre-declare regex to prevent es-module-lexer parse issues
-const RE_BRACKET_PREFIX = /\[.*?\]\s*/g;
-const RE_NON_NUMERIC = /[^0-9]/g;
-const RE_UNICODE_ACCENT = /[\u0300-\u036f]/g;
-const RE_WHITESPACE = /\s+/g;
-const RE_SAFE_FILENAME = /[^a-zA-Z0-9.\-_]/g;
-const RE_SAFE_ID = /[^a-z0-9-]/g;
-const RE_QUOTE = /"/g;
+import { promptModal } from '../components/ui/PromptModal.js';
+import { RE_BRACKET_PREFIX, RE_NON_NUMERIC, RE_UNICODE_ACCENT, RE_WHITESPACE, RE_SAFE_FILENAME, RE_SAFE_ID, RE_QUOTE, getRoleSpecificGuide } from './assignments/helpers.js';
 
 let selectedProjectId = null;
 let selectedAssignmentId = null;
@@ -533,53 +527,9 @@ export const render = async () => {
                 ]);
                 container.appendChild(header);
 
-                // Workflow Guide for Employee
-                const getRoleSpecificGuide = (roleName) => {
-                    const r = (roleName || '').toLowerCase();
-                    if (r.includes('marketing') || r.includes('venta')) {
-                        return [
-                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Prospectar: '), 'Sal a buscar clientes. Por cada 10 prospectos visitados, recibes un bono.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Registrar Visitas: '), 'Entra a la pestaña "Ventas y Marketing" y registra cada visita para llevar la cuenta.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Cerrar Clientes: '), 'Cuando consigas un cliente, márcalo como "Cerrado" en la misma pestaña para cobrar tu gran comisión.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Cobrar: '), 'Ve a "Pagos Pendientes" para ver cómo se acumulan tus bonos y comisiones.'])
-                        ];
-                    } else if (r.includes('camarógrafo') || r.includes('grabador')) {
-                        return [
-                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Preparación: '), 'Revisa tus tareas pendientes. Verifica el cliente, el día y lee el Guion asignado.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Confirmación: '), 'Recuerda confirmar la asistencia con el cliente el día antes por el grupo de WhatsApp.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Grabación y Subida: '), 'Ve al lugar, sácate el guion del cerebro y graba. Al terminar, sube los archivos crudos al Drive.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Completar y Cobrar: '), 'Dale a "Completar". El sistema te pedirá el monto a cobrar y cerrará la tarea.'])
-                        ];
-                    } else if (r.includes('editor')) {
-                        return [
-                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Recepción: '), 'Revisa tu tarea. El líder te habrá notificado que los crudos están en Drive junto al Guion.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Edición: '), 'Descarga los crudos, edita el video aplicando formatos virales y exporta el archivo final.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Entrega: '), 'Sube el video final al Drive y manda el link por WhatsApp para revisión.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Completar y Cobrar: '), 'Dale a "Completar" para añadir tu pago a la factura automáticamente.'])
-                        ];
-                    } else if (r.includes('estratega') || r.includes('lider') || r.includes('admin')) {
-                        return [
-                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Creación de Cliente: '), 'Anota el nuevo cliente en la pestaña "Clientes" y asígnale su paquete de videos (4, 6 u 8).']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Estrategia: '), 'Redacta los guiones utilizando la pestaña de Formatos y Hooks.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Asignar Grabación: '), 'Crea una tarea para el Camarógrafo adjuntando el guion y el cliente.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Asignar Edición: '), 'Cuando los crudos estén en Drive, asígnale la tarea de edición al Editor, y revisa el progreso del paquete.'])
-                        ];
-                    } else {
-                        // Default Guide
-                        return [
-                            h('li', {}, [h('span', { className: 'font-bold' }, '1. Revisa tu Tarea: '), 'Abre tu tarea pendiente y revisa las instrucciones, el Guion y el Asset de muestra.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '2. Ejecuta: '), 'Ejecuta la tarea asignada.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '3. Completar: '), 'Al terminar, la tarea se marcará como Completada automáticamente.']),
-                            h('li', {}, [h('span', { className: 'font-bold' }, '4. Auto-Cobro: '), 'Al hacer clic en "Completar", el sistema lanzará tu factura para asegurar tu pago.'])
-                        ];
-                    }
-                };
-
-                const roleNameDisplay = (user.role && user.role !== 'admin' && user.role !== 'viewer') 
-                    ? user.role.charAt(0).toUpperCase() + user.role.slice(1) 
+                const roleNameDisplay = (user.role && user.role !== 'admin' && user.role !== 'viewer')
+                    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
                     : 'Miembro del Equipo';
-
-                // (Guide moved to bottom as collapsible accordion)
 
                 // Assignments already split above
 
@@ -646,7 +596,7 @@ export const render = async () => {
                                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold',
                                                     style: { borderColor: 'var(--warning)', color: 'var(--warning)' },
                                                     onClick: async () => {
-                                                        const just = prompt('Razón para devolver la tarea:');
+                                                        const just = await promptModal({ title: 'Devolver tarea', message: 'Razón para devolver la tarea:', placeholder: 'Describe el motivo...' });
                                                         if (!just) return;
                                                         try {
                                                             await assignmentService.saveAssignment({ ...asg, status: 'blocked' }); // Block original task
@@ -769,7 +719,7 @@ export const render = async () => {
                                                         }
                                                         
                                                         if (btn) btn.textContent = '✅ Entregado';
-                                                        setTimeout(() => window.location.reload(), 1200);
+                                                        setTimeout(() => router.handleRoute(), 1200);
                                                     } catch (err) {
                                                         console.error(err);
                                                         if (btn) { btn.textContent = '✗ Error'; btn.disabled = false; }
@@ -781,7 +731,8 @@ export const render = async () => {
                                                     let finalObs = 'Cobro pre-configurado';
                                                     if (asg.billing.rateCardId === 'default') {
                                                         if (asg.type === 'Grabación') {
-                                                            const mins = Number(prompt('¿Cuántos minutos de grabación efectivos reportas? (Ej: 60)', '60'));
+                                                            const minsStr = await promptModal({ title: 'Minutos de grabación', message: '¿Cuántos minutos de grabación efectivos reportas?', defaultValue: '60', inputType: 'number', placeholder: '60' });
+                                                            const mins = Number(minsStr);
                                                             if (!mins) { if (btn) btn.disabled = false; return; }
                                                             finalPrice = (adminConfig.precioMinutoGrabacion || 200) * mins;
                                                             finalObs = `Cobro Grabación (${mins} mins): ${asg.title}`;
@@ -1949,7 +1900,7 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                 window.open(`https://wa.me/${adminPhone}?text=${msg}`, '_blank');
             }
             overlay.remove();
-            window.location.reload();
+            router.handleRoute();
         } else {
             renderSteps();
         }
@@ -2218,7 +2169,7 @@ export function openMasterPipelineModal(context = {}) {
             const { assignmentService } = await import('../services/assignmentService.js');
             await assignmentService.createMasterPipeline(data);
             overlay.remove();
-            window.location.reload(); 
+            router.handleRoute();
         } catch(err) {
             alert('Error creating pipeline: ' + err.message);
             btnSubmit.disabled = false;

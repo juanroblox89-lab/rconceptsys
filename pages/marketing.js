@@ -1,4 +1,4 @@
-import { h, icon } from '../utils/dom.js';
+import { h, icon, sumInvoiceItems } from '../utils/dom.js';
 import { dbService } from '../supabase/service.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { store } from '../js/store.js';
@@ -190,7 +190,7 @@ export const render = async () => {
                         createdAt: new Date().toISOString(),
                         observations: 'Bono autogenerado al completar 10 visitas.'
                     });
-                    currentInv.amount = currentInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+                    currentInv.amount = sumInvoiceItems(currentInv);
 
                     await dbService.add('marketing_visits', visitObj);
                     await dbService.update('users', currentUser.uid, { marketingVisits: 0 });
