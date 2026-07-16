@@ -7,6 +7,7 @@ import { store } from '../js/store.js';
 import { dbService } from '../supabase/service.js';
 import { userService } from '../services/userService.js';
 import { assignmentService } from '../services/assignmentService.js';
+import { formatCurrency } from '../utils/format.js';
 
 const ROLE_META = {
     editor: { label: 'Editor de Video', color: '#3b82f6', icon: 'scissors', invoiceType: 'Factura de Edición de Video' },
@@ -356,7 +357,7 @@ function renderWorkerDetail(container, w, assignments, clients, sops, roles, rel
                 ]),
                 h('div', { className: 'flex justify-between items-center text-xs border-top pt-2 mt-1' }, [
                     h('span', { className: 'font-bold' }, 'Total Facturado:'),
-                    h('span', { className: 'font-bold text-success text-sm' }, `$${(doneAsgs.length * 15000).toLocaleString('es-CO')} COP`)
+                    h('span', { className: 'font-bold text-success text-sm' }, `${formatCurrency((doneAsgs.length * 15000))} COP`)
                 ]),
                 h('button', {
                     className: 'btn btn-outline text-xs w-full justify-center mt-2',

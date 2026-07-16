@@ -7,6 +7,7 @@ import { dbService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 import { assignmentService } from '../services/assignmentService.js';
 import { userService } from '../services/userService.js';
+import { generateId } from '../utils/id.js';
 
 export const render = () => {
     const { user } = store.getState();
@@ -330,7 +331,7 @@ export const render = () => {
             const fmtVal = form.querySelector('#sc-format').value;
             const hookVal = form.querySelector('#sc-hook').value;
 
-            const scriptId = editingScript ? editingScript.id : `SCR-${crypto.randomUUID().split('-')[0]}`;
+            const scriptId = editingScript ? editingScript.id : generateId('SCR');
             const newScript = {
                 ...(editingScript || {}),
                 id: scriptId, title: titleVal, client: clientVal,

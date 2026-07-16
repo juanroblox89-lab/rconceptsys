@@ -5,12 +5,7 @@ import { dbService, storageService } from '../supabase/service.js';
 
 export const assetService = {
     async getAssetsByClient(clientId) {
-        try {
-            return await dbService.getByQuery('assets', 'clientId', '==', clientId) || [];
-        } catch (err) {
-            console.warn(`Error fetching assets for client ${clientId}:`, err);
-            return [];
-        }
+        return dbService.getByQuerySafe('assets', 'clientId', '==', clientId);
     },
 
     async uploadAsset(file, metadata) {

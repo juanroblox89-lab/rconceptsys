@@ -5,6 +5,7 @@
  */
 import { dbService, db } from '../supabase/service.js';
 import { notificationService } from './notificationService.js';
+import { generateId } from '../utils/id.js';
 
 export const assignmentService = {
     subscribeToAssignments(callback) {
@@ -30,37 +31,19 @@ export const assignmentService = {
     },
 
     async getAllAssignments() {
-        try {
-            const list = await dbService.getAll('assignments');
-            return list || [];
-        } catch (err) {
-            console.warn("Error fetching live assignments from DB:", err);
-            return [];
-        }
+        return dbService.getAllSafe('assignments');
     },
 
     async getAssignmentsByEmployee(employeeId) {
-        try {
-            const list = await dbService.getByQuery('assignments', 'employeeId', '==', employeeId);
-            return list || [];
-        } catch (err) {
-            console.warn(`Error fetching assignments for employee ${employeeId}:`, err);
-            return [];
-        }
+        return dbService.getByQuerySafe('assignments', 'employeeId', '==', employeeId);
     },
 
     async getAssignmentsByClient(clientName) {
-        try {
-            const list = await dbService.getByQuery('assignments', 'client', '==', clientName);
-            return list || [];
-        } catch (err) {
-            console.warn(`Error fetching assignments for client ${clientName}:`, err);
-            return [];
-        }
+        return dbService.getByQuerySafe('assignments', 'client', '==', clientName);
     },
 
     async saveAssignment(data) {
-        const id = data.id || `ASG-${crypto.randomUUID().split('-')[0]}`;
+        const id = data.id || generateId('ASG');
         const newAsg = {
             type: 'Edición',
             client: 'General',
@@ -95,14 +78,14 @@ export const assignmentService = {
     },
 
     async createMasterPipeline(data) {
-        const projectId = `PRJ-${crypto.randomUUID().split('-')[0]}`;
+        const projectId = generateId('PRJ');
         const stagesToCreate = [];
         let currentStageIndex = 0;
 
         // Fase 1: Grabación (Principal - Sube Medios)
         if (data.camarografoPrincipalId) {
             stagesToCreate.push({
-                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                id: generateId('ASG'),
                 projectId,
                 stageIndex: currentStageIndex++,
                 employeeId: data.camarografoPrincipalId,
@@ -121,7 +104,7 @@ export const assignmentService = {
         } else if (data.camarografoId) {
             // Fallback for old calls
             stagesToCreate.push({
-                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                id: generateId('ASG'),
                 projectId,
                 stageIndex: currentStageIndex++,
                 employeeId: data.camarografoId,
@@ -143,7 +126,7 @@ export const assignmentService = {
         if (data.camarografoApoyoIds && Array.isArray(data.camarografoApoyoIds)) {
             for (const apoyoId of data.camarografoApoyoIds) {
                 stagesToCreate.push({
-                    id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                    id: generateId('ASG'),
                     projectId,
                     stageIndex: -1, // -1 means it doesn't block or advance the pipeline
                     employeeId: apoyoId,
@@ -165,7 +148,7 @@ export const assignmentService = {
         // Fase 2: Edición
         if (data.editorId) {
             stagesToCreate.push({
-                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                id: generateId('ASG'),
                 projectId,
                 stageIndex: currentStageIndex++,
                 employeeId: data.editorId,
@@ -187,7 +170,7 @@ export const assignmentService = {
         // Fase 3: Subida
         if (data.uploaderId) {
             stagesToCreate.push({
-                id: `ASG-${crypto.randomUUID().split('-')[0]}`,
+                id: generateId('ASG'),
                 projectId,
                 stageIndex: currentStageIndex++,
                 employeeId: data.uploaderId,
