@@ -8,7 +8,7 @@
     /* --- 1. GLOBAL FIXES --- */
     html, body, #app {
         max-width: 100% !important;
-        overflow-x: hidden !important; /* Block horizontal zoom/scroll at root */
+        overflow-x: clip !important; /* Clip prevents any horizontal scroll — stronger than hidden */
         width: 100% !important;
     }
 
@@ -68,7 +68,42 @@
 
     .btn {
         width: 100% !important;
+        min-height: 44px !important; /* Rule 6: minimum touch target */
         margin-bottom: 8px !important;
         justify-content: center !important;
+        white-space: nowrap !important; /* Rule 2: no two-line clickable text */
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* --- 5. DISPLAY HEADERS: overflow-wrap to prevent overflow --- */
+    h1, h2, h3, h4, .display-header, .page-title {
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+    }
+
+    /* --- 6. SECTION HEADS: collapse to single column --- */
+    .section-header,
+    .section-header.flex,
+    .section-header.flex-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+
+    /* --- 7. IMAGE GRIDS: minmax(0,1fr) prevents overflow on tight containers --- */
+    .image-grid,
+    .card-grid,
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(0, 1fr)) !important;
+    }
+
+    /* --- 8. SAFE AREA: extend insets to edge-sitting elements --- */
+    .top-bar, .header, .navbar {
+        padding-top: env(safe-area-inset-top) !important;
+    }
+
+    .bottom-nav {
+        padding-bottom: env(safe-area-inset-bottom) !important;
     }
 }

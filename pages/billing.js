@@ -3,7 +3,7 @@
  * Premium, minimal table layout supporting dynamic multi-row charges
  * and expandable admin reconciliation details for agency team members.
  */
-import { h, icon } from '../utils/dom.js';
+import { h, icon, sumInvoiceItems, sumItems } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { invoiceService } from '../services/invoiceService.js';
 import { userService } from '../services/userService.js';
@@ -34,7 +34,7 @@ export const render = () => {
 
     // Helper to render the clean Grid Table of charges
     const renderSpreadsheetGrid = ({ title, prefix, isEditable, itemsArray, onSave }) => {
-        const totalSum = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+        const totalSum = sumItems(itemsArray);
 
         return h('div', { 
             className: 'card p-4 flex-column gap-3 mb-4 w-full'
@@ -110,7 +110,7 @@ export const render = () => {
                                         item.amount = Number(e.target.value) || 0; 
                                         const totLabel = container.querySelector('#total-formula-bar');
                                         if (totLabel) {
-                                            const newTotal = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+                                            const newTotal = sumItems(itemsArray);
                                             totLabel.textContent = `=SUMA(Renglon_Cobros) | Monto Total de Liquidación: COP ${newTotal.toLocaleString()}`;
                                         }
                                     }
@@ -179,14 +179,16 @@ export const render = () => {
                     h('button', {
                         type: 'button',
                         className: 'btn btn-primary text-xs py-1.5 px-4 flex items-center gap-1 font-bold',
-                        onClick: () => {
+                        onClick: async () => {
                             if (itemsArray.length === 0) {
-                                if (window.confirm("¿Estás seguro que deseas ELIMINAR completamente esta liquidación?")) {
-                                    onSave([], 0);
-                                }
+                                if (!window.confirm("¿Estás seguro que deseas ELIMINAR completamente esta liquidación?")) return;
+                                const { promptModal } = await import('../components/ui/PromptModal.js');
+                                const confirmText = await promptModal({ title: 'Confirmar eliminación', message: 'Escribe "Eliminar" para borrar toda la liquidación.', placeholder: 'Eliminar' });
+                                if (confirmText !== 'Eliminar') return;
+                                onSave([], 0);
                                 return;
                             }
-                            const currentTotal = itemsArray.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+                            const currentTotal = sumItems(itemsArray);
                             onSave(itemsArray, currentTotal);
                         }
                     }, [icon('save', 12), h('span', {}, 'Guardar Cobros')])
@@ -341,9 +343,9 @@ export const render = () => {
                 h('div', { className: 'flex-column gap-2 overflow-y-auto', style: { maxHeight: '500px' } }, approvedUsers.map(member => {
                     const isSelected = member.uid === selectedUserId;
                     const empInv = empInvoices.find(i => i.employeeId === member.uid);
-                    const empTotal = empInv ? (empInv.items && empInv.items.length > 0 ? empInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) : empInv.amount || 0) : 0;
+                    const empTotal = sumInvoiceItems(empInv);
                     const admInv = admInvoices.find(i => i.employeeId === member.uid);
-                    const admTotal = admInv ? (admInv.items && admInv.items.length > 0 ? admInv.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) : admInv.amount || 0) : 0;
+                    const admTotal = sumInvoiceItems(admInv);
 
                     return h('button', {
                         className: `flex-column p-2 rounded cursor-pointer transition-all w-full text-left`,
