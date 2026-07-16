@@ -170,13 +170,24 @@ export const dbService = {
       },
       async commit() {
         // Execute all ops sequentially (Supabase has no native batch)
+        const errors = [];
         for (const op of ops) {
           if (op.type === 'upsert') {
             const { error } = await supabase
               .from(op.collection)
               .upsert({ ...op.data, updatedAt: new Date().toISOString() }, { onConflict: 'id' });
-            if (error) console.warn('Batch upsert error:', error);
+            if (error) {
+              console.error('Batch upsert error:', error);
+              errors.push(error);
+            }
           }
+        }
+        if (errors.length > 0) {
+          const batchError = new Error(
+            `Batch commit failed for ${errors.length} of ${ops.length} operation(s): ${errors[0].message}`
+          );
+          batchError.errors = errors;
+          throw batchError;
         }
       },
     };

@@ -397,9 +397,13 @@ function openWorkerAssignmentsPanel(w, asgs, clients, reload) {
                 style: { width: '22px', height: '22px', flexShrink: 0 },
                 onClick: async () => {
                     if (!confirm('¿Eliminar esta asignación?')) return;
-                    await assignmentService.deleteAssignment(asg.id);
-                    overlay.remove();
-                    reload();
+                    try {
+                        await assignmentService.deleteAssignment(asg.id);
+                        overlay.remove();
+                        reload();
+                    } catch (err) {
+                        alert('Error al eliminar la asignación: ' + err.message);
+                    }
                 }
             }, [icon('trash-2', 12)])
         ]);

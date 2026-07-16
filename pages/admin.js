@@ -295,8 +295,12 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                 const { promptModal } = await import('../components/ui/PromptModal.js');
                 const confirmText = await promptModal({ title: 'Confirmar eliminación', message: `Escribe "Eliminar" para confirmar la eliminación de ${u.nombre || u.email}.`, placeholder: 'Eliminar' });
                 if (confirmText !== 'Eliminar') return;
-                await userService.rejectUser(u.uid || u.id);
-                reload();
+                try {
+                    await userService.rejectUser(u.uid || u.id);
+                    reload();
+                } catch (err) {
+                    alert('Error al eliminar usuario: ' + err.message);
+                }
             }
         }, 'Eliminar'));
     }
@@ -311,8 +315,12 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                     style: { padding: '2px 8px' },
                     onChange: async (e) => {
                         const newRole = e.target.value;
-                        await userService.approveUser(u.uid || u.id, newRole);
-                        showFeedback(e.target.parentNode, '✓ Guardado');
+                        try {
+                            await userService.approveUser(u.uid || u.id, newRole);
+                            showFeedback(e.target.parentNode, '✓ Guardado');
+                        } catch (err) {
+                            showFeedback(e.target.parentNode, '✗ Error', 'error');
+                        }
                     }
                 }, [
                     ...rolesList.filter(r => r.active !== false).map(r => h('option', { value: r.id }, r.label)),
@@ -406,7 +414,7 @@ async function renderPricingConfigSection() {
     let pricing = {};
     try {
         pricing = await dbService.getById('system_config', 'pricing') || {};
-    } catch(e) {}
+    } catch(e) { console.warn('Could not load pricing config, using defaults:', e); }
 
     const defaults = {
         precioMinutoGrabacion: 200,

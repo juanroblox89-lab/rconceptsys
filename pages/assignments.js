@@ -1985,7 +1985,8 @@ async function openBillingModal(asg, callback, onCancel) {
 
     // Load pricing from Firestore
     let pricing = {};
-    try { pricing = await dbService.getById('system_config', 'pricing') || {}; } catch(e) {}
+    try { pricing = await dbService.getById('system_config', 'pricing') || {}; }
+    catch(e) { console.warn('Could not load pricing config, using defaults:', e); }
     const precioMinutoGrabacion = pricing.precioMinutoGrabacion ?? 200;
     const precioSubidaRedes = pricing.precioSubidaRedes ?? 10000;
     const precioVideoCorto = pricing.precioVideoCorto ?? 15000;

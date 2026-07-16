@@ -39,7 +39,8 @@ export const userService = {
                 role: assignedRole || 'editor'
             });
         } catch (err) {
-            console.warn("Simulated user approval offline:", err);
+            console.error(`Error approving user ${uid}:`, err);
+            throw err;
         }
     },
 
@@ -63,8 +64,8 @@ export const userService = {
             }
             alert("¡Título de Administrador cedido exitosamente! Has sido reasignado como Editor.");
         } catch (err) {
-            console.warn("Offline admin handover simulation:", err);
-            alert("Simulación offline: Título cedido.");
+            console.error("Admin handover failed:", err);
+            throw err;
         }
     },
 
@@ -72,7 +73,8 @@ export const userService = {
         try {
             await dbService.delete('users', uid);
         } catch (err) {
-            console.warn("Simulated user rejection offline:", err);
+            console.error(`Error rejecting user ${uid}:`, err);
+            throw err;
         }
     }
 };
