@@ -59,26 +59,21 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE;
 CREATE POLICY "users_select" ON public.users
   FOR SELECT TO authenticated USING (true);
 
--- Users can update their own profile (name, phone, photo)
-CREATE POLICY "users_update_own" ON public.users
-  FOR UPDATE TO authenticated
-  USING (uid = auth.uid()::text)
+-- Users can insert their own profile (needed for first-time Google login)
+CREATE POLICY "users_self_insert" ON public.users
+  FOR INSERT TO authenticated
   WITH CHECK (uid = auth.uid()::text);
 
--- Only admins can insert/delete users
-CREATE POLICY "users_admin_insert" ON public.users
-  FOR INSERT TO authenticated
-  WITH CHECK (public.is_admin());
-
+-- Only admins can delete users
 CREATE POLICY "users_admin_delete" ON public.users
   FOR DELETE TO authenticated
   USING (public.is_admin());
 
--- Only admins can change roles/approved status
+-- Users can update their own basic info; admins can update anyone
 CREATE POLICY "users_admin_update" ON public.users
   FOR UPDATE TO authenticated
-  USING (public.is_admin())
-  WITH CHECK (public.is_admin());
+  USING (public.is_admin() OR uid = auth.uid()::text)
+  WITH CHECK (public.is_admin() OR uid = auth.uid()::text);
 
 -- ============================================================
 -- ROLES TABLE
