@@ -28,7 +28,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false, // Disabled to avoid clock skew issues with URL-issued sessions
+    detectSessionInUrl: true, // Required for Google OAuth PKCE flow to work
     flowType: 'pkce',
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   },
