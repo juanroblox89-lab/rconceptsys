@@ -194,14 +194,27 @@ export const authService = {
    * @returns {() => void} unsubscribe function
    */
   onAuthChange(callback) {
-    // 1. Emit current session immediately
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      await this._processUser(session?.user || null, callback);
-    });
+    let initialized = false;
 
-    // 2. Subscribe to future changes
+    // Single source of truth: onAuthStateChange handles everything
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        console.log(`[Auth] Event: ${_event}, session: ${session ? 'yes' : 'no'}`);
+        // Skip initial null session if we haven't confirmed there's no session yet
+        if (!initialized && _event === 'INITIAL_SESSION' && !session) {
+          // Double-check with getSession before showing login
+          const { data: { session: doubleCheck } } = await supabase.auth.getSession();
+          if (doubleCheck) {
+            console.log('[Auth] Double-check found session, using it');
+            await this._processUser(doubleCheck.user, callback);
+          } else {
+            console.log('[Auth] No session after double-check');
+            initialized = true;
+            callback(null);
+          }
+          return;
+        }
+        initialized = true;
         await this._processUser(session?.user || null, callback);
       }
     );
