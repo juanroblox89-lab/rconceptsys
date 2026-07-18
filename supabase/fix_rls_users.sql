@@ -1,18 +1,23 @@
 -- ============================================================
--- FIX: Users RLS - Drop ALL policies and recreate clean
--- Run this ENTIRE block in Supabase SQL Editor
+-- FIX: Users RLS - Version ultra-simple
+-- Copia y pega TODO esto en Supabase SQL Editor y dale Run
 -- ============================================================
 
--- Drop EVERY policy on users table (catches all names)
-DO $$ DECLARE
-  r RECORD;
-BEGIN
-  FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'users' AND schemaname = 'public') LOOP
-    EXECUTE 'DROP POLICY IF EXISTS "' || r.policyname || '" ON public.users';
-  END LOOP;
-END $$;
+-- 1. Borrar TODAS las políticas conocidas de users
+DROP POLICY IF EXISTS "users_select" ON public.users;
+DROP POLICY IF EXISTS "users_read" ON public.users;
+DROP POLICY IF EXISTS "users_insert_own" ON public.users;
+DROP POLICY IF EXISTS "users_self_insert" ON public.users;
+DROP POLICY IF EXISTS "users_admin_insert" ON public.users;
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
+DROP POLICY IF EXISTS "users_admin_update" ON public.users;
+DROP POLICY IF EXISTS "users_update" ON public.users;
+DROP POLICY IF EXISTS "users_admin_delete" ON public.users;
+DROP POLICY IF EXISTS "users_admin_all" ON public.users;
+DROP POLICY IF EXISTS "Authenticated read access" ON public.users;
+DROP POLICY IF EXISTS "Authenticated write access" ON public.users;
 
--- Recreate is_admin function
+-- 2. Crear función is_admin
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean AS $$
   SELECT EXISTS (
@@ -21,17 +26,8 @@ RETURNS boolean AS $$
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- Clean policies
-CREATE POLICY "users_read" ON public.users
-  FOR SELECT USING (true);
-
-CREATE POLICY "users_insert_own" ON public.users
-  FOR INSERT WITH CHECK (uid = auth.uid()::text);
-
-CREATE POLICY "users_update_own" ON public.users
-  FOR UPDATE USING (uid = auth.uid()::text)
-  WITH CHECK (uid = auth.uid()::text);
-
-CREATE POLICY "users_admin_all" ON public.users
-  FOR ALL USING (public.is_admin())
-  WITH CHECK (public.is_admin());
+-- 3. Crear políticas nuevas y simples
+CREATE POLICY "p_read" ON public.users FOR SELECT USING (true);
+CREATE POLICY "p_insert" ON public.users FOR INSERT WITH CHECK (uid = auth.uid()::text);
+CREATE POLICY "p_update" ON public.users FOR UPDATE USING (uid = auth.uid()::text) WITH CHECK (uid = auth.uid()::text);
+CREATE POLICY "p_admin" ON public.users FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
