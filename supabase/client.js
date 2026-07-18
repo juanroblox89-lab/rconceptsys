@@ -21,7 +21,7 @@ const supabaseUrl =
 
 const supabaseAnonKey =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ||
-  'YOUR-SUPABASE-ANON-PUBLIC-KEY';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zcWlydGxsb2JmZGd4dXFib2prIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NDIwNjcsImV4cCI6MjA5OTUxODA2N30.szIftBS9jGfskd5G3LRWzU_vYfnye-tN6q06Uhfp5Go';
 
 // --- Client Initialization ---
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
