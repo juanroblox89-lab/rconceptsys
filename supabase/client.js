@@ -42,6 +42,7 @@ export const MASTER_ADMIN_EMAILS = [
   'juanroblox89@gmail.com',
   'juanroblox89@rohlfing.com',
   'samuelrohlfing49@gmail.com',
+  'jestalvz@gmail.com',
 ].map((e) => e.toLowerCase());
 
 // --- Storage Bucket Names ---
