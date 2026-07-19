@@ -352,3 +352,33 @@ create trigger set_updated_at
 create trigger set_updated_at
   before update on public.chats
   for each row execute function public.handle_updated_at();
+
+-- ============================================================
+-- 16. SOP SUBMISSIONS TABLE
+-- ============================================================
+create table if not exists public.sop_submissions (
+  id text primary key,
+  "sopId" text not null references public.sops(id) on delete cascade,
+  "userId" text not null references public.users(uid) on delete cascade,
+  "userName" text,
+  "sopTitle" text,
+  status text default 'active',
+  steps jsonb default '[]'::jsonb,
+  "createdAt" timestamptz default now(),
+  "updatedAt" timestamptz default now()
+);
+
+alter table public.sop_submissions enable row level security;
+
+create policy "Authenticated read sop_submissions" on public.sop_submissions
+  for select to authenticated using (true);
+
+create policy "Authenticated write sop_submissions" on public.sop_submissions
+  for all to authenticated using (true) with check (true);
+
+create trigger set_updated_at
+  before update on public.sop_submissions
+  for each row execute function public.handle_updated_at();
+
+alter publication supabase_realtime add table public.sop_submissions;
+

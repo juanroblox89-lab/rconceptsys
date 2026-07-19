@@ -233,8 +233,41 @@ export const authService = {
     const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(normalizedEmail);
 
     try {
-      // Fetch the app user profile from public.users
-      const userDoc = await dbService.getById('users', authUser.id);
+      // 1. Search user by uid column
+      let { data: userData, error: userErr } = await supabase
+        .from('users')
+        .select('*')
+        .eq('uid', authUser.id)
+        .maybeSingle();
+
+      if (userErr) throw userErr;
+
+      let userDoc = userData;
+
+      // 2. Fallback: Search by email if not found by uid (for migrated Firebase accounts)
+      if (!userDoc && authUser.email) {
+        const { data: emailData, error: emailErr } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', authUser.email.toLowerCase())
+          .maybeSingle();
+
+        if (emailErr) throw emailErr;
+
+        if (emailData) {
+          // Found by email. Update their uid column to match the new Supabase Auth UID.
+          const { data: updatedData, error: updateErr } = await supabase
+            .from('users')
+            .update({ uid: authUser.id })
+            .eq('id', emailData.id)
+            .select()
+            .single();
+
+          if (updateErr) throw updateErr;
+          userDoc = updatedData;
+          console.log(`[Auth] Self-healed user UID for email ${authUser.email}`);
+        }
+      }
 
       if (!userDoc) {
         // Create new user profile (mirrors Firebase auto-create flow)

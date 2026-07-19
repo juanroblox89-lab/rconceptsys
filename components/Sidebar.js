@@ -6,6 +6,7 @@ import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { authService, storageService, dbService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
+import { hasPermission } from '../services/permissionsService.js';
 
 // Primary nav (shown in sidebar AND bottom nav)
 const primaryNavItems = [
@@ -30,19 +31,7 @@ const secondaryNavItems = [
 ];
 
 const checkPermission = (href) => {
-    const { user, roles } = store.getState();
-    const moduleId = href.replace('#', '');
-
-    if (user?.role === 'admin') {
-        const adminAllowed = ['dashboard', 'assignments', 'formats', 'scripts', 'hooks', 'references', 'aiAssistant', 'admin', 'workers', 'clients', 'billing', 'assets', 'marketing'];
-        return adminAllowed.includes(moduleId);
-    }
-
-    const currentRole = (roles || []).find(r => r.id === user?.role);
-    const defaultModules = ['dashboard', 'assignments', 'aiAssistant'];
-    const allowedModules = currentRole?.allowedModules || defaultModules;
-
-    return allowedModules.includes(moduleId);
+    return hasPermission(href);
 };
 
 const createNavItem = ({ href, icon: iconName, label, badge }) => {

@@ -91,7 +91,7 @@ export const render = async () => {
             if (activeTab === 'dashboard') {
                 renderDashboardTab(leads, clients);
             } else if (activeTab === 'pipeline') {
-                renderPipelineTab(leads);
+                renderPipelineTab(leads, users);
             } else if (activeTab === 'leads') {
                 renderLeadsTab(leads, users);
             } else if (activeTab === 'visitas') {
@@ -191,9 +191,27 @@ export const render = async () => {
     };
 
     // Tab 2: Pipeline (Kanban)
-    const renderPipelineTab = (leads) => {
+    const renderPipelineTab = (leads, users) => {
         const statuses = ['Prospecto', 'En contacto', 'Propuesta enviada', 'Negociación', 'Cerrado-Ganado', 'Cerrado-Perdido'];
         
+        const pipelineHeader = h('div', { className: 'flex justify-between items-center w-full mb-4 flex-wrap gap-3' }, [
+            h('div', { className: 'flex-column' }, [
+                h('h3', { className: 'text-sm font-bold m-0' }, 'Pipeline de Ventas (Kanban)'),
+                h('span', { className: 'text-xs text-muted mt-0.5' }, 'Gestiona las etapas de tus prospectos en la calle u oficina.')
+            ]),
+            h('div', { className: 'flex gap-2' }, [
+                h('button', { 
+                    className: 'btn btn-primary text-xs flex items-center gap-1.5 py-1.5 px-3',
+                    style: { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' },
+                    onClick: () => openFastLeadModal(loadDynamicView)
+                }, [icon('zap', 13), h('span', {}, 'Captura Rápida (Calle) ⚡')]),
+                h('button', { 
+                    className: 'btn btn-outline text-xs flex items-center gap-1.5 py-1.5 px-3',
+                    onClick: () => openAddLeadModal(users, loadDynamicView)
+                }, [icon('plus', 13), h('span', {}, 'Formulario Completo 📋')])
+            ])
+        ]);
+
         const kanbanBoard = h('div', { 
             className: 'flex gap-3 overflow-x-auto w-full pb-4',
             style: { minHeight: '60vh', alignItems: 'flex-start' } 
@@ -272,6 +290,7 @@ export const render = async () => {
             kanbanBoard.appendChild(col);
         });
 
+        dynamicViewContainer.appendChild(pipelineHeader);
         dynamicViewContainer.appendChild(kanbanBoard);
     };
 
@@ -539,6 +558,161 @@ export const render = async () => {
         ]);
     };
 
+    // Modal for Fast Mobile Lead Capture (Calle)
+    const openFastLeadModal = (reload) => {
+        let coords = null;
+        let photoBase64 = null;
+
+        // Fetch location in background as soon as modal opens
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    coords = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    console.log('[GPS] Location fetched:', coords);
+                },
+                (error) => {
+                    console.warn('[GPS] Error fetching location:', error.message);
+                },
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        }
+
+        const overlay = h('div', { className: 'modal-overlay elevation-2', style: { zIndex: 'var(--z-modal)' } });
+        document.body.appendChild(overlay);
+
+        const photoInput = h('input', {
+            type: 'file',
+            accept: 'image/*',
+            capture: 'environment',
+            style: { display: 'none' },
+            onChange: (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        photoBase64 = reader.result;
+                        photoIndicator.textContent = '📸 Foto capturada';
+                        photoIndicator.className = 'text-xs text-success font-bold';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
+
+        const photoIndicator = h('span', { className: 'text-xs text-muted' }, 'Sin foto');
+
+        const btnSubmit = h('button', {
+            type: 'submit',
+            className: 'btn btn-primary text-xs w-full py-3 font-bold',
+            style: { letterSpacing: '0.05em' }
+        }, 'GUARDAR LEAD');
+
+        const submit = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('fast-name').value.trim();
+            const phone = document.getElementById('fast-phone').value.trim();
+            const bizType = document.getElementById('fast-biz-type').value;
+
+            if (!name || !phone) {
+                alert('Nombre y Teléfono son obligatorios.');
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Guardando...';
+
+            const strategy = {
+                business_type: bizType,
+                latitude: coords ? coords.latitude : null,
+                longitude: coords ? coords.longitude : null,
+                colors: '',
+                hooks: '',
+                formats: ''
+            };
+
+            if (photoBase64) {
+                strategy.photo_offline_base64 = photoBase64;
+            }
+
+            const leadData = {
+                name,
+                phone,
+                source: 'fisica',
+                status: 'Prospecto',
+                estimated_value: 0,
+                notes: `Capturado rápido en calle. Tipo de negocio: ${bizType}.`,
+                client_strategy: strategy
+            };
+
+            try {
+                const res = await crmService.createLead(leadData);
+                if (res.is_offline) {
+                    alert('⚡ [Modo Offline] Lead guardado localmente en tu celular. Se subirá automáticamente al recuperar internet.');
+                } else {
+                    alert('✅ ¡Lead guardado y sincronizado con Supabase!');
+                }
+                overlay.remove();
+                if (reload) reload();
+            } catch (err) {
+                alert('Error al guardar lead: ' + err.message);
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'GUARDAR LEAD';
+            }
+        };
+
+        const form = h('form', { className: 'modal-container p-4', style: { maxWidth: '360px' }, onSubmit: submit }, [
+            h('div', { className: 'modal-header pb-2' }, [
+                h('span', { className: 'modal-title font-bold text-sm flex items-center gap-1.5' }, [
+                    icon('zap', 14, 'text-accent'),
+                    h('span', {}, 'Captura Rápida (Calle)')
+                ]),
+                h('button', { type: 'button', onClick: () => overlay.remove() }, '×')
+            ]),
+            h('div', { className: 'modal-body flex-column gap-3 py-3' }, [
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label text-[10px]' }, 'Nombre del Negocio / Marca *'),
+                    h('input', { id: 'fast-name', type: 'text', className: 'form-input text-xs', placeholder: 'Ej. Burgers & Beers', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label text-[10px]' }, 'Teléfono / WhatsApp *'),
+                    h('input', { id: 'fast-phone', type: 'tel', className: 'form-input text-xs', placeholder: 'Ej. +573001234567', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label text-[10px]' }, 'Tipo de Negocio'),
+                    h('select', { id: 'fast-biz-type', className: 'form-select text-xs' }, [
+                        h('option', { value: 'Restaurante' }, 'Restaurante / Comida'),
+                        h('option', { value: 'Gimnasio' }, 'Gimnasio / Fit'),
+                        h('option', { value: 'Estética' }, 'Estética / Belleza'),
+                        h('option', { value: 'Ropa' }, 'Tienda de Ropa / Moda'),
+                        h('option', { value: 'Servicios' }, 'Servicios Profesionales'),
+                        h('option', { value: 'Otro' }, 'Otro tipo de negocio')
+                    ])
+                ]),
+                h('div', { className: 'form-group mt-1' }, [
+                    h('label', { className: 'form-label text-[10px]' }, 'Evidencia / Foto (Opcional)'),
+                    h('div', { className: 'flex items-center gap-2' }, [
+                        h('button', {
+                            type: 'button',
+                            className: 'btn btn-outline text-[11px] py-1 px-3 flex items-center gap-1',
+                            onClick: () => photoInput.click()
+                        }, [icon('camera', 12), h('span', {}, 'Tomar Foto')]),
+                        photoIndicator,
+                        photoInput
+                    ])
+                ])
+            ]),
+            h('div', { className: 'modal-footer pt-2 border-top' }, [
+                btnSubmit
+            ])
+        ]);
+
+        overlay.appendChild(form);
+        if (window.lucide) window.lucide.createIcons();
+    };
+
     // Modal to create new Lead
     const openAddLeadModal = (users, reload) => {
         const overlay = h('div', { className: 'modal-overlay fade-in', style: { zIndex: 1000 } });
@@ -579,7 +753,7 @@ export const render = async () => {
             }
         };
 
-        const usersHtml = users.map(u => `<option value="${u.uid}">${u.nombre || u.email}</option>`).join('');
+        const userOptions = users.map(u => h('option', { value: u.uid }, u.nombre || u.email));
 
         const form = h('form', { className: 'modal-container', style: { maxWidth: '450px' }, onSubmit: submit }, [
             h('div', { className: 'modal-header' }, [
@@ -619,7 +793,7 @@ export const render = async () => {
                     h('label', { className: 'form-label' }, 'Asignado a'),
                     h('select', { id: 'l-user', className: 'form-select text-xs' }, [
                         h('option', { value: '' }, '-- Selecciona Colaborador --'),
-                        usersHtml
+                        ...userOptions
                     ])
                 ]),
                 h('div', { className: 'form-group' }, [

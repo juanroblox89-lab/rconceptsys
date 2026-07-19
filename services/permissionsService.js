@@ -17,13 +17,17 @@ export function hasPermission(moduleId) {
     const { user, roles } = store.getState();
     if (!user) return false;
 
+    // Normalize: remove Hash prefix and map clientDetail check to clients permission
+    let cleanId = (moduleId || '').replace('#', '');
+    if (cleanId === 'clientDetail') cleanId = 'clients';
+
     if (user.role === 'admin') {
-        return ADMIN_MODULES.includes(moduleId);
+        return ADMIN_MODULES.includes(cleanId);
     }
 
     const currentRole = (roles || []).find(r => r.id === user.role);
     const allowedModules = currentRole?.allowedModules || DEFAULT_MODULES;
-    return allowedModules.includes(moduleId) || moduleId === 'profile';
+    return allowedModules.includes(cleanId) || cleanId === 'profile';
 }
 
 export function isAdmin() {
