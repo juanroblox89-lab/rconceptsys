@@ -1,7 +1,7 @@
 export const aiService = {
-    async callGemini(prompt, systemInstruction = "") {
+    async callNvidia(prompt, systemInstruction = "") {
         try {
-            const response = await fetch('/api/gemini', {
+            const response = await fetch('/api/nvidia', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -17,9 +17,9 @@ export const aiService = {
             const data = await response.json();
             return data.text || '';
         } catch (err) {
-            console.error("aiService callGemini failed:", err);
+            console.error("aiService callNvidia failed:", err);
             // Fallback locally using prompt template in case environment key is missing
-            return `[Simulado] Propuesta Creativa para ${prompt.slice(0, 30)}...\n\nPor favor configura GEMINI_API_KEY en Vercel para respuestas reales.`;
+            return `[Simulado] Propuesta Creativa (NVIDIA Llama 3.1) para ${prompt.slice(0, 30)}...\n\nPor favor configura NVIDIA_NIM_API_KEY en Vercel para respuestas reales.`;
         }
     },
 
@@ -32,12 +32,12 @@ Detalles adicionales:
 - Notas/Interés: ${lead.notes || 'Ninguna especificada'}
 
 La propuesta debe incluir:
-1. Análisis breve de su marca actual (basado en notas).
-2. Propuesta de contenido sugerido (formatos y hooks recomendados).
+1. Análisis de su marca y oportunidades.
+2. Propuesta de contenido (formatos y ganchos psicológicos recomendados).
 3. Plan comercial (inversión y entregables).
 Estructúralo con formato markdown elegante.`;
 
-        return this.callGemini(prompt, systemInstruction);
+        return this.callNvidia(prompt, systemInstruction);
     },
 
     async generateSocialCopy(lead, formatType) {
@@ -51,7 +51,7 @@ Para cada copy:
 - Escribe el Cuerpo del copy rápido e interactivo.
 - Agrega una Llamada a la Acción (CTA) de alto impacto.`;
 
-        return this.callGemini(prompt, systemInstruction);
+        return this.callNvidia(prompt, systemInstruction);
     },
 
     async generateFollowUp(lead) {
@@ -61,6 +61,6 @@ Lleva en el estado "${lead.status}" varios días sin interacción.
 Notas previas: ${lead.notes || 'Ninguna'}.
 El mensaje debe ser corto, no sonar acosador y ofrecer valor o agendar una llamada rápida.`;
 
-        return this.callGemini(prompt, systemInstruction);
+        return this.callNvidia(prompt, systemInstruction);
     }
 };

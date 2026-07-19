@@ -1,9 +1,10 @@
 /**
- * Serverless Vercel Function: Gemini API Proxy
- * Handles fast and cost-effective copywriting and CRM task recommendation requests.
+ * Serverless Vercel Function: NVIDIA NIM API Proxy
+ * Handles fast and cost-effective copywriting and CRM task recommendation requests
+ * using the OpenAI-compatible NVIDIA NIM endpoint and Llama 3.1 405B.
  */
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const DEFAULT_NVIDIA_KEY = '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';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
@@ -32,45 +33,50 @@ export default async function handler(req, res) {
 
     try {
         const { prompt, systemInstruction } = req.body;
-        const apiKey = process.env.GEMINI_API_KEY || GEMINI_API_KEY;
+        const apiKey = process.env.NVIDIA_NIM_API_KEY || DEFAULT_NVIDIA_KEY;
 
         if (!apiKey) {
-            return res.status(400).json({ error: 'Falta la clave API de Gemini. Agrégala como GEMINI_API_KEY en las Variables de Entorno.' });
+            return res.status(400).json({ error: 'Falta la clave API de NVIDIA NIM. Agrégala como NVIDIA_NIM_API_KEY.' });
         }
 
-        const model = 'gemini-1.5-flash';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const url = 'https://integrate.api.nvidia.com/v1/chat/completions';
+        const model = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning';
+
+        const messages = [];
+        if (systemInstruction) {
+            messages.push({ role: 'system', content: systemInstruction });
+        }
+        messages.push({ role: 'user', content: prompt });
 
         const requestBody = {
-            contents: [{ parts: [{ text: prompt }] }]
+            model: model,
+            messages: messages,
+            temperature: 0.2,
+            top_p: 0.7,
+            max_tokens: 1500
         };
-
-        if (systemInstruction) {
-            requestBody.systemInstruction = {
-                parts: [{ text: systemInstruction }]
-            };
-        }
 
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
             const errText = await response.text();
-            throw new Error(`Gemini API Error: ${errText}`);
+            throw new Error(`NVIDIA NIM API Error: ${errText}`);
         }
 
         const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const text = data.choices?.[0]?.message?.content || '';
 
         return res.status(200).json({ text });
 
     } catch (err) {
-        console.error("Gemini Proxy error:", err);
-        return res.status(500).json({ error: 'Error en el servidor proxy de Gemini: ' + err.message });
+        console.error("NVIDIA NIM Proxy error:", err);
+        return res.status(500).json({ error: 'Error en el servidor proxy de NVIDIA NIM: ' + err.message });
     }
 }

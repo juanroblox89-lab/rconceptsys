@@ -52,7 +52,7 @@ export const render = async () => {
             { id: 'pipeline', label: 'Pipeline (Kanban)', icon: 'kanban' },
             { id: 'leads', label: 'Directorio de Leads', icon: 'users' },
             { id: 'visitas', label: 'Visitas y Comisiones', icon: 'map-pin' },
-            { id: 'ia', label: 'Asistente IA Gemini', icon: 'sparkles' }
+            { id: 'ia', label: 'Asistente IA (Llama)', icon: 'sparkles' }
         ];
 
         tabs.forEach(t => {
@@ -463,7 +463,7 @@ export const render = async () => {
                 const lead = leads.find(l => l.id === leadId);
 
                 e.currentTarget.disabled = true;
-                e.currentTarget.textContent = 'Procesando con Gemini...';
+                e.currentTarget.textContent = 'Procesando con Llama 3.1...';
                 resultOutput.innerHTML = '<div class="loader m-auto"></div>';
 
                 try {
