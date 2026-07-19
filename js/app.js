@@ -287,8 +287,26 @@ class App {
     }
 
     renderPhoneModal(user) {
+        // Guard: don't show if user object is a fallback (DB read failed)
+        if (user._isFallback) {
+            console.warn('[App] Skipping phone modal for fallback user object');
+            return;
+        }
+
+        // Clean up any existing phone inputs or phone modal overlays in the DOM (Duplicate Placeholder Resolution)
+        const duplicateInputs = document.querySelectorAll('#mandatory-phone-input');
+        duplicateInputs.forEach(input => {
+            const overlay = input.closest('.modal-overlay');
+            if (overlay) overlay.remove();
+            else input.remove();
+        });
+        
+        const duplicateOverlays = document.querySelectorAll('.modal-overlay[data-phone-modal]');
+        duplicateOverlays.forEach(overlay => overlay.remove());
+
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
+        overlay.setAttribute('data-phone-modal', 'true');
         overlay.style.zIndex = '9999'; // Ensure it's on top of everything
         
         overlay.innerHTML = `
@@ -318,8 +336,16 @@ class App {
             btn.disabled = true;
             btn.textContent = 'Guardando...';
             try {
-                await dbService.update('users', user.id || user.uid, { phone });
-                const updatedUser = { ...user, phone };
+                let realId = user.id;
+                if (!realId) {
+                    const allUsers = await dbService.getAll('users').catch(() => []);
+                    const found = allUsers.find(u => u.uid === user.uid);
+                    if (found) realId = found.id;
+                }
+                const targetId = realId || user.uid;
+                
+                await dbService.update('users', targetId, { phone });
+                const updatedUser = { ...user, id: targetId, phone };
                 store.setState({ user: updatedUser });
                 document.body.removeChild(overlay);
             } catch (err) {

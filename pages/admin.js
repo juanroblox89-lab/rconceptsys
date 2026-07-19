@@ -349,7 +349,15 @@ function openClientAccessModal(u, clientsList, reload) {
     const submit = async (e) => {
         e.preventDefault();
         const checked = Array.from(form.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
-        await dbService.update('users', u.id || u.uid, { allowedClients: checked });
+        
+        let realId = u.id;
+        if (!realId && u.uid) {
+            const allUsers = await dbService.getAll('users').catch(() => []);
+            const found = allUsers.find(x => x.uid === u.uid);
+            if (found) realId = found.id;
+        }
+        
+        await dbService.update('users', realId || u.uid, { allowedClients: checked });
         overlay.remove();
         reload();
     };
@@ -377,7 +385,15 @@ function openUserPhoneModal(u, reload) {
 
     const submit = async (e) => {
         e.preventDefault();
-        await dbService.update('users', u.id || u.uid, { phone: input.value });
+        
+        let realId = u.id;
+        if (!realId && u.uid) {
+            const allUsers = await dbService.getAll('users').catch(() => []);
+            const found = allUsers.find(x => x.uid === u.uid);
+            if (found) realId = found.id;
+        }
+        
+        await dbService.update('users', realId || u.uid, { phone: input.value });
         overlay.remove();
         reload();
     };

@@ -31,8 +31,13 @@ export const assignmentService = {
 
     async getAllAssignments() {
         try {
-            const list = await dbService.getAll('assignments');
-            return list || [];
+            const { data, error } = await db.from('assignments')
+                .select('*')
+                .order('createdAt', { ascending: false })
+                .limit(500);
+            
+            if (error) throw error;
+            return data || [];
         } catch (err) {
             console.warn("Error fetching live assignments from DB:", err);
             return [];

@@ -196,9 +196,33 @@ export const crmService = {
         try {
             const pending = this.getOfflineLeads();
             if (!pending.some(l => l.id === leadData.id)) {
-                pending.push(leadData);
-                localStorage.setItem('pending_leads', JSON.stringify(pending));
-                console.log('[CRM] Lead saved offline successfully:', leadData);
+                // Fix #9: Compress base64 images to prevent localStorage overflow.
+                // A 2MB photo = ~2.7MB in base64. localStorage is 5-10MB total.
+                const safeData = { ...leadData };
+                if (safeData.client_strategy?.photo_offline_base64) {
+                    const b64 = safeData.client_strategy.photo_offline_base64;
+                    // If the base64 is larger than 150KB, create a placeholder instead
+                    if (b64.length > 150000) {
+                        console.warn(`[CRM] Photo too large for localStorage (${(b64.length / 1024).toFixed(0)}KB), storing reference only`);
+                        safeData.client_strategy = {
+                            ...safeData.client_strategy,
+                            photo_offline_base64: null,
+                            photo_offline_pending: true,  // Flag to re-capture on sync
+                        };
+                    }
+                }
+                pending.push(safeData);
+
+                try {
+                    localStorage.setItem('pending_leads', JSON.stringify(pending));
+                    console.log('[CRM] Lead saved offline successfully:', safeData.name || safeData.id);
+                } catch (storageErr) {
+                    // QuotaExceededError - localStorage is full
+                    console.error('[CRM] localStorage is FULL. Cannot save offline lead:', storageErr);
+                    alert('⚠️ Almacenamiento local lleno. Conecta a internet para sincronizar los leads pendientes antes de agregar más.');
+                    // Remove the lead we just added since we couldn't save
+                    pending.pop();
+                }
             }
         } catch (e) {
             console.error('[CRM] Error saving offline lead:', e);

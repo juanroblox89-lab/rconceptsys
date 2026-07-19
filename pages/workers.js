@@ -14,7 +14,10 @@ const ROLE_META = {
     estratega: { label: 'Estratega Creativo', color: '#10b981', icon: 'lightbulb', invoiceType: 'Factura Estratégica' },
     diseñador: { label: 'Diseñador Gráfico', color: '#f59e0b', icon: 'pen-tool', invoiceType: 'Factura de Diseño Gráfico' },
     'administración digital': { label: 'Administración Digital', color: '#ec4899', icon: 'monitor', invoiceType: 'Factura Administrativa' },
-    admin: { label: 'Administrador', color: '#ef4444', icon: 'shield', invoiceType: 'Factura Consolidada' }
+    admin: { label: 'Administrador', color: '#ef4444', icon: 'shield', invoiceType: 'Factura Consolidada' },
+    vendedor: { label: 'Vendedor', color: '#06b6d4', icon: 'briefcase', invoiceType: 'Factura de Ventas' },
+    'creador de contenido': { label: 'Creador de Contenido', color: '#a855f7', icon: 'camera', invoiceType: 'Factura de Creación' },
+    'creador 360': { label: 'Creador 360', color: '#14b8a6', icon: 'compass', invoiceType: 'Factura de Creación 360' }
 };
 
 let selectedWorkerId = null;
@@ -457,7 +460,15 @@ function openChangeRoleModal(w, roles, reload) {
                 onClick: async (e) => {
                     const btn = e.currentTarget;
                     btn.disabled = true;
-                    await dbService.update('users', w.id || w.uid, { role: select.value });
+                    
+                    let realId = w.id;
+                    if (!realId && w.uid) {
+                        const allUsers = await dbService.getAll('users').catch(() => []);
+                        const found = allUsers.find(x => x.uid === w.uid);
+                        if (found) realId = found.id;
+                    }
+                    
+                    await dbService.update('users', realId || w.uid, { role: select.value });
                     overlay.remove();
                     reload();
                 }

@@ -130,11 +130,16 @@ export const dbService = {
     try {
       // Handle increment markers
       const payload = { ...data, updatedAt: new Date().toISOString() };
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from(collectionName)
         .update(payload)
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
       if (error) throw error;
+      // Fix #8: Warn if no rows were actually updated (likely wrong id)
+      if (!updated || updated.length === 0) {
+        console.warn(`[DB] update('${collectionName}', '${String(id).slice(0, 12)}...') matched 0 rows — possible id/uid mismatch`);
+      }
     } catch (error) {
       console.error(`Error updating ${collectionName}/${id}:`, error);
       throw error;
@@ -159,8 +164,12 @@ export const dbService = {
     const ops = [];
     return {
       set(ref, data, options) {
-        // ref is ignored in Supabase; we capture collection + id from data
-        ops.push({ type: 'upsert', collection: ref?._collection || data.id?.split('/')[0], data, options });
+        // Fix #4: Correctly extract collection name from ref._collection
+        const collection = ref?._collection || options?.collection || null;
+        if (!collection) {
+          console.error('[Batch] Missing collection name in set() call. ref:', ref, 'data.id:', data?.id);
+        }
+        ops.push({ type: 'upsert', collection, data, options });
       },
       update(ref, data) {
         ops.push({ type: 'update', ref, data });
@@ -170,14 +179,25 @@ export const dbService = {
       },
       async commit() {
         // Execute all ops sequentially (Supabase has no native batch)
+        let errors = 0;
         for (const op of ops) {
-          if (op.type === 'upsert') {
+          if (op.type === 'upsert' && op.collection) {
             const { error } = await supabase
               .from(op.collection)
               .upsert({ ...op.data, updatedAt: new Date().toISOString() }, { onConflict: 'id' });
-            if (error) console.warn('Batch upsert error:', error);
+            if (error) {
+              console.warn(`Batch upsert error on ${op.collection}:`, error);
+              errors++;
+            }
+          } else if (op.type === 'upsert' && !op.collection) {
+            console.error('[Batch] Skipping upsert with no collection for data:', op.data?.id);
+            errors++;
           }
         }
+        if (errors > 0) {
+          console.warn(`[Batch] Committed with ${errors} error(s) out of ${ops.length} operations`);
+        }
+        return { errors, total: ops.length };
       },
     };
   },
@@ -188,6 +208,10 @@ export const dbService = {
  * Mirrors Firebase authService API (onAuthChange, loginWithGoogle, login, logout, getFreshUserDoc)
  */
 export const authService = {
+  // Mutex lock to prevent concurrent _processUser executions (Fix #3)
+  _processing: false,
+  _lastProcessedAuthId: null,
+
   /**
    * Subscribe to auth state changes.
    * @param {(user: object|null) => void} callback
@@ -200,6 +224,14 @@ export const authService = {
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         console.log(`[Auth] Event: ${_event}, session: ${session ? 'yes' : 'no'}`);
+
+        // Deduplicate: skip if we already processed this exact auth user
+        const currentAuthId = session?.user?.id || null;
+        if (_event === 'SIGNED_IN' && initialized && currentAuthId === this._lastProcessedAuthId) {
+          console.log('[Auth] Duplicate SIGNED_IN for same user, skipping');
+          return;
+        }
+
         // Skip initial null session if we haven't confirmed there's no session yet
         if (!initialized && _event === 'INITIAL_SESSION' && !session) {
           // Double-check with getSession before showing login
@@ -225,9 +257,18 @@ export const authService = {
 
   async _processUser(authUser, callback) {
     if (!authUser) {
+      this._lastProcessedAuthId = null;
+      this._processing = false;
       callback(null);
       return;
     }
+
+    // Mutex: prevent concurrent execution (Fix #3)
+    if (this._processing) {
+      console.log('[Auth] _processUser already running, skipping duplicate call');
+      return;
+    }
+    this._processing = true;
 
     const normalizedEmail = (authUser.email || '').toLowerCase();
     const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(normalizedEmail);
@@ -286,12 +327,18 @@ export const authService = {
           role: isMasterAdmin ? 'admin' : 'viewer',
         };
         await dbService.set('users', authUser.id, newUser);
+        this._lastProcessedAuthId = authUser.id;
+        this._processing = false;
         callback(newUser);
       } else {
+        this._lastProcessedAuthId = authUser.id;
+        this._processing = false;
         callback(userDoc);
       }
     } catch (err) {
       console.warn('Supabase access error fetching user, using master fallback:', err);
+      this._lastProcessedAuthId = authUser.id;
+      this._processing = false;
       callback({
         uid: authUser.id,
         id: authUser.id,
@@ -303,6 +350,7 @@ export const authService = {
         photoURL: authUser.user_metadata?.avatar_url || '',
         role: isMasterAdmin ? 'admin' : 'viewer',
         approved: isMasterAdmin,
+        _isFallback: true,  // Flag to indicate this is a fallback object
       });
     }
   },
@@ -338,7 +386,22 @@ export const authService = {
   },
 
   async getFreshUserDoc(uid) {
-    return await dbService.getById('users', uid);
+    // Fix #5: Search by 'uid' column, not 'id' column.
+    // The 'uid' param here is the Supabase Auth UID, which is stored in users.uid (text),
+    // NOT in users.id (uuid PK). dbService.getById filters by .eq('id', ...) which fails
+    // for migrated users where id ≠ uid.
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('uid', uid)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? { id: data.id, ...data } : null;
+    } catch (err) {
+      console.error(`Error fetching fresh user doc for uid ${uid}:`, err);
+      return null;
+    }
   },
 
   async logout() {

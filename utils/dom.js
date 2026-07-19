@@ -204,3 +204,120 @@ export function sumItems(items) {
     if (!items || items.length === 0) return 0;
     return items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 }
+
+/**
+ * Searchable Select Component
+ * Creates an input with a dropdown for filtering options.
+ */
+export const SearchableSelect = (options, value, onChange, placeholder = 'Buscar...', required = false, id = '') => {
+    const container = document.createElement('div');
+    container.className = 'searchable-select';
+    container.style.position = 'relative';
+    if (id) container.id = id + '-container';
+
+    const selectedOpt = options.find(o => o.value === value);
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-input text-xs w-full';
+    input.placeholder = placeholder;
+    input.value = selectedOpt ? selectedOpt.label : '';
+    if (required) {
+        input.required = true;
+        if (!selectedOpt) input.setCustomValidity('Selecciona una opción de la lista');
+    }
+
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    if (id) hidden.id = id;
+    hidden.value = value || '';
+
+    const list = document.createElement('div');
+    list.className = 'searchable-select-list card p-1 hidden';
+    list.style.position = 'absolute';
+    list.style.top = '100%';
+    list.style.left = '0';
+    list.style.right = '0';
+    list.style.maxHeight = '200px';
+    list.style.overflowY = 'auto';
+    list.style.zIndex = '1000';
+    list.style.marginTop = '4px';
+    list.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+    list.style.border = '1px solid var(--border)';
+    list.style.background = 'var(--bg-secondary)';
+
+    const renderList = (filter = '') => {
+        list.innerHTML = '';
+        const lowerFilter = filter.toLowerCase();
+        const filtered = options.filter(o => o.label.toLowerCase().includes(lowerFilter) || o.value.toLowerCase().includes(lowerFilter));
+        
+        if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'p-2 text-xs text-muted text-center';
+            empty.textContent = 'No hay resultados';
+            list.appendChild(empty);
+            return;
+        }
+
+        filtered.forEach(opt => {
+            const item = document.createElement('div');
+            item.className = 'p-2 text-xs cursor-pointer hover-bg-tertiary rounded';
+            item.textContent = opt.label;
+            item.onclick = (e) => {
+                e.stopPropagation();
+                input.value = opt.label;
+                hidden.value = opt.value;
+                input.setCustomValidity('');
+                list.classList.add('hidden');
+                if (onChange) onChange(opt.value);
+            };
+            list.appendChild(item);
+        });
+    };
+
+    input.onfocus = () => {
+        renderList('');
+        list.classList.remove('hidden');
+    };
+    
+    input.oninput = (e) => {
+        hidden.value = '';
+        if (required) input.setCustomValidity('Selecciona una opción de la lista');
+        renderList(e.target.value);
+        list.classList.remove('hidden');
+    };
+
+    input.onkeydown = (e) => {
+        if (e.key === 'Escape') {
+            list.classList.add('hidden');
+        }
+    };
+
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            list.classList.add('hidden');
+            const currentOpt = options.find(o => o.value === hidden.value);
+            input.value = currentOpt ? currentOpt.label : '';
+            if (required && !hidden.value) input.setCustomValidity('Selecciona una opción de la lista');
+        }
+    });
+
+    Object.defineProperty(container, 'value', {
+        get: () => hidden.value,
+        set: (v) => {
+            hidden.value = v;
+            const o = options.find(x => x.value === v);
+            input.value = o ? o.label : '';
+            if (required) input.setCustomValidity(v ? '' : 'Selecciona una opción de la lista');
+        }
+    });
+
+    container.addOption = (opt) => {
+        options.push(opt);
+    };
+
+    container.appendChild(input);
+    container.appendChild(hidden);
+    container.appendChild(list);
+    return container;
+};

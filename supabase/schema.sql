@@ -19,6 +19,11 @@ create table if not exists public.users (
   phone text,
   approved boolean default false,
   role text default 'viewer',
+  "allowedClients" jsonb default '[]'::jsonb,  -- client visibility filter
+  "marketingVisits" integer default 0,         -- visit counter for bonus logic
+  "fcmToken" text,                             -- FCM push notification token
+  "fcmTokenUpdatedAt" timestamptz,             -- when token was last refreshed
+  platform text,                               -- 'android' | 'ios' | 'web'
   "createdAt" timestamptz default now(),
   "updatedAt" timestamptz default now()
 );

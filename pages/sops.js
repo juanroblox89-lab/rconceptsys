@@ -7,8 +7,8 @@ import { dbService, storageService } from '../supabase/service.js';
 import { store } from '../js/store.js';
 
 const ICONS = ['check-square', 'video', 'scissors', 'mic', 'pen-tool', 'monitor', 'camera', 'file-text', 'layers', 'zap'];
-const ROLES = ['all', 'editor', 'camarógrafo', 'estratega', 'diseñador', 'administración digital'];
-const ROLE_LABELS = { all: 'Todos los Roles', editor: 'Editor de Video', camarógrafo: 'Camarógrafo', estratega: 'Estratega Creativo', diseñador: 'Diseñador Gráfico', 'administración digital': 'Administración Digital' };
+const ROLES = ['all', 'editor', 'camarógrafo', 'estratega', 'diseñador', 'administración digital', 'vendedor', 'creador de contenido', 'creador 360'];
+const ROLE_LABELS = { all: 'Todos los Roles', editor: 'Editor de Video', camarógrafo: 'Camarógrafo', estratega: 'Estratega Creativo', diseñador: 'Diseñador Gráfico', 'administración digital': 'Administración Digital', vendedor: 'Vendedor', 'creador de contenido': 'Creador de Contenido', 'creador 360': 'Creador 360' };
 
 let selectedSopId = null;
 

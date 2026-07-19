@@ -83,7 +83,7 @@ export const render = async () => {
             const clients = await dbService.getAll('clients').catch(() => []);
             const visitsList = await dbService.getAll('marketing_visits').catch(() => []);
             const users = await dbService.getAll('users').catch(() => []);
-            const currentUser = users.find(u => u.uid === user.uid) || user;
+            const currentUser = users.find(u => u.uid === user.uid || u.id === user.id) || user;
             const currentCount = currentUser.marketingVisits || 0;
 
             dynamicViewContainer.innerHTML = '';
@@ -937,7 +937,7 @@ export const render = async () => {
 
             try {
                 const visitObj = {
-                    employeeId: currentUser.uid,
+                    employeeId: currentUser.id || currentUser.uid,
                     employeeName: currentUser.nombre || currentUser.email,
                     businessName,
                     phone,
@@ -945,9 +945,15 @@ export const render = async () => {
                     createdAt: new Date().toISOString()
                 };
 
+                // Use the PostgreSQL PK for all user updates (Fix #6b)
+                const userId = currentUser.id || currentUser.uid;
                 let newVisitsCount = currentCount + 1;
 
                 if (newVisitsCount >= 10) {
+                    // Fix #7: Update marketingVisits FIRST. If it fails (column missing),
+                    // do NOT create the invoice — prevents phantom invoices.
+                    await dbService.update('users', userId, { marketingVisits: 0 });
+
                     let currentInv = await invoiceService.getEmployeeInvoice(currentUser.uid) || { items: [] };
                     if (!currentInv.items) currentInv.items = [];
 
@@ -962,7 +968,6 @@ export const render = async () => {
                     currentInv.amount = sumInvoiceItems(currentInv);
 
                     await dbService.add('marketing_visits', visitObj);
-                    await dbService.update('users', currentUser.uid, { marketingVisits: 0 });
                     await dbService.set('invoices', `emp-inv-${currentUser.uid}`, {
                         id: `emp-inv-${currentUser.uid}`,
                         employeeId: currentUser.uid,
@@ -975,7 +980,7 @@ export const render = async () => {
                     alert(`¡Bono completado! Se ha auto-facturado $${bonusVisitas.toLocaleString('es-CO')} COP en tu cuenta.`);
                 } else {
                     await dbService.add('marketing_visits', visitObj);
-                    await dbService.update('users', currentUser.uid, { marketingVisits: newVisitsCount });
+                    await dbService.update('users', userId, { marketingVisits: newVisitsCount });
                 }
 
                 overlay.remove();

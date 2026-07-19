@@ -3,7 +3,7 @@
  * Admin-only module to manage recordings and edits for the team.
  * Inspired by Linear and Notion for a minimalist, operational feel.
  */
-import { h, icon } from '../utils/dom.js';
+import { h, icon, SearchableSelect } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { router } from '../js/router.js';
 import { dbService, storageService } from '../supabase/service.js';
@@ -242,6 +242,7 @@ const renderAssignmentDetail = (asgId, assignments, approvedUsers, finalClients,
 
     const emp = approvedUsers.find(u => u.uid === asg.employeeId);
     const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin asignar';
+    const clientData = finalClients.find(c => c.name === asg.client || c.id === asg.client);
 
     // Standard SOP items fallbacks
     const steps = [
@@ -308,7 +309,22 @@ const renderAssignmentDetail = (asgId, assignments, approvedUsers, finalClients,
             h('div', { className: 'flex-column gap-5' }, [
                 h('div', { className: 'premium-info-section flex-column gap-3' }, [
                     h('h3', { className: 'text-xs font-bold text-muted uppercase m-0' }, 'Información & Brief'),
-                    h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, asg.description || 'Sin descripción o instrucciones detalladas.')
+                    h('div', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0', style: { whiteSpace: 'pre-wrap' } }, asg.description || 'Sin descripción o instrucciones detalladas.'),
+                    
+                    clientData ? h('div', { className: 'grid gap-2 p-3 mt-2 rounded border bg-secondary', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                        h('div', { className: 'flex-column gap-1' }, [
+                            h('span', { className: 'text-[10px] text-muted font-bold uppercase' }, 'Identidad de Marca'),
+                            h('span', { className: 'text-xs' }, clientData.brandIdentity || 'No especificada')
+                        ]),
+                        h('div', { className: 'flex-column gap-1' }, [
+                            h('span', { className: 'text-[10px] text-muted font-bold uppercase' }, 'Público / Audiencia'),
+                            h('span', { className: 'text-xs' }, clientData.audience || 'No especificado')
+                        ]),
+                        clientData.referenceLinks ? h('div', { className: 'flex-column gap-1 mt-1', style: { gridColumn: 'span 2' } }, [
+                            h('span', { className: 'text-[10px] text-muted font-bold uppercase' }, 'Links de Referencia / Benchmarks'),
+                            h('a', { href: clientData.referenceLinks.startsWith('http') ? clientData.referenceLinks : `https://${clientData.referenceLinks}`, target: '_blank', className: 'text-xs text-accent hover-underline' }, clientData.referenceLinks)
+                        ]) : null
+                    ]) : null
                 ]),
 
                 // Checklist SOP
@@ -472,7 +488,10 @@ export const render = async () => {
                 dbService.getAll('scripts').catch(() => []),
                 dbService.getAll('assets').catch(() => []),
                 invoiceService.getRateCards().catch(() => []),
-                (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch(() => []) : Promise.resolve([]),
+                (!isAdmin && user) ? dbService.getByQuery('sop_submissions', 'userId', '==', user.uid).catch((err) => {
+                    alert("Error loading SOP submissions: " + err.message);
+                    return [];
+                }) : Promise.resolve([]),
                 dbService.getById('system_config', 'pricing').catch(() => ({}))
             ]);
             const adminConfig = systemPricing || {};
@@ -562,7 +581,7 @@ export const render = async () => {
                             ]),
                             h('div', { className: 'flex items-center gap-2' }, [
                                 // Action buttons
-                                asg.status === 'Pendiente' ? (() => {
+                                asg.status === 'Pendiente' && !isAdmin ? (() => {
                                     const prevTask = typeof asg.stageIndex !== 'undefined' ? assignments.find(a => a.projectId === asg.projectId && a.stageIndex === asg.stageIndex - 1) : null;
                                     const prevWorker = prevTask ? approvedUsers.find(u => u.uid === prevTask.employeeId || u.id === prevTask.employeeId) : null;
                                     
@@ -642,7 +661,7 @@ export const render = async () => {
                                     }
                                 })() : null,
 
-                                (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') ? (() => {
+                                (asg.status === 'Pendiente' || asg.status === 'En Proceso' || asg.status === 'En Producción') && !isAdmin ? (() => {
                                     const asgClient = finalClients.find(c => c.name === asg.client || c.id === asg.client);
                                     const hasDrive = asgClient && asgClient.driveFolderUrl;
                                     
@@ -674,6 +693,13 @@ export const render = async () => {
                                             className: 'btn btn-primary text-xs py-1.5 px-3 mt-2 w-full flex items-center justify-center gap-1 font-bold transition',
                                             style: { background: 'var(--success)', borderColor: 'var(--success)', color: 'var(--bg-primary)' },
                                             onClick: async (e) => {
+                                                const REQUIRED_SOP_STEPS = 4; // Based on standard SOP length in renderAssignmentDetail
+                                                const checkedCount = asg.checkedSteps ? asg.checkedSteps.length : 0;
+                                                if (checkedCount < REQUIRED_SOP_STEPS) {
+                                                    alert('⚠️ SOP Incompleto: Por favor abre los detalles de la tarea y completa el Checklist SOP antes de entregar.');
+                                                    return;
+                                                }
+
                                                 const linkVal = document.getElementById(inputId).value.trim();
                                                 if (!linkVal) { alert('Por favor, ingresa el enlace del entregable para poder continuar.'); return; }
 
@@ -770,7 +796,7 @@ export const render = async () => {
                                 asg.billed ? h('span', { className: 'badge badge-success text-xs flex items-center gap-1 font-bold', style: { padding: '4px 8px' } }, [icon('check-circle', 12), h('span', {}, 'Facturado')]) : null,
 
                                 asg.status === 'Completado' || asg.status === 'Cancelado' ? h('button', {
-                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
+                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 mt-2',
                                     style: { color: 'var(--text-muted)', borderColor: 'var(--border)' },
                                     onClick: async (e) => {
                                         const btn = e.currentTarget;
@@ -784,6 +810,78 @@ export const render = async () => {
                                         }
                                     }
                                 }, [icon('rotate-ccw', 12), h('span', {}, 'Reabrir')]) : null,
+
+                                (asg.status === 'En Proceso' || asg.status === 'En Producción' || asg.status === 'Pendiente') && !isAdmin ? h('button', {
+                                    className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 mt-2',
+                                    style: { color: 'var(--error)', borderColor: 'var(--error)' },
+                                    onClick: async (e) => {
+                                        const just = await promptModal({ title: 'Devolver / Reportar Problema', message: 'Razón para devolver o reportar la tarea:', placeholder: 'Ej: Faltan archivos, instrucciones poco claras...' });
+                                        if (!just) return;
+                                        try {
+                                            const newDesc = (asg.description || '') + `\n\n[Devuelto por Empleado] Motivo: ${just}`;
+                                            await assignmentService.saveAssignment({ ...asg, status: 'blocked', description: newDesc }); 
+                                            alert('Tarea reportada/devuelta al administrador.');
+                                            loadAndRender();
+                                        } catch(err) { alert('Error al devolver la tarea.'); }
+                                    }
+                                }, [icon('alert-triangle', 12), h('span', {}, 'Reportar Problema / Devolver')]) : null,
+
+                                // Admin Review Panel
+                                isAdmin && asg.status === 'Completado' && !asg.adminApproved ? h('div', {
+                                    className: 'mt-3 p-3 border rounded w-full',
+                                    style: { background: 'rgba(59,130,246,0.05)', borderColor: 'var(--info)', borderRadius: '8px' }
+                                }, [
+                                    h('div', { className: 'text-xs font-bold text-info flex items-center gap-2 mb-2' }, [
+                                        icon('clipboard-check', 16), h('span', {}, '📋 Revisión de Entrega')
+                                    ]),
+                                    asg.uploadLink ? h('a', {
+                                        href: asg.uploadLink, target: '_blank',
+                                        className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 w-full justify-center mb-2 font-bold',
+                                        style: { borderColor: 'var(--accent)', color: 'var(--accent)' }
+                                    }, [icon('external-link', 14), h('span', {}, 'Ver Entregable')]) : null,
+                                    h('div', { className: 'flex gap-2 flex-wrap' }, [
+                                        h('button', {
+                                            className: 'btn text-xs py-1 px-3 flex items-center gap-1 font-bold flex-1 justify-center',
+                                            style: { background: 'var(--success)', borderColor: 'var(--success)', color: 'white' },
+                                            onClick: async (e) => {
+                                                const btn = e.currentTarget; btn.disabled = true;
+                                                try {
+                                                    await assignmentService.saveAssignment({ ...asg, adminApproved: true, adminReviewedAt: new Date().toISOString() });
+                                                    loadAndRender();
+                                                } catch(err) { btn.disabled = false; alert('Error al aprobar.'); }
+                                            }
+                                        }, [icon('check', 14), h('span', {}, 'Aprobar')]),
+                                        h('button', {
+                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold flex-1 justify-center',
+                                            style: { borderColor: 'var(--warning)', color: 'var(--warning)' },
+                                            onClick: async () => {
+                                                const feedback = await promptModal({ title: 'Pedir Cambios', message: '¿Qué cambios necesita esta entrega?', placeholder: 'Describe los cambios necesarios...' });
+                                                if (!feedback) return;
+                                                try {
+                                                    const newDesc = (asg.description || '') + `\n\n[Admin] Cambios solicitados: ${feedback}`;
+                                                    await assignmentService.saveAssignment({ ...asg, status: 'En Proceso', description: newDesc, adminApproved: false, billed: false });
+                                                    loadAndRender();
+                                                } catch(err) { alert('Error al pedir cambios.'); }
+                                            }
+                                        }, [icon('edit-3', 14), h('span', {}, 'Pedir Cambios')]),
+                                        h('button', {
+                                            className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1 font-bold flex-1 justify-center',
+                                            style: { borderColor: 'var(--error)', color: 'var(--error)' },
+                                            onClick: async () => {
+                                                const reason = await promptModal({ title: 'Rechazar Entrega', message: 'Razón del rechazo:', placeholder: 'Describe por qué se rechaza...' });
+                                                if (!reason) return;
+                                                try {
+                                                    const newDesc = (asg.description || '') + `\n\n[Admin] Rechazado: ${reason}`;
+                                                    await assignmentService.saveAssignment({ ...asg, status: 'Pendiente', description: newDesc, adminApproved: false, billed: false, uploadLink: '' });
+                                                    loadAndRender();
+                                                } catch(err) { alert('Error al rechazar.'); }
+                                            }
+                                        }, [icon('x-circle', 14), h('span', {}, 'Rechazar')])
+                                    ])
+                                ]) : null,
+
+                                // Show approved badge
+                                asg.adminApproved ? h('span', { className: 'badge badge-success text-xs flex items-center gap-1 font-bold mt-2', style: { padding: '4px 8px' } }, [icon('shield-check', 12), h('span', {}, '✅ Aprobado por Admin')]) : null,
 
                                 asg.status !== 'Completado' && asg.status !== 'Cancelado' && user.role === 'admin' ? h('button', {
                                     className: 'btn btn-outline text-xs py-1 px-3 flex items-center gap-1',
@@ -1073,13 +1171,101 @@ export const render = async () => {
             const pipelineBoard = renderMasterPipelines();
             if (pipelineBoard) container.appendChild(pipelineBoard);
 
-            // Kanban Board for Admin
+            if (!window.kanbanLimits) window.kanbanLimits = {};
             const statuses = ['Pendiente', 'En Proceso', 'Completado', 'Archivado'];
             
             const board = h('div', { className: 'kanban-board mt-4' }, 
                 statuses.map(status => {
                     const colAsgs = assignments.filter(a => a.status === status || (status === 'En Proceso' && a.status === 'En Producción'));
+                    const limit = window.kanbanLimits[status] || 30;
+                    const visibleAsgs = colAsgs.slice(0, limit);
                     
+                    const cardElements = visibleAsgs.map(asg => {
+                        const emp = approvedUsers.find(u => u.uid === asg.employeeId);
+                        const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin Asignar';
+                        const now = new Date();
+                        const due = new Date(asg.dueDate);
+                        const isExpired = due < now && asg.status !== 'Completado';
+                        
+                        let displayTitle = asg.title;
+                        if (asg.projectId && asg.title.length < 15) {
+                            const pipelineContext = assignments.find(a => a.projectId === asg.projectId && a.id !== asg.id)?.title.replace(RE_BRACKET_PREFIX, '') || asg.projectId;
+                            displayTitle = `${asg.title} - ${pipelineContext}`;
+                        }
+                        
+                        return h('div', { 
+                            className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
+                            onClick: () => {
+                                selectedAssignmentId = asg.id;
+                                loadAndRender();
+                            }
+                        }, [
+                            h('div', { className: 'flex justify-between items-start mb-1' }, [
+                                h('div', { className: 'text-sm font-bold mb-0 pr-2', style: { wordBreak: 'break-all' } }, displayTitle),
+                                isExpired ? h('div', { className: 'badge badge-urgent p-1 rounded-full', title: 'Atrasado' }) : null
+                            ]),
+                            h('div', { className: 'text-xs text-muted mb-2 truncate' }, `${asg.client} • ${asg.type}`),
+                            h('div', { className: 'flex items-center justify-between border-top pt-2 mt-2' }, [
+                                h('div', { className: 'flex items-center gap-1 font-medium', style: { color: 'var(--accent)' } }, [
+                                    icon('user', 12),
+                                    h('span', {}, empName)
+                                ]),
+                                h('div', { className: 'flex gap-1 items-center' }, [
+                                    asg.billed ? h('span', { className: 'badge badge-success text-[10px] py-0 px-1' }, 'Cobrado') : null,
+                                    (asg.uploadLink || asg.sourceFilesLink) ? h('a', {
+                                        href: asg.uploadLink || asg.sourceFilesLink,
+                                        target: '_blank',
+                                        className: 'btn btn-outline text-[10px] py-0 px-1 ml-1',
+                                        style: { borderColor: asg.uploadLink ? 'var(--success)' : 'var(--accent)', color: asg.uploadLink ? 'var(--success)' : 'var(--accent)' },
+                                        onClick: (e) => e.stopPropagation()
+                                    }, asg.uploadLink ? 'Entregable' : 'Materiales') : null,
+                                    h('a', {
+                                        href: '#/scripts',
+                                        title: 'Escribir Guion para esta tarea',
+                                        className: 'btn btn-outline text-[10px] py-0 px-1 ml-1',
+                                        style: { borderColor: 'var(--border)', color: 'var(--text-muted)' },
+                                        onClick: (e) => { e.stopPropagation(); window.location.hash = '#/scripts'; }
+                                    }, [icon('pen-tool', 12)]),
+                                    (function(){
+                                        const w = approvedUsers.find(u => u.uid === asg.employeeId || u.id === asg.employeeId);
+                                        const phone = w?.phone ? w.phone.replace(RE_NON_NUMERIC, '') : null;
+                                        if (!phone) return null;
+                                        
+                                        const generalMsg = encodeURIComponent(`Hola ${w.nombre.split(' ')[0]}, sobre la tarea *${asg.title}*...`);
+                                        const missingMsg = encodeURIComponent(`Hola ${w.nombre.split(' ')[0]}, revisando la tarea *${asg.title}* noté que falta material en el Drive. ¿Podrías subirlo lo antes posible, por favor?`);
+                                        
+                                        return h('div', { className: 'flex gap-1 items-center ml-1' }, [
+                                            h('a', {
+                                                href: `https://wa.me/${phone}?text=${generalMsg}`,
+                                                target: '_blank',
+                                                title: 'Chat General',
+                                                className: 'text-success hover-opacity',
+                                                onClick: (e) => e.stopPropagation()
+                                            }, icon('message-circle', 14)),
+                                            h('a', {
+                                                href: `https://wa.me/${phone}?text=${missingMsg}`,
+                                                target: '_blank',
+                                                title: 'Pedir Materiales Faltantes al Drive',
+                                                className: 'text-warning hover-opacity',
+                                                onClick: (e) => e.stopPropagation()
+                                            }, icon('folder-plus', 14))
+                                        ]);
+                                    })()
+                                ])
+                            ])
+                        ]);
+                    });
+
+                    if (colAsgs.length > limit) {
+                        cardElements.push(h('button', {
+                            className: 'btn btn-outline text-xs mt-2 w-full flex items-center justify-center gap-1',
+                            onClick: () => {
+                                window.kanbanLimits[status] = limit + 30;
+                                loadAndRender();
+                            }
+                        }, [icon('chevron-down', 14), h('span', {}, `Ver más (${colAsgs.length - limit})`)]));
+                    }
+
                     return h('div', { className: 'kanban-column' }, [
                         h('div', { className: 'kanban-column-header' }, [
                             h('span', {}, status),
@@ -1087,83 +1273,7 @@ export const render = async () => {
                         ]),
                         h('div', { 
                             className: 'kanban-column-body'
-                        }, colAsgs.map(asg => {
-                            const emp = approvedUsers.find(u => u.uid === asg.employeeId);
-                            const empName = emp ? (emp.nombre || emp.email.split('@')[0]) : 'Sin Asignar';
-                            const now = new Date();
-                            const due = new Date(asg.dueDate);
-                            const isExpired = due < now && asg.status !== 'Completado';
-                            
-                            // If it's part of a pipeline, show more context in the title
-                            let displayTitle = asg.title;
-                            if (asg.projectId && asg.title.length < 15) {
-                                // Attempt to find the pipeline context
-                                const pipelineContext = assignments.find(a => a.projectId === asg.projectId && a.id !== asg.id)?.title.replace(RE_BRACKET_PREFIX, '') || asg.projectId;
-                                displayTitle = `${asg.title} - ${pipelineContext}`;
-                            }
-                            
-                            return h('div', { 
-                                className: 'card interactive-card kanban-card p-3 flex-column gap-2 cursor-pointer',
-                                onClick: () => {
-                                    selectedAssignmentId = asg.id;
-                                    loadAndRender();
-                                }
-                            }, [
-                                h('div', { className: 'flex justify-between items-start mb-1' }, [
-                                    h('div', { className: 'text-sm font-bold mb-0 pr-2', style: { wordBreak: 'break-all' } }, displayTitle),
-                                    isExpired ? h('div', { className: 'badge badge-urgent p-1 rounded-full', title: 'Atrasado' }) : null
-                                ]),
-                                h('div', { className: 'text-xs text-muted mb-2 truncate' }, `${asg.client} • ${asg.type}`),
-                                h('div', { className: 'flex items-center justify-between border-top pt-2 mt-2' }, [
-                                    h('div', { className: 'flex items-center gap-1 font-medium', style: { color: 'var(--accent)' } }, [
-                                        icon('user', 12),
-                                        h('span', {}, empName)
-                                    ]),
-                                    h('div', { className: 'flex gap-1 items-center' }, [
-                                        asg.billed ? h('span', { className: 'badge badge-success text-[10px] py-0 px-1' }, 'Cobrado') : null,
-                                        (asg.uploadLink || asg.sourceFilesLink) ? h('a', {
-                                            href: asg.uploadLink || asg.sourceFilesLink,
-                                            target: '_blank',
-                                            className: 'btn btn-outline text-[10px] py-0 px-1 ml-1',
-                                            style: { borderColor: asg.uploadLink ? 'var(--success)' : 'var(--accent)', color: asg.uploadLink ? 'var(--success)' : 'var(--accent)' },
-                                            onClick: (e) => e.stopPropagation()
-                                        }, asg.uploadLink ? 'Entregable' : 'Materiales') : null,
-                                        h('a', {
-                                            href: '#/scripts',
-                                            title: 'Escribir Guion para esta tarea',
-                                            className: 'btn btn-outline text-[10px] py-0 px-1 ml-1',
-                                            style: { borderColor: 'var(--border)', color: 'var(--text-muted)' },
-                                            onClick: (e) => { e.stopPropagation(); window.location.hash = '#/scripts'; }
-                                        }, [icon('pen-tool', 12)]),
-                                        (function(){
-                                            const w = approvedUsers.find(u => u.uid === asg.employeeId || u.id === asg.employeeId);
-                                            const phone = w?.phone ? w.phone.replace(RE_NON_NUMERIC, '') : null;
-                                            if (!phone) return null;
-                                            
-                                            const generalMsg = encodeURIComponent(`Hola ${w.nombre.split(' ')[0]}, sobre la tarea *${asg.title}*...`);
-                                            const missingMsg = encodeURIComponent(`Hola ${w.nombre.split(' ')[0]}, revisando la tarea *${asg.title}* noté que falta material en el Drive. ¿Podrías subirlo lo antes posible, por favor?`);
-                                            
-                                            return h('div', { className: 'flex gap-1 items-center ml-1' }, [
-                                                h('a', {
-                                                    href: `https://wa.me/${phone}?text=${generalMsg}`,
-                                                    target: '_blank',
-                                                    title: 'Chat General',
-                                                    className: 'text-success hover-opacity',
-                                                    onClick: (e) => e.stopPropagation()
-                                                }, icon('message-circle', 14)),
-                                                h('a', {
-                                                    href: `https://wa.me/${phone}?text=${missingMsg}`,
-                                                    target: '_blank',
-                                                    title: 'Pedir Materiales Faltantes al Drive',
-                                                    className: 'text-warning hover-opacity',
-                                                    onClick: (e) => e.stopPropagation()
-                                                }, icon('folder-plus', 14))
-                                            ]);
-                                        })()
-                                    ])
-                                ])
-                            ]);
-                        }))
+                        }, cardElements)
                     ]);
                 })
             );
@@ -1268,12 +1378,11 @@ export const render = async () => {
                 const id = data.name.toLowerCase().normalize("NFD").replace(RE_UNICODE_ACCENT, "").replace(RE_WHITESPACE, '-').replace(RE_SAFE_ID, '');
                 await dbService.set('clients', id, { id, name: data.name, active: true });
                 
-                const sel = form.querySelector('#asg-client');
-                const opt = document.createElement('option');
-                opt.value = data.name;
-                opt.text = data.name;
-                opt.selected = true;
-                sel.appendChild(opt);
+                const container = form.querySelector('#asg-client-container');
+                if (container) {
+                    container.addOption({ value: data.name, label: data.name });
+                    container.value = data.name;
+                }
                 if(!context.clients) context.clients = [];
                 context.clients.push({ id, name: data.name });
             });
@@ -1385,7 +1494,16 @@ export const render = async () => {
             }
 
             try {
-                await assignmentService.saveAssignment(formData);
+                const bulkCount = parseInt(form.querySelector('#asg-bulk-count')?.value || '1', 10);
+                for (let i = 0; i < bulkCount; i++) {
+                    const dataCopy = { ...formData };
+                    if (bulkCount > 1) {
+                        dataCopy.id = undefined; // Force create new
+                        if (i > 0) dataCopy.title = `${dataCopy.title} (Copia ${i + 1})`;
+                    }
+                    await assignmentService.saveAssignment(dataCopy);
+                }
+                
                 if (document.body.contains(overlay)) {
                     document.body.removeChild(overlay);
                 }
@@ -1424,9 +1542,7 @@ export const render = async () => {
                 h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' + (user.role === 'admin' ? ' 1fr' : '') } }, [
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Empleado'),
-                        h('select', { id: 'asg-emp', className: 'form-select text-xs', required: true }, 
-                            context.users.map(u => h('option', { value: u.uid, selected: u.uid === (existing?.employeeId || context.preselectedUser) }, u.nombre || u.email))
-                        )
+                        SearchableSelect(context.users.map(u => ({ value: u.uid, label: u.nombre || u.email })), existing?.employeeId || context.preselectedUser, null, 'Buscar empleado...', true, 'asg-emp')
                     ]),
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Tipo'),
@@ -1476,9 +1592,7 @@ export const render = async () => {
                             onClick: handleCreateClient
                         }, [icon('plus', 10), h('span', {}, 'Crear Nuevo')])
                     ]),
-                    h('select', { id: 'asg-client', className: 'form-select text-xs', required: true }, 
-                        context.clients.map(c => h('option', { value: c.name, selected: existing?.client === c.name }, c.name))
-                    )
+                    SearchableSelect(context.clients.map(c => ({ value: c.name, label: c.name })), existing?.client, null, 'Buscar cliente...', true, 'asg-client')
                 ]),
                 h('div', { className: 'grid gap-3', style: { display: 'grid', gridTemplateColumns: '1fr 1fr' } }, [
                     h('div', { className: 'form-group' }, [
@@ -1540,6 +1654,13 @@ export const render = async () => {
                     h('label', { className: 'form-label' }, 'Título del Trabajo'),
                     h('input', { id: 'asg-title', className: 'form-input', value: existing?.title || '', placeholder: 'Ej. Edición Reel Villagrande', required: true })
                 ]),
+                !existing ? h('div', { className: 'form-group p-2 rounded mt-1', style: { background: 'var(--bg-tertiary)', border: '1px dashed var(--border)' } }, [
+                    h('label', { className: 'form-label text-[10px] m-0 text-muted mb-1' }, 'Creación en Lote (Opcional)'),
+                    h('div', { className: 'flex items-center gap-2' }, [
+                        h('input', { id: 'asg-bulk-count', type: 'number', className: 'form-input text-xs', value: '1', min: '1', max: '20', style: { width: '80px' } }),
+                        h('span', { className: 'text-[10px] text-muted' }, 'Copias idénticas')
+                    ])
+                ]) : null,
                 h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
                     h('div', { className: 'form-group' }, [
                         h('label', { className: 'form-label' }, 'Fecha Límite'),
@@ -1846,8 +1967,6 @@ function openSopViewerModal(sop, asg, currentSub, reload) {
                     };
                     // Employee invoice
                     await invoiceService.autoBilledItem(user.uid, false, invoiceItem);
-                    // Admin consolidated invoice
-                    await invoiceService.autoBilledItem(user.uid, true, invoiceItem);
                 }
             } catch (err) {
                 console.error("Error auto-facturando:", err);

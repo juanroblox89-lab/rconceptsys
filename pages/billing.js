@@ -719,8 +719,14 @@ export const render = () => {
 
                 if (isAdmin) {
                     [empInvoices, admInvoices] = await Promise.all([
-                        invoiceService.getAllInvoices('invoices').catch(() => []),
-                        invoiceService.getAllInvoices('admin_invoices').catch(() => [])
+                        invoiceService.getAllInvoices('invoices').catch((err) => {
+                            alert("Error loading employee invoices: " + err.message);
+                            return [];
+                        }),
+                        invoiceService.getAllInvoices('admin_invoices').catch((err) => {
+                            alert("Error loading admin invoices: " + err.message);
+                            return [];
+                        })
                     ]);
                     
                     if (!selectedUserId && approvedUsers.length > 0) {
@@ -733,8 +739,14 @@ export const render = () => {
                     }
                 } else {
                     const [myEmpInv, myAdmInv] = await Promise.all([
-                        invoiceService.getEmployeeInvoice(user.uid).catch(() => null),
-                        invoiceService.getAdminInvoice(user.uid).catch(() => null)
+                        invoiceService.getEmployeeInvoice(user.uid).catch((err) => {
+                            alert("Error loading your invoice: " + err.message);
+                            return null;
+                        }),
+                        invoiceService.getAdminInvoice(user.uid).catch((err) => {
+                            alert("Error loading your admin invoice: " + err.message);
+                            return null;
+                        })
                     ]);
                     
                     currentEmpItems = myEmpInv?.items || [];

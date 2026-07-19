@@ -127,7 +127,7 @@ export const notificationService = {
       const { user } = store.getState();
       if (user) {
         try {
-          await dbService.update('users', user.uid || user.id, {
+          await dbService.update('users', user.id || user.uid, {
             fcmToken: token.value,
             fcmTokenUpdatedAt: new Date().toISOString(),
             platform: 'android',

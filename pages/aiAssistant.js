@@ -31,7 +31,10 @@ export const render = (params = {}) => {
             let assignments = await assignmentService.getAllAssignments().catch(() => []);
             let sopsList = await dbService.getAll('sops').catch(() => []);
             let scripts = await dbService.getAll('scripts').catch(() => []);
-            let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch(() => []);
+            let userChats = await dbService.getByQuery('chats', 'userId', '==', user?.uid).catch((err) => {
+                alert("Error loading chats: " + err.message);
+                return [];
+            });
             let systemRules = await dbService.getAll('system_rules').catch(() => []);
 
             const isAdmin = user?.role === 'admin';

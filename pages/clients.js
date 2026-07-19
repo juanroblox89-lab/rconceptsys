@@ -195,6 +195,11 @@ export const render = () => {
             const nameVal = form.querySelector('#cli-name').value;
             const typeVal = form.querySelector('#cli-type').value;
             const descVal = form.querySelector('#cli-desc').value;
+            const identidadVal = form.querySelector('#cli-identidad')?.value || '';
+            const personalidadVal = form.querySelector('#cli-personalidad')?.value || '';
+            const clienteIdealVal = form.querySelector('#cli-cliente-ideal')?.value || '';
+            const refsVal = form.querySelector('#cli-refs')?.value || '';
+            
             // Formats & hooks are managed by the AI agent, not manually
             const logoUrlVal = form.querySelector('#cli-logo-url').value.trim();
             const logoFile = form.querySelector('#cli-logo-file').files[0];
@@ -229,6 +234,10 @@ export const render = () => {
                 name: nameVal,
                 businessType: typeVal,
                 description: descVal,
+                identidad: identidadVal,
+                personalidad: personalidadVal,
+                clienteIdeal: clienteIdealVal,
+                referenceLinks: refsVal,
                 assignedFormats: existingClient?.assignedFormats || [],
                 usedHooks: existingClient?.usedHooks || [],
                 viralVideos: existingClient?.viralVideos || [],
@@ -296,7 +305,27 @@ export const render = () => {
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Descripción Estratégica General'),
-                    h('textarea', { id: 'cli-desc', className: 'form-textarea', placeholder: 'Enfoque de marca, tono de comunicación y público objetivo...' }, existingClient?.description || '')
+                    h('textarea', { id: 'cli-desc', className: 'form-textarea', placeholder: 'Enfoque general del negocio...' }, existingClient?.description || '')
+                ]),
+                h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Identidad de Marca'),
+                        h('input', { id: 'cli-identidad', className: 'form-input', placeholder: 'Ej. Moderna, Premium...', value: existingClient?.identidad || '' })
+                    ]),
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Tono y Personalidad'),
+                        h('input', { id: 'cli-personalidad', className: 'form-input', placeholder: 'Ej. Cercana, Humorística...', value: existingClient?.personalidad || '' })
+                    ])
+                ]),
+                h('div', { className: 'grid gap-3', style: { gridTemplateColumns: '1fr 1fr' } }, [
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Público Objetivo (Buyer Persona)'),
+                        h('input', { id: 'cli-cliente-ideal', className: 'form-input', placeholder: 'Ej. Jóvenes 18-25...', value: existingClient?.clienteIdeal || '' })
+                    ]),
+                    h('div', { className: 'form-group' }, [
+                        h('label', { className: 'form-label' }, 'Links de Referencia / Benchmarks'),
+                        h('input', { id: 'cli-refs', className: 'form-input', placeholder: 'Links de competidores o inspiraciones...', value: existingClient?.referenceLinks || '' })
+                    ])
                 ]),
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label' }, 'Subir Foto de Perfil / Logo (Imagen)'),

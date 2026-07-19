@@ -7,6 +7,7 @@ import { h, icon } from '../utils/dom.js';
 import { store } from '../js/store.js';
 import { dbService, storageService } from '../supabase/service.js';
 import { assignmentService } from '../services/assignmentService.js';
+import { aiService } from '../services/aiService.js';
 
 export const render = async (params) => {
     const { id } = params;
@@ -99,7 +100,9 @@ export const render = async (params) => {
                         h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider' }, 'Identidad de Marca'),
                         h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, client.identidad || client.description || 'Especialistas en ofrecer experiencias premium a comensales y amantes del buen vivir.'),
                         h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider mt-3' }, 'Posicionamiento'),
-                        h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, client.posicionamiento || 'Referente local de gastronomía y ambiente exclusivo en la ciudad.')
+                        h('p', { className: 'text-xs text-secondary leading-relaxed bg-tertiary p-3 rounded border m-0' }, client.posicionamiento || 'Referente local de gastronomía y ambiente exclusivo en la ciudad.'),
+                        h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider mt-3' }, 'Links de Referencia'),
+                        client.referenceLinks ? h('a', { href: client.referenceLinks.startsWith('http') ? client.referenceLinks : `https://${client.referenceLinks}`, target: '_blank', className: 'text-xs text-accent hover-underline truncate bg-tertiary p-3 rounded border m-0 block' }, client.referenceLinks) : h('p', { className: 'text-xs text-muted leading-relaxed bg-tertiary p-3 rounded border m-0' }, 'No registrados')
                     ]),
                     h('div', { className: 'premium-info-section flex-column gap-3' }, [
                         h('h3', { className: 'text-xs font-bold text-muted uppercase tracking-wider' }, 'Cliente Ideal (Buyer Persona)'),
@@ -110,24 +113,73 @@ export const render = async (params) => {
                 ]);
             } 
             else if (currentTab === 'videos') {
-                const videoItems = [
-                    { title: "Campaña Día de la Madre", views: "145K", date: "Hace 2 semanas", format: "RC-01 Recorrido Comercial", hook: "HK-07 Descubrimiento Local" },
-                    { title: "Detrás de Cámaras Cocina", views: "87K", date: "Hace 3 semanas", format: "Narrativa Rápida", hook: "HK-02 Curiosidad Estructurada" },
-                    { title: "Presentación de Postre Especial", views: "210K", date: "Hace 1 mes", format: "ASMR Gastronómico", hook: "HK-09 Sonido Provocativo" }
-                ];
+                const videoItems = client.viralVideos || [];
 
                 tabContent = h('div', { className: 'flex-column gap-4' }, [
-                    h('h3', { className: 'text-sm font-bold text-primary mb-1' }, 'Historial de Producciones de Video'),
-                    h('div', { className: 'grid gap-4', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' } }, 
+                    h('div', { className: 'flex justify-between items-center mb-1' }, [
+                        h('h3', { className: 'text-sm font-bold text-primary m-0' }, 'Historial de Producciones / Virales'),
+                        h('button', {
+                            className: 'btn btn-primary text-xs flex items-center gap-1',
+                            onClick: () => {
+                                const overlay = h('div', { className: 'modal-overlay' });
+                                const saveViralLink = async (e) => {
+                                    e.preventDefault();
+                                    const platVal = document.getElementById('v-platform').value;
+                                    const titleVal = document.getElementById('v-title').value;
+                                    const urlVal = document.getElementById('v-url').value;
+
+                                    const updatedVideos = [...(client.viralVideos || []), { platform: platVal, title: titleVal, url: urlVal, addedAt: new Date().toISOString() }];
+                                    
+                                    try {
+                                        const { dbService } = await import('../supabase/service.js');
+                                        await dbService.update('clients', client.id, { viralVideos: updatedVideos });
+                                        client.viralVideos = updatedVideos;
+                                        document.body.removeChild(overlay);
+                                        renderClientDetail(container, client);
+                                    } catch (err) { alert('Error guardando video'); }
+                                };
+
+                                const vform = h('form', { className: 'modal-container', onSubmit: saveViralLink }, [
+                                    h('div', { className: 'modal-header' }, [
+                                        h('span', { className: 'modal-title text-sm' }, `Añadir Link Viral a: ${client.name}`),
+                                        h('button', { type: 'button', onClick: () => document.body.removeChild(overlay), style: { fontWeight: 'bold' } }, '×')
+                                    ]),
+                                    h('div', { className: 'modal-body flex-column gap-3' }, [
+                                        h('div', { className: 'form-group' }, [
+                                            h('label', { className: 'form-label' }, 'Plataforma'),
+                                            h('select', { id: 'v-platform', className: 'form-select' }, [
+                                                h('option', { value: 'TikTok' }, 'TikTok'),
+                                                h('option', { value: 'Instagram' }, 'Instagram Reels'),
+                                                h('option', { value: 'YouTube' }, 'YouTube Shorts'),
+                                                h('option', { value: 'Frame.io' }, 'Frame.io (Entregable)')
+                                            ])
+                                        ]),
+                                        h('div', { className: 'form-group' }, [
+                                            h('label', { className: 'form-label' }, 'Título o Métrica Visual (Ej. Recorrido Principal - 1.5M Vistas)'),
+                                            h('input', { id: 'v-title', className: 'form-input', placeholder: 'Pieza viral con gancho inicial...', required: true })
+                                        ]),
+                                        h('div', { className: 'form-group' }, [
+                                            h('label', { className: 'form-label' }, 'Enlace Real (URL)'),
+                                            h('input', { id: 'v-url', type: 'url', className: 'form-input', placeholder: 'https://...', required: true })
+                                        ]),
+                                        h('button', { type: 'submit', className: 'btn btn-primary w-full mt-2' }, 'Guardar Video Viral')
+                                    ])
+                                ]);
+                                overlay.appendChild(vform);
+                                document.body.appendChild(overlay);
+                            }
+                        }, [icon('plus', 14), h('span', {}, 'Añadir Link')])
+                    ]),
+                    videoItems.length === 0 ? h('div', { className: 'p-4 text-center text-muted border rounded border-dashed' }, 'No hay videos virales registrados.') : h('div', { className: 'grid gap-4', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' } }, 
                         videoItems.map(vid => h('div', { className: 'card p-3 flex-column gap-3 relative overflow-hidden', style: { border: '1px solid rgba(255,255,255,0.08)' } }, [
                             h('div', { className: 'relative rounded-lg overflow-hidden flex items-center justify-center', style: { height: '140px', background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(168,85,247,0.15) 100%)' } }, [
                                 icon('play-circle', 40, 'text-accent opacity-80'),
-                                h('span', { className: 'absolute bottom-2 right-2 badge badge-secondary text-[10px]' }, vid.views)
+                                h('span', { className: 'absolute bottom-2 right-2 badge badge-secondary text-[10px]' }, vid.platform)
                             ]),
                             h('div', { className: 'flex-column gap-1' }, [
                                 h('h4', { className: 'text-xs font-bold text-primary m-0' }, vid.title),
-                                h('p', { className: 'text-[10px] text-muted m-0' }, `${vid.date} • Formato: ${vid.format}`),
-                                h('span', { className: 'text-[10px] text-accent mt-2 font-bold' }, `Hook: ${vid.hook}`)
+                                vid.addedAt ? h('p', { className: 'text-[10px] text-muted m-0' }, new Date(vid.addedAt).toLocaleDateString()) : null,
+                                h('a', { href: vid.url, target: '_blank', className: 'text-[10px] text-accent mt-2 font-bold flex items-center gap-1 hover-underline' }, [icon('external-link', 10), h('span', {}, 'Ver Video Original')])
                             ])
                         ]))
                     )
@@ -247,17 +299,23 @@ export const render = async (params) => {
                             box.appendChild(h('div', { className: 'text-xs text-white bg-accent p-2.5 rounded self-end max-w-xs ml-auto' }, val));
                             input.value = '';
 
-                            // Mock bot response based on keywords
-                            setTimeout(() => {
-                                let reply = `Tomando en cuenta la personalidad sofisticada de *${client.name}*, te recomiendo estructurar un video usando el Formato RC-01 Recorrido Comercial acoplado con el gancho HK-07 Descubrimiento Local.`;
-                                if (val.toLowerCase().includes('gancho') || val.toLowerCase().includes('hook')) {
-                                    reply = `Para *${client.name}*, los hooks de tipo curiosidad local como "El secreto gastronómico mejor guardado de la ciudad..." tienen un 87% de retención validada.`;
-                                } else if (val.toLowerCase().includes('guion') || val.toLowerCase().includes('script')) {
-                                    reply = `Aquí tienes una estructura rápida:\n1. Hook (0-3s): "No vas a creer este postre..."\n2. Cuerpo (3-15s): Muestra visual en cámara lenta del bizcocho mojado.\n3. CTA: "Link en bio para reservar."`;
-                                }
-                                box.appendChild(h('div', { className: 'text-xs text-secondary bg-secondary p-2.5 rounded border self-start max-w-xs' }, reply));
-                                box.scrollTop = box.scrollHeight;
-                            }, 700);
+                            // AI response based on real context
+                            const loadingMsg = h('div', { className: 'text-[10px] text-muted self-start max-w-xs italic mt-1 mb-1' }, 'IA escribiendo...');
+                            box.appendChild(loadingMsg);
+                            box.scrollTop = box.scrollHeight;
+                            
+                            const sysPrompt = `Eres un asistente creativo senior para la marca ${client.name}. Personalidad: ${client.personalidad || client.brandIdentity || 'No definida'}. Audiencia: ${client.audience || 'No definida'}. Responde de forma directa, concisa y creativa.`;
+                            aiService.callNvidia(val, sysPrompt)
+                                .then(reply => {
+                                    box.removeChild(loadingMsg);
+                                    box.appendChild(h('div', { className: 'text-xs text-secondary bg-secondary p-2.5 rounded border self-start max-w-xs', style: { whiteSpace: 'pre-wrap' } }, reply));
+                                    box.scrollTop = box.scrollHeight;
+                                })
+                                .catch(err => {
+                                    box.removeChild(loadingMsg);
+                                    box.appendChild(h('div', { className: 'text-[10px] text-error self-start max-w-xs' }, 'Error de conexión con IA.'));
+                                    box.scrollTop = box.scrollHeight;
+                                });
                         }
                     }, [
                         h('input', { type: 'text', placeholder: 'Pregúntale a la IA sobre esta cuenta...', className: 'form-input text-xs flex-1', required: true }),
@@ -294,6 +352,7 @@ export const render = async (params) => {
                 client.posicionamiento = form.querySelector('#cli-strat-pos').value;
                 client.clienteIdeal = form.querySelector('#cli-strat-buyer').value;
                 client.personalidad = form.querySelector('#cli-strat-pers').value;
+                client.referenceLinks = form.querySelector('#cli-strat-refs').value;
                 
                 await dbService.update('clients', client.id, client);
                 document.body.removeChild(overlay);
@@ -324,6 +383,10 @@ export const render = async (params) => {
                 h('div', { className: 'form-group' }, [
                     h('label', { className: 'form-label text-xs' }, 'Personalidad de la Cuenta'),
                     h('input', { id: 'cli-strat-pers', className: 'form-input text-xs', value: client.personalidad || '', required: true })
+                ]),
+                h('div', { className: 'form-group' }, [
+                    h('label', { className: 'form-label text-xs' }, 'Links de Referencia'),
+                    h('input', { id: 'cli-strat-refs', className: 'form-input text-xs', value: client.referenceLinks || '' })
                 ])
             ]),
             h('div', { className: 'modal-footer' }, [

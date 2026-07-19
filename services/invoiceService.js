@@ -187,7 +187,7 @@ export const invoiceService = {
                         `"${item.type || inv.type || ''}"`,
                         `"${item.client || inv.client || ''}"`,
                         `"${String(item.amount || 0).replace('.', ',')}"`,
-                        `"${item.createdAt ? new Date(item.createdAt).toLocaleDateString('es-CO') : ''}"`,
+                        `"${(item.date || item.createdAt || inv.createdAt) ? new Date(item.date || item.createdAt || inv.createdAt).toLocaleDateString('es-CO') : ''}"`,
                         `"${inv.status || ''}"`,
                         `"${(item.observations || '').replace(/"/g, '""')}"`
                     ]);
