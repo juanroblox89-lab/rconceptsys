@@ -203,7 +203,7 @@ function renderPendingCard(pu, reload, rolesList = []) {
                     const btn = e.currentTarget;
                     if (confirm('¿Rechazar solicitud?')) {
                         try {
-                            await userService.rejectUser(pu.uid || pu.id);
+                            await userService.rejectUser(pu.id || pu.uid);
                             reload();
                         } catch (err) {
                             alert('Error al rechazar usuario.');
@@ -217,7 +217,7 @@ function renderPendingCard(pu, reload, rolesList = []) {
                     const btn = e.currentTarget;
                     btn.disabled = true;
                     try {
-                        await userService.approveUser(pu.uid, roleSelect.value);
+                        await userService.approveUser(pu.id || pu.uid, roleSelect.value);
                         reload();
                     } catch (err) {
                         btn.disabled = false;
@@ -275,7 +275,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                     if (!window.confirm(`¿Promover a ${u.nombre || u.email} como Administrador?`)) return;
                     const btn = e.currentTarget;
                     try {
-                        await userService.approveUser(u.uid || u.id, 'admin');
+                        await userService.approveUser(u.id || u.uid, 'admin');
                         showFeedback(btn, '✓ Promovido');
                         setTimeout(() => reload(), 1200);
                     } catch (err) {
@@ -295,7 +295,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                 const { promptModal } = await import('../components/ui/PromptModal.js');
                 const confirmText = await promptModal({ title: 'Confirmar eliminación', message: `Escribe "Eliminar" para confirmar la eliminación de ${u.nombre || u.email}.`, placeholder: 'Eliminar' });
                 if (confirmText !== 'Eliminar') return;
-                await userService.rejectUser(u.uid || u.id);
+                await userService.rejectUser(u.id || u.uid);
                 reload();
             }
         }, 'Eliminar'));
@@ -311,7 +311,7 @@ function renderTeamRow(u, currentUser, reload, showFeedback, clientsList, rolesL
                     style: { padding: '2px 8px' },
                     onChange: async (e) => {
                         const newRole = e.target.value;
-                        await userService.approveUser(u.uid || u.id, newRole);
+                        await userService.approveUser(u.id || u.uid, newRole);
                         showFeedback(e.target.parentNode, '✓ Guardado');
                     }
                 }, [
@@ -349,7 +349,7 @@ function openClientAccessModal(u, clientsList, reload) {
     const submit = async (e) => {
         e.preventDefault();
         const checked = Array.from(form.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
-        await dbService.update('users', u.uid || u.id, { allowedClients: checked });
+        await dbService.update('users', u.id || u.uid, { allowedClients: checked });
         overlay.remove();
         reload();
     };
@@ -373,11 +373,11 @@ function openClientAccessModal(u, clientsList, reload) {
 // ── Edit User Phone Modal ───────────────────────────────────────
 function openUserPhoneModal(u, reload) {
     const overlay = h('div', { className: 'modal-overlay' });
-    const input = h('input', { type: 'text', className: 'form-input text-xs', value: u.whatsapp || '', placeholder: '573000000000' });
+    const input = h('input', { type: 'text', className: 'form-input text-xs', value: u.phone || '', placeholder: '573000000000' });
 
     const submit = async (e) => {
         e.preventDefault();
-        await dbService.update('users', u.uid || u.id, { whatsapp: input.value });
+        await dbService.update('users', u.id || u.uid, { phone: input.value });
         overlay.remove();
         reload();
     };

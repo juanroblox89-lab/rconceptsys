@@ -32,9 +32,9 @@ export const userService = {
         return all.filter(u => u.approved === false);
     },
 
-    async approveUser(uid, assignedRole) {
+    async approveUser(id, assignedRole) {
         try {
-            await dbService.update('users', uid, {
+            await dbService.update('users', id, {
                 approved: true,
                 role: assignedRole || 'editor'
             });
@@ -43,17 +43,17 @@ export const userService = {
         }
     },
 
-    async delegateAdminRole(targetUid, currentUid) {
+    async delegateAdminRole(targetId, currentId) {
         // Full Admin Handover: Promote target, demote current
         try {
             // 1. Promote target
-            await dbService.update('users', targetUid, {
+            await dbService.update('users', targetId, {
                 approved: true,
                 role: 'admin'
             });
             // 2. Demote current
-            if (currentUid && currentUid !== 'master-admin') {
-                await dbService.update('users', currentUid, {
+            if (currentId && currentId !== 'master-admin') {
+                await dbService.update('users', currentId, {
                     role: 'editor'
                 });
                 const currentUser = store.getState().user;
@@ -68,11 +68,20 @@ export const userService = {
         }
     },
 
-    async rejectUser(uid) {
+    async rejectUser(id) {
         try {
-            await dbService.delete('users', uid);
+            await dbService.delete('users', id);
         } catch (err) {
             console.warn("Simulated user rejection offline:", err);
+        }
+    },
+
+    async updateUser(id, data) {
+        try {
+            await dbService.update('users', id, data);
+        } catch (err) {
+            console.error("Error updating user:", err);
+            throw err;
         }
     }
 };

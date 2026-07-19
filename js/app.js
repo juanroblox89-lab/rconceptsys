@@ -318,7 +318,7 @@ class App {
             btn.disabled = true;
             btn.textContent = 'Guardando...';
             try {
-                await dbService.update('users', user.uid, { phone });
+                await dbService.update('users', user.id || user.uid, { phone });
                 const updatedUser = { ...user, phone };
                 store.setState({ user: updatedUser });
                 document.body.removeChild(overlay);

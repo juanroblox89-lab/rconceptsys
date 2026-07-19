@@ -457,7 +457,7 @@ function openChangeRoleModal(w, roles, reload) {
                 onClick: async (e) => {
                     const btn = e.currentTarget;
                     btn.disabled = true;
-                    await dbService.update('users', w.uid || w.id, { role: select.value });
+                    await dbService.update('users', w.id || w.uid, { role: select.value });
                     overlay.remove();
                     reload();
                 }
