@@ -27,7 +27,9 @@ const (
 // Accion es cada fila de la matriz ANALISIS §3.2 (17 de F0) más las 3 de F1
 // (producción: cancelar pieza, reasignar tarea, ver notificaciones propias)
 // más las 4 de F2 (cobros: confirmar/reclamar propios, marcar pagado y
-// decidir cancelada solo dueño).
+// decidir cancelada solo dueño) más las 3 de F3 (biblioteca: publicar/
+// rechazar/archivar solo admin/dueño; editar contenido publicado solo
+// admin/dueño; ejecutar SOP todo el que lee).
 type Accion string
 
 const (
@@ -64,6 +66,16 @@ const (
 	ReclamarCobro    Accion = "reclamar_cobro"
 	MarcarPagado     Accion = "marcar_pagado"
 	DecidirCancelada Accion = "decidir_cancelada"
+	// F3 biblioteca (brief F3 §1 y §4.4, ANALISIS §3.2 fila Biblioteca):
+	// PublicarContenido = publicar/rechazar/archivar un formato, hook,
+	// referencia o SOP (solo dueño/admin; el equipo propone y queda en
+	// borrador). EditarPublicado = editar un contenido ya publicado
+	// (solo dueño/admin; el equipo no edita lo publicado). EjecutarSOP =
+	// iniciar/marcar/terminar una ejecución de SOP (todo el que lee la
+	// biblioteca, incluso equipo, sobre SOPs publicados).
+	BibliotecaPublicar Accion = "biblioteca_publicar"
+	BibliotecaEditar   Accion = "biblioteca_editar"
+	EjecutarSOP        Accion = "ejecutar_sop"
 )
 
 // Recurso es el objeto concreto sobre el que se pide permiso. Para las
@@ -167,7 +179,8 @@ func esAccionConocida(a Accion) bool {
 		AjusteCobro, EditarTarifas, CerrarCorte, CRM, BibliotecaLeer,
 		BibliotecaCrear, GestionUsuarios, AsistenteIA,
 		CancelarPieza, ReasignarTarea, VerNotificaciones,
-		ConfirmarCobro, ReclamarCobro, MarcarPagado, DecidirCancelada:
+		ConfirmarCobro, ReclamarCobro, MarcarPagado, DecidirCancelada,
+		BibliotecaPublicar, BibliotecaEditar, EjecutarSOP:
 		return true
 	}
 	return false
@@ -190,8 +203,10 @@ func esAccionConocida(a Accion) bool {
 //     GestionUsuarios en true es la puerta gruesa: el detalle lo aplica el
 //     handler con PuedeCambiarAcceso, no aquí.
 //
-//   - equipo: BibliotecaLeer, BibliotecaCrear (como propuesta) y AsistenteIA
-//     (solo sobre lo que ya puede ver); lo "solo suyo" (ficha de cliente,
+//   - equipo: BibliotecaLeer, BibliotecaCrear (como propuesta), EjecutarSOP
+//     y AsistenteIA (solo sobre lo que ya puede ver); BibliotecaPublicar y
+//     BibliotecaEditar siempre false (BRIEF F3 §4.4: equipo no publica ni
+//     rechaza ni edita lo publicado); lo "solo suyo" (ficha de cliente,
 //     tareas, estado de tarea, cobros, confirmar/reclamar cobro,
 //     notificaciones) exige Recurso.OwnerID == su id; CRM exige además
 //     oficio ventas.
@@ -212,7 +227,7 @@ func Puede(u Usuario, accion Accion, recurso Recurso) bool {
 		}
 	case AccesoEquipo:
 		switch accion {
-		case BibliotecaLeer, BibliotecaCrear, AsistenteIA:
+		case BibliotecaLeer, BibliotecaCrear, AsistenteIA, EjecutarSOP:
 			return true
 		case VerFichaCliente, VerTareas, CambiarEstadoTarea, VerCobros, VerNotificaciones,
 			ConfirmarCobro, ReclamarCobro:

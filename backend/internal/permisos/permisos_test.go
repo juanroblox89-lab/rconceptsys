@@ -8,7 +8,7 @@ package permisos
 
 import "testing"
 
-// accionesTodas cubre cada fila de la matriz ANALISIS §3.2 (17 de F0) + 3 de F1 + 4 de F2.
+// accionesTodas cubre cada fila de la matriz ANALISIS §3.2 (17 de F0) + 3 de F1 + 4 de F2 + 3 de F3.
 var accionesTodas = []Accion{
 	VerPanel, CrearEditarClientes, VerFichaCliente, CrearPiezasAsignar,
 	VerTareas, CambiarEstadoTarea, AprobarEntrega, VerCobros, AprobarCobros,
@@ -16,6 +16,7 @@ var accionesTodas = []Accion{
 	BibliotecaCrear, GestionUsuarios, AsistenteIA,
 	CancelarPieza, ReasignarTarea, VerNotificaciones,
 	ConfirmarCobro, ReclamarCobro, MarcarPagado, DecidirCancelada,
+	BibliotecaPublicar, BibliotecaEditar, EjecutarSOP,
 }
 
 func TestDuenoTodo(t *testing.T) {
@@ -34,10 +35,15 @@ func TestAdminTodoMenosTarifasYCortes(t *testing.T) {
 	u := Usuario{ID: "a", Acceso: AccesoAdmin}
 	for _, a := range accionesTodas {
 		// ANALISIS §7.1 + §7.6: tarifas, cortes, pagado y decisión de
-		// canceladas = solo dueño.
+		// canceladas = solo dueño. F3 publica/edita biblioteca = admin sí.
 		quiere := a != EditarTarifas && a != CerrarCorte && a != MarcarPagado && a != DecidirCancelada
 		if Puede(u, a, Recurso{}) != quiere {
 			t.Errorf("admin %q = %v, quería %v", a, !quiere, quiere)
+		}
+		if a == BibliotecaPublicar || a == BibliotecaEditar {
+			if !quiere {
+				t.Errorf("admin debería poder %q (F3: admin/dueño publican)", a)
+			}
 		}
 	}
 	if Puede(u, "accion_que_no_existe", Recurso{}) {
@@ -104,6 +110,12 @@ func TestEquipoTabla(t *testing.T) {
 		{ReclamarCobro, false, true, false, true, false},
 		{MarcarPagado, false, false, false, false, false},
 		{DecidirCancelada, false, false, false, false, false},
+		// F3: publicar/rechazar/archivar y editar lo publicado = solo
+		// admin/dueño (equipo → 403, BRIEF F3 §4.4); ejecutar SOP = todo
+		// el que lee, incluso equipo.
+		{BibliotecaPublicar, false, false, false, false, false},
+		{BibliotecaEditar, false, false, false, false, false},
+		{EjecutarSOP, true, true, true, true, true},
 	}
 	for _, c := range casos {
 		if got := Puede(base, c.accion, vacio); got != c.sinRecurso {

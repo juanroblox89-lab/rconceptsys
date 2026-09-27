@@ -1,4 +1,4 @@
-# Backend Go — RConcept Systems v2 (F0+F1+F2)
+# Backend Go — RConcept Systems v2 (F0+F1+F2+F3)
 
 Solo stdlib (`net/http`, `encoding/json`). Puerto `:8095` (`PORT` lo cambia;
 en F2 los QA usan `18095`).
@@ -163,3 +163,53 @@ configurable 0–100), modo `una_vez` (default, al crear cliente) o `mensual`
 Semillas demo F2 (memoria, `demo=true`): tarifas edición por_tarea 80000 +
 grabación por_minuto 2000 + 6 tramos duración ejemplo + 9 paquetes del
 brief (TV Basic 300000 … Mixto III 1299000) + config 8/una_vez.
+
+## Contrato F3 (biblioteca: formatos, hooks, referencias, SOPs)
+
+Estados contenido: `borrador → publicado | rechazado`; `publicado →
+archivado`; `rechazado → borrador` (reproponer) `| archivado`. Nada se
+borra: se archiva. Equipo propone → `borrador` forzado (visible solo para
+quien lo propuso + admin/dueño); admin/dueño crea y publica directo.
+Publicar/rechazar/archivar: solo admin/dueño (`BibliotecaPublicar`;
+equipo → `403`; rechazar exige motivo). Editar: admin/dueño todo salvo
+archivado; equipo solo su borrador/rechazado (editar un rechazado lo
+vuelve a borrador); equipo no edita lo publicado (`BibliotecaEditar` →
+`403`). Borrador ajeno → `404` (no se filtra su existencia). Búsqueda
+`?q=` + filtro `?etiqueta=` (más `?categoria=` en hooks, `?plataforma=` en referencias y
+`?oficio=` en SOPs). Cada cambio → actividad + notificación al
+proponente (publicado/rechazado).
+
+- `GET /formatos?q=&etiqueta=&estado=` → `{formatos}` (publicado todos;
+  resto admin/proponente). `POST /formatos {nombre, codigo?, objetivo?,
+  estructura?, hooks_recomendados?, kpis?, ejemplos?, etiquetas?,
+  estado?: borrador|publicado (solo admin)}` → `201`.
+- `GET /formatos/{id}` · `PATCH /formatos/{id}` (mismos campos; sin
+  estado) · `POST /formatos/{id}/publicar|rechazar {motivo}|archivar`.
+- Igual para `/hooks {titulo, categoria?, psicologia?,
+  retencion_esperada?, variaciones?, ejemplos?, etiquetas?}`,
+  `/referencias {titulo, link, plataforma?: Instagram|TikTok|YouTube|otra,
+  analisis?, etiquetas?, cliente_id?}` (cliente debe existir) y
+  `/sops {titulo, oficio?: todos|grabacion|…|ventas (acepta tildes),
+  tiempo_estimado_min?, etiquetas?, pasos? [{titulo, descripcion?}]}` →
+  `201 {sop, pasos}`.
+- `GET /sops/{id}` → `{sop, pasos}`. `GET /sops/{id}/pasos` →
+  `{pasos}`. `POST /sops/{id}/pasos {titulo, descripcion?}` → `201`
+  (solo SOP borrador/rechazado; en publicado → `400`).
+  `PATCH /sop-pasos/{id} {titulo?, descripcion?}` (misma regla).
+- `GET /sop-ejecuciones?sop_id=&tarea_id=&mias=1` → `{ejecuciones}`
+  (admin/dueño todas; equipo solo suyas). `POST /sop-ejecuciones
+  {sop_id, tarea_id?}` → `201` (SOP publicado; tarea ligada: equipo solo
+  la suya → `403`). `GET /sop-ejecuciones/{id}` (misma regla).
+- `POST /sop-ejecuciones/{id}/pasos {paso_id}` → `200` (marca;
+  idempotente; paso de otro SOP → `400`; terminada → `400`).
+  `DELETE /sop-ejecuciones/{id}/pasos/{paso_id}` → `200` (desmarca).
+  `POST /sop-ejecuciones/{id}/terminar` → `200` (en_curso → terminada;
+  idempotente; no se reabre). Solo el dueño de la ejecución o admin.
+- Clientes y piezas aceptan `formato_recomendado_id` +
+  `hook_recomendado_id` (solo referencia a contenido PUBLICADO → `400`
+  si no existe o no está publicado; sin romper F1).
+
+Semillas demo F3 (memoria, `demo=true`, publicados): formatos RC-01
+Recorrido Comercial + ED-02 Educativo Rápido (de
+`contenido/formatos-y-hooks.js`) + 2 hooks del archivo + SOP checklist
+de grabación (4 pasos) + SOP entrega de edición (4 pasos).

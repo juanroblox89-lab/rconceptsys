@@ -37,6 +37,10 @@ type Cliente struct {
 	DriveURL    string `json:"drive_url,omitempty"`
 	Notas       string `json:"notas,omitempty"`
 	Estrategia  string `json:"estrategia,omitempty"`
+	// Vínculo Biblioteca F3 (BRIEF F3 §1): formato y hook recomendados para
+	// el cliente. Solo referencia (ids, SET NULL en base); no rompe F1.
+	FormatoRecomendadoID string `json:"formato_recomendado_id,omitempty"`
+	HookRecomendadoID    string `json:"hook_recomendado_id,omitempty"`
 	ArchivadoAt string `json:"archivado_at,omitempty"`
 	CreatedAt   string `json:"created_at,omitempty"`
 	UpdatedAt   string `json:"updated_at,omitempty"`
@@ -62,13 +66,18 @@ const (
 // Pieza es un contenido a entregar. UpdatedAt es el control de versión
 // (§5.14): el PATCH lo exige y el handler responde 409 si cambió.
 type Pieza struct {
-	ID                string `json:"id"`
-	ClienteID         string `json:"cliente_id"`
-	Titulo            string `json:"titulo"`
-	Formato           string `json:"formato,omitempty"`
-	Guion             string `json:"guion,omitempty"`
-	FechaObjetivo     string `json:"fecha_objetivo,omitempty"`
-	Estado            string `json:"estado"`
+	ID            string `json:"id"`
+	ClienteID     string `json:"cliente_id"`
+	Titulo        string `json:"titulo"`
+	Formato       string `json:"formato,omitempty"`
+	Guion         string `json:"guion,omitempty"`
+	FechaObjetivo string `json:"fecha_objetivo,omitempty"`
+	Estado        string `json:"estado"`
+	// Vínculo Biblioteca F3 (BRIEF F3 §1): formato y hook usados o
+	// recomendados en la pieza. Solo referencia; convive con el texto
+	// libre Formato de F1 (compatibilidad).
+	FormatoRecomendadoID string `json:"formato_recomendado_id,omitempty"`
+	HookRecomendadoID    string `json:"hook_recomendado_id,omitempty"`
 	MotivoCancelacion string `json:"motivo_cancelacion,omitempty"`
 	CreatedAt         string `json:"created_at,omitempty"`
 	UpdatedAt         string `json:"updated_at,omitempty"`

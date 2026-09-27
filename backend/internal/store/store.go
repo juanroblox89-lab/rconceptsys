@@ -10,6 +10,7 @@ import (
 	"errors"
 	"time"
 
+	"rconceptsys/backend/internal/biblioteca"
 	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/permisos"
 	"rconceptsys/backend/internal/produccion"
@@ -43,6 +44,16 @@ type (
 	LineaCobro   = cobros.LineaCobro
 	Corte        = cobros.Corte
 	ConfigCobros = cobros.ConfigCobros
+)
+
+// Aliases F3 (biblioteca: formatos, hooks, referencias, SOPs ejecutables).
+type (
+	Formato      = biblioteca.Formato
+	Hook         = biblioteca.Hook
+	Referencia   = biblioteca.Referencia
+	SOP          = biblioteca.SOP
+	SOPPaso      = biblioteca.SOPPaso
+	SOPEjecucion = biblioteca.SOPEjecucion
 )
 
 // ErrVersion es el conflicto de edición (§5.14): el updated_at esperado no
@@ -152,6 +163,48 @@ type Store interface {
 	GetCorteByPeriodo(periodo string) (cobros.Corte, bool, error)
 	CreateCorte(c cobros.Corte) (cobros.Corte, error)
 	UpdateCorte(id string, cambios map[string]any) (cobros.Corte, error)
+
+	// --- F3 biblioteca (BRIEF F3 §1; ANALISIS §3.2 fila Biblioteca) ---
+	// Contenido con flujo borrador → publicado/rechazado/archivado.
+	// UpdateXxx aplica cambios parciales y actualiza updated_at.
+	ListFormatos() ([]biblioteca.Formato, error)
+	GetFormato(id string) (biblioteca.Formato, bool, error)
+	CreateFormato(f biblioteca.Formato) (biblioteca.Formato, error)
+	UpdateFormato(id string, cambios map[string]any) (biblioteca.Formato, error)
+
+	ListHooks() ([]biblioteca.Hook, error)
+	GetHook(id string) (biblioteca.Hook, bool, error)
+	CreateHook(h biblioteca.Hook) (biblioteca.Hook, error)
+	UpdateHook(id string, cambios map[string]any) (biblioteca.Hook, error)
+
+	ListReferencias() ([]biblioteca.Referencia, error)
+	GetReferencia(id string) (biblioteca.Referencia, bool, error)
+	CreateReferencia(r biblioteca.Referencia) (biblioteca.Referencia, error)
+	UpdateReferencia(id string, cambios map[string]any) (biblioteca.Referencia, error)
+
+	ListSOPs() ([]biblioteca.SOP, error)
+	GetSOP(id string) (biblioteca.SOP, bool, error)
+	CreateSOP(s biblioteca.SOP) (biblioteca.SOP, error)
+	UpdateSOP(id string, cambios map[string]any) (biblioteca.SOP, error)
+
+	// Pasos de un SOP (ordenados). UpdateSOPPaso solo toca titulo/
+	// descripcion de un BORRADOR (lo impone el handler); CreateSOPPaso
+	// asigna orden = max+1 cuando viene en 0.
+	ListSOPPasos(sopID string) ([]biblioteca.SOPPaso, error)
+	CreateSOPPaso(p biblioteca.SOPPaso) (biblioteca.SOPPaso, error)
+	UpdateSOPPaso(id string, cambios map[string]any) (biblioteca.SOPPaso, error)
+
+	// Ejecuciones de SOP (BRIEF F3 §1): iniciar, marcar pasos, terminar.
+	ListSOPEjecuciones() ([]biblioteca.SOPEjecucion, error)
+	GetSOPEjecucion(id string) (biblioteca.SOPEjecucion, bool, error)
+	CreateSOPEjecucion(e biblioteca.SOPEjecucion) (biblioteca.SOPEjecucion, error)
+	UpdateSOPEjecucion(id string, cambios map[string]any) (biblioteca.SOPEjecucion, error)
+	// MarcarPaso registra un paso marcado (idempotente por
+	// ejecucion+paso); DesmarcarPaso lo quita. ListPasosMarcados trae
+	// los pasos marcados de una ejecución.
+	MarcarPaso(ejecucionID, pasoID string) (biblioteca.SOPEjecucionPaso, error)
+	DesmarcarPaso(ejecucionID, pasoID string) error
+	ListPasosMarcados(ejecucionID string) ([]biblioteca.SOPEjecucionPaso, error)
 }
 
 // NewUUID genera un UUID v4 con crypto/rand (stdlib only, sin dependencias).

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"rconceptsys/backend/internal/biblioteca"
 	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/produccion"
 )
@@ -63,6 +64,19 @@ type Memoria struct {
 	ordenCor   []string
 	config     cobros.ConfigCobros
 	tieneConf  bool
+	// F3 biblioteca
+	formatos     map[string]biblioteca.Formato
+	ordenForm    []string
+	hooks        map[string]biblioteca.Hook
+	ordenHook    []string
+	referencias  map[string]biblioteca.Referencia
+	ordenRef     []string
+	sops         map[string]biblioteca.SOP
+	ordenSOP     []string
+	sopPasos     map[string]biblioteca.SOPPaso
+	ejecuciones  map[string]biblioteca.SOPEjecucion
+	ordenEjec    []string
+	marcados     map[string]biblioteca.SOPEjecucionPaso
 }
 
 // NuevaMemoria crea el store demo con las 4 semillas F0: dueño Samuel (todos
@@ -82,6 +96,13 @@ func NuevaMemoria() *Memoria {
 		paquetes:       map[string]cobros.Paquete{},
 		lineas:         map[string]cobros.LineaCobro{},
 		cortes:         map[string]cobros.Corte{},
+		formatos:       map[string]biblioteca.Formato{},
+		hooks:          map[string]biblioteca.Hook{},
+		referencias:    map[string]biblioteca.Referencia{},
+		sops:           map[string]biblioteca.SOP{},
+		sopPasos:       map[string]biblioteca.SOPPaso{},
+		ejecuciones:    map[string]biblioteca.SOPEjecucion{},
+		marcados:       map[string]biblioteca.SOPEjecucionPaso{},
 	}
 	fija := "2026-09-26T12:00:00Z"
 	m.poner(Usuario{ID: SemillaDuenoID, Nombre: "Samuel", Email: "samuel@demo.rconceptsys", Acceso: "dueno", Oficios: []string{"grabacion", "edicion", "diseno", "estrategia", "publicacion", "ventas"}, CreatedAt: fija, UpdatedAt: fija})
@@ -90,6 +111,7 @@ func NuevaMemoria() *Memoria {
 	m.poner(Usuario{ID: SemillaPendienteID, Nombre: "Nuevo Pendiente", Email: "pendiente@demo.rconceptsys", Acceso: "pendiente", CreatedAt: fija, UpdatedAt: fija})
 	m.semillasF1(fija)
 	m.semillasF2(fija)
+	m.semillasF3(fija)
 	return m
 }
 
@@ -374,6 +396,12 @@ func aplicaCliente(c produccion.Cliente, cambios map[string]any) produccion.Clie
 	if v, ok := str("estrategia"); ok {
 		c.Estrategia = v
 	}
+	if v, ok := str("formato_recomendado_id"); ok {
+		c.FormatoRecomendadoID = v
+	}
+	if v, ok := str("hook_recomendado_id"); ok {
+		c.HookRecomendadoID = v
+	}
 	return c
 }
 
@@ -461,6 +489,12 @@ func aplicaPieza(p produccion.Pieza, cambios map[string]any) produccion.Pieza {
 	}
 	if v, ok := cambios["motivo_cancelacion"].(string); ok {
 		p.MotivoCancelacion = v
+	}
+	if v, ok := cambios["formato_recomendado_id"].(string); ok {
+		p.FormatoRecomendadoID = v
+	}
+	if v, ok := cambios["hook_recomendado_id"].(string); ok {
+		p.HookRecomendadoID = v
 	}
 	return p
 }

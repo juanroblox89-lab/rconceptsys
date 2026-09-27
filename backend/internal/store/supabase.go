@@ -247,6 +247,8 @@ type clienteFila struct {
 	Paquete          string `json:"paquete"`
 	PaqueteID        string `json:"paquete_id"`
 	VendidoPor       string `json:"vendido_por"`
+	FormatoRec       string `json:"formato_recomendado_id"`
+	HookRec          string `json:"hook_recomendado_id"`
 	Estado           string `json:"estado"`
 	DriveURL         string `json:"drive_url"`
 	Notas            string `json:"notas"`
@@ -263,6 +265,7 @@ func (f clienteFila) aCliente() produccion.Cliente {
 		ContactoNombre: f.ContactoNombre, ContactoTelefono: f.ContactoTelefono,
 		ContactoWhatsapp: f.ContactoWhatsapp, Paquete: f.Paquete,
 		PaqueteID: f.PaqueteID, VendidoPor: f.VendidoPor,
+		FormatoRecomendadoID: f.FormatoRec, HookRecomendadoID: f.HookRec,
 		Estado: f.Estado, DriveURL: f.DriveURL, Notas: f.Notas,
 		Estrategia: f.Estrategia, ArchivadoAt: f.ArchivadoAt,
 		CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt, CreatedBy: f.CreatedBy,
@@ -278,6 +281,8 @@ func filaDeCliente(c produccion.Cliente) map[string]any {
 		"paquete":           nuloSiVacio(c.Paquete), "estado": c.Estado,
 		"paquete_id":  nuloSiVacio(c.PaqueteID),
 		"vendido_por": nuloSiVacio(c.VendidoPor),
+		"formato_recomendado_id": nuloSiVacio(c.FormatoRecomendadoID),
+		"hook_recomendado_id":    nuloSiVacio(c.HookRecomendadoID),
 		"drive_url": nuloSiVacio(c.DriveURL), "notas": nuloSiVacio(c.Notas),
 		"estrategia":   nuloSiVacio(c.Estrategia),
 		"created_by":   nuloSiVacio(c.CreatedBy),
@@ -362,6 +367,8 @@ type piezaFila struct {
 	FechaObjetivo     string `json:"fecha_objetivo"`
 	Estado            string `json:"estado"`
 	MotivoCancelacion string `json:"motivo_cancelacion"`
+	FormatoRec        string `json:"formato_recomendado_id"`
+	HookRec           string `json:"hook_recomendado_id"`
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`
 	CreatedBy         string `json:"created_by"`
@@ -372,6 +379,7 @@ func (f piezaFila) aPieza() produccion.Pieza {
 		ID: f.ID, ClienteID: f.ClienteID, Titulo: f.Titulo,
 		Formato: f.Formato, Guion: f.Guion, FechaObjetivo: f.FechaObjetivo,
 		Estado: f.Estado, MotivoCancelacion: f.MotivoCancelacion,
+		FormatoRecomendadoID: f.FormatoRec, HookRecomendadoID: f.HookRec,
 		CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt, CreatedBy: f.CreatedBy,
 	}
 }
@@ -382,7 +390,9 @@ func filaDePieza(p produccion.Pieza) map[string]any {
 		"formato": p.Formato, "guion": p.Guion,
 		"fecha_objetivo": nuloSiVacio(p.FechaObjetivo), "estado": p.Estado,
 		"motivo_cancelacion": nuloSiVacio(p.MotivoCancelacion),
-		"created_by":         nuloSiVacio(p.CreatedBy),
+		"formato_recomendado_id": nuloSiVacio(p.FormatoRecomendadoID),
+		"hook_recomendado_id":    nuloSiVacio(p.HookRecomendadoID),
+		"created_by":             nuloSiVacio(p.CreatedBy),
 	}
 }
 

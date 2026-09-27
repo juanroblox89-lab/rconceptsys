@@ -60,6 +60,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /actividad", s.listActividad)
 	s.rutasF1(mux)
 	s.rutasF2(mux)
+	s.rutasF3(mux)
 	return corsMiddleware(requireInterno(s.interno, mux))
 }
 

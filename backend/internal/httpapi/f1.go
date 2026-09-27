@@ -260,6 +260,8 @@ func clienteVista(c store.Cliente) map[string]any {
 		"contacto_nombre": c.ContactoNombre, "contacto_telefono": c.ContactoTelefono,
 		"contacto_whatsapp": c.ContactoWhatsapp, "paquete": c.Paquete,
 		"paquete_id": c.PaqueteID, "vendido_por": c.VendidoPor,
+		"formato_recomendado_id": c.FormatoRecomendadoID,
+		"hook_recomendado_id":    c.HookRecomendadoID,
 		"estado": c.Estado, "drive_url": c.DriveURL, "notas": c.Notas,
 		"estrategia": c.Estrategia, "archivado_at": c.ArchivadoAt,
 		"created_at": c.CreatedAt, "updated_at": c.UpdatedAt,
@@ -339,11 +341,14 @@ type clienteBody struct {
 	// F2: referencia al catálogo + vendedor (BRIEF F2 §4).
 	PaqueteID  string `json:"paquete_id"`
 	VendidoPor string `json:"vendido_por"`
-	Estado     string `json:"estado"`
-	DriveURL   string `json:"drive_url"`
-	Notas      string `json:"notas"`
-	Estrategia string `json:"estrategia"`
-	UpdatedAt  string `json:"updated_at"`
+	// F3: formato y hook recomendados (solo referencia, BRIEF F3 §1).
+	FormatoRecomendadoID string `json:"formato_recomendado_id"`
+	HookRecomendadoID    string `json:"hook_recomendado_id"`
+	Estado               string `json:"estado"`
+	DriveURL             string `json:"drive_url"`
+	Notas                string `json:"notas"`
+	Estrategia           string `json:"estrategia"`
+	UpdatedAt            string `json:"updated_at"`
 }
 
 func (s *Server) createCliente(w http.ResponseWriter, r *http.Request) {
@@ -391,6 +396,12 @@ func (s *Server) createCliente(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// F3: vínculo formato/hook recomendado (solo referencia publicada).
+	formatoRec := strings.TrimSpace(body.FormatoRecomendadoID)
+	hookRec := strings.TrimSpace(body.HookRecomendadoID)
+	if !s.validaVinculoBiblio(w, formatoRec, hookRec) {
+		return
+	}
 	c, err := s.st.CreateCliente(store.Cliente{
 		Nombre:           strings.TrimSpace(body.Nombre),
 		LogoURL:          strings.TrimSpace(body.LogoURL),
@@ -400,6 +411,8 @@ func (s *Server) createCliente(w http.ResponseWriter, r *http.Request) {
 		Paquete:          strings.TrimSpace(body.Paquete),
 		PaqueteID:        paqueteID,
 		VendidoPor:       vendidoPor,
+		FormatoRecomendadoID: formatoRec,
+		HookRecomendadoID:    hookRec,
 		Estado:           estado,
 		DriveURL:         strings.TrimSpace(body.DriveURL),
 		Notas:            body.Notas,
@@ -538,6 +551,24 @@ func (s *Server) patchCliente(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// F3: vínculo formato/hook recomendado (solo referencia publicada).
+	if v, ok := cambios["formato_recomendado_id"]; ok {
+		vs, _ := v.(string)
+		var hookID string
+		if hv, ok := cambios["hook_recomendado_id"]; ok {
+			hookID, _ = hv.(string)
+		} else {
+			hookID = c.HookRecomendadoID
+		}
+		if !s.validaVinculoBiblio(w, vs, hookID) {
+			return
+		}
+	} else if v, ok := cambios["hook_recomendado_id"]; ok {
+		vs, _ := v.(string)
+		if !s.validaVinculoBiblio(w, c.FormatoRecomendadoID, vs) {
+			return
+		}
+	}
 	// F2: vendido_por se valida (oficio ventas, no pendiente/desactivado).
 	if v, ok := cambios["vendido_por"]; ok {
 		if vs := strings.TrimSpace(v.(string)); vs != "" {
@@ -590,6 +621,13 @@ func bodyACambiosCliente(body clienteBody, c store.Cliente) map[string]any {
 	}
 	if body.VendidoPor != c.VendidoPor && (body.VendidoPor != "" || c.VendidoPor != "") {
 		cambios["vendido_por"] = strings.TrimSpace(body.VendidoPor)
+	}
+	// F3: formato/hook recomendado (solo referencia a contenido publicado).
+	if body.FormatoRecomendadoID != c.FormatoRecomendadoID && (body.FormatoRecomendadoID != "" || c.FormatoRecomendadoID != "") {
+		cambios["formato_recomendado_id"] = strings.TrimSpace(body.FormatoRecomendadoID)
+	}
+	if body.HookRecomendadoID != c.HookRecomendadoID && (body.HookRecomendadoID != "" || c.HookRecomendadoID != "") {
+		cambios["hook_recomendado_id"] = strings.TrimSpace(body.HookRecomendadoID)
 	}
 	if e := strings.TrimSpace(body.Estado); e != "" && e != c.Estado {
 		cambios["estado"] = e
@@ -646,6 +684,8 @@ func piezaVista(p store.Pieza, nombreCliente string) map[string]any {
 	return map[string]any{
 		"id": p.ID, "cliente_id": p.ClienteID, "cliente_nombre": nombreCliente,
 		"titulo": p.Titulo, "formato": p.Formato, "guion": p.Guion,
+		"formato_recomendado_id": p.FormatoRecomendadoID,
+		"hook_recomendado_id":    p.HookRecomendadoID,
 		"fecha_objetivo": p.FechaObjetivo, "estado": p.Estado,
 		"motivo_cancelacion": p.MotivoCancelacion,
 		"created_at":         p.CreatedAt, "updated_at": p.UpdatedAt,
@@ -750,7 +790,10 @@ type piezaBody struct {
 	FechaObjetivo string      `json:"fecha_objetivo"`
 	Etapas        []etapaBody `json:"etapas"`
 	Estado        string      `json:"estado"`
-	UpdatedAt     string      `json:"updated_at"`
+	// F3: formato y hook vinculados (solo referencia, BRIEF F3 §1).
+	FormatoRecomendadoID string `json:"formato_recomendado_id"`
+	HookRecomendadoID    string `json:"hook_recomendado_id"`
+	UpdatedAt            string `json:"updated_at"`
 }
 
 func (s *Server) createPieza(w http.ResponseWriter, r *http.Request) {
@@ -803,10 +846,18 @@ func (s *Server) createPieza(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// F3: vínculo formato/hook (solo referencia a contenido publicado).
+	formatoRecP := strings.TrimSpace(body.FormatoRecomendadoID)
+	hookRecP := strings.TrimSpace(body.HookRecomendadoID)
+	if !s.validaVinculoBiblio(w, formatoRecP, hookRecP) {
+		return
+	}
 	p, err := s.st.CreatePieza(store.Pieza{
 		ClienteID: cliente.ID, Titulo: strings.TrimSpace(body.Titulo),
 		Formato: body.Formato, Guion: body.Guion,
 		FechaObjetivo: body.FechaObjetivo,
+		FormatoRecomendadoID: formatoRecP,
+		HookRecomendadoID:    hookRecP,
 		Estado:        produccion.PiezaBorrador, CreatedBy: actor.ID,
 	})
 	if err != nil {
@@ -973,6 +1024,18 @@ func (s *Server) patchPieza(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cambios["estado"] = e
+	}
+	// F3: vínculo formato/hook (solo referencia a contenido publicado).
+	if fr, hr := strings.TrimSpace(body.FormatoRecomendadoID), strings.TrimSpace(body.HookRecomendadoID); fr != p.FormatoRecomendadoID || hr != p.HookRecomendadoID {
+		if !s.validaVinculoBiblio(w, fr, hr) {
+			return
+		}
+		if fr != p.FormatoRecomendadoID {
+			cambios["formato_recomendado_id"] = fr
+		}
+		if hr != p.HookRecomendadoID {
+			cambios["hook_recomendado_id"] = hr
+		}
 	}
 	if len(cambios) == 0 {
 		clientes, err := s.st.ListClientes(true)
