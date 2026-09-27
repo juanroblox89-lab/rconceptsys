@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
+import { Modal } from "@/components/Modal";
 import { useSession } from "@/components/SessionProvider";
 import { getTareas } from "@/lib/f1ui";
 import { getUsuarios } from "@/lib/api";
@@ -47,6 +48,7 @@ import {
   type Tarifa,
   type UnidadTarifa,
 } from "@/lib/f2tipos";
+import { fmtPeriodo } from "@/lib/fechas";
 import f1 from "@/components/F1.module.css";
 
 type Tab = "lineas" | "historial" | "reclamos" | "tarifas" | "paquetes" | "corte" | "decisiones";
@@ -111,7 +113,7 @@ function HistorialMio({ periodo }: { periodo: string }) {
   return (
     <div className={f1.f1card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}>
-        <strong>Corte {detalle.periodo}</strong>
+        <strong>Corte {fmtPeriodo(detalle.periodo)}</strong>
         <span className={f1.f1chip}>{detalle.corte.estado}</span>
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>
@@ -154,9 +156,9 @@ function LineaCard({
   return (
     <li className={f1.f1card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <strong style={{ fontSize: 13 }}>
+        <strong style={{ fontSize: 14 }}>
           {fmtCOP(linea.monto_cop)}{" "}
-          <span style={{ fontWeight: 400, color: "var(--c-text-2)" }}>
+          <span style={{ fontWeight: 400, color: "var(--c-text-2)", fontSize: 12 }}>
             · {linea.tipo}{linea.usuario_nombre ? ` · ${linea.usuario_nombre}` : ""}
           </span>
         </strong>
@@ -225,7 +227,6 @@ function LineaCard({
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
           <input
             className="input"
-            style={{ minHeight: 36, fontSize: 13, flex: "1 1 auto" }}
             placeholder="Motivo (obligatorio)"
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
@@ -260,6 +261,7 @@ function TarifasPanel({ onDone }: { onDone: () => void }) {
   const [etapa, setEtapa] = useState("edicion");
   const [unidad, setUnidad] = useState<UnidadTarifa>("por_tarea");
   const [monto, setMonto] = useState("");
+  const [nueva, setNueva] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -285,6 +287,7 @@ function TarifasPanel({ onDone }: { onDone: () => void }) {
     try {
       await crearTarifa({ etapa, unidad, monto_cop: n });
       setMonto("");
+      setNueva(false);
       await cargar();
       onDone();
     } catch (e) {
@@ -296,36 +299,59 @@ function TarifasPanel({ onDone }: { onDone: () => void }) {
 
   return (
     <div>
-      <h2 className="page-sub" style={{ margin: "0 0 8px" }}>
-        Tarifas (crear nueva versión; la anterior queda en historial)
-      </h2>
-      {error !== null && <p role="alert" style={{ fontSize: 12 }}>{error}</p>}
-      <div className={f1.f1filters}>
-        <select className="input select" style={{ minHeight: 36, fontSize: 13 }} value={etapa} onChange={(e) => setEtapa(e.target.value)} aria-label="Etapa">
-          <option value="grabacion_principal">Grabación principal</option>
-          <option value="grabacion_apoyo">Grabación de apoyo</option>
-          <option value="edicion">Edición</option>
-          <option value="diseno">Diseño</option>
-          <option value="publicacion">Publicación</option>
-        </select>
-        <select className="input select" style={{ minHeight: 36, fontSize: 13 }} value={unidad} onChange={(e) => setUnidad(e.target.value as UnidadTarifa)} aria-label="Unidad">
-          <option value="por_tarea">Por tarea</option>
-          <option value="por_minuto">Por minuto</option>
-          <option value="por_duracion">Por duración</option>
-        </select>
-        <input
-          className="input"
-          style={{ minHeight: 36, fontSize: 13, maxWidth: 140 }}
-          inputMode="numeric"
-          placeholder="Monto COP"
-          value={monto}
-          onChange={(e) => setMonto(e.target.value)}
-        />
-        <button type="button" className="btn btn-primary btn-sm" disabled={saving || monto.trim() === ""} onClick={() => void guardar()}>
-          Guardar
+      <div className={f1.f1head}>
+        <h2 className="page-sub" style={{ margin: "0" }}>
+          Tarifas (crear nueva versión; la anterior queda en historial)
+        </h2>
+        <button type="button" className="btn btn-sm" onClick={() => setNueva(true)}>
+          Nueva tarifa
         </button>
       </div>
-      <ul className={f1.f1list}>
+      {error !== null && <p role="alert" style={{ fontSize: 12 }}>{error}</p>}
+      {nueva && (
+        <Modal title="Nueva tarifa" onClose={() => setNueva(false)}>
+          <div className={f1.f1sheetFilters}>
+            <label className="label" htmlFor="nt-etapa">
+              Etapa
+              <select id="nt-etapa" className="select" value={etapa} onChange={(e) => setEtapa(e.target.value)}>
+                <option value="grabacion_principal">Grabación principal</option>
+                <option value="grabacion_apoyo">Grabación de apoyo</option>
+                <option value="edicion">Edición</option>
+                <option value="diseno">Diseño</option>
+                <option value="publicacion">Publicación</option>
+              </select>
+            </label>
+            <label className="label" htmlFor="nt-unidad">
+              Unidad
+              <select id="nt-unidad" className="select" value={unidad} onChange={(e) => setUnidad(e.target.value as UnidadTarifa)}>
+                <option value="por_tarea">Por tarea</option>
+                <option value="por_minuto">Por minuto</option>
+                <option value="por_duracion">Por duración</option>
+              </select>
+            </label>
+            <label className="label" htmlFor="nt-monto">
+              Monto COP
+              <input
+                id="nt-monto"
+                className="input"
+                inputMode="numeric"
+                placeholder="Monto COP"
+                value={monto}
+                onChange={(e) => setMonto(e.target.value)}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" className="btn btn-sm" disabled={saving || monto.trim() === ""} onClick={() => void guardar()}>
+                {saving ? "Guardando…" : "Guardar"}
+              </button>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => setNueva(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      <ul className={f1.f1list} style={{ marginTop: 10 }}>
         {(tarifas ?? []).map((t) => (
           <li key={t.id} className={f1.f1card}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}>
@@ -336,6 +362,14 @@ function TarifasPanel({ onDone }: { onDone: () => void }) {
             </div>
           </li>
         ))}
+        {(tarifas ?? []).length === 0 && (
+          <li className="card">
+            <p className={f1.f1vacio}>
+              <strong>Sin tarifas</strong>
+              Tocá “Nueva tarifa” para crear la primera.
+            </p>
+          </li>
+        )}
       </ul>
     </div>
   );
@@ -346,6 +380,7 @@ function PaquetesPanel() {
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [pct, setPct] = useState("");
+  const [nuevo, setNuevo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -373,6 +408,7 @@ function PaquetesPanel() {
       await crearPaquete({ nombre: nombre.trim(), precio_cop: n });
       setNombre("");
       setPrecio("");
+      setNuevo(false);
       await cargar();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
@@ -399,11 +435,16 @@ function PaquetesPanel() {
 
   return (
     <div>
-      <h2 className="page-sub" style={{ margin: "0 0 8px" }}>
-        Paquetes y comisión ({pct !== "" ? `${pct} %` : "…"})
-      </h2>
+      <div className={f1.f1head}>
+        <h2 className="page-sub" style={{ margin: "0" }}>
+          Paquetes y comisión ({pct !== "" ? `${pct} %` : "…"})
+        </h2>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setNuevo(true)}>
+          Nuevo paquete
+        </button>
+      </div>
       {error !== null && <p role="alert" style={{ fontSize: 12 }}>{error}</p>}
-      <ul className={f1.f1list}>
+      <ul className={f1.f1list} style={{ marginTop: 10 }}>
         {(paquetes ?? []).map((p) => (
           <li key={p.id} className={f1.f1card}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}>
@@ -412,16 +453,39 @@ function PaquetesPanel() {
             </div>
           </li>
         ))}
+        {(paquetes ?? []).length === 0 && (
+          <li className="card">
+            <p className={f1.f1vacio}>
+              <strong>Sin paquetes</strong>
+              Tocá “Nuevo paquete” para crear el primero.
+            </p>
+          </li>
+        )}
       </ul>
-      <div className={f1.f1filters} style={{ marginTop: 8 }}>
-        <input className="input" style={{ minHeight: 36, fontSize: 13 }} placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <input className="input" style={{ minHeight: 36, fontSize: 13, maxWidth: 140 }} inputMode="numeric" placeholder="Precio COP" value={precio} onChange={(e) => setPrecio(e.target.value)} />
-        <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void guardarPaquete()}>
-          Agregar
-        </button>
-      </div>
+      {nuevo && (
+        <Modal title="Nuevo paquete" onClose={() => setNuevo(false)}>
+          <div className={f1.f1sheetFilters}>
+            <label className="label" htmlFor="npq-nombre">
+              Nombre
+              <input id="npq-nombre" className="input" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            </label>
+            <label className="label" htmlFor="npq-precio">
+              Precio COP
+              <input id="npq-precio" className="input" inputMode="numeric" placeholder="Precio COP" value={precio} onChange={(e) => setPrecio(e.target.value)} />
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" className="btn btn-sm" disabled={saving || nombre.trim() === ""} onClick={() => void guardarPaquete()}>
+                {saving ? "Guardando…" : "Agregar"}
+              </button>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => setNuevo(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       <div className={f1.f1filters}>
-        <input className="input" style={{ minHeight: 36, fontSize: 13, maxWidth: 110 }} inputMode="decimal" placeholder="% (0–100)" value={pct} onChange={(e) => setPct(e.target.value)} aria-label="Porcentaje de comisión" />
+        <input className="input" inputMode="decimal" placeholder="% (0–100)" value={pct} onChange={(e) => setPct(e.target.value)} aria-label="Porcentaje de comisión" />
         <span style={{ fontSize: 12, color: "var(--c-text-2)" }}>Comisión única al conseguir el cliente</span>
         <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void guardarConfig()}>
           Guardar
@@ -431,8 +495,7 @@ function PaquetesPanel() {
   );
 }
 
-function CortePanel({ periodo }: { periodo: string }) {
-  const [detalle, setDetalle] = useState<CorteDetalle | null>(null);
+function CortePanel({ periodo }: { periodo: string }) {  const [detalle, setDetalle] = useState<CorteDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [ajuste, setAjuste] = useState({ usuario: "", monto: "", motivo: "" });
@@ -476,7 +539,7 @@ function CortePanel({ periodo }: { periodo: string }) {
   return (
     <div>
       <h2 className="page-sub" style={{ margin: "0 0 8px" }}>
-        Corte {periodo} · {detalle?.corte.estado ?? "…"}
+        Corte {fmtPeriodo(periodo)} · {detalle?.corte.estado ?? "…"}
       </h2>
       {error !== null && <p role="alert" style={{ fontSize: 12 }}>{error}</p>}
       <div className={f1.f1filters}>
@@ -514,7 +577,7 @@ function CortePanel({ periodo }: { periodo: string }) {
         Ajuste con motivo (bono, descuento, corrección)
       </h2>
       <div className={f1.f1filters}>
-        <select className="input select" style={{ minHeight: 36, fontSize: 13 }} value={ajuste.usuario} onChange={(e) => setAjuste({ ...ajuste, usuario: e.target.value })} aria-label="Persona">
+        <select className="select" value={ajuste.usuario} onChange={(e) => setAjuste({ ...ajuste, usuario: e.target.value })} aria-label="Persona">
           <option value="">Persona…</option>
           {usuarios.map((u) => (
             <option key={u.id} value={u.id}>
@@ -522,8 +585,8 @@ function CortePanel({ periodo }: { periodo: string }) {
             </option>
           ))}
         </select>
-        <input className="input" style={{ minHeight: 36, fontSize: 13, maxWidth: 130 }} inputMode="numeric" placeholder="Monto (+/−)" value={ajuste.monto} onChange={(e) => setAjuste({ ...ajuste, monto: e.target.value })} />
-        <input className="input" style={{ minHeight: 36, fontSize: 13 }} placeholder="Motivo (obligatorio)" value={ajuste.motivo} onChange={(e) => setAjuste({ ...ajuste, motivo: e.target.value })} />
+        <input className="input" inputMode="numeric" placeholder="Monto (+/−)" value={ajuste.monto} onChange={(e) => setAjuste({ ...ajuste, monto: e.target.value })} />
+        <input className="input" placeholder="Motivo (obligatorio)" value={ajuste.motivo} onChange={(e) => setAjuste({ ...ajuste, motivo: e.target.value })} />
         <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void guardarAjuste()}>
           Crear ajuste
         </button>
@@ -556,8 +619,7 @@ function DecisionesPanel({ onDone }: { onDone: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const decidir = async (id: string, decision: "pagar" | "no_pagar") => {
-    if (motivo.trim() === "") return;
+  const decidir = async (id: string, decision: "pagar" | "no_pagar") => {    if (motivo.trim() === "") return;
     try {
       await decidirTarea(id, { decision, motivo: motivo.trim() });
       setMotivo("");
@@ -569,25 +631,34 @@ function DecisionesPanel({ onDone }: { onDone: () => void }) {
   };
 
   if (tareas.length === 0) {
-    return <p style={{ fontSize: 13, color: "var(--c-text-2)" }}>Sin decisiones pendientes.</p>;
+    return (
+      <div className="card">
+        <p className={f1.f1vacio}>
+          <strong>Sin decisiones pendientes</strong>
+          Cuando se cancele una pieza, aparece aquí qué pagar.
+        </p>
+      </div>
+    );
   }
   return (
     <div>
       {error !== null && <p role="alert" style={{ fontSize: 12 }}>{error}</p>}
-      <ul className={f1.f1list}>
+      <ul className={f1.f1list} style={{ minWidth: 0 }}>
         {tareas.map((t) => (
-          <li key={t.id} className={f1.f1card}>
+          <li key={t.id} className={f1.f1card} style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13 }}>
               <strong>{t.pieza_titulo}</strong> · {t.etapa}
             </div>
-            <div className={f1.f1filters} style={{ marginTop: 6, marginBottom: 0 }}>
-              <input className="input" style={{ minHeight: 36, fontSize: 13 }} placeholder="Motivo (obligatorio)" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => void decidir(t.id, "pagar")}>
-                Pagar
-              </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => void decidir(t.id, "no_pagar")}>
-                No pagar
-              </button>
+            <div className={f1.f1sheetFilters} style={{ marginTop: 6 }}>
+              <input className="input" placeholder="Motivo (obligatorio)" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+              <div className={f1.f1filters} style={{ marginBottom: 0 }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void decidir(t.id, "pagar")}>
+                  Pagar
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void decidir(t.id, "no_pagar")}>
+                  No pagar
+                </button>
+              </div>
             </div>
           </li>
         ))}
@@ -599,7 +670,6 @@ function DecisionesPanel({ onDone }: { onDone: () => void }) {
 /** Selector de mes compacto (BRIEF F3 §2.2): ‹ Sep 2026 › en vez del input
  * month nativo, que se trunca a 375. Sin dependencias, B/N. */
 function SelectorMes({ periodo, onChange }: { periodo: string; onChange: (p: string) => void }) {
-  const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const mover = (dir: 1 | -1) => {
     const m = /^(\d{4})-(\d{2})$/.exec(periodo);
     if (m === null) {
@@ -618,10 +688,9 @@ function SelectorMes({ periodo, onChange }: { periodo: string; onChange: (p: str
     }
     onChange(`${y}-${String(mo).padStart(2, "0")}`);
   };
-  const m = /^(\d{4})-(\d{2})$/.exec(periodo);
-  const etiqueta = m === null ? periodo : `${MESES[Number(m[2]) - 1]} ${m[1]}`;
+  const etiqueta = fmtPeriodo(periodo);
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }} role="group" aria-label="Periodo">
+    <div className="f1mes" role="group" aria-label="Periodo">
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => mover(-1)} aria-label="Mes anterior">
         ‹
       </button>
@@ -691,7 +760,9 @@ export default function CobrosPage() {
     <Panel title="Cobros">
       <div className="page">
         <h1 className="page-title">Cobros</h1>
-        <p className="page-sub">{periodo}</p>
+        <p className="page-sub">
+          {lineas === null ? "Tus cobros del mes." : `${visibles.length} líneas · ${fmtPeriodo(periodo)}.`}
+        </p>
         {error !== null && <Aviso error={error} onRetry={() => void cargar()} />}
         <Totales lineas={lineas ?? []} equipo={!admin} />
         <div className={f1.f1filters} style={{ marginTop: 10 }}>
@@ -708,8 +779,7 @@ export default function CobrosPage() {
           <SelectorMes periodo={periodo} onChange={(p) => setPeriodo(p)} />
           {(tab === "lineas" || tab === "reclamos") && (
             <select
-              className="input select"
-              style={{ minHeight: 36, fontSize: 13 }}
+              className="select"
               value={filtro}
               onChange={(e) => setFiltro(e.target.value)}
               aria-label="Estado"
@@ -729,13 +799,17 @@ export default function CobrosPage() {
           visibles.length === 0 ? (
             tab === "reclamos" ? (
               <div className="card">
-                <p style={{ margin: 0, fontSize: 13 }}>
-                  No hay reclamos pendientes. Cuando alguien reclame una línea aparecerá aquí.
+                <p className={f1.f1vacio}>
+                  <strong>Sin reclamos pendientes</strong>
+                  Cuando alguien reclame una línea, aparece aquí.
                 </p>
               </div>
             ) : (
               <div className="card">
-                <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Nada en esta vista.</p>
+                <p className={f1.f1vacio}>
+                  <strong>Nada en esta vista</strong>
+                  Cambiá el mes o el filtro de estado.
+                </p>
               </div>
             )
           ) : (

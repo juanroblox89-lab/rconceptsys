@@ -127,6 +127,5 @@ export function visitaResultadoLabel(r: string): string {
   }
 }
 
-export function fmtCOP(n: number): string {
-  return `$${Math.round(n).toLocaleString("es-CO")}`;
-}
+export { fmtCOP } from "./dinero";
+export { fmtFecha, fmtFechaHora, fmtRelativa, fmtPeriodo } from "./fechas";

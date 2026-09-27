@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
+import { Modal } from "@/components/Modal";
 import { useSession } from "@/components/SessionProvider";
 import { crearCliente, getClientes } from "@/lib/f1ui";
 import { clienteEstadoLabel, type Cliente } from "@/lib/f1tipos";
@@ -18,6 +19,7 @@ export default function ClientesPage() {
   const [q, setQ] = useState("");
   const [nombre, setNombre] = useState("");
   const [paquete, setPaquete] = useState("");
+  const [nuevo, setNuevo] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -49,6 +51,7 @@ export default function ClientesPage() {
       setClientes((prev) => (prev === null ? [c] : [...prev, c].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))));
       setNombre("");
       setPaquete("");
+      setNuevo(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear");
     } finally {
@@ -71,29 +74,36 @@ export default function ClientesPage() {
         <div className={f1.f1filters}>
           <input
             className="input"
-            style={{ flex: "1 1 auto" }}
             placeholder="Buscar por nombre"
             aria-label="Buscar cliente"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-        </div>
-        {admin && (
-          <div className="card" style={{ marginBottom: 12 }}>
-            <div className={f1.f1two}>
-              <div className="field" style={{ marginBottom: 8 }}>
-                <label className="label" htmlFor="nc-nombre" style={{ fontSize: 12 }}>Nuevo cliente</label>
-                <input id="nc-nombre" className="input" value={nombre} disabled={saving} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
-              </div>
-              <div className="field" style={{ marginBottom: 8 }}>
-                <label className="label" htmlFor="nc-paquete" style={{ fontSize: 12 }}>Paquete</label>
-                <input id="nc-paquete" className="input" value={paquete} disabled={saving} onChange={(e) => setPaquete(e.target.value)} placeholder="TV Basic…" />
-              </div>
-            </div>
-            <button type="button" className="btn btn-sm" disabled={saving || nombre.trim() === ""} onClick={() => void crear()}>
-              {saving ? "Guardando…" : "Crear cliente"}
+          {admin && (
+            <button type="button" className="btn btn-sm" onClick={() => setNuevo(true)}>
+              Nuevo cliente
             </button>
-          </div>
+          )}
+        </div>
+        {nuevo && admin && (
+          <Modal title="Nuevo cliente" onClose={() => setNuevo(false)}>
+            <div className="field">
+              <label className="label" htmlFor="nc-nombre">Nombre</label>
+              <input id="nc-nombre" className="input" value={nombre} disabled={saving} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
+            </div>
+            <div className="field">
+              <label className="label" htmlFor="nc-paquete">Paquete</label>
+              <input id="nc-paquete" className="input" value={paquete} disabled={saving} onChange={(e) => setPaquete(e.target.value)} placeholder="TV Basic…" />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" className="btn btn-sm" disabled={saving || nombre.trim() === ""} onClick={() => void crear()}>
+                {saving ? "Guardando…" : "Crear cliente"}
+              </button>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => setNuevo(false)}>
+                Cancelar
+              </button>
+            </div>
+          </Modal>
         )}
         {loading && <BootSplash label="Cargando clientes" />}
         {error !== null && !loading && (
@@ -106,7 +116,12 @@ export default function ClientesPage() {
         )}
         {!loading && error === null && lista.length === 0 && (
           <div className="card">
-            <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Ningún cliente por aquí.</p>
+            <p className={f1.f1vacio}>
+              <strong>{q.trim() === "" ? "Sin clientes todavía" : "Nada con esa búsqueda"}</strong>
+              {q.trim() === ""
+                ? "Tocá “Nuevo cliente” para crear el primero."
+                : "Probá con otro nombre o creá el cliente."}
+            </p>
           </div>
         )}
         {!loading && error === null && lista.length > 0 && (

@@ -10,7 +10,7 @@ import {
   CAMPO_ENTREGA_LABEL,
   camposDeEtapa,
   etapaLabel,
-  fmtFechaCorta,
+  fmtRelativa,
   tareaEstadoLabel,
   type CampoEntrega,
   type Tarea,
@@ -96,7 +96,7 @@ function TareaCard({ tarea, onChange }: { tarea: Tarea; onChange: (t: Tarea) => 
         <span className="chip">{tareaEstadoLabel(tarea.estado)}</span>
         {tarea.fecha_limite !== null && (
           <span className={tarea.vencida ? f1.f1vencida : undefined} style={{ fontSize: 12 }}>
-            {tarea.vencida ? `Vencida · ${fmtFechaCorta(tarea.fecha_limite)}` : fmtFechaCorta(tarea.fecha_limite)}
+            {tarea.vencida ? `Vencida · ${fmtRelativa(tarea.fecha_limite)}` : fmtRelativa(tarea.fecha_limite)}
           </span>
         )}
       </div>
@@ -226,8 +226,9 @@ export default function MisTareasPage() {
         )}
         {!loading && error === null && (tareas ?? []).length === 0 && (
           <div className="card">
-            <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>
-              Nada aquí. Cuando te asignen algo, aparece en esta lista.
+            <p className={f1.f1vacio}>
+              <strong>Nada por aquí</strong>
+              Cuando te asignen algo, aparece en esta lista.
             </p>
           </div>
         )}

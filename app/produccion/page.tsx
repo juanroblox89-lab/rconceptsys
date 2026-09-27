@@ -13,7 +13,7 @@ import {
   getUsuariosF1,
 } from "@/lib/f1ui";
 import {
-  fmtFechaCorta,
+  fmtFecha,
   PIEZA_ESTADOS,
   piezaEstadoLabel,
   type Cliente,
@@ -213,7 +213,7 @@ function PiezaCard({ pieza }: { pieza: Pieza }) {
       <div className={f1.f1row}>
         <span className="chip">{piezaEstadoLabel(pieza.estado)}</span>
         <span className={pieza.vencida ? f1.f1vencida : undefined} style={{ fontSize: 12 }}>
-          {pieza.vencida ? `Vencida · ${fmtFechaCorta(pieza.fecha_objetivo)}` : fmtFechaCorta(pieza.fecha_objetivo)}
+          {pieza.vencida ? `Vencida · ${fmtFecha(pieza.fecha_objetivo)}` : fmtFecha(pieza.fecha_objetivo)}
         </span>
       </div>
     </li>
@@ -334,7 +334,7 @@ export default function ProduccionPage() {
                 ))}
               </ul>
               {filtradas.length === 0 && (
-                <div className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Nada con estos filtros.</p></div>
+                <div className="card"><p className={f1.f1vacio}><strong>Nada con estos filtros</strong>Probá con otro cliente o persona.</p></div>
               )}
             </div>
             {/* Desktop: columnas por estado (canceladas en su columna, §4.1). */}

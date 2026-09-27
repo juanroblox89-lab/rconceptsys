@@ -117,13 +117,7 @@ export function lineaEstadoLabel(e: string): string {
   return LINEA_ESTADOS.find((x) => x.value === e)?.label ?? e;
 }
 
-export function fmtCOP(n: number): string {
-  try {
-    return "$" + Math.round(n).toLocaleString("es-CO");
-  } catch {
-    return `$${n}`;
-  }
-}
+export { fmtCOP } from "./dinero";
 
 /** Periodo actual YYYY-MM (mes calendario, BRIEF F2 §3). */
 export function periodoActual(): string {

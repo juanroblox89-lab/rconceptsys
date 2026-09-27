@@ -9,7 +9,7 @@ import { getFormatos, getHooks } from "@/lib/f3api";
 import type { Formato, Hook } from "@/lib/f3tipos";
 import {
   etapaLabel,
-  fmtFechaCorta,
+  fmtFecha,
   piezaEstadoLabel,
   tareaEstadoLabel,
   type Pieza,
@@ -143,7 +143,7 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
               {pieza.formato ?? "Sin formato"} · {piezaEstadoLabel(pieza.estado)}
               {pieza.vencida ? " · " : ""}
               {pieza.vencida && <span className={f1.f1vencida}>Vencida</span>}
-              {" · "}Objetivo {fmtFechaCorta(pieza.fecha_objetivo)}
+              {" · "}Objetivo {fmtFecha(pieza.fecha_objetivo)}
             </p>
             {pieza.guion !== null && pieza.guion !== "" && (
               <div className="card" style={{ marginBottom: 12 }}>
@@ -253,7 +253,7 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
                   <p className={f1.f1cardTitle}>{etapaLabel(t.etapa)}</p>
                   <p className={f1.f1cardMeta}>
                     {t.asignado_nombre ?? "Sin asignar"}
-                    {t.fecha_limite ? ` · ${fmtFechaCorta(t.fecha_limite)}` : ""}
+                    {t.fecha_limite ? ` · ${fmtFecha(t.fecha_limite)}` : ""}
                   </p>
                   <div className={f1.f1row}>
                     <span className="chip">{tareaEstadoLabel(t.estado)}</span>

@@ -200,15 +200,7 @@ export function esVencida(fechaLimite: string | null, estado: string): boolean {
   return lim.getTime() < hoy.getTime();
 }
 
-export function fmtFechaCorta(iso: string | null): string {
-  if (iso === null || iso === "") return "—";
-  try {
-    const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso);
-    return d.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
-  } catch {
-    return iso;
-  }
-}
+export { fmtFecha, fmtFechaHora, fmtRelativa, fmtPeriodo, fmtFechaCorta } from "./fechas";
 
 export function hoyISO(): string {
   const d = new Date();

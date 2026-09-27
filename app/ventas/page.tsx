@@ -47,6 +47,8 @@ import {
 } from "@/lib/f4offline";
 import {
   fmtCOP,
+  fmtFecha,
+  fmtFechaHora,
   leadEstadoLabel,
   LEAD_ETAPAS,
   visitaResultadoLabel,
@@ -152,24 +154,21 @@ function LeadCard({
 
   return (
     <li className={f1.f1card}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <button
-          type="button"
-          onClick={() => onVer(lead)}
-          style={{ background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer" }}
-        >
-          <strong style={{ fontSize: 13 }}>{lead.negocio}</strong>
-        </button>
-        <span className={f1.f1chip}>{leadEstadoLabel(lead.estado)}</span>
-      </div>
+      <button
+        type="button"
+        onClick={() => onVer(lead)}
+        style={{ background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer", width: "100%" }}
+      >
+        <strong style={{ fontSize: 14 }}>{lead.negocio}</strong>
+      </button>
       <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>
         {[lead.vendedor_nombre ?? "sin asignar", lead.municipio, lead.telefono].filter(Boolean).join(" · ")}
       </p>
       {lead.accion_que !== null && lead.accion_que !== "" && (
-        <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: lead.vencida ? 700 : 400 }}>
+        <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: lead.vencida ? 700 : 400, color: lead.vencida ? "var(--c-danger)" : undefined }}>
           {lead.vencida ? "Vencida: " : "Próx: "}
           {lead.accion_que}
-          {lead.accion_fecha ? ` (${lead.accion_fecha})` : ""}
+          {lead.accion_fecha ? ` (${fmtFecha(lead.accion_fecha)})` : ""}
         </p>
       )}
       {lead.duplicados !== undefined && lead.duplicados.length > 0 && (
@@ -182,14 +181,14 @@ function LeadCard({
           {error}
         </p>
       )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+      <div className={f1.f1moveRow}>
+        <span className={f1.f1chip}>{leadEstadoLabel(lead.estado)}</span>
         {lead.estado !== "ganado" && lead.estado !== "perdido" && (
           <>
-            <label style={{ fontSize: 12 }}>
+            <label className={f1.f1mover}>
               Mover{" "}
               <select
-                className="input"
-                style={{ minHeight: 36, fontSize: 13, width: "auto" }}
+                className="select"
                 value={lead.estado}
                 disabled={moviendo}
                 onChange={(e) => {
@@ -218,7 +217,6 @@ function LeadCard({
               <span style={{ display: "inline-flex", gap: 6, flex: "1 1 100%" }}>
                 <input
                   className="input"
-                  style={{ minHeight: 36, fontSize: 13, flex: "1 1 auto" }}
                   placeholder="Motivo (obligatorio)"
                   value={motivo}
                   onChange={(e) => setMotivo(e.target.value)}
@@ -267,6 +265,7 @@ export default function VentasPage() {
   // Modales.
   const [creandoLead, setCreandoLead] = useState(false);
   const [registrando, setRegistrando] = useState(false);
+  const [filtros, setFiltros] = useState(false);
   const [detalle, setDetalle] = useState<Lead | null>(null);
   const [ganando, setGanando] = useState<Lead | null>(null);
 
@@ -355,7 +354,8 @@ export default function VentasPage() {
   const filtrados = useMemo(() => {
     let out = leads ?? [];
     if (fEstado !== "") out = out.filter((l) => l.estado === fEstado);
-    if (fVendedor !== "") out = out.filter((l) => (l.vendedor_id ?? "") === fVendedor);
+    if (fVendedor === "__sin__") out = out.filter((l) => (l.vendedor_id ?? "") === "");
+    else if (fVendedor !== "") out = out.filter((l) => (l.vendedor_id ?? "") === fVendedor);
     if (fMunicipio !== "") out = out.filter((l) => (l.municipio ?? "").toLowerCase().includes(fMunicipio.toLowerCase()));
     return out;
   }, [leads, fEstado, fVendedor, fMunicipio]);
@@ -397,8 +397,12 @@ export default function VentasPage() {
 
   return (
     <Panel title="Ventas">
-      {/* Despeje inferior: el botón fijo "Registrar visita" no tapa la última etapa (hallazgo QA visual F4). */}
-      <div className="page" style={{ paddingBottom: 76 }}>
+      {/* Despeje inferior solo en móvil: el botón fijo no tapa la última tarjeta. */}
+      <div className={`page ${f1.f1pagePad}`}>
+        <h1 className="page-title">Ventas</h1>
+        <p className="page-sub">
+          {leads === null ? "Tus leads y visitas." : `${filtrados.length} leads · ${(visitas ?? []).length} visitas.`}
+        </p>
         <div className={f1.f1filters} role="tablist" aria-label="Vistas de ventas">
           {(["leads", "visitas", "metricas"] as Tab[]).map((t) => (
             <button
@@ -446,36 +450,11 @@ export default function VentasPage() {
               </div>
             )}
             <div className={f1.f1filters}>
-              <select className="input select" aria-label="Filtrar por estado" value={fEstado} onChange={(e) => setFEstado(e.target.value)}>
-                <option value="">Todos los estados</option>
-                {[...LEAD_ETAPAS, "perdido"].map((et) => (
-                  <option key={et} value={et}>
-                    {leadEstadoLabel(et)}
-                  </option>
-                ))}
-              </select>
-              {esAdmin && (
-                <select className="input select" aria-label="Filtrar por vendedor" value={fVendedor} onChange={(e) => setFVendedor(e.target.value)}>
-                  <option value="">Todos los vendedores</option>
-                  <option value="">Sin asignar</option>
-                  {usuarios
-                    .filter((u) => u.oficios.includes("ventas"))
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nombre}
-                      </option>
-                    ))}
-                </select>
-              )}
-              <input
-                className="input"
-                style={{ minHeight: 36, fontSize: 13, flex: "1 1 120px" }}
-                placeholder="Municipio…"
-                value={fMunicipio}
-                onChange={(e) => setFMunicipio(e.target.value)}
-              />
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => setCreandoLead(true)}>
+              <button type="button" className="btn btn-sm" onClick={() => setCreandoLead(true)}>
                 Nuevo lead
+              </button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFiltros(true)}>
+                Filtros{(fEstado !== "" || fVendedor !== "" || fMunicipio !== "") ? " •" : ""}
               </button>
             </div>
 
@@ -505,7 +484,11 @@ export default function VentasPage() {
                         }}
                       />
                     ))}
-                    {ls.length === 0 && <li style={{ fontSize: 12, color: "var(--c-text-2)" }}>Vacío.</li>}
+                    {ls.length === 0 && (
+                      <li>
+                        <p className={f1.f1vacio}>Vacío.</p>
+                      </li>
+                    )}
                   </ul>
                 </section>
               ))}
@@ -515,27 +498,39 @@ export default function VentasPage() {
 
         {tab === "visitas" && (
           <>
-            <div className={f1.f1filters}>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => setRegistrando(true)}>
-                Registrar visita
-              </button>
+            <div className={f1.f1head}>
+              <p className="page-sub" style={{ margin: 0 }}>
+                {(visitas ?? []).length} visitas registradas.
+              </p>
+              <div className={f1.f1headAction}>
+                <button type="button" className="btn btn-sm" onClick={() => setRegistrando(true)}>
+                  Registrar visita
+                </button>
+              </div>
             </div>
             <ul className={f1.f1list}>
               {(visitas ?? []).map((v) => (
                 <li key={v.id} className={f1.f1card}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <strong style={{ fontSize: 13 }}>{v.negocio ?? "Visita"}</strong>
+                    <strong style={{ fontSize: 14 }}>{v.negocio ?? "Visita"}</strong>
                     <span className={f1.f1chip}>{visitaResultadoLabel(v.resultado)}</span>
                   </div>
                   <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>
-                    {[v.vendedor_nombre, v.cuando ?? v.created_at.slice(0, 10), v.fotos > 0 ? `${v.fotos} foto(s)` : null]
+                    {[v.vendedor_nombre, v.cuando ? fmtFechaHora(v.cuando) : fmtFechaHora(v.created_at), v.fotos > 0 ? `${v.fotos} foto${v.fotos === 1 ? "" : "s"}` : null]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
                   {v.notas !== null && v.notas !== "" && <p style={{ margin: "4px 0 0", fontSize: 12 }}>{v.notas}</p>}
                 </li>
               ))}
-              {(visitas ?? []).length === 0 && <li style={{ fontSize: 13 }}>Sin visitas todavía.</li>}
+              {(visitas ?? []).length === 0 && (
+                <li className="card">
+                  <p className={f1.f1vacio}>
+                    <strong>Sin visitas todavía</strong>
+                    Tocá “Registrar visita” después de cada negocio que visites.
+                  </p>
+                </li>
+              )}
             </ul>
           </>
         )}
@@ -543,7 +538,12 @@ export default function VentasPage() {
         {tab === "metricas" && (
           <>
             {metricas === null ? (
-              <p style={{ fontSize: 13 }}>{esAdmin ? "Sin métricas." : "Solo el admin ve métricas."}</p>
+              <div className="card">
+                <p className={f1.f1vacio}>
+                  <strong>{esAdmin ? "Sin métricas todavía" : "Solo admin ve métricas"}</strong>
+                  {esAdmin ? "Cuando haya leads y visitas, aparecen aquí." : "Pedile a un admin que te muestre los números."}
+                </p>
+              </div>
             ) : (
               <>
                 <div className={f1.f1card} style={{ marginBottom: 10 }}>
@@ -580,26 +580,75 @@ export default function VentasPage() {
         )}
       </div>
 
-      {/* Botón grande fijo abajo en móvil para registrar visita (BRIEF F4 §4). */}
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={() => {
-          setTab("visitas");
-          setRegistrando(true);
-        }}
-        style={{
-          position: "fixed",
-          left: 12,
-          right: 12,
-          bottom: 12,
-          minHeight: 52,
-          fontSize: 16,
-          zIndex: 30,
-        }}
-      >
-        Registrar visita
-      </button>
+      {/* Registrar visita: botón normal en el header (desktop) y fijo
+          abajo con safe-area solo en móvil (pulido 1 §5). */}
+      <div className={f1.f1visitaFijaWrap}>
+        <button
+          type="button"
+          className={`btn btn-sm ${f1.f1visitaFija}`}
+          onClick={() => setRegistrando(true)}
+        >
+          Registrar visita
+        </button>
+      </div>
+
+      {filtros && (
+        <Modal title="Filtros" onClose={() => setFiltros(false)}>
+          <div className={f1.f1sheetFilters}>
+            <label className="label" htmlFor="vf-estado">
+              Estado
+              <select id="vf-estado" className="select" value={fEstado} onChange={(e) => setFEstado(e.target.value)}>
+                <option value="">Todos los estados</option>
+                {[...LEAD_ETAPAS, "perdido"].map((et) => (
+                  <option key={et} value={et}>
+                    {leadEstadoLabel(et)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {esAdmin && (
+              <label className="label" htmlFor="vf-vendedor">
+                Vendedor
+                <select id="vf-vendedor" className="select" value={fVendedor} onChange={(e) => setFVendedor(e.target.value)}>
+                  <option value="">Todos los vendedores</option>
+                  <option value="__sin__">Sin asignar</option>
+                  {usuarios
+                    .filter((u) => u.oficios.includes("ventas"))
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nombre}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            <label className="label" htmlFor="vf-municipio">
+              Municipio
+              <input
+                id="vf-municipio"
+                className="input"
+                placeholder="Municipio…"
+                value={fMunicipio}
+                onChange={(e) => setFMunicipio(e.target.value)}
+              />
+            </label>
+            <button type="button" className="btn btn-sm" onClick={() => setFiltros(false)}>
+              Ver {filtrados.length} leads
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setFEstado("");
+                setFVendedor("");
+                setFMunicipio("");
+              }}
+            >
+              Limpiar
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {creandoLead && (
         <CrearLeadModal
@@ -1044,7 +1093,7 @@ function DetalleModal({
           <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 12 }}>
             {(full.historial as { accion: string; actor_nombre: string; cuando: string }[]).slice(-5).map((h, i) => (
               <li key={i}>
-                {h.accion} · {h.actor_nombre} · {h.cuando.slice(0, 10)}
+                {h.accion} · {h.actor_nombre} · {fmtFechaHora(h.cuando)}
               </li>
             ))}
           </ul>

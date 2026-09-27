@@ -15,7 +15,8 @@ import {
 } from "@/lib/f1ui";
 import {
   etapaLabel,
-  fmtFechaCorta,
+  fmtFechaHora,
+  fmtRelativa,
   type Tarea,
   type TareaEvento,
 } from "@/lib/f1tipos";
@@ -67,7 +68,7 @@ function Historial({ tareaId }: { tareaId: string }) {
         <ul className={f1.f1hist}>
           {eventos.map((e) => (
             <li key={e.id}>
-              <strong>{e.accion}</strong> · {e.actor_nombre}
+              <strong>{e.accion}</strong> · {e.actor_nombre} · {fmtFechaHora(e.cuando)}
               {(e.antes || e.despues) && (
                 <span style={{ color: "var(--c-text-2)" }}> · {e.antes ?? "—"} → {e.despues ?? "—"}</span>
               )}
@@ -149,7 +150,7 @@ function ColaItem({
       <div className={f1.f1row}>
         {tarea.fecha_limite !== null && (
           <span className={tarea.vencida ? f1.f1vencida : undefined} style={{ fontSize: 12 }}>
-            {tarea.vencida ? `Vencida · ${fmtFechaCorta(tarea.fecha_limite)}` : fmtFechaCorta(tarea.fecha_limite)}
+            {tarea.vencida ? `Vencida · ${fmtRelativa(tarea.fecha_limite)}` : fmtRelativa(tarea.fecha_limite)}
           </span>
         )}
       </div>
@@ -281,8 +282,9 @@ export default function RevisionPage() {
         )}
         {!loading && error === null && (tareas ?? []).length === 0 && (
           <div className="card">
-            <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>
-              Cola vacía. Nada esperando revisión.
+            <p className={f1.f1vacio}>
+              <strong>Cola vacía</strong>
+              Nada esperando revisión. Cuando alguien entregue, aparece aquí.
             </p>
           </div>
         )}

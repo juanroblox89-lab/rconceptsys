@@ -255,6 +255,13 @@ button {
   border: 1px solid var(--c-line-2);
 }
 
+/* Alias: el primario es el .btn negro por defecto (las vistas lo usan). */
+.btn-primary {
+  background: var(--c-text);
+  color: #fff;
+  border: 1px solid var(--c-text);
+}
+
 .btn-danger {
   background: var(--c-bg);
   color: var(--c-danger);
@@ -262,7 +269,7 @@ button {
 }
 
 .btn-sm {
-  min-height: 34px;
+  min-height: 40px;
   padding: 6px 12px;
   font-size: var(--t-base);
   border-radius: var(--r-sm);
@@ -272,6 +279,18 @@ button {
   width: 100%;
 }
 
+/* SelectorMes (Cobros): grupo ‹ sep 2026 ›; nunca estira ni desborda. */
+.f1mes {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+/* Filtros compactos (pulido 1 §1): 36 px desktop / 40 px móvil, texto 13 px.
+ * Los formularios dentro de modales usan .f1sheetFilters (40 px táctil).
+ * Los inputs de formulario general mantienen 16 px para evitar el zoom iOS. */
 .input,
 .select,
 .textarea {
@@ -281,8 +300,34 @@ button {
   font-size: 16px;
   color: var(--c-text);
   background: var(--c-bg);
-  border: 1.5px solid var(--c-line-2);
+  border: 1px solid var(--c-line-2);
   border-radius: var(--r-md);
+}
+
+select.select,
+select.input,
+.f1filters .select,
+.f1filters .input,
+.f1filters select,
+.f1filters input,
+.f1mover select {
+  min-height: 40px;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-width: 1px;
+}
+
+@media (min-width: 768px) {
+  select.select,
+  select.input,
+  .f1filters .select,
+  .f1filters .input,
+  .f1filters select,
+  .f1filters input,
+  .f1mover select,
+  .btn-sm {
+    min-height: 36px;
+  }
 }
 
 .input:focus,
@@ -323,30 +368,32 @@ button {
   background: var(--c-bg);
   border: 1px solid var(--c-line);
   border-radius: var(--r-lg);
-  padding: 14px 12px;
+  padding: 12px;
 }
 
 .page {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: var(--s-4) var(--s-3) var(--s-6);
 }
 
 .page-title {
-  font-size: var(--t-title);
+  font-size: 20px;
   font-weight: 700;
-  margin: 0 0 var(--s-1);
+  margin: 0 0 2px;
   letter-spacing: -0.01em;
 }
 
 .page-sub {
   font-size: var(--t-base);
   color: var(--c-text-2);
-  margin: 0 0 var(--s-4);
+  margin: 0 0 12px;
 }
 
 /* ---------- Chips ---------- */
 
+/* Chips de estado (pulido 1 §7): una sola paleta B/N en gris;
+ * rojo SOLO vencido/error (.chip-error). */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -371,6 +418,12 @@ button {
   background: var(--c-text);
   border-color: var(--c-text);
   color: #fff;
+}
+
+.chip-error {
+  background: var(--c-bg-2);
+  border-color: var(--c-danger);
+  color: var(--c-danger);
 }
 
 /* ---------- Estados ---------- */

@@ -6,6 +6,7 @@ import { IconBell } from "./icons";
 import { useSession } from "./SessionProvider";
 import { contarNoLeidas, getNotifs, leerNotif } from "@/lib/f1api";
 import type { Notificacion } from "@/lib/f1tipos";
+import { fmtRelativa } from "@/lib/fechas";
 import styles from "./Notificaciones.module.css";
 
 /**
@@ -124,7 +125,7 @@ export function Notificaciones() {
                 </p>
                 {n.detalle !== null && n.detalle !== "" && <p className={styles.itemDetail}>{n.detalle}</p>}
                 <div className={styles.itemMeta}>
-                  <span>{n.created_at.slice(0, 10)}</span>
+                  <span>{fmtRelativa(n.created_at)}</span>
                   {!n.leida && (
                     <button type="button" onClick={() => void marcar(n.id)} disabled={savingId === n.id}>
                       {savingId === n.id ? "Guardando…" : "Marcar leída"}

@@ -11,7 +11,7 @@ import type { Formato, Hook } from "@/lib/f3tipos";
 import {
   CLIENTE_ESTADOS,
   clienteEstadoLabel,
-  fmtFechaCorta,
+  fmtFecha,
   piezaEstadoLabel,
   type Cliente,
   type Pieza,
@@ -290,12 +290,12 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
                   </p>
                   <div className={f1.f1row}>
                     <span className="chip">{piezaEstadoLabel(p.estado)}</span>
-                    <span style={{ fontSize: 12, color: "var(--c-text-2)" }}>{fmtFechaCorta(p.fecha_objetivo)}</span>
+                    <span style={{ fontSize: 12, color: "var(--c-text-2)" }}>{fmtFecha(p.fecha_objetivo)}</span>
                   </div>
                 </li>
               ))}
               {(piezas ?? []).length === 0 && (
-                <li className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Sin piezas todavía.</p></li>
+                <li className="card"><p className={f1.f1vacio}><strong>Sin piezas todavía</strong>Cuando este cliente tenga piezas, aparecen aquí.</p></li>
               )}
             </ul>
             <h2 className={f1.f1sectionTitle}>Historial (actividad del cliente)</h2>
@@ -305,12 +305,12 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
                   <p className={f1.f1cardTitle}>{t.pieza_titulo}</p>
                   <p className={f1.f1cardMeta}>
                     {t.asignado_nombre ?? "Sin asignar"} · {t.estado}
-                    {t.fecha_limite ? ` · ${fmtFechaCorta(t.fecha_limite)}` : ""}
+                    {t.fecha_limite ? ` · ${fmtFecha(t.fecha_limite)}` : ""}
                   </p>
                 </li>
               ))}
               {(tareas ?? []).length === 0 && (
-                <li className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Sin movimiento todavía.</p></li>
+                <li className="card"><p className={f1.f1vacio}><strong>Sin movimiento todavía</strong>La actividad de este cliente aparece aquí.</p></li>
               )}
             </ul>
           </>

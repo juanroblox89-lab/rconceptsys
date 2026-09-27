@@ -13,6 +13,7 @@ import {
   ApiError,
 } from "@/lib/api";
 import { OFICIOS, accesoLabel, oficioLabel } from "@/lib/oficios";
+import { fmtFechaHora } from "@/lib/fechas";
 import type { ActividadEvento, Usuario } from "@/lib/types";
 
 type Filter = "todos" | "pendiente" | "equipo" | "admin" | "dueno" | "desactivado";
@@ -29,17 +30,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 const ACCESOS_EDIT = ["equipo", "admin", "dueno"] as const;
 
 function fmtFecha(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("es-CO", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
+  return fmtFechaHora(iso);
 }
 
 function fmtValor(v: unknown): string {
@@ -530,7 +521,8 @@ export function EquipoView({
       {!loading && error === null && list.length === 0 && (
         <div className="card">
           <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>
-            Nadie con este filtro.
+            <strong style={{ display: "block", color: "var(--c-text)" }}>Nadie con este filtro</strong>
+            Probá con otro filtro de acceso.
           </p>
         </div>
       )}

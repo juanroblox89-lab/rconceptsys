@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
+import { Modal } from "@/components/Modal";
 import { useSession } from "@/components/SessionProvider";
 import { getTareas } from "@/lib/f1ui";
 import {
@@ -126,7 +127,6 @@ function AccionesBib({
           <span style={{ display: "inline-flex", gap: 6, flex: "1 1 100%" }}>
             <input
               className="input"
-              style={{ minHeight: 36, fontSize: 13, flex: "1 1 auto" }}
               placeholder="Motivo del rechazo (obligatorio)"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
@@ -199,7 +199,7 @@ function FormatoCard({
   return (
     <li className={f1.f1card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <strong style={{ fontSize: 13 }}>
+        <strong style={{ fontSize: 14 }}>
           {formato.codigo ? `${formato.codigo} · ` : ""}
           {formato.nombre}
         </strong>
@@ -233,8 +233,8 @@ function FormatoCard({
       )}
       {edit && editable && (
         <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-          <input className="input" style={{ minHeight: 36, fontSize: 13 }} value={nombre} onChange={(e) => setNombre(e.target.value)} aria-label="Nombre" />
-          <input className="input" style={{ minHeight: 36, fontSize: 13 }} value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Objetivo" aria-label="Objetivo" />
+          <input className="input" value={nombre} onChange={(e) => setNombre(e.target.value)} aria-label="Nombre" />
+          <input className="input" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Objetivo" aria-label="Objetivo" />
           <textarea className="textarea" value={estructura} onChange={(e) => setEstructura(e.target.value)} placeholder="Estructura (un paso por línea)" aria-label="Estructura" />
           <button
             type="button"
@@ -264,7 +264,7 @@ function FormatoCard({
       {esAdmin && formato.estado === "borrador" && (
         <input
           className="input"
-          style={{ minHeight: 36, fontSize: 13, marginTop: 6 }}
+          style={{ marginTop: 6 }}
           placeholder="Motivo del rechazo (para Rechazar)"
           value={rechazo}
           onChange={(e) => setRechazo(e.target.value)}
@@ -311,7 +311,7 @@ function HookCard({
   return (
     <li className={f1.f1card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <strong style={{ fontSize: 13 }}>{hook.titulo}</strong>
+        <strong style={{ fontSize: 14 }}>{hook.titulo}</strong>
         <EstadoChip estado={hook.estado} />
       </div>
       <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>
@@ -347,7 +347,7 @@ function HookCard({
       {esAdmin && hook.estado === "borrador" && (
         <input
           className="input"
-          style={{ minHeight: 36, fontSize: 13, marginTop: 6 }}
+          style={{ marginTop: 6 }}
           placeholder="Motivo del rechazo (para Rechazar)"
           value={rechazo}
           onChange={(e) => setRechazo(e.target.value)}
@@ -394,7 +394,7 @@ function ReferenciaCard({
   return (
     <li className={f1.f1card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <strong style={{ fontSize: 13 }}>
+        <strong style={{ fontSize: 14 }}>
           <a href={referencia.link} target="_blank" rel="noreferrer">
             {referencia.titulo}
           </a>
@@ -425,7 +425,7 @@ function ReferenciaCard({
       {esAdmin && referencia.estado === "borrador" && (
         <input
           className="input"
-          style={{ minHeight: 36, fontSize: 13, marginTop: 6 }}
+          style={{ marginTop: 6 }}
           placeholder="Motivo del rechazo (para Rechazar)"
           value={rechazo}
           onChange={(e) => setRechazo(e.target.value)}
@@ -492,7 +492,7 @@ function SOPCard({
   return (
     <li className={f1.f1card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <strong style={{ fontSize: 13 }}>{sop.titulo}</strong>
+        <strong style={{ fontSize: 14 }}>{sop.titulo}</strong>
         <EstadoChip estado={sop.estado} />
       </div>
       <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>
@@ -542,7 +542,7 @@ function SOPCard({
       {esAdmin && sop.estado === "borrador" && (
         <input
           className="input"
-          style={{ minHeight: 36, fontSize: 13, marginTop: 6 }}
+          style={{ marginTop: 6 }}
           placeholder="Motivo del rechazo (para Rechazar)"
           value={rechazo}
           onChange={(e) => setRechazo(e.target.value)}
@@ -587,7 +587,7 @@ function EjecucionCard({
   return (
     <li className={f1.f1card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <strong style={{ fontSize: 13 }}>{ejecucion.sop_titulo ?? ejecucion.sop_id}</strong>
+        <strong style={{ fontSize: 14 }}>{ejecucion.sop_titulo ?? ejecucion.sop_id}</strong>
         <span className={f1.f1chip}>{terminada ? "Terminada" : "En curso"}</span>
       </div>
       <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>
@@ -667,6 +667,8 @@ export default function BibliotecaPage() {
   // Formularios de propuesta (equipo) / creación (admin).
   const [nuevoTitulo, setNuevoTitulo] = useState("");
   const [nuevoDetalle, setNuevoDetalle] = useState("");
+  const [proponiendo, setProponiendo] = useState(false);
+  const [filtrosBib, setFiltrosBib] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -744,6 +746,7 @@ export default function BibliotecaPage() {
       }
       setNuevoTitulo("");
       setNuevoDetalle("");
+      setProponiendo(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
     } finally {
@@ -823,92 +826,141 @@ export default function BibliotecaPage() {
               {t.label}
             </button>
           ))}
-          <input
-            className="input"
-            style={{ minHeight: 36, fontSize: 13 }}
-            placeholder="Buscar…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            aria-label="Buscar"
-          />
-          <input
-            className="input"
-            style={{ minHeight: 36, fontSize: 13, maxWidth: 130 }}
-            placeholder="Etiqueta…"
-            value={etiqueta}
-            onChange={(e) => setEtiqueta(e.target.value)}
-            aria-label="Etiqueta"
-          />
-          {tab === "hooks" && (
-            <input
-              className="input"
-              style={{ minHeight: 36, fontSize: 13, maxWidth: 140 }}
-              placeholder="Categoría…"
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              aria-label="Categoría"
-            />
+          {muestraProponer && (
+            <button type="button" className="btn btn-sm" onClick={() => setProponiendo(true)}>
+              {esAdmin ? "Crear" : "Proponer"}
+            </button>
           )}
-          {tab === "referencias" && (
-            <select
-              className="input select"
-              style={{ minHeight: 36, fontSize: 13, maxWidth: 140 }}
-              value={plataforma}
-              onChange={(e) => setPlataforma(e.target.value)}
-              aria-label="Plataforma"
-            >
-              <option value="">Plataforma…</option>
-              <option value="Instagram">Instagram</option>
-              <option value="TikTok">TikTok</option>
-              <option value="YouTube">YouTube</option>
-              <option value="otra">Otra</option>
-            </select>
-          )}
-          {tab === "sops" && (
-            <select
-              className="input select"
-              style={{ minHeight: 36, fontSize: 13, maxWidth: 150 }}
-              value={oficio}
-              onChange={(e) => setOficio(e.target.value)}
-              aria-label="Oficio"
-            >
-              <option value="">Oficio…</option>
-              <option value="todos">Todos</option>
-              <option value="grabacion">Grabación</option>
-              <option value="edicion">Edición</option>
-              <option value="diseno">Diseño</option>
-              <option value="estrategia">Estrategia/guion</option>
-              <option value="publicacion">Publicación</option>
-              <option value="ventas">Ventas</option>
-            </select>
-          )}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFiltrosBib(true)}>
+            Filtros
+          </button>
         </div>
 
-        {muestraProponer && (
-          <div className="card" style={{ marginTop: 10 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700 }}>
-              {esAdmin ? "Crear (se publica directo)" : "Proponer (queda en borrador hasta que se publique)"}
-            </p>
-            <div style={{ display: "grid", gap: 6 }}>
-              <input
-                className="input"
-                style={{ minHeight: 36, fontSize: 13 }}
-                placeholder={tab === "hooks" ? "Título del hook (ej. ¿Sabías que…?)" : tab === "referencias" ? "Título de la referencia" : tab === "sops" ? "Título del SOP" : "Nombre del formato"}
-                value={nuevoTitulo}
-                onChange={(e) => setNuevoTitulo(e.target.value)}
-              />
-              <input
-                className="input"
-                style={{ minHeight: 36, fontSize: 13 }}
-                placeholder={tab === "referencias" ? "Link https://…" : tab === "formatos" ? "Objetivo (opcional)" : tab === "hooks" ? "Por qué funciona (opcional)" : "Detalle (opcional)"}
-                value={nuevoDetalle}
-                onChange={(e) => setNuevoDetalle(e.target.value)}
-              />
-              <button type="button" className="btn btn-primary btn-sm" disabled={guardando || nuevoTitulo.trim() === ""} onClick={() => void proponer()}>
-                {esAdmin ? "Crear" : "Proponer"}
+        {proponiendo && muestraProponer && (
+          <Modal title={esAdmin ? "Crear (se publica directo)" : "Proponer (queda en borrador hasta que se publique)"} onClose={() => setProponiendo(false)}>
+            <div className={f1.f1sheetFilters}>
+              <label className="label" htmlFor="bib-nuevo-titulo">
+                Título
+                <input
+                  id="bib-nuevo-titulo"
+                  className="input"
+                  placeholder={tab === "hooks" ? "Título del hook (ej. ¿Sabías que…?)" : tab === "referencias" ? "Título de la referencia" : tab === "sops" ? "Título del SOP" : "Nombre del formato"}
+                  value={nuevoTitulo}
+                  onChange={(e) => setNuevoTitulo(e.target.value)}
+                />
+              </label>
+              <label className="label" htmlFor="bib-nuevo-detalle">
+                Detalle
+                <input
+                  id="bib-nuevo-detalle"
+                  className="input"
+                  placeholder={tab === "referencias" ? "Link https://…" : tab === "formatos" ? "Objetivo (opcional)" : tab === "hooks" ? "Por qué funciona (opcional)" : "Detalle (opcional)"}
+                  value={nuevoDetalle}
+                  onChange={(e) => setNuevoDetalle(e.target.value)}
+                />
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" className="btn btn-sm" disabled={guardando || nuevoTitulo.trim() === ""} onClick={() => void proponer()}>
+                  {guardando ? "Guardando…" : esAdmin ? "Crear" : "Proponer"}
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={guardando} onClick={() => setProponiendo(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {filtrosBib && (
+          <Modal title="Filtros" onClose={() => setFiltrosBib(false)}>
+            <div className={f1.f1sheetFilters}>
+              <label className="label" htmlFor="bib-q">
+                Buscar
+                <input
+                  id="bib-q"
+                  className="input"
+                  placeholder="Buscar…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+              </label>
+              <label className="label" htmlFor="bib-etiqueta">
+                Etiqueta
+                <input
+                  id="bib-etiqueta"
+                  className="input"
+                  placeholder="Etiqueta…"
+                  value={etiqueta}
+                  onChange={(e) => setEtiqueta(e.target.value)}
+                />
+              </label>
+              {tab === "hooks" && (
+                <label className="label" htmlFor="bib-categoria">
+                  Categoría
+                  <input
+                    id="bib-categoria"
+                    className="input"
+                    placeholder="Categoría…"
+                    value={categoria}
+                    onChange={(e) => setCategoria(e.target.value)}
+                  />
+                </label>
+              )}
+              {tab === "referencias" && (
+                <label className="label" htmlFor="bib-plataforma">
+                  Plataforma
+                  <select
+                    id="bib-plataforma"
+                    className="select"
+                    value={plataforma}
+                    onChange={(e) => setPlataforma(e.target.value)}
+                  >
+                    <option value="">Plataforma…</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="otra">Otra</option>
+                  </select>
+                </label>
+              )}
+              {tab === "sops" && (
+                <label className="label" htmlFor="bib-oficio">
+                  Oficio
+                  <select
+                    id="bib-oficio"
+                    className="select"
+                    value={oficio}
+                    onChange={(e) => setOficio(e.target.value)}
+                  >
+                    <option value="">Oficio…</option>
+                    <option value="todos">Todos</option>
+                    <option value="grabacion">Grabación</option>
+                    <option value="edicion">Edición</option>
+                    <option value="diseno">Diseño</option>
+                    <option value="estrategia">Estrategia/guion</option>
+                    <option value="publicacion">Publicación</option>
+                    <option value="ventas">Ventas</option>
+                  </select>
+                </label>
+              )}
+              <button type="button" className="btn btn-sm" onClick={() => setFiltrosBib(false)}>
+                Ver resultados
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setQ("");
+                  setEtiqueta("");
+                  setCategoria("");
+                  setPlataforma("");
+                  setOficio("");
+                }}
+              >
+                Limpiar
               </button>
             </div>
-          </div>
+          </Modal>
         )}
 
         {tab === "formatos" && (
@@ -917,7 +969,7 @@ export default function BibliotecaPage() {
               <FormatoCard key={f.id} formato={f} esAdmin={esAdmin} miId={miId} onChange={(n) => setFormatos((ls) => (ls ?? []).map((x) => (x.id === n.id ? n : x)))} />
             ))}
             {(formatos ?? []).length === 0 && (
-              <li className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Sin formatos todavía. Proponé el primero.</p></li>
+              <li className="card"><p className={f1.f1vacio}><strong>Sin formatos todavía</strong>Proponé el primero con “Proponer”.</p></li>
             )}
           </ul>
         )}
@@ -928,7 +980,7 @@ export default function BibliotecaPage() {
               <HookCard key={h.id} hook={h} esAdmin={esAdmin} miId={miId} onChange={(n) => setHooks((ls) => (ls ?? []).map((x) => (x.id === n.id ? n : x)))} />
             ))}
             {(hooks ?? []).length === 0 && (
-              <li className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Sin hooks todavía. Proponé el primero.</p></li>
+              <li className="card"><p className={f1.f1vacio}><strong>Sin hooks todavía</strong>Proponé el primero con “Proponer”.</p></li>
             )}
           </ul>
         )}
@@ -939,7 +991,7 @@ export default function BibliotecaPage() {
               <ReferenciaCard key={r.id} referencia={r} esAdmin={esAdmin} miId={miId} onChange={(n) => setReferencias((ls) => (ls ?? []).map((x) => (x.id === n.id ? n : x)))} />
             ))}
             {(referencias ?? []).length === 0 && (
-              <li className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Sin referencias todavía. Pegá el primer link analizado.</p></li>
+              <li className="card"><p className={f1.f1vacio}><strong>Sin referencias todavía</strong>Pegá el primer link analizado con “Proponer”.</p></li>
             )}
           </ul>
         )}
@@ -950,7 +1002,7 @@ export default function BibliotecaPage() {
               <SOPCard key={s.id} sop={s} esAdmin={esAdmin} miId={miId} onChange={(n) => setSOPs((ls) => (ls ?? []).map((x) => (x.id === n.id ? n : x)))} onEjecutar={(x) => void iniciarSOP(x)} />
             ))}
             {(sops ?? []).length === 0 && (
-              <li className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Sin SOPs todavía. Creá el primero.</p></li>
+              <li className="card"><p className={f1.f1vacio}><strong>Sin SOPs todavía</strong>Creá el primero con “Proponer”.</p></li>
             )}
           </ul>
         )}
@@ -966,7 +1018,7 @@ export default function BibliotecaPage() {
               />
             ))}
             {(ejecuciones ?? []).length === 0 && (
-              <li className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Todavía no iniciaste ningún SOP. Abrí la pestaña SOPs e iniciá uno.</p></li>
+              <li className="card"><p className={f1.f1vacio}><strong>Sin SOPs en curso</strong>Abrí la pestaña SOPs e iniciá uno.</p></li>
             )}
           </ul>
         )}
@@ -975,8 +1027,9 @@ export default function BibliotecaPage() {
           <div style={{ marginTop: 10 }}>
             {borradores.formatos.length + borradores.hooks.length + borradores.referencias.length + borradores.sops.length === 0 ? (
               <div className="card">
-                <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>
-                  No hay propuestas pendientes. Cuando alguien del equipo proponga contenido aparecerá aquí.
+                <p className={f1.f1vacio}>
+                  <strong>Sin propuestas pendientes</strong>
+                  Cuando alguien del equipo proponga contenido, aparece aquí.
                 </p>
               </div>
             ) : (
