@@ -1,0 +1,74 @@
+/* BootSplash RConcept (adaptado de Globe, B/N): logo marca/ + barra sólida. */
+
+.root {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  background: var(--g-bg-page);
+  color: var(--g-label-primary);
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  animation: g-fade-in 240ms var(--g-ease) 150ms both;
+}
+
+/* Barra finita indeterminada debajo del logo (sólida negra, sin degradado). */
+.bar {
+  position: relative;
+  width: 96px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--g-bg-hover);
+}
+
+.bar i {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--g-accent);
+  animation: boot-slide 1.1s var(--g-ease) infinite;
+}
+
+@keyframes boot-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.slow {
+  color: var(--g-label-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.slow button {
+  background: none;
+  border: none;
+  color: var(--g-label-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  font: inherit;
+}
+
+@keyframes g-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inner,
+  .bar i {
+    animation: none;
+  }
+}

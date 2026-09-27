@@ -1,0 +1,320 @@
+/* AppShell RConcept (adaptado de Globe AppShell.module.css, B/N sólido).
+ * Pastilla móvil + drawer + sidebar desktop 232px + riel colapsado.
+ * Sin glassmorphism: fondos sólidos, overlay sin blur. */
+
+.root {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+}
+
+@media (pointer: coarse) {
+  .root {
+    transition: none;
+  }
+}
+
+/* Pastilla flotante (solo mobile, o desktop con la sidebar colapsada). Sólida. */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--g-border);
+  border-radius: 999px;
+  background: var(--g-bg-elevated);
+  box-shadow: var(--g-shadow-subtle);
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  z-index: var(--g-z-pill);
+}
+
+.menuButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--g-label-primary);
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  background: var(--g-bg-hover);
+}
+
+.mobileTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--g-text-chat);
+  font-weight: 600;
+  color: var(--g-label-primary);
+  text-decoration: none;
+}
+
+/* Overlay mobile: negro 45%, sin blur. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--g-z-pill);
+  background: var(--g-overlay);
+  animation: fade-in 240ms ease-out both;
+  will-change: opacity;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 767px) {
+  .main {
+    padding-top: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+  }
+
+  .sidebarWrap,
+  .sidebarPanel,
+  .sidebarInner {
+    transition: none;
+  }
+
+  .railVisible {
+    animation: none;
+  }
+}
+
+/* Desktop: contenedor anima su ANCHO (232px ↔ 0). */
+.sidebarWrap {
+  display: contents;
+}
+
+@media (min-width: 768px) {
+  .overlay {
+    display: none;
+  }
+
+  .pill {
+    display: none;
+  }
+
+  .pillDesktop {
+    display: flex;
+  }
+
+  .sidebarWrap {
+    display: block;
+    flex: none;
+    width: 232px;
+    overflow: hidden;
+    transition: width 280ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .sidebarHidden {
+    width: 0;
+  }
+
+  .sidebarPanel {
+    width: 232px;
+    transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .sidebarHidden .sidebarPanel {
+    transform: translateX(-24px);
+  }
+
+  .sidebarInner {
+    opacity: 1;
+    transition: opacity var(--g-dur) var(--g-ease) var(--g-dur-fast);
+  }
+
+  .sidebarHidden .sidebarInner {
+    opacity: 0;
+    transition: opacity var(--g-dur-fast) var(--g-ease);
+  }
+}
+
+/* Estado pre-hidratación (script anti-flash del layout). */
+@media (min-width: 768px) {
+  html[data-sidebar="closed"] .pill {
+    display: flex;
+  }
+
+  html[data-sidebar="closed"] .sidebarWrap {
+    width: 0;
+    min-width: 0;
+    flex: none;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  .sidebarHidden {
+    display: contents;
+  }
+}
+
+/* Riel flotante (desktop, sidebar colapsada). Sólido, sin vidrio. */
+.rail {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .railVisible {
+    position: fixed;
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    bottom: 14px;
+    left: 12px;
+    z-index: var(--g-z-pill);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    width: 44px;
+    pointer-events: none;
+    animation: rail-in 200ms ease-out 180ms both;
+  }
+
+  html[data-sidebar="closed"] .rail {
+    position: fixed;
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    bottom: 14px;
+    left: 12px;
+    z-index: var(--g-z-pill);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    width: 44px;
+    pointer-events: none;
+  }
+
+  .mainWithRail {
+    padding-left: 64px;
+  }
+}
+
+@keyframes rail-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.railGroup {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--g-border);
+  border-radius: 999px;
+  background: var(--g-bg-elevated);
+  box-shadow: var(--g-shadow-subtle);
+}
+
+.railSep {
+  width: 18px;
+  height: 1px;
+  margin: 3px 0;
+  background: var(--g-border-subtle);
+}
+
+.railButton {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--g-label-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color var(--g-dur-fast) var(--g-ease),
+    color var(--g-dur-fast) var(--g-ease),
+    transform var(--g-dur-fast) var(--g-ease);
+}
+
+.railButton:hover {
+  background: var(--g-bg-hover);
+  color: var(--g-label-primary);
+}
+
+.railButton:active {
+  transform: scale(0.94);
+}
+
+.railActive {
+  background: var(--g-bg-hover);
+  color: var(--g-label-primary);
+}
+
+.railAccount {
+  position: relative;
+  pointer-events: auto;
+}
+
+.railAvatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 5px;
+  border: 1px solid var(--g-border);
+  border-radius: 999px;
+  background: var(--g-bg-elevated);
+  box-shadow: var(--g-shadow-subtle);
+  cursor: pointer;
+}
+
+.railAvatar img,
+.railAvatar span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--g-accent);
+  color: var(--g-accent-on);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .railVisible {
+    animation: none;
+  }
+}

@@ -1,0 +1,251 @@
+/* Sidebar RConcept (adaptada de Globe Sidebar.module.css, B/N sólido).
+ * Sin Recientes/conversaciones/búsqueda (nada de chat): solo marca,
+ * navegación de módulos y pie de cuenta. Sin blur ni translúcidos. */
+
+.root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--g-z-drawer);
+  display: flex;
+  flex-direction: column;
+  width: min(78vw, 288px);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-right: 1px solid var(--g-border-subtle);
+  background: var(--g-bg-surface);
+  box-shadow: var(--g-shadow-subtle);
+  transform: translateX(-100%);
+  transition: transform 240ms cubic-bezier(0.4, 0, 1, 1);
+  will-change: transform;
+}
+
+.rootOpen {
+  transform: translateX(0);
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Revisión director F0: el drawer cerrado (translateX(-100%)) cuenta como
+   elemento fuera del viewport en el chequeo de overflow. En mobile se
+   desmonta visualmente con display:none; al abrir anima slide-in. */
+@media (max-width: 767px) {
+  .rootClosed {
+    display: none;
+  }
+
+  .rootOpen {
+    animation: drawer-in 240ms var(--g-ease);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 768px) {
+  .root {
+    position: static;
+    height: 100vh;
+    height: 100dvh;
+    width: 100%;
+    flex: 1 1 auto;
+    transform: none;
+    transition: none;
+    border-right: none;
+    box-shadow: none;
+  }
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 8px 0 16px;
+  flex: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  color: var(--g-label-primary);
+}
+
+.brandName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--g-label-primary);
+  letter-spacing: 0.01em;
+}
+
+.brandSub {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--g-label-tertiary);
+}
+
+.collapseButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--g-label-secondary);
+  cursor: pointer;
+}
+
+.collapseButton:hover {
+  background: var(--g-bg-hover);
+  color: var(--g-label-primary);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 8px 8px;
+  flex: none;
+  overflow-y: auto;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--g-radius-btn);
+  background: none;
+  color: var(--g-label-secondary);
+  font-size: 13.5px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--g-dur-fast) var(--g-ease),
+    color var(--g-dur-fast) var(--g-ease);
+}
+
+.navItem:hover {
+  background: var(--g-bg-hover);
+  color: var(--g-label-primary);
+}
+
+.navItemActive {
+  background: var(--g-bg-hover);
+  color: var(--g-label-primary);
+  font-weight: 500;
+}
+
+.navIcon {
+  flex: none;
+  display: inline-flex;
+}
+
+.soon {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--g-label-tertiary);
+  border: 1px solid var(--g-border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  flex: none;
+}
+
+.grow {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.footer {
+  position: relative;
+  flex: none;
+  padding: 8px 10px 12px;
+  border-top: 1px solid var(--g-border-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .rootOpen,
+  .rootClosed,
+  .navItem {
+    transition: none;
+    animation: none;
+  }
+}
+
+.profileRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  transition: background-color var(--g-dur-fast) var(--g-ease);
+}
+
+.profileRow:hover {
+  background: var(--g-bg-hover);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--g-accent);
+  color: var(--g-accent-on);
+  font-size: 13px;
+  font-weight: 600;
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.profileName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--g-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileSub {
+  font-size: 12px;
+  color: var(--g-label-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,86 @@
+/* HomeCard RConcept (adaptado de Globe, B/N sólido, grid envolvente).
+ * Revisión director F0: las filas flex con scroll-x cortaban tarjetas
+ * (Biblioteca a 1280, Mi perfil a 375). Ahora grid que envuelve:
+ * 375 = 1 columna, 768 = 2-3, 1280 = 3-4, sin scroll horizontal. */
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (min-width: 600px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  background: var(--g-bg-elevated);
+  color: var(--g-label-primary);
+  text-decoration: none;
+  transition: background-color var(--g-dur-fast) var(--g-ease);
+}
+
+a.card:hover {
+  background: var(--g-bg-hover);
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--g-label-secondary);
+}
+
+.current {
+  border-color: var(--g-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

@@ -1,0 +1,448 @@
+/* RConcept Systems — tokens Globe adaptados a B/N (tema claro único).
+ * Fuente: C:/Users/INNOV/Desktop/Proyectos/Globe/app/globals.css bloque
+ * :root[data-theme="light"] (~línea 190), como tema único sin data-theme.
+ * Cambios Juan: --g-accent #3b82f6 → #0A0A0A (texto blanco encima);
+ * --g-glass-* → sólidos (sin blur); paleta rohlfingconcept.com.
+ */
+
+:root {
+  --g-bg-page: #ffffff;
+  --g-bg-surface: #f4f4f4;
+  --g-bg-elevated: #ffffff;
+  --g-bg-hover: #e9e9e9;
+  --g-bg-bubble: #f4f4f4;
+  --g-border: rgba(0, 0, 0, 0.1);
+  --g-border-subtle: rgba(0, 0, 0, 0.06);
+
+  --g-label-primary: #0a0a0a;
+  --g-label-secondary: #5c5c5c;
+  --g-label-tertiary: #8a8a8a;
+  --g-label-caption: #8a8a8a;
+
+  /* Único acento: negro (B/N rohlfingconcept.com). Era #3b82f6 en Globe. */
+  --g-accent: #0a0a0a;
+  --g-accent-hover: #1a1a1a;
+  --g-accent-on: #ffffff;
+
+  --g-warn-primary: #0a0a0a;
+  --g-warn-bg: #f4f4f4;
+  --g-warn-border: #d9d9d9;
+
+  --g-error-primary: #a31f1f;
+  --g-error-bg: #f4f4f4;
+
+  --g-success: #0a0a0a;
+
+  --g-bg-code: #f4f4f4;
+  --g-code-keyword: #0a0a0a;
+  --g-code-string: #5c5c5c;
+  --g-code-comment: #8a8a8a;
+  --g-code-number: #0a0a0a;
+  --g-code-fn: #0a0a0a;
+
+  --g-focus-ring: rgba(0, 0, 0, 0.16);
+  --g-overlay: rgba(0, 0, 0, 0.35);
+  --g-on-accent: #ffffff;
+
+  /* Sólidos (Globe usaba translúcidos + blur): sin glassmorphism. */
+  --g-glass-bg: #ffffff;
+  --g-glass-border: #e9e9e9;
+  --g-glass-highlight: none;
+  --g-glass-blur: none;
+
+  --g-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --g-font-family-code: "SF Mono", "JetBrains Mono", Consolas, Menlo, monospace;
+
+  --g-shadow-lv2: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --g-shadow-subtle: 0 2px 12px rgba(0, 0, 0, 0.06);
+
+  /* D1 — escala compacta Globe. */
+  --g-text-chat: 15px;
+  --g-text-ui: 14px;
+  --g-text-secondary: 13px;
+  --g-text-caption: 12px;
+  --g-line-chat: 1.65;
+  --g-title-page: 22px;
+  --g-icon-ui: 16px;
+  --g-icon-chip: 14px;
+  --g-btn-icon: 32px;
+  --g-radius-btn: 8px;
+  --g-radius-card: 12px;
+  --g-radius-modal: 16px;
+  --g-space-1: 4px;
+  --g-space-2: 8px;
+  --g-space-3: 12px;
+  --g-space-4: 16px;
+  --g-space-5: 20px;
+  --g-space-6: 24px;
+
+  --g-ease: cubic-bezier(0.2, 0, 0, 1);
+  --g-dur-fast: 120ms;
+  --g-dur: 200ms;
+  --g-dur-slow: 320ms;
+
+  --g-z-content: 10;
+  --g-z-pill: 30;
+  --g-z-drawer: 40;
+  --g-z-menu: 50;
+  --g-z-sheet: 60;
+  --g-z-modal: 80;
+  --g-z-top: 90;
+
+  /* Aliases compactos del shell anterior (c-bg, s, t, r, d):
+     para no reescribir los componentes de Equipo/Mi perfil en F0. */
+  --c-bg: #ffffff;
+  --c-bg-2: #f4f4f4;
+  --c-line: #e9e9e9;
+  --c-line-2: #d9d9d9;
+  --c-text: #0a0a0a;
+  --c-text-2: #5c5c5c;
+  --c-text-3: #8a8a8a;
+  --c-danger: #a31f1f;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 28px;
+  --s-7: 40px;
+
+  --t-sm: 12px;
+  --t-base: 13px;
+  --t-md: 14px;
+  --t-title: 17px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --d-1: 120ms;
+  --d-2: 200ms;
+  --d-3: 320ms;
+}
+
+/* Skeletons y spinners globales (Globe). */
+@keyframes g-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes g-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .g-skeleton {
+    animation: g-pulse 1.2s ease-in-out infinite;
+  }
+
+  .g-spinner {
+    animation: g-spin 700ms linear infinite;
+  }
+}
+
+/* Sin movimiento si el sistema lo pide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Transición de contenido entre rutas (Globe N2). */
+@keyframes app-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.app-route-in {
+  height: 100%;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-route-in {
+    animation: app-route-in 160ms var(--g-ease);
+  }
+}
+
+html {
+  height: 100%;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--g-bg-page);
+  color: var(--g-label-primary);
+  font-family: var(--g-font-family);
+  font-size: var(--g-text-ui);
+  line-height: 1.55;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- Controles compartidos (clases globales del shell anterior) ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-text);
+  background: var(--c-text);
+  color: #fff;
+  font-size: var(--t-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--d-1) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-line-2);
+}
+
+.btn-danger {
+  background: var(--c-bg);
+  color: var(--c-danger);
+  border: 1px solid var(--c-line-2);
+}
+
+.btn-sm {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: var(--t-base);
+  border-radius: var(--r-sm);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  font-size: 16px;
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1.5px solid var(--c-line-2);
+  border-radius: var(--r-md);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 2px solid var(--c-text);
+  outline-offset: 0;
+  border-color: var(--c-text);
+}
+
+.textarea {
+  min-height: 76px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.label {
+  display: block;
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 var(--s-1);
+}
+
+.field {
+  margin-bottom: var(--s-3);
+}
+
+.hint {
+  font-size: var(--t-sm);
+  color: var(--c-text-2);
+  margin: var(--s-1) 0 0;
+}
+
+/* ---------- Superficies ---------- */
+
+.card {
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  padding: 14px 12px;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--s-4) var(--s-3) var(--s-6);
+}
+
+.page-title {
+  font-size: var(--t-title);
+  font-weight: 700;
+  margin: 0 0 var(--s-1);
+  letter-spacing: -0.01em;
+}
+
+.page-sub {
+  font-size: var(--t-base);
+  color: var(--c-text-2);
+  margin: 0 0 var(--s-4);
+}
+
+/* ---------- Chips ---------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--c-line-2);
+  background: var(--c-bg-2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--c-text-2);
+  white-space: nowrap;
+}
+
+.chip-dark {
+  background: var(--c-text);
+  border-color: var(--c-text);
+  color: #fff;
+}
+
+.chip-warn {
+  background: var(--c-text);
+  border-color: var(--c-text);
+  color: #fff;
+}
+
+/* ---------- Estados ---------- */
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  min-height: 60vh;
+  padding: var(--s-4) var(--s-3);
+  text-align: center;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--c-line-2);
+  border-top-color: var(--c-text);
+  animation: g-spin 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+.error-box {
+  border: 1px solid var(--c-line-2);
+  border-left: 3px solid var(--c-danger);
+  background: var(--c-bg-2);
+  border-radius: var(--r-md);
+  padding: var(--s-3);
+  font-size: var(--t-base);
+  color: var(--c-text);
+  margin-bottom: var(--s-3);
+}
+
+.error-box p {
+  margin: 0 0 var(--s-2);
+}
+
+.error-box p:last-child {
+  margin-bottom: 0;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--c-text);
+  color: #fff;
+  font-size: var(--t-md);
+  font-weight: 700;
+  flex: none;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+  font-size: var(--t-base);
+}

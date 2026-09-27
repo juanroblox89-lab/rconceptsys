@@ -1,0 +1,65 @@
+.wrap {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-4) var(--s-3);
+  background: var(--c-bg-2);
+}
+
+.card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  padding: var(--s-5) var(--s-4);
+  text-align: center;
+}
+
+.brand {
+  display: inline-flex;
+  margin-bottom: var(--s-3);
+  color: var(--c-text);
+}
+
+.demoList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  text-align: left;
+}
+
+.demoNote {
+  font-size: var(--t-base);
+  color: var(--c-text-2);
+  margin: 0 0 var(--s-1);
+}
+
+.demoBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-line-2);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  cursor: pointer;
+  text-align: left;
+  min-height: 52px;
+  justify-content: center;
+}
+
+.demoBtn:hover {
+  background: var(--c-bg-2);
+}
+
+.demoBtn strong {
+  font-size: var(--t-md);
+}
+
+.demoBtn small {
+  font-size: var(--t-sm);
+  color: var(--c-text-2);
+}

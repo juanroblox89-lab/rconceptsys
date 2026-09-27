@@ -1,0 +1,148 @@
+.pop {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  background: var(--g-bg-elevated);
+  box-shadow: var(--g-shadow-lv2);
+  z-index: var(--g-z-menu);
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 8px 8px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--g-accent);
+  color: var(--g-accent-on);
+  font-size: 13px;
+  font-weight: 600;
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--g-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userMail {
+  font-size: 12px;
+  color: var(--g-label-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--g-label-secondary);
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.item:hover:not(:disabled) {
+  background: var(--g-bg-hover);
+  color: var(--g-label-primary);
+}
+
+.item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sep {
+  margin: 6px 0;
+  border: none;
+  border-top: 1px solid var(--g-border-subtle);
+}
+
+/* Variante del riel colapsado: abre a la derecha del avatar, alineada abajo. */
+.popRail {
+  left: calc(100% + 10px);
+  right: auto;
+  bottom: 0;
+  width: 240px;
+}
+
+@media (max-width: 767px) {
+  .pop {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: auto;
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
+  }
+}
+
+/* Animación de entrada (Globe). Keyframes locales por CSS Modules. */
+.pop,
+.popRail {
+  transform-origin: bottom left;
+  animation: g-drop-up 160ms var(--g-ease) both;
+}
+
+@media (max-width: 767px) {
+  .pop {
+    transform-origin: top left;
+    animation-name: g-drop-down;
+  }
+}
+
+@keyframes g-drop-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+@keyframes g-drop-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop,
+  .popRail {
+    animation: none;
+  }
+}
