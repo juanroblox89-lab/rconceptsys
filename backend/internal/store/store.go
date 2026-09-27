@@ -10,6 +10,7 @@ import (
 	"errors"
 	"time"
 
+	"rconceptsys/backend/internal/asistente"
 	"rconceptsys/backend/internal/biblioteca"
 	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/permisos"
@@ -62,6 +63,13 @@ type (
 	Lead       = ventas.Lead
 	LeadEvento = ventas.LeadEvento
 	Visita     = ventas.Visita
+)
+
+// Aliases F5 (asistente IA; BRIEF F5 §4).
+// Conversacion/Mensaje/UsoDiario viven en asistente (dominio F5).
+type (
+	Conversacion = asistente.Conversacion
+	Mensaje       = asistente.Mensaje
 )
 
 // ErrVersion es el conflicto de edición (§5.14): el updated_at esperado no
@@ -249,6 +257,22 @@ type Store interface {
 	// Storage (interfaz preparada). ObtenerArchivo los lee de vuelta.
 	GuardarArchivo(nombre string, datos []byte) (string, error)
 	ObtenerArchivo(id string) ([]byte, bool, error)
+
+	// --- F5 asistente (BRIEF F5 §4) ---
+	// Conversaciones + mensajes del chat (historial por usuario) y conteo
+	// diario de uso (tope por usuario/día configurable por env).
+	// UpdatePiezaBorrador deja el guion como borrador (F5 §1: no toca el
+	// guion aprobado; crearlo aparte evita romper aplicaPieza F1).
+	ListConversaciones(usuarioID string) ([]Conversacion, error)
+	CreateConversacion(c Conversacion) (Conversacion, error)
+	TouchConversacion(id string) (Conversacion, error)
+	ListMensajes(conversacionID string) ([]Mensaje, error)
+	CreateMensaje(m Mensaje) (Mensaje, error)
+	// UsoHoy cuenta los mensajes del usuario en el día (YYYY-MM-DD).
+	// SumarUso registra uno (llamar solo cuando el turno usó el modelo).
+	UsoHoy(usuarioID, dia string) (int, error)
+	SumarUso(usuarioID, dia string) (int, error)
+	UpdatePiezaBorrador(id, borrador string) (Pieza, error)
 }
 
 // NewUUID genera un UUID v4 con crypto/rand (stdlib only, sin dependencias).

@@ -62,6 +62,7 @@ func (s *Server) Handler() http.Handler {
 	s.rutasF2(mux)
 	s.rutasF3(mux)
 	s.rutasF4(mux)
+	s.rutasF5(mux)
 	return corsMiddleware(requireInterno(s.interno, mux))
 }
 

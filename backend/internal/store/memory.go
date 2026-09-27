@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"rconceptsys/backend/internal/asistente"
 	"rconceptsys/backend/internal/biblioteca"
 	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/produccion"
@@ -90,6 +91,13 @@ type Memoria struct {
 	visitas     map[string]ventas.Visita
 	ordenVisita []string
 	archivos    map[string]archivoGuardado
+	// F5 asistente (BRIEF F5 §4): conversaciones + mensajes + uso diario
+	// (tope por usuario/día). guion_borrador vive en la pieza (aplicaPieza).
+	convers   map[string]asistente.Conversacion
+	ordenConv []string
+	mensajes  map[string]asistente.Mensaje
+	ordenMsg  []string
+	uso       map[string]int // clave usuarioID|dia
 }
 
 // NuevaMemoria crea el store demo con las 4 semillas F0: dueño Samuel (todos
@@ -119,6 +127,9 @@ func NuevaMemoria() *Memoria {
 		leads:          map[string]ventas.Lead{},
 		visitas:        map[string]ventas.Visita{},
 		archivos:       map[string]archivoGuardado{},
+		convers:        map[string]asistente.Conversacion{},
+		mensajes:       map[string]asistente.Mensaje{},
+		uso:            map[string]int{},
 	}
 	fija := "2026-09-26T12:00:00Z"
 	m.poner(Usuario{ID: SemillaDuenoID, Nombre: "Samuel", Email: "samuel@demo.rconceptsys", Acceso: "dueno", Oficios: []string{"grabacion", "edicion", "diseno", "estrategia", "publicacion", "ventas"}, CreatedAt: fija, UpdatedAt: fija})
@@ -518,6 +529,11 @@ func aplicaPieza(p produccion.Pieza, cambios map[string]any) produccion.Pieza {
 	}
 	if v, ok := cambios["hook_recomendado_id"].(string); ok {
 		p.HookRecomendadoID = v
+	}
+	// F5: borrador del asistente (solo vía UpdatePiezaBorrador o PATCH de
+	// adopción; nunca lo escribe el flujo F1).
+	if v, ok := cambios["guion_borrador"].(string); ok {
+		p.GuionBorrador = v
 	}
 	return p
 }
@@ -1078,4 +1094,103 @@ func (m *Memoria) UpdateCorte(id string, cambios map[string]any) (cobros.Corte, 
 	c.UpdatedAt = Ahora()
 	m.cortes[id] = c
 	return c, nil
+}
+
+// --- F5 asistente (BRIEF F5 §4, memoria) ---
+
+func (m *Memoria) ListConversaciones(usuarioID string) ([]Conversacion, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := []Conversacion{}
+	for _, id := range m.ordenConv {
+		if c := m.convers[id]; c.UsuarioID == usuarioID {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+func (m *Memoria) CreateConversacion(c Conversacion) (Conversacion, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c.ID == "" {
+		c.ID = NewUUID()
+	}
+	if c.CreatedAt == "" {
+		c.CreatedAt = Ahora()
+	}
+	c.UpdatedAt = Ahora()
+	if _, existe := m.convers[c.ID]; !existe {
+		m.ordenConv = append(m.ordenConv, c.ID)
+	}
+	m.convers[c.ID] = c
+	return c, nil
+}
+
+func (m *Memoria) TouchConversacion(id string) (Conversacion, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c, ok := m.convers[id]
+	if !ok {
+		return Conversacion{}, ErrNoExiste
+	}
+	c.UpdatedAt = Ahora()
+	m.convers[id] = c
+	return c, nil
+}
+
+func (m *Memoria) ListMensajes(conversacionID string) ([]Mensaje, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := []Mensaje{}
+	for _, id := range m.ordenMsg {
+		if msg := m.mensajes[id]; msg.ConversacionID == conversacionID {
+			out = append(out, msg)
+		}
+	}
+	return out, nil
+}
+
+func (m *Memoria) CreateMensaje(msg Mensaje) (Mensaje, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if msg.ID == "" {
+		msg.ID = NewUUID()
+	}
+	if msg.CreatedAt == "" {
+		msg.CreatedAt = Ahora()
+	}
+	if _, existe := m.mensajes[msg.ID]; !existe {
+		m.ordenMsg = append(m.ordenMsg, msg.ID)
+	}
+	m.mensajes[msg.ID] = msg
+	return msg, nil
+}
+
+func claveUso(usuarioID, dia string) string { return usuarioID + "|" + dia }
+
+func (m *Memoria) UsoHoy(usuarioID, dia string) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.uso[claveUso(usuarioID, dia)], nil
+}
+
+func (m *Memoria) SumarUso(usuarioID, dia string) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.uso[claveUso(usuarioID, dia)]++
+	return m.uso[claveUso(usuarioID, dia)], nil
+}
+
+func (m *Memoria) UpdatePiezaBorrador(id, borrador string) (Pieza, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p, ok := m.piezas[id]
+	if !ok {
+		return Pieza{}, ErrNoExiste
+	}
+	p.GuionBorrador = borrador
+	p.UpdatedAt = Ahora()
+	m.piezas[id] = p
+	return clonarPieza(p), nil
 }

@@ -684,6 +684,7 @@ func piezaVista(p store.Pieza, nombreCliente string) map[string]any {
 	return map[string]any{
 		"id": p.ID, "cliente_id": p.ClienteID, "cliente_nombre": nombreCliente,
 		"titulo": p.Titulo, "formato": p.Formato, "guion": p.Guion,
+		"guion_borrador": p.GuionBorrador,
 		"formato_recomendado_id": p.FormatoRecomendadoID,
 		"hook_recomendado_id":    p.HookRecomendadoID,
 		"fecha_objetivo": p.FechaObjetivo, "estado": p.Estado,
@@ -787,6 +788,7 @@ type piezaBody struct {
 	Titulo        string      `json:"titulo"`
 	Formato       string      `json:"formato"`
 	Guion         string      `json:"guion"`
+	GuionBorrador *string     `json:"guion_borrador"`
 	FechaObjetivo string      `json:"fecha_objetivo"`
 	Etapas        []etapaBody `json:"etapas"`
 	Estado        string      `json:"estado"`
@@ -1002,6 +1004,12 @@ func (s *Server) patchPieza(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Guion != p.Guion && (body.Guion != "" || p.Guion != "") {
 		cambios["guion"] = body.Guion
+	}
+	// F5: adopción/limpieza del borrador del asistente (solo admin/dueño,
+	// que ya pasaron Puede CrearPiezasAsignar arriba; el asistente nunca
+	// escribe aquí, solo vía UpdatePiezaBorrador + actividad).
+	if body.GuionBorrador != nil && *body.GuionBorrador != p.GuionBorrador {
+		cambios["guion_borrador"] = *body.GuionBorrador
 	}
 	if body.FechaObjetivo != p.FechaObjetivo && (body.FechaObjetivo != "" || p.FechaObjetivo != "") {
 		if !produccion.FechaValida(body.FechaObjetivo) {

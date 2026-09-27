@@ -71,6 +71,9 @@ type Pieza struct {
 	Titulo        string `json:"titulo"`
 	Formato       string `json:"formato,omitempty"`
 	Guion         string `json:"guion,omitempty"`
+	// GuionBorrador lo escribe el asistente IA (F5): nunca reemplaza al
+	// guion aprobado sin confirmación del usuario (se adopta con PATCH).
+	GuionBorrador string `json:"guion_borrador,omitempty"`
 	FechaObjetivo string `json:"fecha_objetivo,omitempty"`
 	Estado        string `json:"estado"`
 	// Vínculo Biblioteca F3 (BRIEF F3 §1): formato y hook usados o

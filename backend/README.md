@@ -1,4 +1,4 @@
-# Backend Go — RConcept Systems v2 (F0+F1+F2+F3+F4)
+# Backend Go — RConcept Systems v2 (F0+F1+F2+F3+F4+F5)
 
 Solo stdlib (`net/http`, `encoding/json`). Puerto `:8095` (`PORT` lo cambia;
 en F2 los QA usan `18095`).
@@ -269,3 +269,31 @@ Al desactivar un vendedor, sus leads abiertos pasan a `sin asignar`
 
 Semillas demo F4 (memoria, `demo=true`): Valentina vendedora + 2 leads
 (El Tizón Dorado en_contacto con próxima acción, Kantel prospecto).
+
+## Contrato F5 (asistente IA + métricas)
+
+Asistente (BRIEF F5 §1, ANALISIS §3.2 fila Asistente + §5.31 + §6):
+cadena mínima 9router (`NINEROUTER_BASE_URL` + `NINEROUTER_API_KEY`,
+modelo `NINEROUTER_MODEL`, default `oc/big-pickle(xhigh)`) → respaldo
+OpenAI-compatible opcional (`OPENAI_COMPAT_*`). `stream:false`,
+`User-Agent: Go-http-client/1.1` (default net/http), `max_tokens ≥ 16`.
+Sin claves → "no disponible" y el resto funciona igual. Tope diario
+`ASISTENTE_TOPE_DIA` (default 30; 0 = sin tope). Timeout 30 s.
+Herramientas en Go con `permisos.Puede` del que pregunta (visibilidad por
+cliente §3.1.3): `mis_tareas_hoy`, `piezas_atrasadas`, `resumen_mes`,
+`ver_pieza`, `ver_estrategia`, `ver_hooks`, `ver_formatos` (lectura) +
+`guardar_borrador_guion` y `proponer_hooks` (el modelo propone con
+marcadores `[GUARDAR_BORRADOR]`/`[PROPONER_HOOKS]` y GO ejecuta: borrador
+en la pieza sin tocar el guion aprobado, hooks como borradores F3).
+Nunca aprueba/borra/paga/cambia estados. Actividad "vía asistente".
+
+- `POST /asistente/chat {conversacion_id?, mensaje, contexto?{pieza_id, cliente_id}}` →
+  `200 {conversacion, respuesta, no_disponible}` (pendiente → `403`).
+- `GET /asistente/conversaciones` → `{conversaciones}` (mías).
+  `GET /asistente/conversaciones/{id}` → `{conversacion, mensajes}`
+  (ajena → `404`).
+- `GET /metricas` → `{piezas_publicadas_semana×8, piezas_por_estado,
+  tareas_vencidas, carga_por_persona, cobros_mes, ventas}` (solo
+  admin/dueño; equipo → `403`).
+- Piezas traen `guion_borrador` (F5; `PATCH /piezas/{id}` lo adopta como
+  guion con confirmación en la UI).

@@ -364,6 +364,7 @@ type piezaFila struct {
 	Titulo            string `json:"titulo"`
 	Formato           string `json:"formato"`
 	Guion             string `json:"guion"`
+	GuionBorrador     string `json:"guion_borrador"`
 	FechaObjetivo     string `json:"fecha_objetivo"`
 	Estado            string `json:"estado"`
 	MotivoCancelacion string `json:"motivo_cancelacion"`
@@ -377,7 +378,8 @@ type piezaFila struct {
 func (f piezaFila) aPieza() produccion.Pieza {
 	return produccion.Pieza{
 		ID: f.ID, ClienteID: f.ClienteID, Titulo: f.Titulo,
-		Formato: f.Formato, Guion: f.Guion, FechaObjetivo: f.FechaObjetivo,
+		Formato: f.Formato, Guion: f.Guion, GuionBorrador: f.GuionBorrador,
+		FechaObjetivo: f.FechaObjetivo,
 		Estado: f.Estado, MotivoCancelacion: f.MotivoCancelacion,
 		FormatoRecomendadoID: f.FormatoRec, HookRecomendadoID: f.HookRec,
 		CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt, CreatedBy: f.CreatedBy,
@@ -388,6 +390,7 @@ func filaDePieza(p produccion.Pieza) map[string]any {
 	return map[string]any{
 		"id": p.ID, "cliente_id": p.ClienteID, "titulo": p.Titulo,
 		"formato": p.Formato, "guion": p.Guion,
+		"guion_borrador": p.GuionBorrador,
 		"fecha_objetivo": nuloSiVacio(p.FechaObjetivo), "estado": p.Estado,
 		"motivo_cancelacion": nuloSiVacio(p.MotivoCancelacion),
 		"formato_recomendado_id": nuloSiVacio(p.FormatoRecomendadoID),
