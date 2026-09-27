@@ -1,0 +1,149 @@
+/* Campanita de notificaciones F1 (dentro del shell Globe).
+ * Botón 32px como el menú + insignia de no leídas + lista desplegable.
+ * Sin blur, sin degradados, B/N. */
+
+.wrap {
+  position: relative;
+  flex: none;
+}
+
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--g-label-primary);
+  cursor: pointer;
+}
+
+.bell:hover {
+  background: var(--g-bg-hover);
+}
+
+.badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--g-accent);
+  color: var(--g-accent-on);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.drop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--g-z-menu);
+  width: min(320px, 82vw);
+  max-height: min(420px, 70dvh);
+  overflow-y: auto;
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius-card);
+  background: var(--g-bg-elevated);
+  box-shadow: var(--g-shadow-lv2);
+}
+
+.dropHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--g-border-subtle);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dropHead button {
+  border: none;
+  background: none;
+  color: var(--g-label-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.dropHead button:hover {
+  color: var(--g-label-primary);
+}
+
+.item {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--g-border-subtle);
+  font-size: 13px;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.itemTitle {
+  margin: 0 0 2px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.itemDetail {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--g-label-secondary);
+}
+
+.itemMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--g-label-tertiary);
+}
+
+.itemMeta button {
+  border: 1px solid var(--g-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--g-label-primary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  cursor: pointer;
+  flex: none;
+}
+
+.itemMeta button:hover:not(:disabled) {
+  background: var(--g-bg-hover);
+}
+
+.itemMeta button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.unread {
+  border-left: 3px solid var(--g-accent);
+}
+
+.empty {
+  padding: 14px 12px;
+  font-size: 13px;
+  color: var(--g-label-secondary);
+  margin: 0;
+}
+
+.err {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--c-danger);
+}

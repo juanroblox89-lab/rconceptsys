@@ -36,7 +36,7 @@ async function parseError(res: Response): Promise<string> {
   }
 }
 
-async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body !== undefined) headers.set("Content-Type", "application/json");
   const res = await authFetch(`/api/backend${path}`, { ...init, headers });

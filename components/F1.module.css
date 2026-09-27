@@ -1,0 +1,207 @@
+/* Estilos F1 (producción): tablero, tarjetas de pieza/tarea, filtros.
+ * B/N, compacto 13-14px, primero 375px. Sin blur ni degradados. */
+
+.f1filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.f1filters .select {
+  width: auto;
+  min-width: 130px;
+  min-height: 36px;
+  font-size: 13px;
+  flex: 1 1 auto;
+}
+
+.f1board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .f1board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .f1board {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.f1col {
+  min-width: 0;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  background: var(--c-bg-2);
+  padding: 8px;
+}
+
+.f1colHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 4px 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.f1colCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-2);
+}
+
+.f1list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.f1card {
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  padding: 10px;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.f1cardTitle {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.f1cardTitle a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.f1cardTitle a:hover {
+  text-decoration: underline;
+}
+
+.f1cardMeta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f1row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Vencidas en rojo (§5.10): texto del color peligro, sin fondos chillones. */
+.f1vencida {
+  color: var(--c-danger);
+  font-weight: 700;
+}
+
+.f1card.f1esVencida {
+  border-left: 3px solid var(--c-danger);
+}
+
+.f1section {
+  margin: 0 0 16px;
+}
+
+.f1sectionTitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Mobile: selector de estado en vez de columnas (se alterna por clase). */
+.f1onlyMobile {
+  display: block;
+}
+
+.f1onlyDesktop {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .f1onlyMobile {
+    display: none;
+  }
+
+  .f1onlyDesktop {
+    display: grid;
+  }
+}
+
+.f1formEtapa {
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.f1formEtapaHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.f1two {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 600px) {
+  .f1two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.f1kicker {
+  font-size: 12px;
+  color: var(--c-text-2);
+  margin: 0 0 4px;
+}
+
+.f1hist {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.f1hist li {
+  border: 1px solid var(--c-line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.f1demo {
+  margin-top: 12px;
+}

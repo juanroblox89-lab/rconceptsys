@@ -116,9 +116,42 @@ export function IconClose({ size = 18 }: IconProps) {
   );
 }
 
+export function IconTareas({ size = 18 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M9 6h11" />
+      <path d="M9 12h11" />
+      <path d="M9 18h11" />
+      <path d="m3.5 6 1 1 2-2" />
+      <path d="m3.5 12 1 1 2-2" />
+      <path d="m3.5 18 1 1 2-2" />
+    </svg>
+  );
+}
+
+export function IconRevision({ size = 18 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+    </svg>
+  );
+}
+
+export function IconBell({ size = 18 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6" />
+      <path d="M10 20a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
 const ICONS: Record<string, (props: IconProps) => React.ReactElement> = {
   inicio: IconInicio,
   produccion: IconProduccion,
+  "mis-tareas": IconTareas,
+  revision: IconRevision,
   cobros: IconCobros,
   clientes: IconClientes,
   ventas: IconVentas,

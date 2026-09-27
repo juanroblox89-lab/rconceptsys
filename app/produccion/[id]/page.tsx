@@ -1,0 +1,192 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Panel } from "@/components/Panel";
+import { BootSplash } from "@/components/BootSplash";
+import { useSession } from "@/components/SessionProvider";
+import { cancelarPieza, getPieza, patchPieza } from "@/lib/f1ui";
+import {
+  etapaLabel,
+  fmtFechaCorta,
+  piezaEstadoLabel,
+  tareaEstadoLabel,
+  type Pieza,
+  type Tarea,
+} from "@/lib/f1tipos";
+import f1 from "@/components/F1.module.css";
+
+export default function PiezaDetallePage({ params }: { params: Promise<{ id: string }> }) {
+  const { me } = useSession();
+  const admin = me?.usuario.acceso === "dueno" || me?.usuario.acceso === "admin";
+  const [id, setId] = useState<string | null>(null);
+  const [pieza, setPieza] = useState<Pieza | null>(null);
+  const [tareas, setTareas] = useState<Tarea[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [cancelar, setCancelar] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    void params.then((p) => setId(p.id));
+  }, [params]);
+
+  const load = async (pid: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const d = await getPieza(pid);
+      setPieza(d.pieza);
+      setTareas(d.tareas);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cargar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id === null) return;
+    const t = window.setTimeout(() => void load(id), 0);
+    return () => window.clearTimeout(t);
+  }, [id]);
+
+  const avanzar = async (estado: Pieza["estado"]) => {
+    if (pieza === null) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const p = await patchPieza(pieza.id, { estado, updated_at: pieza.updated_at });
+      setPieza(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancelarAhora = async () => {
+    if (pieza === null || motivo.trim() === "") return;
+    setSaving(true);
+    setError(null);
+    try {
+      const p = await cancelarPieza(pieza.id, motivo.trim());
+      setPieza(p);
+      setCancelar(false);
+      setMotivo("");
+      if (id !== null) {
+        const d = await getPieza(id);
+        setTareas(d.tareas);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cancelar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Panel title="Pieza">
+      <div className="page">
+        {loading && <BootSplash label="Cargando pieza" />}
+        {error !== null && !loading && (
+          <div className="error-box" role="alert">
+            <p>{error}</p>
+            {id !== null && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load(id)}>
+                Reintentar
+              </button>
+            )}
+          </div>
+        )}
+        {!loading && pieza !== null && (
+          <>
+            <p className={f1.f1kicker}>{pieza.cliente_nombre}</p>
+            <h1 className="page-title">{pieza.titulo}</h1>
+            <p className="page-sub">
+              {pieza.formato ?? "Sin formato"} · {piezaEstadoLabel(pieza.estado)}
+              {pieza.vencida ? " · " : ""}
+              {pieza.vencida && <span className={f1.f1vencida}>Vencida</span>}
+              {" · "}Objetivo {fmtFechaCorta(pieza.fecha_objetivo)}
+            </p>
+            {pieza.guion !== null && pieza.guion !== "" && (
+              <div className="card" style={{ marginBottom: 12 }}>
+                <span className="label">Guion</span>
+                <p style={{ margin: 0, fontSize: 13, whiteSpace: "pre-wrap" }}>{pieza.guion}</p>
+              </div>
+            )}
+            {admin && (
+              <div className={f1.f1filters}>
+                {pieza.estado === "borrador" && (
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void avanzar("en_produccion")}>
+                    Pasar a producción
+                  </button>
+                )}
+                {pieza.estado === "en_revision" && (
+                  <>
+                    <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void avanzar("aprobada")}>
+                      Aprobar pieza
+                    </button>
+                    <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void avanzar("en_produccion")}>
+                      Pedir cambios
+                    </button>
+                  </>
+                )}
+                {pieza.estado === "aprobada" && (
+                  <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void avanzar("publicada")}>
+                    Marcar publicada
+                  </button>
+                )}
+                {pieza.estado !== "cancelada" && pieza.estado !== "publicada" && (
+                  <button type="button" className="btn btn-danger btn-sm" disabled={saving} onClick={() => setCancelar((v) => !v)}>
+                    Cancelar pieza
+                  </button>
+                )}
+              </div>
+            )}
+            {cancelar && (
+              <div className="card" style={{ marginBottom: 12 }}>
+                <div className="field">
+                  <label className="label" htmlFor="motivo-cancel">Motivo (obligatorio)</label>
+                  <textarea id="motivo-cancel" className="textarea" value={motivo} disabled={saving} onChange={(e) => setMotivo(e.target.value)} placeholder="Por qué se cancela" />
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button" className="btn btn-danger btn-sm" disabled={saving || motivo.trim() === ""} onClick={() => void cancelarAhora()}>
+                    {saving ? "Guardando…" : "Confirmar cancelación"}
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => setCancelar(false)}>
+                    Volver
+                  </button>
+                </div>
+              </div>
+            )}
+            {pieza.motivo !== null && pieza.motivo !== "" && (
+              <div className="error-box" role="note">
+                <p>Cancelada: {pieza.motivo}</p>
+              </div>
+            )}
+            <h2 className={f1.f1sectionTitle}>Etapas</h2>
+            <ul className={f1.f1list}>
+              {(tareas ?? []).map((t) => (
+                <li key={t.id} className={`${f1.f1card} ${t.vencida ? f1.f1esVencida : ""}`}>
+                  <p className={f1.f1cardTitle}>{etapaLabel(t.etapa)}</p>
+                  <p className={f1.f1cardMeta}>
+                    {t.asignado_nombre ?? "Sin asignar"}
+                    {t.fecha_limite ? ` · ${fmtFechaCorta(t.fecha_limite)}` : ""}
+                  </p>
+                  <div className={f1.f1row}>
+                    <span className="chip">{tareaEstadoLabel(t.estado)}</span>
+                    {t.vencida && <span className={f1.f1vencida} style={{ fontSize: 12 }}>Vencida</span>}
+                    {t.decision_pendiente !== null && (
+                      <span className="chip chip-warn" title={t.decision_pendiente}>Decisión pendiente</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </Panel>
+  );
+}

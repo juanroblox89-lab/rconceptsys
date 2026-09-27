@@ -10,9 +10,22 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * Lista blanca F0 (contrato backend):
  * - me, health, usuarios, actividad (un segmento)
  * - usuarios/:uuid (PATCH), usuarios/:uuid/aprobar|desactivar (POST)
+ *
+ * Lista blanca F1 (producción: clientes, piezas, tareas, notificaciones):
+ * - clientes, piezas, tareas, notificaciones (GET lista / POST crear)
+ * - clientes/:uuid (GET/PATCH), piezas/:uuid (GET/PATCH), tareas/:uuid (GET/PATCH)
+ * - clientes/:uuid/archivar (POST), piezas/:uuid/cancelar (POST)
+ * - tareas/:uuid/empezar|entregar|aprobar|devolver (POST)
+ * - tareas/:uuid/eventos (GET), notificaciones/:uuid/leer (POST)
  */
 function destFor(path: string[]): string | null {
   if (path.length === 1 && (path[0] === "me" || path[0] === "health" || path[0] === "usuarios" || path[0] === "actividad")) {
+    return path[0];
+  }
+  if (
+    path.length === 1 &&
+    (path[0] === "clientes" || path[0] === "piezas" || path[0] === "tareas" || path[0] === "notificaciones")
+  ) {
     return path[0];
   }
   if (
@@ -21,6 +34,30 @@ function destFor(path: string[]): string | null {
       path[0] === "usuarios" &&
       UUID.test(path[1] ?? "") &&
       (path[2] === "aprobar" || path[2] === "desactivar"))
+  ) {
+    return path.join("/");
+  }
+  // F1: recurso/:uuid (clientes, piezas, tareas).
+  if (
+    path.length === 2 &&
+    (path[0] === "clientes" || path[0] === "piezas" || path[0] === "tareas") &&
+    UUID.test(path[1] ?? "")
+  ) {
+    return path.join("/");
+  }
+  // F1: acciones POST sobre un recurso.
+  if (
+    path.length === 3 &&
+    UUID.test(path[1] ?? "") &&
+    ((path[0] === "clientes" && path[2] === "archivar") ||
+      (path[0] === "piezas" && path[2] === "cancelar") ||
+      (path[0] === "tareas" &&
+        (path[2] === "empezar" ||
+          path[2] === "entregar" ||
+          path[2] === "aprobar" ||
+          path[2] === "devolver")) ||
+      (path[0] === "tareas" && path[2] === "eventos") ||
+      (path[0] === "notificaciones" && path[2] === "leer"))
   ) {
     return path.join("/");
   }

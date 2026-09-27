@@ -7,6 +7,7 @@ import { LogoIcon } from "./Logo";
 import { ModuleIcon, IconMenu } from "./icons";
 import { Sidebar } from "./Sidebar";
 import { AccountPopover } from "./AccountPopover";
+import { Notificaciones } from "./Notificaciones";
 import { useSession } from "./SessionProvider";
 import type { Modulo } from "@/lib/types";
 import styles from "./AppShell.module.css";
@@ -180,6 +181,11 @@ export function AppShell({
       {mobileOpen && (
         <div className={styles.overlay} onClick={() => setMobileOpen(false)} />
       )}
+
+      {/* Campanita F1: fija arriba a la derecha en mobile y desktop. */}
+      <div className={styles.bellFloat}>
+        <Notificaciones />
+      </div>
 
       <div className={`${styles.sidebarWrap} ${collapsed ? styles.sidebarHidden : ""}`}>
         <div className={styles.sidebarPanel}>

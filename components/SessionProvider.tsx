@@ -19,6 +19,7 @@ import {
   setDemoUser,
 } from "@/lib/supabase";
 import { getMe, ApiError } from "@/lib/api";
+import { withF1Modulos } from "@/lib/f1modulos";
 import type { MeResponse } from "@/lib/types";
 
 /** Valores aceptados en ?demo= para entrar directo (útil para QA). */
@@ -76,7 +77,11 @@ function SessionInner({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(
     authEnabled ? undefined : null,
   );
-  const [demoUser, setDemoUserState] = useState<string | null>(null);
+  const [demoUser, setDemoUserState] = useState<string | null>(
+    // Lazy: leer localStorage en el primer render evita que Panel redirija a
+    // /login antes de saber que ya hay demo elegido (rebote /produccion→/inicio).
+    () => (authEnabled ? null : getDemoUser()),
+  );
   const [me, setMe] = useState<MeResponse | null>(null);
   const [meLoading, setMeLoading] = useState(true);
   const [meError, setMeError] = useState<string | null>(null);
@@ -160,7 +165,7 @@ function SessionInner({ children }: { children: React.ReactNode }) {
       void getMe()
         .then((data) => {
           if (!active) return;
-          setMe(data);
+          setMe(withF1Modulos(data));
           setMeLoading(false);
         })
         .catch((err: unknown) => {
