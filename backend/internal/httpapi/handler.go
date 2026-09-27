@@ -58,6 +58,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /usuarios/{id}", s.patch)
 	mux.HandleFunc("POST /usuarios/{id}/desactivar", s.desactivar)
 	mux.HandleFunc("GET /actividad", s.listActividad)
+	s.rutasF1(mux)
 	return corsMiddleware(requireInterno(s.interno, mux))
 }
 
@@ -173,7 +174,7 @@ type modulo struct {
 // ordenModulos es la lista completa y en orden que espera el frontend: los no
 // permitidos van con habilitado=false (el frontend oculta o muestra
 // "Llega en F1/F2"). En F0 inicio siempre habilitado; equipo y mi-perfil
-// según acceso (ver modulosPara).
+// según acceso. F1 habilita produccion y clientes (ver modulosPara).
 var ordenModulos = []modulo{
 	{ID: "inicio", Titulo: "Inicio", Ruta: "/inicio"},
 	{ID: "produccion", Titulo: "Producción", Ruta: "/produccion"},
@@ -197,6 +198,10 @@ func modulosPara(u permisos.Usuario) []modulo {
 			m.Habilitado = veEquipo
 		case "mi-perfil":
 			m.Habilitado = vePerfil
+		case "produccion", "clientes":
+			// F1: admin/dueño todo; equipo ve sus clientes (lectura, el
+			// backend filtra) y el tablero solo con sus piezas.
+			m.Habilitado = veEquipo || u.Acceso == permisos.AccesoEquipo
 		default:
 			m.Habilitado = false
 		}

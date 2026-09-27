@@ -24,7 +24,8 @@ const (
 	AccesoDesactivado Acceso = "desactivado"
 )
 
-// Accion es cada fila de la matriz ANALISIS §3.2.
+// Accion es cada fila de la matriz ANALISIS §3.2 (17 de F0) más las 3 de F1
+// (producción: cancelar pieza, reasignar tarea, ver notificaciones propias).
 type Accion string
 
 const (
@@ -45,6 +46,13 @@ const (
 	BibliotecaCrear     Accion = "biblioteca_crear"
 	GestionUsuarios     Accion = "gestion_usuarios"
 	AsistenteIA         Accion = "asistente_ia"
+	// F1 producción (brief F1 §2, ANALISIS §4-5):
+	// CancelarPieza = POST /piezas/{id}/cancelar (con motivo).
+	// ReasignarTarea = PATCH /tareas/{id} cambiando asignado (con oficio válido).
+	// VerNotificaciones = GET /notificaciones (siempre solo las propias).
+	CancelarPieza     Accion = "cancelar_pieza"
+	ReasignarTarea    Accion = "reasignar_tarea"
+	VerNotificaciones Accion = "ver_notificaciones"
 )
 
 // Recurso es el objeto concreto sobre el que se pide permiso. Para las
@@ -146,25 +154,38 @@ func esAccionConocida(a Accion) bool {
 	case VerPanel, CrearEditarClientes, VerFichaCliente, CrearPiezasAsignar,
 		VerTareas, CambiarEstadoTarea, AprobarEntrega, VerCobros, AprobarCobros,
 		AjusteCobro, EditarTarifas, CerrarCorte, CRM, BibliotecaLeer,
-		BibliotecaCrear, GestionUsuarios, AsistenteIA:
+		BibliotecaCrear, GestionUsuarios, AsistenteIA,
+		CancelarPieza, ReasignarTarea, VerNotificaciones:
 		return true
 	}
 	return false
 }
 
-// Puede implementa exactamente la matriz de ANALISIS §3.2.
+// Puede implementa exactamente la matriz de ANALISIS §3.2 (17 acciones F0)
+// más las 3 de F1 producción:
+//
+//   - CancelarPieza y ReasignarTarea: solo dueño/admin (el motivo obligatorio y
+//     la validación de oficio del nuevo asignado viven en el handler, no aquí).
+//
+//   - VerNotificaciones: dueño/admin todo; equipo solo las propias
+//     (Recurso.OwnerID == su id), igual que VerTareas/VerCobros.
 //
 //   - dueno: todo.
+//
 //   - admin: todo menos EditarTarifas y CerrarCorte (por defecto hasta que Juan
 //     decida, ANALISIS §7.1; propuesta: solo dueño). GestionUsuarios en true es
 //     la puerta gruesa: el detalle (solo aprobar pendientes a equipo y cambiar
 //     oficios de equipo, nunca tocar admin/dueño) lo aplica el handler con
 //     PuedeCambiarAcceso, no aquí.
+//
 //   - equipo: BibliotecaLeer, BibliotecaCrear (como propuesta: queda en
 //     borrador hasta que un admin publique) y AsistenteIA (solo sobre lo que ya
 //     puede ver); lo "solo suyo" (ficha de cliente, tareas, estado de tarea,
-//     cobros) exige Recurso.OwnerID == su id; CRM exige además oficio ventas.
+//     cobros, notificaciones) exige Recurso.OwnerID == su id; CRM exige además
+//     oficio ventas.
+//
 //   - pendiente y desactivado: nada (false en todo).
+//
 //   - Acción desconocida: false (denegar por defecto).
 func Puede(u Usuario, accion Accion, recurso Recurso) bool {
 	switch u.Acceso {
@@ -181,7 +202,7 @@ func Puede(u Usuario, accion Accion, recurso Recurso) bool {
 		switch accion {
 		case BibliotecaLeer, BibliotecaCrear, AsistenteIA:
 			return true
-		case VerFichaCliente, VerTareas, CambiarEstadoTarea, VerCobros:
+		case VerFichaCliente, VerTareas, CambiarEstadoTarea, VerCobros, VerNotificaciones:
 			return recurso.OwnerID != "" && recurso.OwnerID == u.ID
 		case CRM:
 			return tieneOficio(u.Oficios, OficioVentas) &&

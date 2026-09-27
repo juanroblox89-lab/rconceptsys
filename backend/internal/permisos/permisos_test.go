@@ -8,12 +8,13 @@ package permisos
 
 import "testing"
 
-// accionesTodas cubre cada fila de la matriz ANALISIS §3.2.
+// accionesTodas cubre cada fila de la matriz ANALISIS §3.2 (17 de F0) + 3 de F1.
 var accionesTodas = []Accion{
 	VerPanel, CrearEditarClientes, VerFichaCliente, CrearPiezasAsignar,
 	VerTareas, CambiarEstadoTarea, AprobarEntrega, VerCobros, AprobarCobros,
 	AjusteCobro, EditarTarifas, CerrarCorte, CRM, BibliotecaLeer,
 	BibliotecaCrear, GestionUsuarios, AsistenteIA,
+	CancelarPieza, ReasignarTarea, VerNotificaciones,
 }
 
 func TestDuenoTodo(t *testing.T) {
@@ -90,6 +91,11 @@ func TestEquipoTabla(t *testing.T) {
 		{GestionUsuarios, false, false, false, false, false},
 		// AsistenteIA solo sobre lo que ya puede ver (el recorte lo hace F5).
 		{AsistenteIA, true, true, true, true, true},
+		// F1 producción: cancelar pieza y reasignar tarea = solo admin/dueño.
+		{CancelarPieza, false, false, false, false, false},
+		{ReasignarTarea, false, false, false, false, false},
+		// F1: notificaciones solo las propias, igual que tareas/cobros.
+		{VerNotificaciones, false, true, false, true, false},
 	}
 	for _, c := range casos {
 		if got := Puede(base, c.accion, vacio); got != c.sinRecurso {

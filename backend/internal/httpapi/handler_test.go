@@ -92,7 +92,7 @@ func TestMeDuenoModulos(t *testing.T) {
 	if !ok || len(mods) != len(ids) {
 		t.Fatalf("modulos incompletos: %q", w.Body.String())
 	}
-	quiereHab := map[string]bool{"inicio": true, "equipo": true, "mi-perfil": true}
+	quiereHab := map[string]bool{"inicio": true, "produccion": true, "clientes": true, "equipo": true, "mi-perfil": true}
 	for i, id := range ids {
 		mm := mods[i].(map[string]any)
 		if mm["id"] != id {
@@ -125,6 +125,22 @@ func TestMePendienteSoloInicioDeshabilitado(t *testing.T) {
 		if mm["habilitado"] == true {
 			t.Errorf("pendiente no debería tener %q habilitado", mm["id"])
 			break
+		}
+	}
+}
+
+func TestMeEquipoSoloSuyos(t *testing.T) {
+	w := llamar(servidorPrueba(), "GET", "/me", "equipo", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("me equipo = %d, quería 200", w.Code)
+	}
+	// F1: equipo ve inicio + produccion/clientes (filtrados por dueño en el
+	// backend) + mi-perfil; el resto deshabilitado.
+	quiereHab := map[string]bool{"inicio": true, "produccion": true, "clientes": true, "mi-perfil": true}
+	for _, item := range dec(t, w)["modulos"].([]any) {
+		mm := item.(map[string]any)
+		if mm["habilitado"] != quiereHab[mm["id"].(string)] {
+			t.Errorf("equipo modulo %q habilitado = %v", mm["id"], mm["habilitado"])
 		}
 	}
 }
