@@ -70,8 +70,8 @@ Lo que **no** es: no es una app para clientes (los clientes no entran), no es co
 | Ver cobros | todos | todos | solo los suyos | ❌ |
 | Aprobar / devolver cobros | ✅ | ✅ | ❌ | ❌ |
 | Ajuste manual de cobro (bono, descuento) | ✅ | ✅ con motivo | ❌ | ❌ |
-| Editar tarifas | ✅ | ❌ **[Juan]** | ❌ | ❌ |
-| Cerrar corte de pago / marcar pagado | ✅ | ❌ **[Juan]** | ❌ | ❌ |
+| Editar tarifas | ✅ | ❌ | ❌ | ❌ |
+| Cerrar corte de pago / marcar pagado | ✅ | ❌ | ❌ | ❌ |
 | CRM (leads, visitas) | ✅ | ✅ | solo si tiene oficio `ventas`, y solo sus leads | ❌ |
 | Biblioteca: leer | ✅ | ✅ | ✅ | ❌ |
 | Biblioteca: crear/editar | ✅ | ✅ | proponer (queda como borrador hasta que admin publique) | ❌ |
@@ -171,14 +171,16 @@ Todo cambio de estado, aprobación, ajuste de cobro, cambio de acceso y archivo 
 
 ---
 
-## 7. Decisiones que necesito de Juan
+## 7. Decisiones de Juan (2026-09-27)
 
-1. **Admin vs dueño:** ¿el admin (coordinación) puede editar tarifas y cerrar cortes, o solo el dueño? *(propuesta: solo dueño)*
-2. **Quiénes son y qué hacen:** lista de personas con su acceso y oficios (para cargar al inicio).
-3. **Tarifas reales:** cuánto se paga por grabación (¿por hora, por minuto, por salida?), por edición (¿según duración, como la tabla del sitio?), diseño, publicación.
-4. **Corte de pago:** ¿quincenal o mensual? ¿qué día?
-5. **Bono de visitas de ventas:** ¿cómo funciona hoy exactamente?
-6. **Pieza cancelada con trabajo en curso:** ¿se paga lo avanzado? *(propuesta: el admin decide en el momento)*
-7. **Entregas tarde:** ¿tienen alguna consecuencia en el pago? *(propuesta: no, solo se marcan)*
-8. **Datos del sistema viejo:** ¿base vacía o migramos usuarios/clientes/cobros?
-9. **¿Los clientes deberían ver algo algún día** (ej. aprobar su pieza)? *(propuesta: no en v2, pero se deja preparado)*
+| # | Tema | Decisión |
+|---|---|---|
+| 1 | Tarifas y cortes | **Solo el dueño** edita tarifas, cierra cortes y marca pagado. |
+| 2 | Equipo inicial | `jestalvz@gmail.com` = acceso **admin**, oficios **edición** (+ desarrollador del sistema). El resto se carga desde Equipo. |
+| 3 | Tarifas | **Configurables** por el dueño desde el sistema (no hay valores fijos de fábrica). |
+| 4 | Corte de pago | **Mensual, el día 1.** |
+| 5 | Bono de ventas | **8 % del precio del paquete de cada cliente** que consigue el vendedor. |
+| 6 | Pieza cancelada con trabajo en curso | **Decide el dueño** (no el admin). |
+| 7 | Entregas tarde | **Sin consecuencia** en el pago; solo se marcan. |
+| 8 | Datos del sistema viejo | **Base vacía**, no se migra nada. |
+| 9 | Acceso de clientes | **Dejarlo preparado** para el futuro, no en v2. |
