@@ -8,13 +8,14 @@ package permisos
 
 import "testing"
 
-// accionesTodas cubre cada fila de la matriz ANALISIS §3.2 (17 de F0) + 3 de F1.
+// accionesTodas cubre cada fila de la matriz ANALISIS §3.2 (17 de F0) + 3 de F1 + 4 de F2.
 var accionesTodas = []Accion{
 	VerPanel, CrearEditarClientes, VerFichaCliente, CrearPiezasAsignar,
 	VerTareas, CambiarEstadoTarea, AprobarEntrega, VerCobros, AprobarCobros,
 	AjusteCobro, EditarTarifas, CerrarCorte, CRM, BibliotecaLeer,
 	BibliotecaCrear, GestionUsuarios, AsistenteIA,
 	CancelarPieza, ReasignarTarea, VerNotificaciones,
+	ConfirmarCobro, ReclamarCobro, MarcarPagado, DecidirCancelada,
 }
 
 func TestDuenoTodo(t *testing.T) {
@@ -32,8 +33,9 @@ func TestDuenoTodo(t *testing.T) {
 func TestAdminTodoMenosTarifasYCortes(t *testing.T) {
 	u := Usuario{ID: "a", Acceso: AccesoAdmin}
 	for _, a := range accionesTodas {
-		// ANALISIS §7.1: por defecto editar tarifas y cerrar cortes = solo dueño.
-		quiere := a != EditarTarifas && a != CerrarCorte
+		// ANALISIS §7.1 + §7.6: tarifas, cortes, pagado y decisión de
+		// canceladas = solo dueño.
+		quiere := a != EditarTarifas && a != CerrarCorte && a != MarcarPagado && a != DecidirCancelada
 		if Puede(u, a, Recurso{}) != quiere {
 			t.Errorf("admin %q = %v, quería %v", a, !quiere, quiere)
 		}
@@ -96,6 +98,12 @@ func TestEquipoTabla(t *testing.T) {
 		{ReasignarTarea, false, false, false, false, false},
 		// F1: notificaciones solo las propias, igual que tareas/cobros.
 		{VerNotificaciones, false, true, false, true, false},
+		// F2: confirmar/reclamar solo la propia; marcar pagado y decidir
+		// cancelada = solo dueño.
+		{ConfirmarCobro, false, true, false, true, false},
+		{ReclamarCobro, false, true, false, true, false},
+		{MarcarPagado, false, false, false, false, false},
+		{DecidirCancelada, false, false, false, false, false},
 	}
 	for _, c := range casos {
 		if got := Puede(base, c.accion, vacio); got != c.sinRecurso {

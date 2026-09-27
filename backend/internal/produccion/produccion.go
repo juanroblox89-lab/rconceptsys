@@ -28,14 +28,19 @@ type Cliente struct {
 	ContactoTelefono string `json:"contacto_telefono,omitempty"`
 	ContactoWhatsapp string `json:"contacto_whatsapp,omitempty"`
 	Paquete          string `json:"paquete,omitempty"`
-	Estado           string `json:"estado"`
-	DriveURL         string `json:"drive_url,omitempty"`
-	Notas            string `json:"notas,omitempty"`
-	Estrategia       string `json:"estrategia,omitempty"`
-	ArchivadoAt      string `json:"archivado_at,omitempty"`
-	CreatedAt        string `json:"created_at,omitempty"`
-	UpdatedAt        string `json:"updated_at,omitempty"`
-	CreatedBy        string `json:"created_by,omitempty"`
+	// PaqueteID referencia al catálogo F2 (BRIEF F2 §4); el texto Paquete se
+	// conserva por compatibilidad F1. VendidoPor = vendedor que consiguió al
+	// cliente (oficio ventas, opcional).
+	PaqueteID   string `json:"paquete_id,omitempty"`
+	VendidoPor  string `json:"vendido_por,omitempty"`
+	Estado      string `json:"estado"`
+	DriveURL    string `json:"drive_url,omitempty"`
+	Notas       string `json:"notas,omitempty"`
+	Estrategia  string `json:"estrategia,omitempty"`
+	ArchivadoAt string `json:"archivado_at,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
+	UpdatedAt   string `json:"updated_at,omitempty"`
+	CreatedBy   string `json:"created_by,omitempty"`
 }
 
 // EstadoClienteValido dice si el estado pertenece al vocabulario.

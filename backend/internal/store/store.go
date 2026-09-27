@@ -10,6 +10,7 @@ import (
 	"errors"
 	"time"
 
+	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/permisos"
 	"rconceptsys/backend/internal/produccion"
 )
@@ -32,6 +33,16 @@ type (
 	TareaEvento  = produccion.TareaEvento
 	Notificacion = produccion.Notificacion
 	EntregaDatos = produccion.EntregaDatos
+)
+
+// Aliases F2 (cobros: tarifas, líneas, cortes, comisión). Mismo patrón F1.
+type (
+	Tarifa       = cobros.Tarifa
+	TarifaTramo  = cobros.TarifaTramo
+	Paquete      = cobros.Paquete
+	LineaCobro   = cobros.LineaCobro
+	Corte        = cobros.Corte
+	ConfigCobros = cobros.ConfigCobros
 )
 
 // ErrVersion es el conflicto de edición (§5.14): el updated_at esperado no
@@ -110,6 +121,37 @@ type Store interface {
 	AddNotificacion(n produccion.Notificacion) (produccion.Notificacion, error)
 	// MarcarLeida marca una notificación como leída. Devuelve ErrNoExiste.
 	MarcarLeida(usuarioID, id string) (produccion.Notificacion, error)
+
+	// --- F2 cobros (BRIEF F2; ANALISIS §4.3, §5.17–5.22, §7) ---
+	ListTarifas() ([]cobros.Tarifa, error)
+	GetTarifa(id string) (cobros.Tarifa, bool, error)
+	// CreateTarifa versiona: desactiva la activa con misma etapa+unidad
+	// (VigenteHasta=ahora) y crea la nueva con version+1. Tramos aparte.
+	CreateTarifa(t cobros.Tarifa) (cobros.Tarifa, error)
+	ListTramos(tarifaID string) ([]cobros.TarifaTramo, error)
+	CreateTramo(tr cobros.TarifaTramo) (cobros.TarifaTramo, error)
+
+	ListPaquetes() ([]cobros.Paquete, error)
+	GetPaquete(id string) (cobros.Paquete, bool, error)
+	CreatePaquete(p cobros.Paquete) (cobros.Paquete, error)
+	UpdatePaquete(id string, cambios map[string]any) (cobros.Paquete, error)
+
+	GetConfig() (cobros.ConfigCobros, error)
+	UpdateConfig(c cobros.ConfigCobros) (cobros.ConfigCobros, error)
+
+	CreateLinea(l cobros.LineaCobro) (cobros.LineaCobro, error)
+	GetLinea(id string) (cobros.LineaCobro, bool, error)
+	ListLineas() ([]cobros.LineaCobro, error)
+	// UpdateLineaEstado cambia SOLO estado/motivo/reclamo/corte/periodo.
+	// Nunca toca monto/tarifa/unidad/cantidad/tipo/tarea/usuario (§2).
+	UpdateLineaEstado(id string, cambios map[string]any) (cobros.LineaCobro, error)
+	// LineaDeTarea trae la línea tipo tarea de una tarea (idempotencia).
+	LineaDeTarea(tareaID string) (cobros.LineaCobro, bool, error)
+
+	ListCortes() ([]cobros.Corte, error)
+	GetCorteByPeriodo(periodo string) (cobros.Corte, bool, error)
+	CreateCorte(c cobros.Corte) (cobros.Corte, error)
+	UpdateCorte(id string, cambios map[string]any) (cobros.Corte, error)
 }
 
 // NewUUID genera un UUID v4 con crypto/rand (stdlib only, sin dependencias).

@@ -59,6 +59,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /usuarios/{id}/desactivar", s.desactivar)
 	mux.HandleFunc("GET /actividad", s.listActividad)
 	s.rutasF1(mux)
+	s.rutasF2(mux)
 	return corsMiddleware(requireInterno(s.interno, mux))
 }
 
@@ -201,6 +202,10 @@ func modulosPara(u permisos.Usuario) []modulo {
 		case "produccion", "clientes":
 			// F1: admin/dueño todo; equipo ve sus clientes (lectura, el
 			// backend filtra) y el tablero solo con sus piezas.
+			m.Habilitado = veEquipo || u.Acceso == permisos.AccesoEquipo
+		case "cobros":
+			// F2: dueño/admin todo; equipo solo sus líneas (el backend
+			// filtra por usuario).
 			m.Habilitado = veEquipo || u.Acceso == permisos.AccesoEquipo
 		default:
 			m.Habilitado = false

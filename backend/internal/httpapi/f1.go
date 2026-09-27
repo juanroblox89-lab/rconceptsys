@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"rconceptsys/backend/internal/actividad"
+	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/permisos"
 	"rconceptsys/backend/internal/produccion"
 	"rconceptsys/backend/internal/store"
@@ -258,10 +259,42 @@ func clienteVista(c store.Cliente) map[string]any {
 		"id": c.ID, "nombre": c.Nombre, "logo_url": c.LogoURL,
 		"contacto_nombre": c.ContactoNombre, "contacto_telefono": c.ContactoTelefono,
 		"contacto_whatsapp": c.ContactoWhatsapp, "paquete": c.Paquete,
+		"paquete_id": c.PaqueteID, "vendido_por": c.VendidoPor,
 		"estado": c.Estado, "drive_url": c.DriveURL, "notas": c.Notas,
 		"estrategia": c.Estrategia, "archivado_at": c.ArchivadoAt,
 		"created_at": c.CreatedAt, "updated_at": c.UpdatedAt,
 	}
+}
+
+// validaVendedor chequea F2 §4: el vendedor existe, tiene oficio ventas y no
+// está pendiente/desactivado. Responde 404/422 y devuelve false si ya
+// respondió.
+func (s *Server) validaVendedor(w http.ResponseWriter, vendedorID string) (string, bool) {
+	v, existe, err := s.st.GetUsuario(vendedorID)
+	if err != nil {
+		errorDatos(w, err)
+		return "", false
+	}
+	if !existe {
+		writeError(w, http.StatusNotFound, "el vendedor no existe")
+		return "", false
+	}
+	tieneVentas := false
+	for _, o := range v.Oficios {
+		if o == permisos.OficioVentas {
+			tieneVentas = true
+			break
+		}
+	}
+	if !tieneVentas {
+		writeError(w, http.StatusUnprocessableEntity, "el vendedor debe tener oficio ventas")
+		return "", false
+	}
+	if v.Acceso == permisos.AccesoPendiente || v.Acceso == permisos.AccesoDesactivado {
+		writeError(w, http.StatusUnprocessableEntity, "el vendedor no puede ser pendiente ni desactivado")
+		return "", false
+	}
+	return "", true
 }
 
 func (s *Server) listClientes(w http.ResponseWriter, r *http.Request) {
@@ -303,11 +336,14 @@ type clienteBody struct {
 	ContactoTelefono string `json:"contacto_telefono"`
 	ContactoWhatsapp string `json:"contacto_whatsapp"`
 	Paquete          string `json:"paquete"`
-	Estado           string `json:"estado"`
-	DriveURL         string `json:"drive_url"`
-	Notas            string `json:"notas"`
-	Estrategia       string `json:"estrategia"`
-	UpdatedAt        string `json:"updated_at"`
+	// F2: referencia al catálogo + vendedor (BRIEF F2 §4).
+	PaqueteID  string `json:"paquete_id"`
+	VendidoPor string `json:"vendido_por"`
+	Estado     string `json:"estado"`
+	DriveURL   string `json:"drive_url"`
+	Notas      string `json:"notas"`
+	Estrategia string `json:"estrategia"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 func (s *Server) createCliente(w http.ResponseWriter, r *http.Request) {
@@ -336,6 +372,25 @@ func (s *Server) createCliente(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "estado inválido")
 		return
 	}
+	// F2: paquete_id debe existir; vendido_por debe tener oficio ventas y
+	// un acceso que trabaje (§5.2: pendiente/desactivado → 422).
+	paqueteID := strings.TrimSpace(body.PaqueteID)
+	if paqueteID != "" {
+		if _, existe, err := s.st.GetPaquete(paqueteID); err != nil {
+			errorDatos(w, err)
+			return
+		} else if !existe {
+			writeError(w, http.StatusBadRequest, "paquete_id no existe")
+			return
+		}
+	}
+	vendidoPor := strings.TrimSpace(body.VendidoPor)
+	if vendidoPor != "" {
+		if msg, ok := s.validaVendedor(w, vendidoPor); !ok {
+			_ = msg
+			return
+		}
+	}
 	c, err := s.st.CreateCliente(store.Cliente{
 		Nombre:           strings.TrimSpace(body.Nombre),
 		LogoURL:          strings.TrimSpace(body.LogoURL),
@@ -343,6 +398,8 @@ func (s *Server) createCliente(w http.ResponseWriter, r *http.Request) {
 		ContactoTelefono: strings.TrimSpace(body.ContactoTelefono),
 		ContactoWhatsapp: strings.TrimSpace(body.ContactoWhatsapp),
 		Paquete:          strings.TrimSpace(body.Paquete),
+		PaqueteID:        paqueteID,
+		VendidoPor:       vendidoPor,
 		Estado:           estado,
 		DriveURL:         strings.TrimSpace(body.DriveURL),
 		Notas:            body.Notas,
@@ -355,6 +412,12 @@ func (s *Server) createCliente(w http.ResponseWriter, r *http.Request) {
 	}
 	_, _ = actividad.Registrar(s.st, actor, "crear_cliente", c.ID, nil,
 		map[string]any{"nombre": c.Nombre, "estado": c.Estado}, "")
+	// F2 modo una_vez: al crear con vendido_por → comisión inmediata (§7.5).
+	if c.VendidoPor != "" {
+		if cfg, err := s.st.GetConfig(); err == nil && cfg.ModoComision == cobros.ModoUnaVez {
+			s.generarComisiones(actor, cobros.PeriodoActual(), &c)
+		}
+	}
 	writeJSON(w, http.StatusCreated, clienteVista(c))
 }
 
@@ -463,6 +526,26 @@ func (s *Server) patchCliente(w http.ResponseWriter, r *http.Request) {
 	// cuentan si el actual no era vacío: se detectan comparando punteros
 	// JSON — simplificado: se acepta el body tal cual salvo updated_at).
 	cambios = bodyACambiosCliente(body, c)
+	// F2: paquete_id debe existir (aquí sí hay store).
+	if v, ok := cambios["paquete_id"]; ok {
+		if vs := strings.TrimSpace(v.(string)); vs != "" {
+			if _, existe, err := s.st.GetPaquete(vs); err != nil {
+				errorDatos(w, err)
+				return
+			} else if !existe {
+				writeError(w, http.StatusBadRequest, "paquete_id no existe")
+				return
+			}
+		}
+	}
+	// F2: vendido_por se valida (oficio ventas, no pendiente/desactivado).
+	if v, ok := cambios["vendido_por"]; ok {
+		if vs := strings.TrimSpace(v.(string)); vs != "" {
+			if _, ok := s.validaVendedor(w, vs); !ok {
+				return
+			}
+		}
+	}
 	if len(cambios) == 0 {
 		writeJSON(w, http.StatusOK, clienteVista(c))
 		return
@@ -498,6 +581,15 @@ func bodyACambiosCliente(body clienteBody, c store.Cliente) map[string]any {
 	}
 	if body.Paquete != c.Paquete && (body.Paquete != "" || c.Paquete != "") {
 		cambios["paquete"] = strings.TrimSpace(body.Paquete)
+	}
+	// F2: paquete_id y vendido_por se validan igual que al crear (§5.27: el
+	// cambio no altera comisiones ya generadas). La existencia del paquete
+	// la valida patchCliente (aquí no hay store).
+	if body.PaqueteID != c.PaqueteID && (body.PaqueteID != "" || c.PaqueteID != "") {
+		cambios["paquete_id"] = strings.TrimSpace(body.PaqueteID)
+	}
+	if body.VendidoPor != c.VendidoPor && (body.VendidoPor != "" || c.VendidoPor != "") {
+		cambios["vendido_por"] = strings.TrimSpace(body.VendidoPor)
 	}
 	if e := strings.TrimSpace(body.Estado); e != "" && e != c.Estado {
 		cambios["estado"] = e
@@ -1309,6 +1401,12 @@ func (s *Server) aprobarTarea(w http.ResponseWriter, r *http.Request) {
 	if t.AsignadoID != "" {
 		s.notificar(t.AsignadoID, produccion.NotiAprobada,
 			"Tarea aprobada", "Etapa "+t.Etapa, "tarea", t.ID)
+	}
+	// F2: al aprobar se genera SOLA la línea de cobro con la tarifa vigente
+	// congelada (BRIEF F2 §2). Devuelta N veces → una sola línea al final
+	// (idempotencia por tarea). Sin tarifa → sin_tarifa + aviso al dueño.
+	if t.AsignadoID != "" {
+		s.generarLineaAprobacion(actor, act)
 	}
 	// Desbloquear la siguiente etapa bloqueante de la misma pieza (§4.2).
 	// El apoyo nunca bloquea (§5.15): aprobarlo no desbloquea nada.

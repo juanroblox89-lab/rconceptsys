@@ -92,7 +92,7 @@ func TestMeDuenoModulos(t *testing.T) {
 	if !ok || len(mods) != len(ids) {
 		t.Fatalf("modulos incompletos: %q", w.Body.String())
 	}
-	quiereHab := map[string]bool{"inicio": true, "produccion": true, "clientes": true, "equipo": true, "mi-perfil": true}
+	quiereHab := map[string]bool{"inicio": true, "produccion": true, "cobros": true, "clientes": true, "equipo": true, "mi-perfil": true}
 	for i, id := range ids {
 		mm := mods[i].(map[string]any)
 		if mm["id"] != id {
@@ -135,8 +135,9 @@ func TestMeEquipoSoloSuyos(t *testing.T) {
 		t.Fatalf("me equipo = %d, quería 200", w.Code)
 	}
 	// F1: equipo ve inicio + produccion/clientes (filtrados por dueño en el
-	// backend) + mi-perfil; el resto deshabilitado.
-	quiereHab := map[string]bool{"inicio": true, "produccion": true, "clientes": true, "mi-perfil": true}
+	// backend) + mi-perfil; F2: + cobros (solo sus líneas); el resto
+	// deshabilitado.
+	quiereHab := map[string]bool{"inicio": true, "produccion": true, "cobros": true, "clientes": true, "mi-perfil": true}
 	for _, item := range dec(t, w)["modulos"].([]any) {
 		mm := item.(map[string]any)
 		if mm["habilitado"] != quiereHab[mm["id"].(string)] {

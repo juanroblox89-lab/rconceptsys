@@ -158,7 +158,60 @@ func resolverSupabase(sb *supa.Client, st store.Store, cache *authCache) httpapi
 	}
 }
 
+// preasignado es una entrada de RC_PREASIGNADOS: email + acceso + oficios.
+type preasignado struct {
+	email   string
+	acceso  permisos.Acceso
+	oficios []string
+}
+
+// parsePreasignados parsea RC_PREASIGNADOS ("email:acceso:oficio1+oficio2,
+// email2:..."). Robusto: ignora entradas rotas en vez de fallar.
+func parsePreasignados(raw string) []preasignado {
+	out := []preasignado{}
+	for _, parte := range strings.Split(raw, ",") {
+		parte = strings.TrimSpace(parte)
+		if parte == "" {
+			continue
+		}
+		campos := strings.Split(parte, ":")
+		if len(campos) < 2 {
+			continue
+		}
+		email := strings.TrimSpace(campos[0])
+		acceso := permisos.Acceso(strings.TrimSpace(campos[1]))
+		switch acceso {
+		case permisos.AccesoDueno, permisos.AccesoAdmin, permisos.AccesoEquipo:
+		default:
+			continue
+		}
+		oficios := []string{}
+		if len(campos) >= 3 && strings.TrimSpace(campos[2]) != "" {
+			if norm, err := permisos.NormalizarOficios(strings.Split(strings.TrimSpace(campos[2]), "+")); err == nil {
+				oficios = norm
+			}
+		}
+		out = append(out, preasignado{email: email, acceso: acceso, oficios: oficios})
+	}
+	return out
+}
+
+// preasignadoPara devuelve el acceso/oficios preasignados para un email
+// (case-insensitive) o false si no hay.
+func preasignadoPara(lista []preasignado, email string) (permisos.Acceso, []string, bool) {
+	for _, p := range lista {
+		if strings.EqualFold(p.email, email) {
+			return p.acceso, p.oficios, true
+		}
+	}
+	return "", nil, false
+}
+
 // filaOCrear trae la fila del usuario; si no existe la crea (primer ingreso).
+// RC_PREASIGNADOS se aplica al primer login: el email preasignado nace con
+// ese acceso+oficios en vez de pendiente (BRIEF F2 §7: jestalvz@gmail.com =
+// admin + edición). Ese email no cuenta como "primer usuario = dueño": si la
+// tabla está vacía y el email tiene preasignado, se respeta el preasignado.
 func filaOCrear(ctx context.Context, sb *supa.Client, st store.Store, uid string) (permisos.Usuario, error) {
 	u, ok, err := st.GetUsuario(uid)
 	if err != nil {
@@ -171,16 +224,22 @@ func filaOCrear(ctx context.Context, sb *supa.Client, st store.Store, uid string
 	if err != nil {
 		return permisos.Usuario{}, httpapi.ErrTransporte
 	}
-	acceso := permisos.AccesoPendiente
-	if len(usuarios) == 0 {
-		acceso = permisos.AccesoDueno // primera fila del sistema
-	}
 	email, nombre := "", ""
 	func() {
 		c, cancel := context.WithTimeout(ctx, 8*time.Second)
 		defer cancel()
 		email, nombre, _ = sb.AdminGetUser(c, uid)
 	}()
+	acceso := permisos.AccesoPendiente
+	oficios := []string{}
+	if len(usuarios) == 0 {
+		acceso = permisos.AccesoDueno // primera fila del sistema
+	}
+	// Preasignados por email (RC_PREASIGNADOS): pisan el default, incluido
+	// el caso "primera fila" (ese email no cuenta como primer dueño).
+	if acc, ofis, ok := preasignadoPara(parsePreasignados(os.Getenv("RC_PREASIGNADOS")), email); ok {
+		acceso, oficios = acc, ofis
+	}
 	if nombre == "" {
 		nombre = "Nuevo usuario"
 		if i := strings.Index(email, "@"); i > 0 {
@@ -189,7 +248,7 @@ func filaOCrear(ctx context.Context, sb *supa.Client, st store.Store, uid string
 	}
 	u, err = st.CreateUsuario(store.Usuario{
 		ID: uid, Nombre: nombre, Email: email,
-		Acceso: acceso, Oficios: []string{},
+		Acceso: acceso, Oficios: oficios,
 	})
 	if err != nil {
 		return permisos.Usuario{}, httpapi.ErrTransporte

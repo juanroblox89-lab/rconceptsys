@@ -1,6 +1,7 @@
-# Backend Go — RConcept Systems v2 (F0+F1)
+# Backend Go — RConcept Systems v2 (F0+F1+F2)
 
-Solo stdlib (`net/http`, `encoding/json`). Puerto `:8095` (`PORT` lo cambia).
+Solo stdlib (`net/http`, `encoding/json`). Puerto `:8095` (`PORT` lo cambia;
+en F2 los QA usan `18095`).
 
 ## Correrlo
 
@@ -106,3 +107,59 @@ Oficios en minúsculas sin tildes (`grabacion`, `edicion`, `diseno`,
 `estrategia`, `publicacion`, `ventas`); el backend acepta formas con tilde
 (`grabación`, `estrategia/guion`, …) y las normaliza
 (`internal/permisos`, `NormalizarOficios`).
+
+## Preasignados (`RC_PREASIGNADOS`)
+
+Lista de "accesos preasignados por email" aplicada al primer login
+(BRIEF F2 §7: `jestalvz@gmail.com` entra como admin con oficio edición).
+Formato: `email:acceso:oficio1+oficio2,email2:acceso:oficio…`.
+El email preasignado nace con ese acceso+oficios en vez de pendiente, y no
+cuenta como "primer usuario = dueño" (si la tabla está vacía y el email
+tiene preasignado, se respeta el preasignado). Ejemplo:
+
+```powershell
+$env:RC_PREASIGNADOS="jestalvz@gmail.com:admin:edicion"
+```
+
+## Contrato F2 (cobros: tarifas, líneas, cortes, comisión)
+
+Estados línea: `por_confirmar → confirmada → aprobada → en_corte → pagada`;
+`reclamada` (con motivo) → admin responde con ajuste; `sin_tarifa` (sin
+tarifa vigente → avisa al dueño). Ajustes = líneas nuevas con motivo, nunca
+edición. Periodo = mes `YYYY-MM`; corte mensual día 1 (cerrar: aprobada →
+`en_corte`, resto se arrastra al siguiente; cerrado no se reabre; revertir
+pagado solo dueño + actividad). Comisión: `precio × %` (default 8,
+configurable 0–100), modo `una_vez` (default, al crear cliente) o `mensual`
+(POST /comisiones/mensual, idempotente).
+
+- `GET /tarifas` / `POST /tarifas {etapa, unidad, monto_cop, tramos?}` →
+  `201` (solo dueño; versiona: desactiva la anterior etapa+unidad).
+- `GET /paquetes` (dueño/admin) · `POST /paquetes {nombre, precio_cop}` /
+  `PATCH /paquetes/{id}` (solo dueño; §5.27 no toca comisiones viejas).
+- `GET /config-cobros` / `PATCH /config-cobros {porcentaje_comision?, modo_comision?}` (solo dueño).
+- `GET /lineas?periodo=&usuario_id=&estado=` → `{lineas}` (equipo: solo
+  suyas). `GET /lineas/{id}` (misma regla).
+- `POST /lineas/{id}/confirmar` (dueña o admin) · `/reclamar {motivo}`
+  (dueña o admin) · `/aprobar` (admin/dueño, confirmada|reclamada) ·
+  `/devolver {comentario}` (admin/dueño → por_confirmar). Idempotentes.
+- `POST /lineas/ajuste {usuario_id, monto_cop != 0, motivo, periodo?}` →
+  `201` (admin/dueño; periodo cerrado → siguiente abierto; estado aprobado).
+- `GET /cortes` · `GET /cortes/actual?periodo=` · `GET /cortes/{periodo}`
+  (dueño/admin: por persona aprobado/por_confirmar/reclamado/en_corte/
+  pagado + líneas) · `GET /cortes/mios?periodo=` (trabajador: su resumen +
+  historial de sus cortes, §5.22) · `GET /cortes/{periodo}/csv` (CSV, dueño/admin).
+- `POST /cortes/cerrar {periodo?}` → `200 {en_corte, arrastradas}` (solo
+  dueño). `POST /cortes/{periodo}/pagar {usuario_id?}` /
+  `/revertir {usuario_id?}` (solo dueño).
+- `POST /comisiones/mensual {periodo?}` (admin/dueño; modo mensual).
+- `POST /tareas/{id}/decision {decision: pagar|no_pagar, motivo}` (solo
+  dueño; pagar → genera línea, no_pagar → registra motivo).
+- `POST /tareas/{id}/aprobar` ahora genera SOLA la línea (tarifa congelada
+  o `sin_tarifa`); idempotente por tarea.
+- Clientes aceptan `paquete_id` (debe existir) + `vendido_por` (oficio
+  ventas, no pendiente/desactivado → `422`); crear con `vendido_por` en
+  modo `una_vez` genera la comisión inmediata.
+
+Semillas demo F2 (memoria, `demo=true`): tarifas edición por_tarea 80000 +
+grabación por_minuto 2000 + 6 tramos duración ejemplo + 9 paquetes del
+brief (TV Basic 300000 … Mixto III 1299000) + config 8/una_vez.

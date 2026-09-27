@@ -25,7 +25,9 @@ const (
 )
 
 // Accion es cada fila de la matriz ANALISIS §3.2 (17 de F0) más las 3 de F1
-// (producción: cancelar pieza, reasignar tarea, ver notificaciones propias).
+// (producción: cancelar pieza, reasignar tarea, ver notificaciones propias)
+// más las 4 de F2 (cobros: confirmar/reclamar propios, marcar pagado y
+// decidir cancelada solo dueño).
 type Accion string
 
 const (
@@ -53,6 +55,15 @@ const (
 	CancelarPieza     Accion = "cancelar_pieza"
 	ReasignarTarea    Accion = "reasignar_tarea"
 	VerNotificaciones Accion = "ver_notificaciones"
+	// F2 cobros (brief F2, ANALISIS §4.3 y §7.1):
+	// ConfirmarCobro/ReclamarCobro = POST /lineas/{id}/confirmar|reclamar
+	// (trabajador sobre la suya; admin/dueño sobre cualquiera).
+	// MarcarPagado = POST /cortes/{periodo}/pagar|revertir (solo dueño).
+	// DecidirCancelada = POST /tareas/{id}/decision (solo dueño, §7.6).
+	ConfirmarCobro   Accion = "confirmar_cobro"
+	ReclamarCobro    Accion = "reclamar_cobro"
+	MarcarPagado     Accion = "marcar_pagado"
+	DecidirCancelada Accion = "decidir_cancelada"
 )
 
 // Recurso es el objeto concreto sobre el que se pide permiso. Para las
@@ -155,7 +166,8 @@ func esAccionConocida(a Accion) bool {
 		VerTareas, CambiarEstadoTarea, AprobarEntrega, VerCobros, AprobarCobros,
 		AjusteCobro, EditarTarifas, CerrarCorte, CRM, BibliotecaLeer,
 		BibliotecaCrear, GestionUsuarios, AsistenteIA,
-		CancelarPieza, ReasignarTarea, VerNotificaciones:
+		CancelarPieza, ReasignarTarea, VerNotificaciones,
+		ConfirmarCobro, ReclamarCobro, MarcarPagado, DecidirCancelada:
 		return true
 	}
 	return false
@@ -172,16 +184,16 @@ func esAccionConocida(a Accion) bool {
 //
 //   - dueno: todo.
 //
-//   - admin: todo menos EditarTarifas y CerrarCorte (por defecto hasta que Juan
-//     decida, ANALISIS §7.1; propuesta: solo dueño). GestionUsuarios en true es
-//     la puerta gruesa: el detalle (solo aprobar pendientes a equipo y cambiar
-//     oficios de equipo, nunca tocar admin/dueño) lo aplica el handler con
-//     PuedeCambiarAcceso, no aquí.
+//   - admin: todo menos EditarTarifas, CerrarCorte, MarcarPagado y
+//     DecidirCancelada (ANALISIS §7.1: tarifas, cortes y pagado solo dueño;
+//     §7.6: pieza cancelada con trabajo en curso la decide el dueño).
+//     GestionUsuarios en true es la puerta gruesa: el detalle lo aplica el
+//     handler con PuedeCambiarAcceso, no aquí.
 //
-//   - equipo: BibliotecaLeer, BibliotecaCrear (como propuesta: queda en
-//     borrador hasta que un admin publique) y AsistenteIA (solo sobre lo que ya
-//     puede ver); lo "solo suyo" (ficha de cliente, tareas, estado de tarea,
-//     cobros, notificaciones) exige Recurso.OwnerID == su id; CRM exige además
+//   - equipo: BibliotecaLeer, BibliotecaCrear (como propuesta) y AsistenteIA
+//     (solo sobre lo que ya puede ver); lo "solo suyo" (ficha de cliente,
+//     tareas, estado de tarea, cobros, confirmar/reclamar cobro,
+//     notificaciones) exige Recurso.OwnerID == su id; CRM exige además
 //     oficio ventas.
 //
 //   - pendiente y desactivado: nada (false en todo).
@@ -193,7 +205,7 @@ func Puede(u Usuario, accion Accion, recurso Recurso) bool {
 		return esAccionConocida(accion)
 	case AccesoAdmin:
 		switch accion {
-		case EditarTarifas, CerrarCorte:
+		case EditarTarifas, CerrarCorte, MarcarPagado, DecidirCancelada:
 			return false
 		default:
 			return esAccionConocida(accion)
@@ -202,7 +214,8 @@ func Puede(u Usuario, accion Accion, recurso Recurso) bool {
 		switch accion {
 		case BibliotecaLeer, BibliotecaCrear, AsistenteIA:
 			return true
-		case VerFichaCliente, VerTareas, CambiarEstadoTarea, VerCobros, VerNotificaciones:
+		case VerFichaCliente, VerTareas, CambiarEstadoTarea, VerCobros, VerNotificaciones,
+			ConfirmarCobro, ReclamarCobro:
 			return recurso.OwnerID != "" && recurso.OwnerID == u.ID
 		case CRM:
 			return tieneOficio(u.Oficios, OficioVentas) &&

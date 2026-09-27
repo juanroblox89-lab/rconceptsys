@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"time"
 
+	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/produccion"
 	"rconceptsys/backend/internal/supa"
 )
@@ -244,6 +245,8 @@ type clienteFila struct {
 	ContactoTelefono string `json:"contacto_telefono"`
 	ContactoWhatsapp string `json:"contacto_whatsapp"`
 	Paquete          string `json:"paquete"`
+	PaqueteID        string `json:"paquete_id"`
+	VendidoPor       string `json:"vendido_por"`
 	Estado           string `json:"estado"`
 	DriveURL         string `json:"drive_url"`
 	Notas            string `json:"notas"`
@@ -259,6 +262,7 @@ func (f clienteFila) aCliente() produccion.Cliente {
 		ID: f.ID, Nombre: f.Nombre, LogoURL: f.LogoURL,
 		ContactoNombre: f.ContactoNombre, ContactoTelefono: f.ContactoTelefono,
 		ContactoWhatsapp: f.ContactoWhatsapp, Paquete: f.Paquete,
+		PaqueteID: f.PaqueteID, VendidoPor: f.VendidoPor,
 		Estado: f.Estado, DriveURL: f.DriveURL, Notas: f.Notas,
 		Estrategia: f.Estrategia, ArchivadoAt: f.ArchivadoAt,
 		CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt, CreatedBy: f.CreatedBy,
@@ -272,6 +276,8 @@ func filaDeCliente(c produccion.Cliente) map[string]any {
 		"contacto_telefono": nuloSiVacio(c.ContactoTelefono),
 		"contacto_whatsapp": nuloSiVacio(c.ContactoWhatsapp),
 		"paquete":           nuloSiVacio(c.Paquete), "estado": c.Estado,
+		"paquete_id":  nuloSiVacio(c.PaqueteID),
+		"vendido_por": nuloSiVacio(c.VendidoPor),
 		"drive_url": nuloSiVacio(c.DriveURL), "notas": nuloSiVacio(c.Notas),
 		"estrategia":   nuloSiVacio(c.Estrategia),
 		"created_by":   nuloSiVacio(c.CreatedBy),
@@ -715,4 +721,485 @@ func (s *Supabase) getNoti(id string) (produccion.Notificacion, bool, error) {
 		return produccion.Notificacion{}, false, nil
 	}
 	return filas[0].aNoti(), true, nil
+}
+
+// --- F2 cobros (Supabase REST, service role) ---
+// Columnas según 003_cobros.sql (snake_case). Los filtros de listado los
+// aplica el handler sobre el resultado, como en F1.
+
+type tarifaFila struct {
+	ID           string `json:"id"`
+	Etapa        string `json:"etapa"`
+	Unidad       string `json:"unidad"`
+	MontoCOP     int64  `json:"monto_cop"`
+	VigenteDesde string `json:"vigente_desde"`
+	VigenteHasta string `json:"vigente_hasta"`
+	Version      int    `json:"version"`
+	Activa       bool   `json:"activa"`
+	Demo         bool   `json:"demo"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
+	CreatedBy    string `json:"created_by"`
+}
+
+func (f tarifaFila) aTarifa() cobros.Tarifa {
+	return cobros.Tarifa{
+		ID: f.ID, Etapa: f.Etapa, Unidad: f.Unidad, MontoCOP: f.MontoCOP,
+		VigenteDesde: f.VigenteDesde, VigenteHasta: f.VigenteHasta,
+		Version: f.Version, Activa: f.Activa, Demo: f.Demo,
+		CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt, CreatedBy: f.CreatedBy,
+	}
+}
+
+func (s *Supabase) ListTarifas() ([]cobros.Tarifa, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "order": {"created_at"}}
+	var filas []tarifaFila
+	if err := s.c.REST(ctx, http.MethodGet, "tarifas", q, nil, "", &filas); err != nil {
+		return nil, err
+	}
+	out := []cobros.Tarifa{}
+	for _, f := range filas {
+		out = append(out, f.aTarifa())
+	}
+	return out, nil
+}
+
+func (s *Supabase) GetTarifa(id string) (cobros.Tarifa, bool, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "id": {"eq." + id}}
+	var filas []tarifaFila
+	if err := s.c.REST(ctx, http.MethodGet, "tarifas", q, nil, "", &filas); err != nil {
+		return cobros.Tarifa{}, false, err
+	}
+	if len(filas) == 0 {
+		return cobros.Tarifa{}, false, nil
+	}
+	return filas[0].aTarifa(), true, nil
+}
+
+// CreateTarifa versiona en dos pasos: desactiva la activa (etapa+unidad) y
+// luego inserta la nueva con version+1.
+func (s *Supabase) CreateTarifa(t cobros.Tarifa) (cobros.Tarifa, error) {
+	if t.ID == "" {
+		t.ID = NewUUID()
+	}
+	previas, err := s.ListTarifas()
+	if err != nil {
+		return cobros.Tarifa{}, err
+	}
+	version := 1
+	for _, p := range previas {
+		if p.Activa && p.Etapa == t.Etapa && p.Unidad == t.Unidad {
+			_, _ = s.cerrarTarifaREST(p.ID)
+			if p.Version >= version {
+				version = p.Version + 1
+			}
+		}
+	}
+	t.Version = version
+	t.Activa = true
+	ctx, cancel := contexto()
+	defer cancel()
+	body := map[string]any{
+		"id": t.ID, "etapa": t.Etapa, "unidad": t.Unidad,
+		"monto_cop": t.MontoCOP, "version": t.Version, "activa": true,
+		"demo": t.Demo, "created_by": nuloSiVacio(t.CreatedBy),
+	}
+	var filas []tarifaFila
+	if err := s.c.REST(ctx, http.MethodPost, "tarifas", nil, body, "return=representation", &filas); err != nil {
+		return cobros.Tarifa{}, err
+	}
+	if len(filas) == 0 {
+		return cobros.Tarifa{}, ErrNoExiste
+	}
+	return filas[0].aTarifa(), nil
+}
+
+func (s *Supabase) cerrarTarifaREST(id string) (tarifaFila, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	var filas []tarifaFila
+	body := map[string]any{"activa": false, "vigente_hasta": Ahora()}
+	if err := s.c.REST(ctx, http.MethodPatch, "tarifas", url.Values{"id": {"eq." + id}}, body, "return=representation", &filas); err != nil {
+		return tarifaFila{}, err
+	}
+	if len(filas) == 0 {
+		return tarifaFila{}, ErrNoExiste
+	}
+	return filas[0], nil
+}
+
+type tramoFila struct {
+	ID       string `json:"id"`
+	TarifaID string `json:"tarifa_id"`
+	DesdeSeg int    `json:"desde_seg"`
+	HastaSeg *int   `json:"hasta_seg"`
+	MontoCOP int64  `json:"monto_cop"`
+}
+
+func (s *Supabase) ListTramos(tarifaID string) ([]cobros.TarifaTramo, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "tarifa_id": {"eq." + tarifaID}, "order": {"desde_seg"}}
+	var filas []tramoFila
+	if err := s.c.REST(ctx, http.MethodGet, "tarifa_tramos", q, nil, "", &filas); err != nil {
+		return nil, err
+	}
+	out := []cobros.TarifaTramo{}
+	for _, f := range filas {
+		out = append(out, cobros.TarifaTramo{
+			ID: f.ID, TarifaID: f.TarifaID, DesdeSeg: f.DesdeSeg,
+			HastaSeg: f.HastaSeg, MontoCOP: f.MontoCOP,
+		})
+	}
+	return out, nil
+}
+
+func (s *Supabase) CreateTramo(tr cobros.TarifaTramo) (cobros.TarifaTramo, error) {
+	if tr.ID == "" {
+		tr.ID = NewUUID()
+	}
+	ctx, cancel := contexto()
+	defer cancel()
+	body := map[string]any{
+		"id": tr.ID, "tarifa_id": tr.TarifaID, "desde_seg": tr.DesdeSeg,
+		"hasta_seg": tr.HastaSeg, "monto_cop": tr.MontoCOP,
+	}
+	var filas []tramoFila
+	if err := s.c.REST(ctx, http.MethodPost, "tarifa_tramos", nil, body, "return=representation", &filas); err != nil {
+		return cobros.TarifaTramo{}, err
+	}
+	if len(filas) == 0 {
+		return tr, nil
+	}
+	f := filas[0]
+	return cobros.TarifaTramo{
+		ID: f.ID, TarifaID: f.TarifaID, DesdeSeg: f.DesdeSeg,
+		HastaSeg: f.HastaSeg, MontoCOP: f.MontoCOP,
+	}, nil
+}
+
+type paqueteFila struct {
+	ID        string `json:"id"`
+	Nombre    string `json:"nombre"`
+	PrecioCOP int64  `json:"precio_cop"`
+	Activo    bool   `json:"activo"`
+	Demo      bool   `json:"demo"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func (f paqueteFila) aPaquete() cobros.Paquete {
+	return cobros.Paquete{
+		ID: f.ID, Nombre: f.Nombre, PrecioCOP: f.PrecioCOP,
+		Activo: f.Activo, Demo: f.Demo,
+		CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
+	}
+}
+
+func (s *Supabase) ListPaquetes() ([]cobros.Paquete, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "order": {"nombre"}}
+	var filas []paqueteFila
+	if err := s.c.REST(ctx, http.MethodGet, "paquetes", q, nil, "", &filas); err != nil {
+		return nil, err
+	}
+	out := []cobros.Paquete{}
+	for _, f := range filas {
+		out = append(out, f.aPaquete())
+	}
+	return out, nil
+}
+
+func (s *Supabase) GetPaquete(id string) (cobros.Paquete, bool, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "id": {"eq." + id}}
+	var filas []paqueteFila
+	if err := s.c.REST(ctx, http.MethodGet, "paquetes", q, nil, "", &filas); err != nil {
+		return cobros.Paquete{}, false, err
+	}
+	if len(filas) == 0 {
+		return cobros.Paquete{}, false, nil
+	}
+	return filas[0].aPaquete(), true, nil
+}
+
+func (s *Supabase) CreatePaquete(p cobros.Paquete) (cobros.Paquete, error) {
+	if p.ID == "" {
+		p.ID = NewUUID()
+	}
+	ctx, cancel := contexto()
+	defer cancel()
+	body := map[string]any{
+		"id": p.ID, "nombre": p.Nombre, "precio_cop": p.PrecioCOP,
+		"activo": true, "demo": p.Demo,
+	}
+	var filas []paqueteFila
+	if err := s.c.REST(ctx, http.MethodPost, "paquetes", nil, body, "return=representation", &filas); err != nil {
+		return cobros.Paquete{}, err
+	}
+	if len(filas) == 0 {
+		return cobros.Paquete{}, ErrNoExiste
+	}
+	return filas[0].aPaquete(), nil
+}
+
+func (s *Supabase) UpdatePaquete(id string, cambios map[string]any) (cobros.Paquete, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	var filas []paqueteFila
+	if err := s.c.REST(ctx, http.MethodPatch, "paquetes", url.Values{"id": {"eq." + id}}, cambios, "return=representation", &filas); err != nil {
+		return cobros.Paquete{}, err
+	}
+	if len(filas) == 0 {
+		return cobros.Paquete{}, ErrNoExiste
+	}
+	return filas[0].aPaquete(), nil
+}
+
+type configFila struct {
+	Porcentaje float64 `json:"porcentaje_comision"`
+	Modo       string  `json:"modo_comision"`
+}
+
+func (s *Supabase) GetConfig() (cobros.ConfigCobros, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"porcentaje_comision,modo_comision"}, "id": {"eq.true"}}
+	var filas []configFila
+	if err := s.c.REST(ctx, http.MethodGet, "config_cobros", q, nil, "", &filas); err != nil {
+		return cobros.ConfigCobros{}, err
+	}
+	if len(filas) == 0 {
+		return cobros.ConfigCobros{PorcentajeComision: 8, ModoComision: cobros.ModoUnaVez}, nil
+	}
+	return cobros.ConfigCobros{PorcentajeComision: filas[0].Porcentaje, ModoComision: filas[0].Modo}, nil
+}
+
+func (s *Supabase) UpdateConfig(c cobros.ConfigCobros) (cobros.ConfigCobros, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	body := map[string]any{
+		"porcentaje_comision": c.PorcentajeComision, "modo_comision": c.ModoComision,
+	}
+	var filas []configFila
+	if err := s.c.REST(ctx, http.MethodPatch, "config_cobros", url.Values{"id": {"eq.true"}}, body, "return=representation", &filas); err != nil {
+		return cobros.ConfigCobros{}, err
+	}
+	return c, nil
+}
+
+type lineaFila struct {
+	ID                string   `json:"id"`
+	TareaID           string   `json:"tarea_id"`
+	UsuarioID         string   `json:"usuario_id"`
+	Tipo              string   `json:"tipo"`
+	Estado            string   `json:"estado"`
+	MontoCOP          int64    `json:"monto_cop"`
+	TarifaID          string   `json:"tarifa_id"`
+	Unidad            string   `json:"unidad"`
+	Cantidad          *float64 `json:"cantidad"`
+	Motivo            string   `json:"motivo"`
+	ReclamoMotivo     string   `json:"reclamo_motivo"`
+	Periodo           string   `json:"periodo"`
+	CorteID           string   `json:"corte_id"`
+	ComisionClienteID string   `json:"comision_cliente_id"`
+	CreatedAt         string   `json:"created_at"`
+	UpdatedAt         string   `json:"updated_at"`
+	CreatedBy         string   `json:"created_by"`
+}
+
+func (f lineaFila) aLinea() cobros.LineaCobro {
+	return cobros.LineaCobro{
+		ID: f.ID, TareaID: f.TareaID, UsuarioID: f.UsuarioID, Tipo: f.Tipo,
+		Estado: f.Estado, MontoCOP: f.MontoCOP, TarifaID: f.TarifaID,
+		Unidad: f.Unidad, Cantidad: f.Cantidad, Motivo: f.Motivo,
+		ReclamoMotivo: f.ReclamoMotivo, Periodo: f.Periodo, CorteID: f.CorteID,
+		ComisionClienteID: f.ComisionClienteID,
+		CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt, CreatedBy: f.CreatedBy,
+	}
+}
+
+func filaDeLinea(l cobros.LineaCobro) map[string]any {
+	return map[string]any{
+		"id": l.ID, "tarea_id": nuloSiVacio(l.TareaID), "usuario_id": l.UsuarioID,
+		"tipo": l.Tipo, "estado": l.Estado, "monto_cop": l.MontoCOP,
+		"tarifa_id": nuloSiVacio(l.TarifaID), "unidad": nuloSiVacio(l.Unidad),
+		"cantidad": l.Cantidad, "motivo": nuloSiVacio(l.Motivo),
+		"reclamo_motivo": nuloSiVacio(l.ReclamoMotivo), "periodo": l.Periodo,
+		"corte_id": nuloSiVacio(l.CorteID),
+		"comision_cliente_id": nuloSiVacio(l.ComisionClienteID),
+		"created_by":          nuloSiVacio(l.CreatedBy),
+	}
+}
+
+func (s *Supabase) CreateLinea(l cobros.LineaCobro) (cobros.LineaCobro, error) {
+	if l.ID == "" {
+		l.ID = NewUUID()
+	}
+	ctx, cancel := contexto()
+	defer cancel()
+	var filas []lineaFila
+	if err := s.c.REST(ctx, http.MethodPost, "lineas_cobro", nil, filaDeLinea(l), "return=representation", &filas); err != nil {
+		return cobros.LineaCobro{}, err
+	}
+	if len(filas) == 0 {
+		return l, nil
+	}
+	return filas[0].aLinea(), nil
+}
+
+func (s *Supabase) GetLinea(id string) (cobros.LineaCobro, bool, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "id": {"eq." + id}}
+	var filas []lineaFila
+	if err := s.c.REST(ctx, http.MethodGet, "lineas_cobro", q, nil, "", &filas); err != nil {
+		return cobros.LineaCobro{}, false, err
+	}
+	if len(filas) == 0 {
+		return cobros.LineaCobro{}, false, nil
+	}
+	return filas[0].aLinea(), true, nil
+}
+
+func (s *Supabase) ListLineas() ([]cobros.LineaCobro, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "order": {"created_at.desc"}}
+	var filas []lineaFila
+	if err := s.c.REST(ctx, http.MethodGet, "lineas_cobro", q, nil, "", &filas); err != nil {
+		return nil, err
+	}
+	out := []cobros.LineaCobro{}
+	for _, f := range filas {
+		out = append(out, f.aLinea())
+	}
+	return out, nil
+}
+
+// UpdateLineaEstado solo envía estado/motivo/reclamo/corte/periodo (§2).
+func (s *Supabase) UpdateLineaEstado(id string, cambios map[string]any) (cobros.LineaCobro, error) {
+	permitido := map[string]bool{
+		"estado": true, "motivo": true, "reclamo_motivo": true,
+		"corte_id": true, "periodo": true,
+	}
+	body := map[string]any{}
+	for k, v := range cambios {
+		if permitido[k] {
+			body[k] = v
+		}
+	}
+	ctx, cancel := contexto()
+	defer cancel()
+	var filas []lineaFila
+	if err := s.c.REST(ctx, http.MethodPatch, "lineas_cobro", url.Values{"id": {"eq." + id}}, body, "return=representation", &filas); err != nil {
+		return cobros.LineaCobro{}, err
+	}
+	if len(filas) == 0 {
+		return cobros.LineaCobro{}, ErrNoExiste
+	}
+	return filas[0].aLinea(), nil
+}
+
+func (s *Supabase) LineaDeTarea(tareaID string) (cobros.LineaCobro, bool, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "tarea_id": {"eq." + tareaID}, "tipo": {"eq.tarea"}}
+	var filas []lineaFila
+	if err := s.c.REST(ctx, http.MethodGet, "lineas_cobro", q, nil, "", &filas); err != nil {
+		return cobros.LineaCobro{}, false, err
+	}
+	if len(filas) == 0 {
+		return cobros.LineaCobro{}, false, nil
+	}
+	return filas[0].aLinea(), true, nil
+}
+
+type corteFila struct {
+	ID        string `json:"id"`
+	Periodo   string `json:"periodo"`
+	Estado    string `json:"estado"`
+	CerradoAt string `json:"cerrado_at"`
+	CreatedBy string `json:"created_by"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func (f corteFila) aCorte() cobros.Corte {
+	return cobros.Corte{
+		ID: f.ID, Periodo: f.Periodo, Estado: f.Estado, CerradoAt: f.CerradoAt,
+		CreatedBy: f.CreatedBy, CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
+	}
+}
+
+func (s *Supabase) ListCortes() ([]cobros.Corte, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "order": {"periodo.desc"}}
+	var filas []corteFila
+	if err := s.c.REST(ctx, http.MethodGet, "cortes", q, nil, "", &filas); err != nil {
+		return nil, err
+	}
+	out := []cobros.Corte{}
+	for _, f := range filas {
+		out = append(out, f.aCorte())
+	}
+	return out, nil
+}
+
+func (s *Supabase) GetCorteByPeriodo(periodo string) (cobros.Corte, bool, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	q := url.Values{"select": {"*"}, "periodo": {"eq." + periodo}}
+	var filas []corteFila
+	if err := s.c.REST(ctx, http.MethodGet, "cortes", q, nil, "", &filas); err != nil {
+		return cobros.Corte{}, false, err
+	}
+	if len(filas) == 0 {
+		return cobros.Corte{}, false, nil
+	}
+	return filas[0].aCorte(), true, nil
+}
+
+func (s *Supabase) CreateCorte(c cobros.Corte) (cobros.Corte, error) {
+	if c.ID == "" {
+		c.ID = NewUUID()
+	}
+	if c.Estado == "" {
+		c.Estado = cobros.CorteCerrado
+	}
+	ctx, cancel := contexto()
+	defer cancel()
+	body := map[string]any{
+		"id": c.ID, "periodo": c.Periodo, "estado": c.Estado,
+		"cerrado_at": nuloSiVacio(c.CerradoAt),
+		"created_by": nuloSiVacio(c.CreatedBy),
+	}
+	var filas []corteFila
+	if err := s.c.REST(ctx, http.MethodPost, "cortes", nil, body, "return=representation", &filas); err != nil {
+		return cobros.Corte{}, err
+	}
+	if len(filas) == 0 {
+		return c, nil
+	}
+	return filas[0].aCorte(), nil
+}
+
+func (s *Supabase) UpdateCorte(id string, cambios map[string]any) (cobros.Corte, error) {
+	ctx, cancel := contexto()
+	defer cancel()
+	var filas []corteFila
+	if err := s.c.REST(ctx, http.MethodPatch, "cortes", url.Values{"id": {"eq." + id}}, cambios, "return=representation", &filas); err != nil {
+		return cobros.Corte{}, err
+	}
+	if len(filas) == 0 {
+		return cobros.Corte{}, ErrNoExiste
+	}
+	return filas[0].aCorte(), nil
 }
