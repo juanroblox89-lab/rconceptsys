@@ -40,7 +40,22 @@ export async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body !== undefined) headers.set("Content-Type", "application/json");
   const res = await authFetch(`/api/backend${path}`, { ...init, headers });
-  if (!res.ok) throw new ApiError(res.status, await parseError(res));
+  if (!res.ok) {
+    // F4 §5.25: el 409 de /ganar trae {…, reactivar} en el cuerpo; pasarlo
+    // pegado al error para que la UI ofrezca reactivar sin otra llamada.
+    if (res.status === 409) {
+      try {
+        const text = await res.text();
+        const data = text === "" ? null : (JSON.parse(text) as T & { reactivar?: unknown });
+        const err = new ApiError(res.status, await parseError(new Response(text, { status: res.status })));
+        (err as ApiError & { cuerpo?: unknown }).cuerpo = data;
+        throw err;
+      } catch (e) {
+        if (e instanceof ApiError) throw e;
+      }
+    }
+    throw new ApiError(res.status, await parseError(res));
+  }
   if (res.status === 204) return null as T;
   const text = await res.text();
   return (text === "" ? null : JSON.parse(text)) as T;

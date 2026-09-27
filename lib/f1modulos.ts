@@ -9,6 +9,7 @@ import type { MeResponse, Modulo } from "./types";
  * F2: el backend habilita "cobros" para dueño/admin/equipo; si viene
  * deshabilitado (backend viejo), se habilita aquí según acceso.
  * F3: biblioteca para todo acceso salvo pendiente/desactivado.
+ * F4: ventas para dueño/admin y equipo con oficio ventas.
  */
 export function withF1Modulos(me: MeResponse): MeResponse {
   const mods = me.modulos.map((m) => ({ ...m }));
@@ -25,11 +26,13 @@ export function withF1Modulos(me: MeResponse): MeResponse {
     enable("clientes");
     enable("cobros");
     enable("biblioteca");
+    enable("ventas");
   }
   if (equipo) {
     enable("clientes");
     enable("cobros");
     enable("biblioteca");
+    if (me.usuario.oficios.includes("ventas")) enable("ventas");
   }
   const extras: Modulo[] = [];
   if (admin || (equipo && me.usuario.oficios.length > 0)) {

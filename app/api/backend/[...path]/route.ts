@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const TIMEOUT_MS = 25000;
-const MAX_BODY_BYTES = 256 * 1024; // F0: formularios chicos (acceso/oficios/motivo).
+const MAX_BODY_BYTES = 768 * 1024; // F4: fotos base64 (~500 KB + overhead JSON).
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -28,13 +28,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  *   cortes/:periodo/pagar|revertir (POST)
  * - comisiones/mensual (POST), tareas/:uuid/decision (POST)
  *
- * Lista blanca F3 (biblioteca: formatos, hooks, referencias, SOPs):
- * - formatos, hooks, referencias, sops, sop-ejecuciones (GET lista / POST crear)
- * - formatos/:uuid, hooks/:uuid, referencias/:uuid, sops/:uuid (GET/PATCH)
- * - formatos|hooks|referencias|sops/:uuid/publicar|rechazar|archivar (POST)
- * - sops/:uuid/pasos (GET/POST), sop-pasos/:uuid (PATCH)
- * - sop-ejecuciones/:uuid (GET), sop-ejecuciones/:uuid/terminar (POST),
- *   sop-ejecuciones/:uuid/pasos (POST), sop-ejecuciones/:uuid/pasos/:uuid (DELETE)
+ * Lista blanca F4 (ventas: leads, visitas, métricas):
+ * - leads, visitas (GET lista / POST crear)
+ * - leads/:uuid (GET/PATCH), visitas/:uuid (GET)
+ * - leads/:uuid/mover|reasignar|ganar (POST), leads/:uuid/eventos|visitas (GET)
+ * - visitas/:uuid/fotos (GET/POST)
+ * - ventas/metricas (GET)
  */
 function destFor(path: string[]): string | null {
   if (path.length === 1 && (path[0] === "me" || path[0] === "health" || path[0] === "usuarios" || path[0] === "actividad")) {
@@ -68,6 +67,22 @@ function destFor(path: string[]): string | null {
     return path.join("/");
   }
   // F3: recursos de biblioteca de un segmento (listas + crear).
+  // F4: leads + visitas (listas + crear) y metricas de ventas.
+  if (
+    path.length === 1 &&
+    (path[0] === "formatos" ||
+      path[0] === "hooks" ||
+      path[0] === "referencias" ||
+      path[0] === "sops" ||
+      path[0] === "sop-ejecuciones" ||
+      path[0] === "leads" ||
+      path[0] === "visitas")
+  ) {
+    return path[0];
+  }
+  if (path.length === 2 && path[0] === "ventas" && path[1] === "metricas") {
+    return path.join("/");
+  }
   if (
     path.length === 1 &&
     (path[0] === "formatos" ||
@@ -76,6 +91,7 @@ function destFor(path: string[]): string | null {
       path[0] === "sops" ||
       path[0] === "sop-ejecuciones")
   ) {
+    // Duplicado defensivo (ya cubierto por el bloque F3+F4 de arriba).
     return path[0];
   }
   if (
@@ -105,6 +121,7 @@ function destFor(path: string[]): string | null {
   }
   // F3: biblioteca/:uuid (GET/PATCH) — formatos, hooks, referencias, sops,
   // sop-pasos (PATCH) y sop-ejecuciones/:uuid (GET).
+  // F4: leads/:uuid (GET/PATCH) y visitas/:uuid (GET).
   if (
     path.length === 2 &&
     (path[0] === "formatos" ||
@@ -112,7 +129,9 @@ function destFor(path: string[]): string | null {
       path[0] === "referencias" ||
       path[0] === "sops" ||
       path[0] === "sop-pasos" ||
-      path[0] === "sop-ejecuciones") &&
+      path[0] === "sop-ejecuciones" ||
+      path[0] === "leads" ||
+      path[0] === "visitas") &&
     UUID.test(path[1] ?? "")
   ) {
     return path.join("/");
@@ -178,7 +197,16 @@ function destFor(path: string[]): string | null {
         (path[2] === "confirmar" ||
           path[2] === "reclamar" ||
           path[2] === "aprobar" ||
-          path[2] === "devolver")))
+          path[2] === "devolver")) ||
+      // F4: mover|reasignar|ganar sobre leads; eventos y visitas del lead.
+      (path[0] === "leads" &&
+        (path[2] === "mover" ||
+          path[2] === "reasignar" ||
+          path[2] === "ganar" ||
+          path[2] === "eventos" ||
+          path[2] === "visitas")) ||
+      // F4: fotos de visita (GET lista / POST subir).
+      (path[0] === "visitas" && path[2] === "fotos"))
   ) {
     return path.join("/");
   }

@@ -9,6 +9,8 @@ import { faseDe } from "@/lib/modulos";
 import { useTitle } from "@/lib/useTitle";
 import { getTareas } from "@/lib/f1ui";
 import { getLineas } from "@/lib/f2api";
+import { getLeads } from "@/lib/f4api";
+import { contarPendientes } from "@/lib/f4offline";
 import { fmtCOP } from "@/lib/f2tipos";
 
 export default function InicioPage() {
@@ -27,6 +29,7 @@ export default function InicioPage() {
   const [porRevisar, setPorRevisar] = useState<number | null>(null);
   const [cobrosMes, setCobrosMes] = useState<string | null>(null);
   const [alertas, setAlertas] = useState<string | null>(null);
+  const [ventasHoy, setVentasHoy] = useState<string | null>(null);
 
   useEffect(() => {
     if (me === null) return;
@@ -74,6 +77,32 @@ export default function InicioPage() {
             if (!alive || r === null) return;
             setPorRevisar(r.length);
           }
+          // F4: tarjeta Ventas (próximas acciones de hoy / visitas pendientes
+          // de subir) para quien tiene oficio ventas; resumen para admin.
+          try {
+            const tieneVentas =
+              admin || (me.usuario.oficios ?? []).includes("ventas");
+            if (tieneVentas) {
+              const ls = await getLeads({}).catch(() => null);
+              const pend = await contarPendientes().catch(() => 0);
+              if (!alive) return;
+              if (ls !== null) {
+                const d = new Date();
+                const h = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                const deHoy = ls.filter(
+                  (l) => l.accion_fecha === h && l.estado !== "ganado" && l.estado !== "perdido",
+                ).length;
+                const venc = ls.filter((l) => l.vencida).length;
+                setVentasHoy(
+                  `${deHoy} acciones hoy${venc > 0 ? ` · ${venc} vencidas` : ""}${pend > 0 ? ` · ${pend} por subir` : ""}`,
+                );
+              } else if (pend > 0) {
+                setVentasHoy(`${pend} visitas por subir`);
+              }
+            }
+          } catch {
+            // Sin tarjeta de ventas: el módulo sigue disponible.
+          }
         } catch {
           // Sin números: las tarjetas siguen mostrando los módulos.
         }
@@ -88,6 +117,7 @@ export default function InicioPage() {
   const metaTareas = hoy === null ? "Tus pendientes" : hoy === 0 ? "Nada para hoy" : `${hoy} para hoy`;
   const metaVenc = vencidas === null || vencidas === 0 ? "Al día" : `${vencidas} vencidas`;
   const metaCobros = cobrosMes ?? "Tus cobros";
+  const metaVentas = ventasHoy ?? "Tus ventas";
 
   return (
     <Panel title="Inicio">
@@ -108,7 +138,9 @@ export default function InicioPage() {
                       ? `${porRevisar} por revisar`
                       : m.id === "cobros"
                         ? metaCobros
-                        : "Disponible"
+                        : m.id === "ventas"
+                          ? metaVentas
+                          : "Disponible"
                 }
                 href={m.ruta}
                 current
