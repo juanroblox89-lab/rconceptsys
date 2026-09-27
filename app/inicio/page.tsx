@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/Panel";
 import { HomeCard, HomeCardRow } from "@/components/HomeCard";
+import { MetricasPanel } from "@/components/Metricas";
 import { ModuleIcon } from "@/components/icons";
 import { useSession } from "@/components/SessionProvider";
 import { faseDe } from "@/lib/modulos";
@@ -193,6 +194,7 @@ export default function InicioPage() {
             </HomeCardRow>
           </>
         )}
+        {admin && <MetricasPanel />}
       </div>
     </Panel>
   );

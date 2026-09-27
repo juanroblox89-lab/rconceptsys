@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
+import { AsistenteEntrada } from "@/components/Asistente";
 import { useSession } from "@/components/SessionProvider";
 import { archivarCliente, getCliente, getTareas, patchCliente } from "@/lib/f1ui";
 import { getFormatos, getHooks } from "@/lib/f3api";
@@ -185,6 +186,12 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
                     {saving ? "Guardando…" : "Archivar"}
                   </button>
                 )}
+                <AsistenteEntrada titulo="Ideas de contenido" clienteId={cliente.id} />
+              </div>
+            )}
+            {!admin && (
+              <div className={f1.f1filters}>
+                <AsistenteEntrada titulo="Ideas de contenido" clienteId={cliente.id} />
               </div>
             )}
             {edit && admin && (

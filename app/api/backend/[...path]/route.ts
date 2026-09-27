@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const TIMEOUT_MS = 25000;
+// F5: el chat del asistente espera al modelo (timeout Go 30 s) → 45 s.
+const TIMEOUT_ASISTENTE_MS = 45000;
 const MAX_BODY_BYTES = 768 * 1024; // F4: fotos base64 (~500 KB + overhead JSON).
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
@@ -34,9 +36,29 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * - leads/:uuid/mover|reasignar|ganar (POST), leads/:uuid/eventos|visitas (GET)
  * - visitas/:uuid/fotos (GET/POST)
  * - ventas/metricas (GET)
+ *
+ * Lista blanca F5 (asistente + métricas):
+ * - asistente/chat (POST), asistente/conversaciones (GET)
+ * - asistente/conversaciones/:uuid (GET)
+ * - metricas (GET, solo admin/dueño — lo impone Go)
  */
 function destFor(path: string[]): string | null {
   if (path.length === 1 && (path[0] === "me" || path[0] === "health" || path[0] === "usuarios" || path[0] === "actividad")) {
+    return path[0];
+  }
+  // F5: asistente (chat POST, conversaciones GET) y métricas (GET).
+  if (path.length === 2 && path[0] === "asistente" && (path[1] === "chat" || path[1] === "conversaciones")) {
+    return path.join("/");
+  }
+  if (
+    path.length === 3 &&
+    path[0] === "asistente" &&
+    path[1] === "conversaciones" &&
+    UUID.test(path[2] ?? "")
+  ) {
+    return path.join("/");
+  }
+  if (path.length === 1 && path[0] === "metricas") {
     return path[0];
   }
   if (
@@ -247,7 +269,11 @@ async function proxyTo(req: NextRequest, dest: string) {
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const esAsistente = dest === "asistente/chat";
+  const timer = setTimeout(
+    () => controller.abort(),
+    esAsistente ? TIMEOUT_ASISTENTE_MS : TIMEOUT_MS,
+  );
   try {
     let body: ArrayBuffer | undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {

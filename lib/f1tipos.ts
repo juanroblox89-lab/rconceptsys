@@ -43,6 +43,8 @@ export interface Pieza {
   formato_recomendado_id: string | null;
   hook_recomendado_id: string | null;
   guion: string | null;
+  /** F5: borrador del asistente (no reemplaza al guion aprobado). */
+  guion_borrador: string | null;
   fecha_objetivo: string | null;
   estado: PiezaEstado;
   motivo: string | null;

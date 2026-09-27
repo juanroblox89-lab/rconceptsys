@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
+import { AsistenteEntrada } from "@/components/Asistente";
 import { useSession } from "@/components/SessionProvider";
 import { cancelarPieza, getPieza, patchPieza } from "@/lib/f1ui";
 import { getFormatos, getHooks } from "@/lib/f3api";
@@ -151,6 +152,45 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
                 <p style={{ margin: 0, fontSize: 13, whiteSpace: "pre-wrap" }}>{pieza.guion}</p>
               </div>
             )}
+            {pieza.guion_borrador !== null && pieza.guion_borrador !== "" && (
+              <div className="card" style={{ marginBottom: 12 }}>
+                <span className="label">Borrador del asistente (no reemplaza al guion aprobado)</span>
+                <p style={{ margin: "0 0 8px", fontSize: 13, whiteSpace: "pre-wrap" }}>{pieza.guion_borrador}</p>
+                {admin && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={saving}
+                    onClick={() => {
+                      if (pieza === null) return;
+                      if (!window.confirm("¿Usar el borrador como guion aprobado?")) return;
+                      setSaving(true);
+                      setError(null);
+                      void patchPieza(pieza.id, {
+                        guion: pieza.guion_borrador,
+                        guion_borrador: "",
+                        updated_at: pieza.updated_at,
+                      })
+                        .then(setPieza)
+                        .catch((e: unknown) => setError(e instanceof Error ? e.message : "No se pudo guardar"))
+                        .finally(() => setSaving(false));
+                    }}
+                  >
+                    Usar como guion
+                  </button>
+                )}
+              </div>
+            )}
+            <div className={f1.f1filters}>
+              <AsistenteEntrada
+                titulo="Escribir guion con IA"
+                piezaId={pieza.id}
+                clienteId={pieza.cliente_id}
+                onBorrador={() => {
+                  if (id !== null) void load(id);
+                }}
+              />
+            </div>
             {admin && (
               <div className="card" style={{ marginBottom: 12 }}>
                 <span className="label">Biblioteca (formato y hook, solo referencia)</span>

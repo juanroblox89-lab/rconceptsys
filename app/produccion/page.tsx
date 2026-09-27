@@ -231,7 +231,9 @@ export default function ProduccionPage() {
   const [fCliente, setFCliente] = useState("");
   const [fPersona, setFPersona] = useState("");
   const [fEstado, setFEstado] = useState<PiezaEstado | "">("");
+  const [filtros, setFiltros] = useState(false);
   const [crear, setCrear] = useState(false);
+  const conFiltros = fCliente !== "" || fPersona !== "";
 
   const load = async () => {
     setLoading(true);
@@ -298,22 +300,50 @@ export default function ProduccionPage() {
           {piezas === null ? "Tablero por estado." : `${piezas.length} piezas en total.`}
         </p>
         <div className={f1.f1filters}>
-          <select className="select" aria-label="Filtrar por cliente" value={fCliente} onChange={(e) => setFCliente(e.target.value)}>
-            <option value="">Todos los clientes</option>
-            {(clientes ?? []).map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
-          <select className="select" aria-label="Filtrar por persona" value={fPersona} onChange={(e) => setFPersona(e.target.value)}>
-            <option value="">Todas las personas</option>
-            {(usuarios ?? []).map((u) => (
-              <option key={u.id} value={u.id}>{u.nombre}</option>
-            ))}
-          </select>
           <button type="button" className="btn btn-sm" onClick={() => setCrear(true)} disabled={clientes === null}>
             Nueva pieza
           </button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFiltros(true)}>
+            Filtros{conFiltros ? " •" : ""}
+          </button>
         </div>
+        {filtros && (
+          <Modal title="Filtros" onClose={() => setFiltros(false)}>
+            <div className={f1.f1sheetFilters}>
+              <label className="label" htmlFor="pf-cliente">
+                Cliente
+                <select id="pf-cliente" className="select" value={fCliente} onChange={(e) => setFCliente(e.target.value)}>
+                  <option value="">Todos los clientes</option>
+                  {(clientes ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="label" htmlFor="pf-persona">
+                Persona
+                <select id="pf-persona" className="select" value={fPersona} onChange={(e) => setFPersona(e.target.value)}>
+                  <option value="">Todas las personas</option>
+                  {(usuarios ?? []).map((u) => (
+                    <option key={u.id} value={u.id}>{u.nombre}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" className="btn btn-sm" onClick={() => setFiltros(false)}>
+                Ver {filtradas.length} piezas
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setFCliente("");
+                  setFPersona("");
+                }}
+              >
+                Limpiar
+              </button>
+            </div>
+          </Modal>
+        )}
         {loading && <BootSplash label="Cargando producción" />}
         {error !== null && !loading && <Aviso error={error} onRetry={() => void load()} />}
         {!loading && error === null && (

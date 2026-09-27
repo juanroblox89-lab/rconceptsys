@@ -7,6 +7,7 @@ import { LogoIcon } from "./Logo";
 import { ModuleIcon, IconMenu } from "./icons";
 import { Sidebar } from "./Sidebar";
 import { AccountPopover } from "./AccountPopover";
+import { AsistenteGlobal } from "./Asistente";
 import { Notificaciones } from "./Notificaciones";
 import { useSession } from "./SessionProvider";
 import type { Modulo } from "@/lib/types";
@@ -186,6 +187,11 @@ export function AppShell({
       <div className={styles.bellFloat}>
         <Notificaciones />
       </div>
+
+      {/* Asistente F5: botón global (pendiente no lo ve: el backend da 403). */}
+      {me !== null && me.usuario.acceso !== "pendiente" && me.usuario.acceso !== "desactivado" && (
+        <AsistenteGlobal />
+      )}
 
       <div className={`${styles.sidebarWrap} ${collapsed ? styles.sidebarHidden : ""}`}>
         <div className={styles.sidebarPanel}>
