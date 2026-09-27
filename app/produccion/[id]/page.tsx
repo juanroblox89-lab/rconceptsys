@@ -5,6 +5,8 @@ import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
 import { useSession } from "@/components/SessionProvider";
 import { cancelarPieza, getPieza, patchPieza } from "@/lib/f1ui";
+import { getFormatos, getHooks } from "@/lib/f3api";
+import type { Formato, Hook } from "@/lib/f3tipos";
 import {
   etapaLabel,
   fmtFechaCorta,
@@ -26,6 +28,10 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
   const [cancelar, setCancelar] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [saving, setSaving] = useState(false);
+  // F3: formato/hook vinculado (solo referencia a biblioteca publicada).
+  const [formatosPub, setFormatosPub] = useState<Formato[]>([]);
+  const [hooksPub, setHooksPub] = useState<Hook[]>([]);
+  const [vinculando, setVinculando] = useState(false);
 
   useEffect(() => {
     void params.then((p) => setId(p.id));
@@ -38,6 +44,17 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
       const d = await getPieza(pid);
       setPieza(d.pieza);
       setTareas(d.tareas);
+      try {
+        const [fs, hs] = await Promise.all([
+          getFormatos({ estado: "publicado" }).catch(() => []),
+          getHooks({ estado: "publicado" }).catch(() => []),
+        ]);
+        setFormatosPub(fs);
+        setHooksPub(hs);
+      } catch {
+        setFormatosPub([]);
+        setHooksPub([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cargar");
     } finally {
@@ -85,6 +102,25 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
     }
   };
 
+  /** Vincular formato/hook recomendado (F3, solo referencia, sin romper F1). */
+  const vincular = async (formatoId: string, hookId: string) => {
+    if (pieza === null || vinculando) return;
+    setVinculando(true);
+    setError(null);
+    try {
+      const p = await patchPieza(pieza.id, {
+        formato_recomendado_id: formatoId === "" ? null : formatoId,
+        hook_recomendado_id: hookId === "" ? null : hookId,
+        updated_at: pieza.updated_at,
+      });
+      setPieza(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo vincular");
+    } finally {
+      setVinculando(false);
+    }
+  };
+
   return (
     <Panel title="Pieza">
       <div className="page">
@@ -114,6 +150,51 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
                 <span className="label">Guion</span>
                 <p style={{ margin: 0, fontSize: 13, whiteSpace: "pre-wrap" }}>{pieza.guion}</p>
               </div>
+            )}
+            {admin && (
+              <div className="card" style={{ marginBottom: 12 }}>
+                <span className="label">Biblioteca (formato y hook, solo referencia)</span>
+                <div className={f1.f1two}>
+                  <div className="field">
+                    <label className="label" htmlFor="pz-formato">Formato</label>
+                    <select
+                      id="pz-formato"
+                      className="select"
+                      value={pieza.formato_recomendado_id ?? ""}
+                      disabled={vinculando}
+                      onChange={(e) => void vincular(e.target.value, pieza.hook_recomendado_id ?? "")}
+                    >
+                      <option value="">Sin formato</option>
+                      {formatosPub.map((f) => (
+                        <option key={f.id} value={f.id}>{f.codigo ? `${f.codigo} · ` : ""}{f.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label className="label" htmlFor="pz-hook">Hook</label>
+                    <select
+                      id="pz-hook"
+                      className="select"
+                      value={pieza.hook_recomendado_id ?? ""}
+                      disabled={vinculando}
+                      onChange={(e) => void vincular(pieza.formato_recomendado_id ?? "", e.target.value)}
+                    >
+                      <option value="">Sin hook</option>
+                      {hooksPub.map((h) => (
+                        <option key={h.id} value={h.id}>{h.titulo}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!admin && (pieza.formato_recomendado_id !== null || pieza.hook_recomendado_id !== null) && (
+              <p className="page-sub" style={{ marginTop: 0 }}>
+                {[formatosPub.find((f) => f.id === pieza.formato_recomendado_id)?.nombre,
+                  hooksPub.find((h) => h.id === pieza.hook_recomendado_id)?.titulo]
+                  .filter((x) => x !== undefined && x !== "")
+                  .join(" · ")}
+              </p>
             )}
             {admin && (
               <div className={f1.f1filters}>

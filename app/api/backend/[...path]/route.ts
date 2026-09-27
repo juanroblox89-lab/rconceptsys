@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const TIMEOUT_MS = 25000;
 const MAX_BODY_BYTES = 256 * 1024; // F0: formularios chicos (acceso/oficios/motivo).
 
-const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH"]);
+const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -27,6 +27,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * - cortes/:periodo (GET), cortes/:periodo/csv (GET),
  *   cortes/:periodo/pagar|revertir (POST)
  * - comisiones/mensual (POST), tareas/:uuid/decision (POST)
+ *
+ * Lista blanca F3 (biblioteca: formatos, hooks, referencias, SOPs):
+ * - formatos, hooks, referencias, sops, sop-ejecuciones (GET lista / POST crear)
+ * - formatos/:uuid, hooks/:uuid, referencias/:uuid, sops/:uuid (GET/PATCH)
+ * - formatos|hooks|referencias|sops/:uuid/publicar|rechazar|archivar (POST)
+ * - sops/:uuid/pasos (GET/POST), sop-pasos/:uuid (PATCH)
+ * - sop-ejecuciones/:uuid (GET), sop-ejecuciones/:uuid/terminar (POST),
+ *   sop-ejecuciones/:uuid/pasos (POST), sop-ejecuciones/:uuid/pasos/:uuid (DELETE)
  */
 function destFor(path: string[]): string | null {
   if (path.length === 1 && (path[0] === "me" || path[0] === "health" || path[0] === "usuarios" || path[0] === "actividad")) {
@@ -59,6 +67,17 @@ function destFor(path: string[]): string | null {
   ) {
     return path.join("/");
   }
+  // F3: recursos de biblioteca de un segmento (listas + crear).
+  if (
+    path.length === 1 &&
+    (path[0] === "formatos" ||
+      path[0] === "hooks" ||
+      path[0] === "referencias" ||
+      path[0] === "sops" ||
+      path[0] === "sop-ejecuciones")
+  ) {
+    return path[0];
+  }
   if (
     (path.length === 2 && path[0] === "usuarios" && UUID.test(path[1] ?? "")) ||
     (path.length === 3 &&
@@ -81,6 +100,48 @@ function destFor(path: string[]): string | null {
     path.length === 2 &&
     (path[0] === "lineas" || path[0] === "paquetes") &&
     UUID.test(path[1] ?? "")
+  ) {
+    return path.join("/");
+  }
+  // F3: biblioteca/:uuid (GET/PATCH) — formatos, hooks, referencias, sops,
+  // sop-pasos (PATCH) y sop-ejecuciones/:uuid (GET).
+  if (
+    path.length === 2 &&
+    (path[0] === "formatos" ||
+      path[0] === "hooks" ||
+      path[0] === "referencias" ||
+      path[0] === "sops" ||
+      path[0] === "sop-pasos" ||
+      path[0] === "sop-ejecuciones") &&
+    UUID.test(path[1] ?? "")
+  ) {
+    return path.join("/");
+  }
+  // F3: publicar|rechazar|archivar (POST) sobre contenido.
+  if (
+    path.length === 3 &&
+    (path[0] === "formatos" || path[0] === "hooks" || path[0] === "referencias" || path[0] === "sops") &&
+    UUID.test(path[1] ?? "") &&
+    (path[2] === "publicar" || path[2] === "rechazar" || path[2] === "archivar")
+  ) {
+    return path.join("/");
+  }
+  // F3: pasos de SOP (GET lista / POST crear) y terminar ejecución (POST).
+  if (
+    path.length === 3 &&
+    UUID.test(path[1] ?? "") &&
+    ((path[0] === "sops" && path[2] === "pasos") ||
+      (path[0] === "sop-ejecuciones" && (path[2] === "pasos" || path[2] === "terminar")))
+  ) {
+    return path.join("/");
+  }
+  // F3: desmarcar paso (DELETE).
+  if (
+    path.length === 4 &&
+    path[0] === "sop-ejecuciones" &&
+    UUID.test(path[1] ?? "") &&
+    path[2] === "pasos" &&
+    UUID.test(path[3] ?? "")
   ) {
     return path.join("/");
   }
@@ -220,3 +281,4 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
 export const GET = handle;
 export const POST = handle;
 export const PATCH = handle;
+export const DELETE = handle;

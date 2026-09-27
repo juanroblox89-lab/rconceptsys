@@ -6,6 +6,8 @@ import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
 import { useSession } from "@/components/SessionProvider";
 import { archivarCliente, getCliente, getTareas, patchCliente } from "@/lib/f1ui";
+import { getFormatos, getHooks } from "@/lib/f3api";
+import type { Formato, Hook } from "@/lib/f3tipos";
 import {
   CLIENTE_ESTADOS,
   clienteEstadoLabel,
@@ -39,6 +41,11 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
   const [drive, setDrive] = useState("");
   const [notas, setNotas] = useState("");
   const [estrategia, setEstrategia] = useState("");
+  // F3: formato/hook recomendado (solo referencia a biblioteca publicada).
+  const [formatoRec, setFormatoRec] = useState("");
+  const [hookRec, setHookRec] = useState("");
+  const [formatosPub, setFormatosPub] = useState<Formato[]>([]);
+  const [hooksPub, setHooksPub] = useState<Hook[]>([]);
 
   useEffect(() => {
     void params.then((p) => setId(p.id));
@@ -60,6 +67,19 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
       setDrive(d.cliente.drive_url ?? "");
       setNotas(d.cliente.notas ?? "");
       setEstrategia(d.cliente.estrategia ?? "");
+      setFormatoRec(d.cliente.formato_recomendado_id ?? "");
+      setHookRec(d.cliente.hook_recomendado_id ?? "");
+      try {
+        const [fs, hs] = await Promise.all([
+          getFormatos({ estado: "publicado" }).catch(() => []),
+          getHooks({ estado: "publicado" }).catch(() => []),
+        ]);
+        setFormatosPub(fs);
+        setHooksPub(hs);
+      } catch {
+        setFormatosPub([]);
+        setHooksPub([]);
+      }
       try {
         setTareas(await getTareas({ cliente: cid }));
       } catch {
@@ -97,6 +117,8 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
         drive_url: drive.trim() === "" ? null : drive.trim(),
         notas: notas.trim() === "" ? null : notas.trim(),
         estrategia: estrategia.trim() === "" ? null : estrategia.trim(),
+        formato_recomendado_id: formatoRec === "" ? null : formatoRec,
+        hook_recomendado_id: hookRec === "" ? null : hookRec,
         updated_at: cliente.updated_at,
       });
       setCliente(c);
@@ -205,6 +227,26 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
                   <label className="label" htmlFor="cf-estr">Estrategia</label>
                   <textarea id="cf-estr" className="textarea" value={estrategia} disabled={saving} onChange={(e) => setEstrategia(e.target.value)} placeholder={"Objetivos, público, tono, formatos, hooks…"} />
                 </div>
+                <div className={f1.f1two}>
+                  <div className="field">
+                    <label className="label" htmlFor="cf-formato">Formato recomendado</label>
+                    <select id="cf-formato" className="select" value={formatoRec} disabled={saving} onChange={(e) => setFormatoRec(e.target.value)}>
+                      <option value="">Sin formato</option>
+                      {formatosPub.map((f) => (
+                        <option key={f.id} value={f.id}>{f.codigo ? `${f.codigo} · ` : ""}{f.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label className="label" htmlFor="cf-hook">Hook recomendado</label>
+                    <select id="cf-hook" className="select" value={hookRec} disabled={saving} onChange={(e) => setHookRec(e.target.value)}>
+                      <option value="">Sin hook</option>
+                      {hooksPub.map((h) => (
+                        <option key={h.id} value={h.id}>{h.titulo}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void guardar()}>
                   {saving ? "Guardando…" : "Guardar"}
                 </button>
@@ -226,6 +268,15 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
                   <div className="card" style={{ marginBottom: 12 }}>
                     <span className="label">Estrategia</span>
                     <p style={{ margin: 0, fontSize: 13, whiteSpace: "pre-wrap" }}>{cliente.estrategia}</p>
+                  </div>
+                )}
+                {(cliente.formato_recomendado_id !== null || cliente.hook_recomendado_id !== null) && (
+                  <div className="card" style={{ marginBottom: 12 }}>
+                    <span className="label">Recomendado de biblioteca</span>
+                    <p style={{ margin: 0, fontSize: 13 }}>
+                      {formatosPub.find((f) => f.id === cliente.formato_recomendado_id)?.nombre ?? "Formato"}
+                      {cliente.hook_recomendado_id !== null ? ` · ${hooksPub.find((h) => h.id === cliente.hook_recomendado_id)?.titulo ?? "Hook"}` : ""}
+                    </p>
                   </div>
                 )}
               </>

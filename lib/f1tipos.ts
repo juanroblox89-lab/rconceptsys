@@ -17,6 +17,9 @@ export interface Cliente {
   drive_url: string | null;
   notas: string | null;
   estrategia: string | null;
+  /** F3: formato/hook recomendado (solo referencia a biblioteca publicada). */
+  formato_recomendado_id: string | null;
+  hook_recomendado_id: string | null;
   archivado_at: string | null;
   created_at: string;
   updated_at: string;
@@ -36,6 +39,9 @@ export interface Pieza {
   cliente_nombre: string;
   titulo: string;
   formato: string | null;
+  /** F3: formato/hook vinculado (solo referencia a biblioteca publicada). */
+  formato_recomendado_id: string | null;
+  hook_recomendado_id: string | null;
   guion: string | null;
   fecha_objetivo: string | null;
   estado: PiezaEstado;

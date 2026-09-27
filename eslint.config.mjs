@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "backend/**",
     "android/**",
     "supabase/**",
+    "_qa/**",
   ]),
 ]);
 

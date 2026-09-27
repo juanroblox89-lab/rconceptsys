@@ -26,7 +26,6 @@ import {
   crearTarifa,
   decidirTarea,
   devolverLinea,
-  generarComisionesMensual,
   getConfigCobros,
   getCorteActual,
   getCorteMio,
@@ -63,7 +62,7 @@ function Aviso({ error, onRetry }: { error: string; onRetry: () => void }) {
   );
 }
 
-function Totales({ lineas }: { lineas: Linea[] }) {
+function Totales({ lineas, equipo }: { lineas: Linea[]; equipo: boolean }) {
   const aprobado = lineas
     .filter((l) => l.estado === "aprobada")
     .reduce((s, l) => s + l.monto_cop, 0);
@@ -74,7 +73,9 @@ function Totales({ lineas }: { lineas: Linea[] }) {
   return (
     <div className={f1.f1card} aria-live="polite">
       <div style={{ fontSize: 13, fontWeight: 700 }}>
-        Llevás {fmtCOP(aprobado)} aprobado este mes, {fmtCOP(porConfirmar)} por confirmar
+        {equipo
+          ? `Llevás ${fmtCOP(aprobado)} aprobado este mes, ${fmtCOP(porConfirmar)} por confirmar`
+          : `Total del equipo este mes: ${fmtCOP(aprobado)} aprobado, ${fmtCOP(porConfirmar)} por confirmar`}
       </div>
       {sinTarifa > 0 && (
         <div style={{ fontSize: 12, color: "var(--c-text-2)", marginTop: 2 }}>
@@ -162,10 +163,16 @@ function LineaCard({
         <span className={f1.f1chip}>{lineaEstadoLabel(linea.estado)}</span>
       </div>
       {linea.motivo !== null && linea.motivo !== "" && (
-        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>{linea.motivo}</p>
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--c-text-2)" }}>
+          Motivo: {linea.motivo}
+          {(linea.estado === "aprobada" || linea.estado === "en_corte" || linea.estado === "pagada") && " (resuelto)"}
+        </p>
       )}
       {linea.reclamo_motivo !== null && linea.reclamo_motivo !== "" && (
-        <p style={{ margin: "4px 0 0", fontSize: 12 }}>Reclamo: {linea.reclamo_motivo}</p>
+        <p style={{ margin: "4px 0 0", fontSize: 12 }}>
+          Reclamo: {linea.reclamo_motivo}
+          {(linea.estado === "aprobada" || linea.estado === "en_corte" || linea.estado === "pagada") && " (resuelto)"}
+        </p>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
         {linea.estado === "por_confirmar" && (
@@ -339,7 +346,6 @@ function PaquetesPanel() {
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [pct, setPct] = useState("");
-  const [modo, setModo] = useState<"una_vez" | "mensual">("una_vez");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -348,7 +354,6 @@ function PaquetesPanel() {
       const [ps, cfg] = await Promise.all([getPaquetes(), getConfigCobros()]);
       setPaquetes(ps);
       setPct(String(cfg.porcentaje_comision));
-      setModo(cfg.modo_comision);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cargar");
     }
@@ -381,8 +386,9 @@ function PaquetesPanel() {
     if (!(n >= 0 && n <= 100)) return;
     setSaving(true);
     try {
-      await patchConfigCobros({ porcentaje_comision: n, modo_comision: modo });
-      if (modo === "mensual") await generarComisionesMensual().catch(() => null);
+      // Comisión fija en una_vez (decisión de Juan, BRIEF F3 §2.1): el modo
+      // no se muestra ni se cambia desde la UI.
+      await patchConfigCobros({ porcentaje_comision: n, modo_comision: "una_vez" });
       await cargar();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
@@ -416,10 +422,7 @@ function PaquetesPanel() {
       </div>
       <div className={f1.f1filters}>
         <input className="input" style={{ minHeight: 36, fontSize: 13, maxWidth: 110 }} inputMode="decimal" placeholder="% (0–100)" value={pct} onChange={(e) => setPct(e.target.value)} aria-label="Porcentaje de comisión" />
-        <select className="input select" style={{ minHeight: 36, fontSize: 13 }} value={modo} onChange={(e) => setModo(e.target.value as "una_vez" | "mensual")} aria-label="Modo de comisión">
-          <option value="una_vez">Una vez (al crear el cliente)</option>
-          <option value="mensual">Mensual (día 1 por cliente activo)</option>
-        </select>
+        <span style={{ fontSize: 12, color: "var(--c-text-2)" }}>Comisión única al conseguir el cliente</span>
         <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void guardarConfig()}>
           Guardar
         </button>
@@ -593,6 +596,45 @@ function DecisionesPanel({ onDone }: { onDone: () => void }) {
   );
 }
 
+/** Selector de mes compacto (BRIEF F3 §2.2): ‹ Sep 2026 › en vez del input
+ * month nativo, que se trunca a 375. Sin dependencias, B/N. */
+function SelectorMes({ periodo, onChange }: { periodo: string; onChange: (p: string) => void }) {
+  const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const mover = (dir: 1 | -1) => {
+    const m = /^(\d{4})-(\d{2})$/.exec(periodo);
+    if (m === null) {
+      onChange(periodoActual());
+      return;
+    }
+    let y = Number(m[1]);
+    let mo = Number(m[2]) + dir;
+    if (mo < 1) {
+      mo = 12;
+      y -= 1;
+    }
+    if (mo > 12) {
+      mo = 1;
+      y += 1;
+    }
+    onChange(`${y}-${String(mo).padStart(2, "0")}`);
+  };
+  const m = /^(\d{4})-(\d{2})$/.exec(periodo);
+  const etiqueta = m === null ? periodo : `${MESES[Number(m[2]) - 1]} ${m[1]}`;
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }} role="group" aria-label="Periodo">
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => mover(-1)} aria-label="Mes anterior">
+        ‹
+      </button>
+      <span style={{ fontSize: 13, minWidth: 76, textAlign: "center" }} aria-live="polite">
+        {etiqueta}
+      </span>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => mover(1)} aria-label="Mes siguiente">
+        ›
+      </button>
+    </div>
+  );
+}
+
 export default function CobrosPage() {
   const { me } = useSession();
   const acceso = me?.usuario.acceso ?? "equipo";
@@ -651,7 +693,7 @@ export default function CobrosPage() {
         <h1 className="page-title">Cobros</h1>
         <p className="page-sub">{periodo}</p>
         {error !== null && <Aviso error={error} onRetry={() => void cargar()} />}
-        <Totales lineas={lineas ?? []} />
+        <Totales lineas={lineas ?? []} equipo={!admin} />
         <div className={f1.f1filters} style={{ marginTop: 10 }}>
           {tabs.map((t) => (
             <button
@@ -663,14 +705,7 @@ export default function CobrosPage() {
               {t.label}
             </button>
           ))}
-          <input
-            className="input"
-            style={{ minHeight: 36, fontSize: 13, maxWidth: 150 }}
-            type="month"
-            value={periodo}
-            onChange={(e) => setPeriodo(e.target.value || periodoActual())}
-            aria-label="Periodo"
-          />
+          <SelectorMes periodo={periodo} onChange={(p) => setPeriodo(p)} />
           {(tab === "lineas" || tab === "reclamos") && (
             <select
               className="input select"
@@ -692,9 +727,17 @@ export default function CobrosPage() {
         </div>
         {tab === "lineas" || tab === "reclamos" ? (
           visibles.length === 0 ? (
-            <div className="card">
-              <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Nada en esta vista.</p>
-            </div>
+            tab === "reclamos" ? (
+              <div className="card">
+                <p style={{ margin: 0, fontSize: 13 }}>
+                  No hay reclamos pendientes. Cuando alguien reclame una línea aparecerá aquí.
+                </p>
+              </div>
+            ) : (
+              <div className="card">
+                <p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Nada en esta vista.</p>
+              </div>
+            )
           ) : (
             <ul className={f1.f1list}>
               {visibles.map((l) => (
