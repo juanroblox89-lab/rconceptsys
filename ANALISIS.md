@@ -179,7 +179,7 @@ Todo cambio de estado, aprobación, ajuste de cobro, cambio de acceso y archivo 
 | 2 | Equipo inicial | `jestalvz@gmail.com` = acceso **admin**, oficios **edición** (+ desarrollador del sistema). El resto se carga desde Equipo. |
 | 3 | Tarifas | **Configurables** por el dueño desde el sistema (no hay valores fijos de fábrica). |
 | 4 | Corte de pago | **Mensual, el día 1.** |
-| 5 | Bono de ventas | **8 % del precio del paquete de cada cliente** que consigue el vendedor. |
+| 5 | Bono de ventas | **8 % del precio del paquete de cada cliente** que consigue el vendedor, **pagado una sola vez** (al conseguir el cliente). |
 | 6 | Pieza cancelada con trabajo en curso | **Decide el dueño** (no el admin). |
 | 7 | Entregas tarde | **Sin consecuencia** en el pago; solo se marcan. |
 | 8 | Datos del sistema viejo | **Base vacía**, no se migra nada. |
