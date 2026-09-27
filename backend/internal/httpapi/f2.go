@@ -374,8 +374,10 @@ func (s *Server) listPaquetes(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// El admin crea clientes (necesita el catálogo); el equipo no lo ve.
-	if !esAdmin(u) {
+	// El admin crea clientes (necesita el catálogo) y el vendedor elige el
+	// paquete al ganar un lead (BRIEF F4 §3: pide paquete del catálogo F2);
+	// el resto del equipo no lo ve.
+	if !esAdmin(u) && !tieneVentas(u) {
 		writeError(w, http.StatusForbidden, "no autorizado")
 		return
 	}

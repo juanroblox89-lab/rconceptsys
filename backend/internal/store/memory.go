@@ -5,13 +5,19 @@
 package store
 
 import (
+	"errors"
 	"strings"
 	"sync"
 
 	"rconceptsys/backend/internal/biblioteca"
 	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/produccion"
+	"rconceptsys/backend/internal/ventas"
 )
+
+// ErrFotoGrande lo devuelve GuardarArchivo cuando la foto supera el tope
+// demo (ventas.MaxFotoBytes); el handler lo traduce a 413.
+var ErrFotoGrande = errors.New("foto muy grande")
 
 // UUID estables de las semillas demo (válidos como UUID v4).
 const (
@@ -77,6 +83,13 @@ type Memoria struct {
 	ejecuciones  map[string]biblioteca.SOPEjecucion
 	ordenEjec    []string
 	marcados     map[string]biblioteca.SOPEjecucionPaso
+	// F4 ventas (BRIEF F4; ANALISIS §4.4, §5.23–5.26)
+	leads       map[string]ventas.Lead
+	ordenLead   []string
+	leadEventos []ventas.LeadEvento
+	visitas     map[string]ventas.Visita
+	ordenVisita []string
+	archivos    map[string]archivoGuardado
 }
 
 // NuevaMemoria crea el store demo con las 4 semillas F0: dueño Samuel (todos
@@ -103,15 +116,20 @@ func NuevaMemoria() *Memoria {
 		sopPasos:       map[string]biblioteca.SOPPaso{},
 		ejecuciones:    map[string]biblioteca.SOPEjecucion{},
 		marcados:       map[string]biblioteca.SOPEjecucionPaso{},
+		leads:          map[string]ventas.Lead{},
+		visitas:        map[string]ventas.Visita{},
+		archivos:       map[string]archivoGuardado{},
 	}
 	fija := "2026-09-26T12:00:00Z"
 	m.poner(Usuario{ID: SemillaDuenoID, Nombre: "Samuel", Email: "samuel@demo.rconceptsys", Acceso: "dueno", Oficios: []string{"grabacion", "edicion", "diseno", "estrategia", "publicacion", "ventas"}, CreatedAt: fija, UpdatedAt: fija})
 	m.poner(Usuario{ID: SemillaAdminID, Nombre: "Coord Admin", Email: "admin@demo.rconceptsys", Acceso: "admin", CreatedAt: fija, UpdatedAt: fija})
 	m.poner(Usuario{ID: SemillaEquipoID, Nombre: "Breiner", Email: "breiner@demo.rconceptsys", Acceso: "equipo", Oficios: []string{"grabacion", "edicion"}, CreatedAt: fija, UpdatedAt: fija})
 	m.poner(Usuario{ID: SemillaPendienteID, Nombre: "Nuevo Pendiente", Email: "pendiente@demo.rconceptsys", Acceso: "pendiente", CreatedAt: fija, UpdatedAt: fija})
+	m.poner(Usuario{ID: SemillaValentinaID, Nombre: "Valentina", Email: "valentina@demo.rconceptsys", Acceso: "equipo", Oficios: []string{"ventas"}, CreatedAt: fija, UpdatedAt: fija})
 	m.semillasF1(fija)
 	m.semillasF2(fija)
 	m.semillasF3(fija)
+	m.semillasF4(fija)
 	return m
 }
 
@@ -401,6 +419,11 @@ func aplicaCliente(c produccion.Cliente, cambios map[string]any) produccion.Clie
 	}
 	if v, ok := str("hook_recomendado_id"); ok {
 		c.HookRecomendadoID = v
+	}
+	// F4 §5.25: reactivar un cliente archivado (desarchivar = limpiar
+	// archivado_at). Lo usa POST /leads/{id}/ganar con reactivar_id.
+	if v, ok := cambios["desarchivar"].(bool); ok && v {
+		c.ArchivadoAt = ""
 	}
 	return c
 }

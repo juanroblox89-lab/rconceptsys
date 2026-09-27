@@ -14,6 +14,7 @@ import (
 	"rconceptsys/backend/internal/cobros"
 	"rconceptsys/backend/internal/permisos"
 	"rconceptsys/backend/internal/produccion"
+	"rconceptsys/backend/internal/ventas"
 )
 
 // Usuario es la persona del sistema (contrato API F0). Oficios en minúsculas
@@ -54,6 +55,13 @@ type (
 	SOP          = biblioteca.SOP
 	SOPPaso      = biblioteca.SOPPaso
 	SOPEjecucion = biblioteca.SOPEjecucion
+)
+
+// Aliases F4 (ventas: leads, visitas; BRIEF F4, ANALISIS §4.4, §5.23–5.26).
+type (
+	Lead       = ventas.Lead
+	LeadEvento = ventas.LeadEvento
+	Visita     = ventas.Visita
 )
 
 // ErrVersion es el conflicto de edición (§5.14): el updated_at esperado no
@@ -205,6 +213,42 @@ type Store interface {
 	MarcarPaso(ejecucionID, pasoID string) (biblioteca.SOPEjecucionPaso, error)
 	DesmarcarPaso(ejecucionID, pasoID string) error
 	ListPasosMarcados(ejecucionID string) ([]biblioteca.SOPEjecucionPaso, error)
+
+	// --- F4 ventas (BRIEF F4; ANALISIS §4.4, §5.23–5.26, §7.5) ---
+	// Leads con historial inmutable + visitas idempotentes por client_id.
+	// UpdateLead aplica cambios parciales y actualiza updated_at.
+	ListLeads() ([]ventas.Lead, error)
+	GetLead(id string) (ventas.Lead, bool, error)
+	CreateLead(l ventas.Lead) (ventas.Lead, error)
+	UpdateLead(id string, cambios map[string]any) (ventas.Lead, error)
+	// LeadsAbiertosDe trae los leads abiertos de un vendedor (§5.26: al
+	// desactivarlo pasan a sin asignar).
+	LeadsAbiertosDe(vendedorID string) ([]ventas.Lead, error)
+
+	// ListLeadEventos trae el historial de un lead (orden de creación).
+	ListLeadEventos(leadID string) ([]ventas.LeadEvento, error)
+	// AddLeadEvento asigna id y cuando si vienen vacíos.
+	AddLeadEvento(e ventas.LeadEvento) (ventas.LeadEvento, error)
+
+	ListVisitas() ([]ventas.Visita, error)
+	GetVisita(id string) (ventas.Visita, bool, error)
+	// CreateVisita ignora duplicados por ClientID (idempotencia offline
+	// §5.23): si ya existe una visita con ese client_id, devuelve la
+	// existente sin crear otra. ClientID "" siempre crea.
+	CreateVisita(v ventas.Visita) (ventas.Visita, error)
+	// VisitaPorClientID trae la visita con ese client_id ("" si no hay).
+	VisitaPorClientID(clientID string) (ventas.Visita, bool, error)
+	// VisitasDeLead trae las visitas de un lead (orden de creación).
+	VisitasDeLead(leadID string) ([]ventas.Visita, error)
+	// ContarFotosVisita cuenta las fotos guardadas de una visita.
+	ContarFotosVisita(visitaID string) (int, error)
+
+	// --- F4 archivos (BRIEF F4 §2) ---
+	// GuardarArchivo guarda bytes (foto de visita) y devuelve su id/ruta.
+	// En demo guarda en memoria con tope MaxFotoBytes; en Supabase irá a
+	// Storage (interfaz preparada). ObtenerArchivo los lee de vuelta.
+	GuardarArchivo(nombre string, datos []byte) (string, error)
+	ObtenerArchivo(id string) ([]byte, bool, error)
 }
 
 // NewUUID genera un UUID v4 con crypto/rand (stdlib only, sin dependencias).

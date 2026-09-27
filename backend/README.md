@@ -1,4 +1,4 @@
-# Backend Go — RConcept Systems v2 (F0+F1+F2+F3)
+# Backend Go — RConcept Systems v2 (F0+F1+F2+F3+F4)
 
 Solo stdlib (`net/http`, `encoding/json`). Puerto `:8095` (`PORT` lo cambia;
 en F2 los QA usan `18095`).
@@ -134,7 +134,7 @@ configurable 0–100), modo `una_vez` (default, al crear cliente) o `mensual`
 
 - `GET /tarifas` / `POST /tarifas {etapa, unidad, monto_cop, tramos?}` →
   `201` (solo dueño; versiona: desactiva la anterior etapa+unidad).
-- `GET /paquetes` (dueño/admin) · `POST /paquetes {nombre, precio_cop}` /
+- `GET /paquetes` (dueño/admin + vendedor-ventas para /ganar; BRIEF F4 §3) · `POST /paquetes {nombre, precio_cop}` /
   `PATCH /paquetes/{id}` (solo dueño; §5.27 no toca comisiones viejas).
 - `GET /config-cobros` / `PATCH /config-cobros {porcentaje_comision?, modo_comision?}` (solo dueño).
 - `GET /lineas?periodo=&usuario_id=&estado=` → `{lineas}` (equipo: solo
@@ -213,3 +213,59 @@ Semillas demo F3 (memoria, `demo=true`, publicados): formatos RC-01
 Recorrido Comercial + ED-02 Educativo Rápido (de
 `contenido/formatos-y-hooks.js`) + 2 hooks del archivo + SOP checklist
 de grabación (4 pasos) + SOP entrega de edición (4 pasos).
+
+## Contrato F4 (ventas: leads, visitas, ganar → cliente)
+
+Estados lead: `prospecto → en_contacto → propuesta_enviada → negociacion →
+ganado | perdido` (perdido con motivo obligatorio; ganado/perdido
+finales). Idempotencia: repetir la misma transición = `200` sin duplicar.
+Vendedor demo: Valentina (`equipo`, oficio `ventas`; `X-Demo-User:
+valentina@demo.rconceptsys`) + 2 leads semilla. `/me` habilita `ventas`
+para dueño/admin y equipo con oficio ventas (Breiner → deshabilitado).
+Al desactivar un vendedor, sus leads abiertos pasan a `sin asignar`
+(`vendedor_id` vacío; hook en `POST /usuarios/{id}/desactivar`).
+
+- `GET /leads?estado=&vendedor=&municipio=&mias=1` → `{leads}` (vendedor:
+  solo los suyos; equipo sin ventas → `403`). Cada lead trae `vencida`
+  (próxima acción pasada en abierto) + `vendedor_nombre`; listar genera la
+  notificación in-app (al vendedor el día, al admin si 3+ días; 1 por día).
+- `POST /leads {negocio, contacto_nombre?, telefono?, direccion?,
+  barrio?, municipio?, rubro?, origen?: visita|referido|redes|llamada,
+  valor_estimado_cop?, paquete_id?, notas?, accion_que?, accion_fecha?}`
+  → `201` (+ `duplicados` si hay match por teléfono normalizado sin 57 o
+  nombre parecido: "ya lo tiene Fulano", sin bloquear). Vendedor crea los
+  suyos (dueño = él); admin elige vendedor o sin asignar.
+- `GET /leads/{id}` → lead + `historial` + `visitas` (ajeno → `404`;
+  equipo sin ventas → `403`).
+- `PATCH /leads/{id}` (negocio/contacto/teléfono/dirección/barrio/
+  municipio/rubro/origen/notas/acción/paquete; sin estado ni vendedor) →
+  `200`.
+- `POST /leads/{id}/mover {estado, motivo_perdida?}` → `200` (transición
+  válida; perdido exige motivo; ganado por aquí exige cliente enlazado →
+  si no, `400` "usá /ganar").
+- `POST /leads/{id}/reasignar {vendedor_id}` → `200` (solo admin/dueño;
+  `""` = sin asignar; valida oficio ventas → `422`).
+- `POST /leads/{id}/ganar {paquete_id?, nombre_cliente?, reactivar_id?}`
+  → `200 {…, cliente_id}`: pide paquete (o usa el del lead) y confirma
+  datos → crea el cliente F1 con `paquete_id` + `vendido_por` = vendedor
+  del lead → F2 genera la comisión 8 % una sola vez (idempotente; repetir
+  `/ganar` = `200` sin duplicar cliente ni comisión). Si el negocio ya fue
+  cliente → `409 {…, reactivar: {id, nombre, estado}}`; con `reactivar_id`
+  lo reactiva (desarchiva + activo) en vez de crear otro.
+- `GET /leads/{id}/eventos` → `{eventos}` · `GET /leads/{id}/visitas`.
+- `GET /visitas?lead=&vendedor=&mias=1` → `{visitas}` (vendedor: solo las
+  suyas). `POST /visitas {lead_id?, negocio?… (crea el lead en prospecto
+  con origen visita si no hay lead_id), resultado: interesado|
+  no_interesado|volver, client_id?, latitud?, longitud?, notas?, cuando?}`
+  → `201`; con `client_id` repetido → `200` con la existente (offline
+  §5.23, nunca duplica).
+- `POST /visitas/{id}/fotos {datos: base64, nombre?}` → `201` (modo demo
+  guarda en memoria, tope 500 KB tras comprimir → `413`; interfaz
+  `store.GuardarArchivo` preparada para Supabase Storage).
+  `GET /visitas/{id}/fotos` → `{visita_id, fotos}`.
+- `GET /ventas/metricas` → `{por_etapa, por_vendedor,
+  visitas_por_vendedor, tasa_conversion_mes, ganados_mes, perdidos_mes,
+  nuevos_mes}` (vendedor: solo lo suyo).
+
+Semillas demo F4 (memoria, `demo=true`): Valentina vendedora + 2 leads
+(El Tizón Dorado en_contacto con próxima acción, Kantel prospecto).

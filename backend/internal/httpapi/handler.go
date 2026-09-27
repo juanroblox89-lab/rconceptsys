@@ -61,6 +61,7 @@ func (s *Server) Handler() http.Handler {
 	s.rutasF1(mux)
 	s.rutasF2(mux)
 	s.rutasF3(mux)
+	s.rutasF4(mux)
 	return corsMiddleware(requireInterno(s.interno, mux))
 }
 
@@ -177,6 +178,7 @@ type modulo struct {
 // permitidos van con habilitado=false (el frontend oculta o muestra
 // "Llega en F1/F2"). En F0 inicio siempre habilitado; equipo y mi-perfil
 // según acceso. F1 habilita produccion y clientes (ver modulosPara).
+// F4 habilita ventas (dueño/admin + equipo con oficio ventas).
 var ordenModulos = []modulo{
 	{ID: "inicio", Titulo: "Inicio", Ruta: "/inicio"},
 	{ID: "produccion", Titulo: "Producción", Ruta: "/produccion"},
@@ -191,6 +193,13 @@ var ordenModulos = []modulo{
 func modulosPara(u permisos.Usuario) []modulo {
 	veEquipo := u.Acceso == permisos.AccesoDueno || u.Acceso == permisos.AccesoAdmin
 	vePerfil := veEquipo || u.Acceso == permisos.AccesoEquipo
+	esVentas := false
+	for _, o := range u.Oficios {
+		if o == permisos.OficioVentas {
+			esVentas = true
+			break
+		}
+	}
 	out := make([]modulo, 0, len(ordenModulos))
 	for _, m := range ordenModulos {
 		switch m.ID {
@@ -208,6 +217,10 @@ func modulosPara(u permisos.Usuario) []modulo {
 			// F2: dueño/admin todo; equipo solo sus líneas (el backend
 			// filtra por usuario).
 			m.Habilitado = veEquipo || u.Acceso == permisos.AccesoEquipo
+		case "ventas":
+			// F4: dueño/admin todo; equipo solo con oficio ventas (el
+			// backend filtra a sus leads).
+			m.Habilitado = veEquipo || (u.Acceso == permisos.AccesoEquipo && esVentas)
 		default:
 			m.Habilitado = false
 		}
@@ -471,6 +484,20 @@ func (s *Server) desactivar(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errorDatos(w, err)
 		return
+	}
+	// F4 §5.26: los leads abiertos del vendedor desactivado pasan a sin
+	// asignar para que el admin los reasigne (mismo hook que F1 usa para
+	// tareas al desactivar: aquí vendedor_id = "").
+	if abiertos, err := s.st.LeadsAbiertosDe(id); err == nil {
+		for _, l := range abiertos {
+			if _, err := s.st.UpdateLead(l.ID, map[string]any{"vendedor_id": ""}); err == nil {
+				_, _ = s.st.AddLeadEvento(store.LeadEvento{
+					LeadID: l.ID, ActorID: actor.ID, ActorNombre: actor.Nombre,
+					Accion: "liberar", Antes: map[string]any{"vendedor_id": id},
+					Despues: map[string]any{"vendedor_id": ""},
+				})
+			}
+		}
 	}
 	_, _ = actividad.Registrar(s.st, actor, "desactivar_usuario", id,
 		map[string]any{"acceso": string(obj.Acceso)},

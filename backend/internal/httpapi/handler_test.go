@@ -92,7 +92,7 @@ func TestMeDuenoModulos(t *testing.T) {
 	if !ok || len(mods) != len(ids) {
 		t.Fatalf("modulos incompletos: %q", w.Body.String())
 	}
-	quiereHab := map[string]bool{"inicio": true, "produccion": true, "cobros": true, "clientes": true, "equipo": true, "mi-perfil": true}
+	quiereHab := map[string]bool{"inicio": true, "produccion": true, "cobros": true, "clientes": true, "ventas": true, "equipo": true, "mi-perfil": true}
 	for i, id := range ids {
 		mm := mods[i].(map[string]any)
 		if mm["id"] != id {
@@ -135,7 +135,8 @@ func TestMeEquipoSoloSuyos(t *testing.T) {
 		t.Fatalf("me equipo = %d, quería 200", w.Code)
 	}
 	// F1: equipo ve inicio + produccion/clientes (filtrados por dueño en el
-	// backend) + mi-perfil; F2: + cobros (solo sus líneas); el resto
+	// backend) + mi-perfil; F2: + cobros (solo sus líneas); F4: ventas solo
+	// con oficio ventas (Breiner no) + biblioteca según fase; el resto
 	// deshabilitado.
 	quiereHab := map[string]bool{"inicio": true, "produccion": true, "cobros": true, "clientes": true, "mi-perfil": true}
 	for _, item := range dec(t, w)["modulos"].([]any) {
@@ -170,8 +171,8 @@ func TestUsuariosEquipo403Admin200(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("usuarios como admin = %d", w.Code)
 	}
-	if len(dec(t, w)["usuarios"].([]any)) != 4 {
-		t.Errorf("quería 4 semillas: %q", w.Body.String())
+	if len(dec(t, w)["usuarios"].([]any)) != 5 {
+		t.Errorf("quería 5 semillas (F4 suma a Valentina): %q", w.Body.String())
 	}
 }
 
