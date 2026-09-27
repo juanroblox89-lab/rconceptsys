@@ -8,6 +8,8 @@ import { useSession } from "@/components/SessionProvider";
 import { faseDe } from "@/lib/modulos";
 import { useTitle } from "@/lib/useTitle";
 import { getTareas } from "@/lib/f1ui";
+import { getLineas } from "@/lib/f2api";
+import { fmtCOP } from "@/lib/f2tipos";
 
 export default function InicioPage() {
   useTitle("Inicio · RConcept Systems");
@@ -23,6 +25,8 @@ export default function InicioPage() {
   const [hoy, setHoy] = useState<number | null>(null);
   const [vencidas, setVencidas] = useState<number | null>(null);
   const [porRevisar, setPorRevisar] = useState<number | null>(null);
+  const [cobrosMes, setCobrosMes] = useState<string | null>(null);
+  const [alertas, setAlertas] = useState<string | null>(null);
 
   useEffect(() => {
     if (me === null) return;
@@ -39,6 +43,32 @@ export default function InicioPage() {
           if (!alive) return;
           if (h !== null) setHoy(h.length);
           if (v !== null) setVencidas(v.length);
+          // F2: tarjeta "Tus cobros del mes" (§5.22) + alertas admin/dueño.
+          const ls = await getLineas({}).catch(() => null);
+          if (!alive) return;
+          if (ls !== null) {
+            const d = new Date();
+            const per = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            const delMes = ls.filter((l) => l.periodo === per);
+            const ap = delMes
+              .filter((l) => l.estado === "aprobada")
+              .reduce((s, l) => s + l.monto_cop, 0);
+            const pc = delMes
+              .filter((l) => l.estado === "por_confirmar" || l.estado === "confirmada")
+              .reduce((s, l) => s + l.monto_cop, 0);
+            setCobrosMes(`${fmtCOP(ap)} aprob. · ${fmtCOP(pc)} por conf.`);
+            if (admin) {
+              const rec = delMes.filter((l) => l.estado === "reclamada").length;
+              const st = delMes.filter((l) => l.estado === "sin_tarifa").length;
+              const todos = await getTareas({}).catch(() => null);
+              const dec = todos === null ? 0 : (todos as unknown as { decision_pendiente?: boolean }[]).filter((t) => t.decision_pendiente).length;
+              setAlertas(
+                rec + st + dec === 0
+                  ? "Sin pendientes"
+                  : `${rec} reclamos · ${st} sin tarifa · ${dec} decisiones`,
+              );
+            }
+          }
           if (admin) {
             const r = await getTareas({ vista: "por_revisar" }).catch(() => null);
             if (!alive || r === null) return;
@@ -57,6 +87,7 @@ export default function InicioPage() {
 
   const metaTareas = hoy === null ? "Tus pendientes" : hoy === 0 ? "Nada para hoy" : `${hoy} para hoy`;
   const metaVenc = vencidas === null || vencidas === 0 ? "Al día" : `${vencidas} vencidas`;
+  const metaCobros = cobrosMes ?? "Tus cobros";
 
   return (
     <Panel title="Inicio">
@@ -75,7 +106,9 @@ export default function InicioPage() {
                     ? `${metaTareas} · ${metaVenc}`
                     : m.id === "revision" && porRevisar !== null
                       ? `${porRevisar} por revisar`
-                      : "Disponible"
+                      : m.id === "cobros"
+                        ? metaCobros
+                        : "Disponible"
                 }
                 href={m.ruta}
                 current
@@ -87,6 +120,14 @@ export default function InicioPage() {
                 title={perfil.titulo}
                 meta="Tus datos"
                 href={perfil.ruta}
+              />
+            )}
+            {admin && alertas !== null && (
+              <HomeCard
+                icon={<ModuleIcon id="cobros" size={18} />}
+                title="Pendientes de cobro"
+                meta={alertas}
+                href="/cobros"
               />
             )}
           </HomeCardRow>

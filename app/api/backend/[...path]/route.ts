@@ -17,6 +17,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * - clientes/:uuid/archivar (POST), piezas/:uuid/cancelar (POST)
  * - tareas/:uuid/empezar|entregar|aprobar|devolver (POST)
  * - tareas/:uuid/eventos (GET), notificaciones/:uuid/leer (POST)
+ *
+ * Lista blanca F2 (cobros: tarifas, paquetes, config, líneas, cortes):
+ * - tarifas (GET/POST), paquetes (GET/POST), paquetes/:uuid (PATCH)
+ * - config-cobros (GET/PATCH)
+ * - lineas (GET), lineas/ajuste (POST), lineas/:uuid (GET)
+ * - lineas/:uuid/confirmar|reclamar|aprobar|devolver (POST)
+ * - cortes (GET), cortes/actual (GET), cortes/mios (GET), cortes/cerrar (POST)
+ * - cortes/:periodo (GET), cortes/:periodo/csv (GET),
+ *   cortes/:periodo/pagar|revertir (POST)
+ * - comisiones/mensual (POST), tareas/:uuid/decision (POST)
  */
 function destFor(path: string[]): string | null {
   if (path.length === 1 && (path[0] === "me" || path[0] === "health" || path[0] === "usuarios" || path[0] === "actividad")) {
@@ -27,6 +37,27 @@ function destFor(path: string[]): string | null {
     (path[0] === "clientes" || path[0] === "piezas" || path[0] === "tareas" || path[0] === "notificaciones")
   ) {
     return path[0];
+  }
+  // F2: recursos de cobros de un segmento (tarifas, paquetes, lineas, cortes)
+  // y config-cobros (con guion, no uuid).
+  if (
+    path.length === 1 &&
+    (path[0] === "tarifas" ||
+      path[0] === "paquetes" ||
+      path[0] === "lineas" ||
+      path[0] === "cortes" ||
+      path[0] === "config-cobros")
+  ) {
+    return path[0];
+  }
+  // F2: cortes/actual, cortes/mios, cortes/cerrar, lineas/ajuste, comisiones/mensual.
+  if (
+    path.length === 2 &&
+    ((path[0] === "cortes" && (path[1] === "actual" || path[1] === "mios" || path[1] === "cerrar")) ||
+      (path[0] === "lineas" && path[1] === "ajuste") ||
+      (path[0] === "comisiones" && path[1] === "mensual"))
+  ) {
+    return path.join("/");
   }
   if (
     (path.length === 2 && path[0] === "usuarios" && UUID.test(path[1] ?? "")) ||
@@ -45,6 +76,28 @@ function destFor(path: string[]): string | null {
   ) {
     return path.join("/");
   }
+  // F2: lineas/:uuid (GET) y paquetes/:uuid (PATCH).
+  if (
+    path.length === 2 &&
+    (path[0] === "lineas" || path[0] === "paquetes") &&
+    UUID.test(path[1] ?? "")
+  ) {
+    return path.join("/");
+  }
+  // F2: cortes/:periodo (GET) y cortes/:periodo/csv (GET), donde periodo es
+  // YYYY-MM (no uuid).
+  const PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/;
+  if (path.length === 2 && path[0] === "cortes" && PERIODO.test(path[1] ?? "")) {
+    return path.join("/");
+  }
+  if (
+    path.length === 3 &&
+    path[0] === "cortes" &&
+    PERIODO.test(path[1] ?? "") &&
+    (path[2] === "csv" || path[2] === "pagar" || path[2] === "revertir")
+  ) {
+    return path.join("/");
+  }
   // F1: acciones POST sobre un recurso.
   if (
     path.length === 3 &&
@@ -55,9 +108,16 @@ function destFor(path: string[]): string | null {
         (path[2] === "empezar" ||
           path[2] === "entregar" ||
           path[2] === "aprobar" ||
-          path[2] === "devolver")) ||
+          path[2] === "devolver" ||
+          path[2] === "decision")) ||
       (path[0] === "tareas" && path[2] === "eventos") ||
-      (path[0] === "notificaciones" && path[2] === "leer"))
+      (path[0] === "notificaciones" && path[2] === "leer") ||
+      // F2: acciones sobre líneas.
+      (path[0] === "lineas" &&
+        (path[2] === "confirmar" ||
+          path[2] === "reclamar" ||
+          path[2] === "aprobar" ||
+          path[2] === "devolver")))
   ) {
     return path.join("/");
   }

@@ -337,9 +337,9 @@ export default function ProduccionPage() {
                 <div className="card"><p style={{ margin: 0, fontSize: 13, color: "var(--c-text-2)" }}>Nada con estos filtros.</p></div>
               )}
             </div>
-            {/* Desktop: columnas por estado. */}
+            {/* Desktop: columnas por estado (canceladas en su columna, §4.1). */}
             <div className={`${f1.f1board} ${f1.f1onlyDesktop}`}>
-              {PIEZA_ESTADOS.filter((e) => e.value !== "cancelada").map((e) => {
+              {PIEZA_ESTADOS.map((e) => {
                 const ps = porEstado.get(e.value) ?? [];
                 return (
                   <div key={e.value} className={f1.f1col}>

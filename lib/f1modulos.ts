@@ -1,11 +1,13 @@
 import type { MeResponse, Modulo } from "./types";
 
 /**
- * Fusión de módulos F1 en el /me de F0.
+ * Fusión de módulos F1+F2 en el /me de F0.
  * El backend F0 no conoce "mis-tareas" ni "revision" y deja
  * produccion/clientes deshabilitados: el frontend los habilita según
  * acceso hasta que el backend F1 responda (si el backend ya trae
  * mis-tareas/revision, se confía en él y no se toca nada).
+ * F2: el backend habilita "cobros" para dueño/admin/equipo; si viene
+ * deshabilitado (backend viejo), se habilita aquí según acceso.
  */
 export function withF1Modulos(me: MeResponse): MeResponse {
   const mods = me.modulos.map((m) => ({ ...m }));
@@ -20,8 +22,12 @@ export function withF1Modulos(me: MeResponse): MeResponse {
   if (admin) {
     enable("produccion");
     enable("clientes");
+    enable("cobros");
   }
-  if (equipo) enable("clientes");
+  if (equipo) {
+    enable("clientes");
+    enable("cobros");
+  }
   const extras: Modulo[] = [];
   if (admin || (equipo && me.usuario.oficios.length > 0)) {
     extras.push({ id: "mis-tareas", titulo: "Mis tareas", ruta: "/mis-tareas", habilitado: true });
