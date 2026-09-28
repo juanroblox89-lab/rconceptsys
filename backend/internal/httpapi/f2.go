@@ -92,18 +92,12 @@ func (s *Server) conLinea(w http.ResponseWriter, id string) (store.LineaCobro, b
 	return l, true
 }
 
-// puedeVerLinea: dueño, admin y vendedor con oficio ventas ven todo
-// (el vendedor necesita ver sus comisiones); equipo solo la suya.
+// puedeVerLinea: dueño, admin y equipo solo la suya — incluidas las
+// comisiones propias (ver F22/F28/S5: antes cualquier vendedor veía las
+// comisiones de todos).
 func puedeVerLinea(u permisos.Usuario, l store.LineaCobro) bool {
 	if esAdmin(u) {
 		return true
-	}
-	if l.Tipo == cobros.TipoComision {
-		for _, o := range u.Oficios {
-			if o == permisos.OficioVentas {
-				return true
-			}
-		}
 	}
 	return l.UsuarioID == u.ID
 }
@@ -332,8 +326,31 @@ func (s *Server) createTarifa(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		// F214: los tramos no pueden solaparse (el monto dependería del
+		// orden de evaluación).
+		for i, a := range body.Tramos {
+			finA := 1 << 62
+			if a.HastaSeg != nil {
+				finA = *a.HastaSeg
+			}
+			for j, b := range body.Tramos {
+				if i == j {
+					continue
+				}
+				finB := 1 << 62
+				if b.HastaSeg != nil {
+					finB = *b.HastaSeg
+				}
+				if a.DesdeSeg <= finB && b.DesdeSeg <= finA {
+					writeError(w, http.StatusBadRequest, "tramos solapados")
+					return
+				}
+			}
+		}
 	}
-	// §5.17: versiona (desactiva la anterior, nunca la edita).
+	// §5.17: versiona (desactiva la anterior, nunca la edita). Al fijar
+	// tarifa se resuelven las líneas sin_tarifa pendientes de esa etapa
+	// (ver F21: antes quedaban en sin_tarifa $0 para siempre).
 	t, err := s.st.CreateTarifa(store.Tarifa{
 		Etapa: etapa, Unidad: body.Unidad, MontoCOP: body.MontoCOP,
 		CreatedBy: actor.ID,
@@ -356,7 +373,76 @@ func (s *Server) createTarifa(w http.ResponseWriter, r *http.Request) {
 	}
 	_, _ = actividad.Registrar(s.st, actor, "crear_tarifa", t.ID, nil,
 		map[string]any{"etapa": t.Etapa, "unidad": t.Unidad, "monto_cop": t.MontoCOP, "version": t.Version}, "")
-	writeJSON(w, http.StatusCreated, tarifaVista(t, aliased))
+	resueltas := s.resolverSinTarifa(actor, t)
+	res := tarifaVista(t, aliased)
+	if resueltas > 0 {
+		res["sin_tarifa_resueltas"] = resueltas
+	}
+	writeJSON(w, http.StatusCreated, res)
+}
+
+// resolverSinTarifa completa las líneas sin_tarifa de la etapa con la
+// tarifa recién creada (F21): recalcula monto/cantidad con la tarifa
+// vigente y las pasa a por_confirmar en el periodo abierto. Devuelve
+// cuántas resolvió. Nunca toca líneas de otros estados.
+func (s *Server) resolverSinTarifa(actor permisos.Usuario, tf store.Tarifa) int {
+	lineas, err := s.st.ListLineas()
+	if err != nil {
+		return 0
+	}
+	tareas := map[string]store.Tarea{}
+	if ts, err := s.st.ListTareas(); err == nil {
+		for _, t := range ts {
+			tareas[t.ID] = t
+		}
+	}
+	n := 0
+	for _, l := range lineas {
+		if l.Estado != cobros.LineaSinTarifa || l.TareaID == "" {
+			continue
+		}
+		t, ok := tareas[l.TareaID]
+		if !ok || t.Etapa != tf.Etapa {
+			continue
+		}
+		tramos, _ := s.st.ListTramos(tf.ID)
+		var duracion *int
+		var minutos *int
+		if t.Minutos != nil {
+			minutos = t.Minutos
+			seg := *t.Minutos * 60
+			duracion = &seg
+		}
+		monto, ok := cobros.CalcularMontoTarifa(tf, tramos, minutos, duracion)
+		if !ok {
+			continue
+		}
+		var cantidad *float64
+		if tf.Unidad == cobros.UnidadPorMinuto && minutos != nil {
+			c := float64(*minutos)
+			cantidad = &c
+		} else if tf.Unidad == cobros.UnidadPorDuracion && duracion != nil {
+			c := float64(*duracion)
+			cantidad = &c
+		} else {
+			c := 1.0
+			cantidad = &c
+		}
+		if _, err := s.st.UpdateLineaEstado(l.ID, map[string]any{
+			"estado": cobros.LineaPorConfirmar, "tarifa_id": tf.ID,
+			"unidad": tf.Unidad, "cantidad": *cantidad, "monto_cop": monto,
+			"periodo": s.periodoAbierto(cobros.PeriodoActual()),
+		}); err != nil {
+			continue
+		}
+		_, _ = actividad.Registrar(s.st, actor, "resolver_sin_tarifa", l.ID,
+			map[string]any{"estado": l.Estado, "monto_cop": l.MontoCOP},
+			map[string]any{"estado": cobros.LineaPorConfirmar, "monto_cop": monto, "tarifa_id": tf.ID}, "")
+		s.notificar(l.UsuarioID, NotiCobroNuevo,
+			"Ya hay tarifa para tu cobro", "Etapa "+t.Etapa, "linea", l.ID)
+		n++
+	}
+	return n
 }
 
 // --- /paquetes (ver: dueño/admin; editar: solo dueño) ---
@@ -581,20 +667,13 @@ func (s *Server) listLineas(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "periodo inválido (YYYY-MM)")
 		return
 	}
-	// Equipo puede pedir solo sus comisiones vía ?tipo=comision (los filtros
-	// ajenos o tipo distinto se ignoran: nunca ve lo ajeno).
+	// Equipo: solo lo suyo, incluidas sus comisiones (ver F22/F28/S5).
 	fTipo := ""
 	if esAdmin(u) {
 		fTipo = q.Get("tipo")
 	} else {
-		for _, o := range u.Oficios {
-			if o == permisos.OficioVentas {
-				fTipo = q.Get("tipo")
-				break
-			}
-		}
-		if fTipo != "" && fTipo != cobros.TipoComision {
-			fTipo = ""
+		if fTipoQ := q.Get("tipo"); fTipoQ == cobros.TipoComision {
+			fTipo = fTipoQ
 		}
 		if fUsuario != "" && fUsuario != u.ID {
 			fUsuario = u.ID
@@ -609,7 +688,7 @@ func (s *Server) listLineas(w http.ResponseWriter, r *http.Request) {
 	out := []map[string]any{}
 	for _, l := range lineas {
 		if !esAdmin(u) {
-			if l.UsuarioID != u.ID && !(l.Tipo == cobros.TipoComision && fTipo == cobros.TipoComision) {
+			if l.UsuarioID != u.ID {
 				continue
 			}
 			if fTipo == cobros.TipoComision && l.Tipo != cobros.TipoComision {
@@ -955,24 +1034,14 @@ func (s *Server) resumenCortePara(periodo string, u permisos.Usuario) map[string
 		}
 	}
 	detalle := []map[string]any{}
-	esVentas := false
-	if !esAdmin(u) {
-		for _, o := range u.Oficios {
-			if o == permisos.OficioVentas {
-				esVentas = true
-				break
-			}
-		}
-	}
 	for _, l := range lineas {
 		if l.Periodo != periodo {
 			continue
 		}
-		// Equipo: solo lo suyo (las comisiones ajenas no son su cobro).
+		// Equipo: solo lo suyo (las comisiones ajenas no son su cobro;
+		// ver F22/F28/S5).
 		if !esAdmin(u) && l.UsuarioID != u.ID {
-			if !(esVentas && l.Tipo == cobros.TipoComision) {
-				continue
-			}
+			continue
 		}
 		detalle = append(detalle, lineaVista(l, usuarios))
 		switch l.Estado {

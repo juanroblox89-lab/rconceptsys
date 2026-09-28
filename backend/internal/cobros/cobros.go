@@ -233,8 +233,14 @@ func ComisionPara(precioCOP int64, porcentaje float64) int64 {
 
 // --- Periodos (BRIEF F2 §3; §7.4) ---
 
+// zonaBogota es America/Bogota sin depender de la base tzdata del host
+// (UTC-5 fijo, sin horario de verano). Los periodos y el "hoy" se calculan
+// acá (ver F29: con UTC un trabajo de las 19:30 en Bogotá caía al mes
+// siguiente y el trabajador veía $0).
+func zonaBogota() *time.Location { return time.FixedZone("America/Bogota", -5*3600) }
+
 // PeriodoDe devuelve el periodo YYYY-MM de un instante (mes calendario).
-func PeriodoDe(t time.Time) string { return t.UTC().Format("2006-01") }
+func PeriodoDe(t time.Time) string { return t.In(zonaBogota()).Format("2006-01") }
 
 // PeriodoActual devuelve el periodo del mes en curso.
 func PeriodoActual() string { return PeriodoDe(time.Now()) }

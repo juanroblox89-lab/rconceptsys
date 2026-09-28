@@ -270,7 +270,7 @@ func (s *Server) promptAsistente(d datosAsistente, u permisos.Usuario, convID, p
 	inj := []string{}
 	if id := strings.TrimSpace(piezaID); id != "" {
 		if p, existe, err := s.st.GetPieza(id); err == nil && existe {
-			if t, tErr := asistente.Ejecutar(d, u, "ver_pieza", map[string]string{"pieza": p.ID}); tErr == nil {
+			if t, tErr := asistente.Ejecutar(d, u, "ver_pieza", map[string]string{"pieza": p.ID}); tErr == nil && !strings.HasPrefix(t, "No encontré") {
 				inj = append(inj, "Contexto (pieza abierta):\n"+t)
 			}
 			// La estrategia del cliente de la pieza es lo que evita guiones inventados.
@@ -331,7 +331,14 @@ var (
 func (s *Server) aplicarAcciones(d datosAsistente, u permisos.Usuario, convID, texto string) string {
 	final := texto
 	// 1) Borradores de guion (solo piezas visibles; nunca toca el guion).
+	// Cap 3 por turno (ver F51: sin cap un turno pisaba N borradores).
+	ejecutados := 0
 	for _, m := range reBorrador.FindAllStringSubmatch(texto, -1) {
+		if ejecutados >= 3 {
+			final = strings.Replace(final, m[0],
+				"(No guardé más borradores en este turno: pedime de a pocas piezas por vez.)", 1)
+			continue
+		}
 		ref := strings.TrimSpace(m[1])
 		guion := strings.TrimSpace(m[2])
 		if guion == "" {
@@ -358,6 +365,7 @@ func (s *Server) aplicarAcciones(d datosAsistente, u permisos.Usuario, convID, t
 			nil, map[string]any{"titulo": p.Titulo}, "vía asistente")
 		final = strings.Replace(final, m[0],
 			"(Lo dejé como borrador en \""+p.Titulo+"\". El guion aprobado no cambió: avisame si querés usarlo.)", 1)
+		ejecutados++
 	}
 	// 2) Hooks propuestos (borradores; el admin publica — flujo F3).
 	if m := reHooks.FindStringSubmatch(texto); m != nil {
@@ -672,9 +680,10 @@ func (s *Server) metricas(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ultimasSemanas devuelve los lunes (YYYY-MM-DD) de las últimas n semanas.
+// ultimasSemanas devuelve los lunes (YYYY-MM-DD) de las últimas n semanas
+// (zona Bogotá, ver F29).
 func ultimasSemanas(n int) []string {
-	hoy := time.Now().UTC()
+	hoy := time.Now().In(time.FixedZone("America/Bogota", -5*3600))
 	// Lunes de esta semana.
 	d := hoy
 	wd := int(d.Weekday())

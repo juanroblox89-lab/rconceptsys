@@ -242,7 +242,8 @@ type EntregaDatos struct {
 
 // ValidarEntrega exige el dato de la etapa (§5.9): grabación principal =
 // link del material + minutos; apoyo = minutos; edición/diseño = link del
-// entregable; publicación = link publicado.
+// entregable; publicación = link publicado. Minutos negativos se rechazan
+// (ver F111: en demo pasaban, en Supabase reventaban con 500).
 func ValidarEntrega(etapa string, d EntregaDatos) (string, bool) {
 	switch etapa {
 	case EtapaGrabPrincipal:
@@ -252,9 +253,15 @@ func ValidarEntrega(etapa string, d EntregaDatos) (string, bool) {
 		if d.Minutos == nil {
 			return "la entrega exige los minutos grabados", false
 		}
+		if *d.Minutos < 0 {
+			return "los minutos no pueden ser negativos", false
+		}
 	case EtapaGrabApoyo:
 		if d.Minutos == nil {
 			return "la entrega exige los minutos grabados", false
+		}
+		if *d.Minutos < 0 {
+			return "los minutos no pueden ser negativos", false
 		}
 	case EtapaEdicion, EtapaDiseno:
 		if d.EntregableURL == "" {
@@ -272,14 +279,23 @@ func ValidarEntrega(etapa string, d EntregaDatos) (string, bool) {
 
 // --- Fechas y vencidas (§5.10) ---
 
-// HoyFecha devuelve hoy en UTC como YYYY-MM-DD (formato de fecha_objetivo,
-// fecha_limite y del tipo date de Supabase).
-func HoyFecha() string { return time.Now().UTC().Format("2006-01-02") }
+// HoyFecha devuelve hoy en America/Bogota como YYYY-MM-DD (formato de
+// fecha_objetivo, fecha_limite y del tipo date de Supabase). Bogotá es
+// UTC-5 fijo (sin horario de verano), así que no depende de tzdata.
+// (Antes era UTC: en Bogotá las 19–23:59 caían en el "mañana" UTC y las
+// vencidas se calculaban con el día corrido, ver F29.)
+
+// HoyMas devuelve hoy+m días en YYYY-MM-DD (misma zona).
+func HoyFecha() string { return time.Now().In(zonaBogota()).Format("2006-01-02") }
 
 // HoyMas devuelve hoy+m días en YYYY-MM-DD.
 func HoyMas(dias int) string {
-	return time.Now().UTC().AddDate(0, 0, dias).Format("2006-01-02")
+	return time.Now().In(zonaBogota()).AddDate(0, 0, dias).Format("2006-01-02")
 }
+
+// zonaBogota es America/Bogota como UTC-5 fijo (sin horario de verano;
+// no depende de la tzdata del host).
+func zonaBogota() *time.Location { return time.FixedZone("America/Bogota", -5*3600) }
 
 // EsVencida: fecha límite pasada y no aprobada (§5.10). Compara lexicográfico
 // (válido con YYYY-MM-DD). Cancelada nunca vence.

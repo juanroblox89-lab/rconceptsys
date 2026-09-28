@@ -341,11 +341,22 @@ func (s *Supabase) CreateCliente(c produccion.Cliente) (produccion.Cliente, erro
 	return filas[0].aCliente(), nil
 }
 
+// UpdateCliente aplica cambios parciales conocidos (nunca manda claves
+// desconocidas a PostgREST: "desarchivar" es lógica de memoria y aquí se
+// traduce a limpiar archivado_at; ver F41).
 func (s *Supabase) UpdateCliente(id string, cambios map[string]any) (produccion.Cliente, error) {
 	ctx, cancel := contexto()
 	defer cancel()
+	body := map[string]any{}
+	for k, v := range cambios {
+		body[k] = v
+	}
+	if v, ok := body["desarchivar"].(bool); ok && v {
+		body["archivado_at"] = nil
+	}
+	delete(body, "desarchivar")
 	var filas []clienteFila
-	if err := s.c.REST(ctx, http.MethodPatch, "clientes", url.Values{"id": {"eq." + id}}, cambios, "return=representation", &filas); err != nil {
+	if err := s.c.REST(ctx, http.MethodPatch, "clientes", url.Values{"id": {"eq." + id}}, body, "return=representation", &filas); err != nil {
 		return produccion.Cliente{}, err
 	}
 	if len(filas) == 0 {
@@ -1096,11 +1107,14 @@ func (s *Supabase) ListLineas() ([]cobros.LineaCobro, error) {
 	return out, nil
 }
 
-// UpdateLineaEstado solo envía estado/motivo/reclamo/corte/periodo (§2).
+// UpdateLineaEstado envía estado/motivo/reclamo/corte/periodo más los campos
+// de resolución sin_tarifa (tarifa_id/unidad/cantidad/monto_cop, ver F21:
+// el handler los recalcula al fijar la tarifa; nunca llegan de la UI).
 func (s *Supabase) UpdateLineaEstado(id string, cambios map[string]any) (cobros.LineaCobro, error) {
 	permitido := map[string]bool{
 		"estado": true, "motivo": true, "reclamo_motivo": true,
 		"corte_id": true, "periodo": true,
+		"tarifa_id": true, "unidad": true, "cantidad": true, "monto_cop": true,
 	}
 	body := map[string]any{}
 	for k, v := range cambios {

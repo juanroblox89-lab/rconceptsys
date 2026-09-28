@@ -171,6 +171,22 @@ func TestAsistenteGuionQuedaEnBorrador(t *testing.T) {
 	}
 }
 
+func TestAsistenteBorradorConCap(t *testing.T) {
+	s := servidorPrueba()
+	defer conProveedorFalso(t, func(pregunta string) string {
+		return "Listo. " +
+			"[GUARDAR_BORRADOR pieza=Reel demo — Villa Grande]uno[/GUARDAR_BORRADOR] " +
+			"[GUARDAR_BORRADOR pieza=Reel demo — Villa Grande]dos[/GUARDAR_BORRADOR] " +
+			"[GUARDAR_BORRADOR pieza=Reel demo — Villa Grande]tres[/GUARDAR_BORRADOR] " +
+			"[GUARDAR_BORRADOR pieza=Reel demo — Villa Grande]cuatro[/GUARDAR_BORRADOR]"
+	})()
+	m := llamarF5(t, s, "POST", "/asistente/chat", "admin", `{"mensaje":"cuatro borradores"}`, http.StatusOK)
+	txt := m["respuesta"].(map[string]any)["contenido"].(string)
+	if !strings.Contains(txt, "de a pocas piezas") {
+		t.Fatalf("quería aviso de cap por turno (F51): %q", txt)
+	}
+}
+
 func TestAsistenteProponeHooksEnBorrador(t *testing.T) {
 	s := servidorPrueba()
 	defer conProveedorFalso(t, func(pregunta string) string {

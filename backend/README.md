@@ -9,13 +9,22 @@ en F2 los QA usan `18095`).
 cd backend
 go vet ./...
 go test ./...
-go run ./cmd/server            # modo demo
+go run ./cmd/server            # modo demo (ALLOW_DEMO=1 si hay PORT/VERCEL)
 # o con Supabase:
 $env:SUPABASE_URL="..."; $env:SUPABASE_SERVICE_ROLE_KEY="..."
 go run ./cmd/server
 ```
 
 Nunca escribir claves reales en el repo (ver `.env.example` en la raíz).
+
+## Demo solo local (S1/S2)
+
+El modo demo (semillas fijas + `X-Demo-User`, sin Supabase) es solo para
+desarrollo local: si hay `PORT` o `VERCEL` en el entorno y faltan las
+credenciales, el backend **no arranca** salvo `ALLOW_DEMO=1` explícito
+(antes degradaba en silencio a demo expuesto con admin total sin secreto).
+El proxy Next **no reenvía** `X-Demo-User` cuando hay auth real configurada
+(`NEXT_PUBLIC_SUPABASE_URL` presente).
 
 ## Modos
 
@@ -111,15 +120,19 @@ Oficios en minúsculas sin tildes (`grabacion`, `edicion`, `diseno`,
 ## Preasignados (`RC_PREASIGNADOS`)
 
 Lista de "accesos preasignados por email" aplicada al primer login
-(BRIEF F2 §7: `jestalvz@gmail.com` entra como admin con oficio edición).
+(BRIEF F2 §7: `dueno@tudominio.com:dueno:` para el dueño inicial).
 Formato: `email:acceso:oficio1+oficio2,email2:acceso:oficio…`.
 El email preasignado nace con ese acceso+oficios en vez de pendiente, y no
 cuenta como "primer usuario = dueño" (si la tabla está vacía y el email
 tiene preasignado, se respeta el preasignado). Ejemplo:
 
 ```powershell
-$env:RC_PREASIGNADOS="jestalvz@gmail.com:admin:edicion"
+$env:RC_PREASIGNADOS="dueno@tudominio.com:dueno:,jefe@tudominio.com:admin:edicion"
 ```
+
+> El PRIMER login de producción debe ser el dueño (con o sin preasignado
+> de dueño). Si el primero entra con preasignado de admin/equipo, el
+> sistema queda sin dueño y no hay recuperación por API (L3).
 
 ## Contrato F2 (cobros: tarifas, líneas, cortes, comisión)
 
@@ -133,12 +146,15 @@ configurable 0–100), modo `una_vez` (default, al crear cliente) o `mensual`
 (POST /comisiones/mensual, idempotente).
 
 - `GET /tarifas` / `POST /tarifas {etapa, unidad, monto_cop, tramos?}` →
-  `201` (solo dueño; versiona: desactiva la anterior etapa+unidad).
+  `201` (solo dueño; versiona: desactiva la anterior etapa+unidad). Al fijar
+  tarifa se resuelven las `sin_tarifa` pendientes de esa etapa (pasan a
+  `por_confirmar` con monto recalculado; F21).
 - `GET /paquetes` (dueño/admin + vendedor-ventas para /ganar; BRIEF F4 §3) · `POST /paquetes {nombre, precio_cop}` /
   `PATCH /paquetes/{id}` (solo dueño; §5.27 no toca comisiones viejas).
 - `GET /config-cobros` / `PATCH /config-cobros {porcentaje_comision?, modo_comision?}` (solo dueño).
 - `GET /lineas?periodo=&usuario_id=&estado=` → `{lineas}` (equipo: solo
-  suyas). `GET /lineas/{id}` (misma regla).
+  suyas, incluidas sus comisiones; las comisiones ajenas no se ven, F22).
+  `GET /lineas/{id}` (misma regla).
 - `POST /lineas/{id}/confirmar` (dueña o admin) · `/reclamar {motivo}`
   (dueña o admin) · `/aprobar` (admin/dueño, confirmada|reclamada) ·
   `/devolver {comentario}` (admin/dueño → por_confirmar). Idempotentes.
@@ -251,7 +267,11 @@ Al desactivar un vendedor, sus leads abiertos pasan a `sin asignar`
   del lead → F2 genera la comisión 8 % una sola vez (idempotente; repetir
   `/ganar` = `200` sin duplicar cliente ni comisión). Si el negocio ya fue
   cliente → `409 {…, reactivar: {id, nombre, estado}}`; con `reactivar_id`
-  lo reactiva (desarchiva + activo) en vez de crear otro.
+  lo reactiva (desarchiva + activo) en vez de crear otro. `reactivar_id`
+  solo acepta el cliente ofrecido en el 409 (un id arbitrario → `400`, F42);
+  si el reintento encuentra el cliente ya activo (fallo al marcar el lead,
+  F45) lo vincula sin tocar paquete/vendedor. Ganado sin cliente enlazado
+  (dato viejo) → `400` en vez de duplicar (F418).
 - `GET /leads/{id}/eventos` → `{eventos}` · `GET /leads/{id}/visitas`.
 - `GET /visitas?lead=&vendedor=&mias=1` → `{visitas}` (vendedor: solo las
   suyas). `POST /visitas {lead_id?, negocio?… (crea el lead en prospecto

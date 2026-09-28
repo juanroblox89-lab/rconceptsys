@@ -257,6 +257,23 @@ func TestGanarLeadReactivar(t *testing.T) {
 	if m2["cliente_id"] != cid || m2["estado"] != "ganado" {
 		t.Errorf("reactivar = %v", m2)
 	}
+	// reactivar_id arbitrario (cliente activo ajeno, no ofrecido) → 400.
+	// El lead tiene nombre/teléfono únicos (sin match con nadie).
+	w2 := llamar(s, "POST", "/clientes", "admin", `{"nombre":"Ajeno Activo ZZZ"}`)
+	if w2.Code != http.StatusCreated {
+		t.Fatalf("crear ajeno = %d (%s)", w2.Code, w2.Body.String())
+	}
+	var ajeno map[string]any
+	_ = json.Unmarshal(w2.Body.Bytes(), &ajeno)
+	id2 := llevarANegociacion(t, s, "Zeta Unico Sin Match QQQ")
+	// Evitar match con semillas ("Kantel" existe como cliente y como lead):
+	// nombre único + teléfono único.
+	cuerpoF4(t, s, "PATCH", "/leads/"+id2, "valentina@demo.rconceptsys",
+		`{"telefono":"399 000 1122"}`, http.StatusOK)
+	if w := llamar(s, "POST", "/leads/"+id2+"/ganar", "valentina@demo.rconceptsys",
+		`{"paquete_id":"`+paq+`","reactivar_id":"`+ajeno["id"].(string)+`"}`); w.Code != http.StatusBadRequest {
+		t.Errorf("reactivar ajeno = %d, quería 400 (F42)", w.Code)
+	}
 }
 
 func TestDesactivarVendedorLiberaLeads(t *testing.T) {
@@ -293,6 +310,20 @@ func TestVisitaIdempotenteYFotos(t *testing.T) {
 		`{"lead_id":"`+id+`","resultado":"interesado","client_id":"`+cid+`","notas":"fui hoy"}`, http.StatusOK)
 	if v1["id"] != v2["id"] {
 		t.Errorf("client_id repetido creó otra visita: %v vs %v", v1["id"], v2["id"])
+	}
+	// Otro vendedor con el mismo client_id NO recibe la visita ajena (F46):
+	// 409, nunca 200 con datos de Valentina. Se aprueba al pendiente como
+	// segundo vendedor para el escenario.
+	if w := llamar(s, "POST", "/usuarios/"+store.SemillaPendienteID+"/aprobar", "dueno",
+		`{"acceso":"equipo","oficios":["ventas"]}`); w.Code != http.StatusOK {
+		t.Fatalf("aprobar segundo vendedor = %d (%s)", w.Code, w.Body.String())
+	}
+	mOtro := cuerpoF4(t, s, "POST", "/leads", "admin",
+		`{"negocio":"Otro Vendedor F46","origen":"visita"}`, http.StatusCreated)
+	idOtro := mOtro["id"].(string)
+	if w := llamar(s, "POST", "/visitas", store.SemillaPendienteID,
+		`{"lead_id":"`+idOtro+`","resultado":"volver","client_id":"`+cid+`"}`); w.Code != http.StatusConflict {
+		t.Errorf("client_id ajeno = %d, quería 409 (F46)", w.Code)
 	}
 	vs := listaF4(t, s, "admin", "/visitas", "visitas")
 	n := 0

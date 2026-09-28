@@ -1031,6 +1031,28 @@ func (s *Server) patchPieza(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "esa transición de estado no es válida")
 			return
 		}
+		if e == produccion.PiezaPublicada {
+			// F14: publicada exige pieza aprobada + tareas aprobadas (el
+			// apoyo se ignora: no bloquea, §5.15) en vez de un PATCH ciego.
+			if p.Estado != produccion.PiezaAprobada {
+				writeError(w, http.StatusBadRequest, "solo una pieza aprobada se puede publicar")
+				return
+			}
+			tareas, err := s.st.TareasDePieza(p.ID)
+			if err != nil {
+				errorDatos(w, err)
+				return
+			}
+			for _, t := range tareas {
+				if produccion.EsApoyo(t.Etapa) {
+					continue
+				}
+				if t.Estado != produccion.TareaAprobada {
+					writeError(w, http.StatusBadRequest, "hay etapas sin aprobar (la pieza no se puede publicar)")
+					return
+				}
+			}
+		}
 		cambios["estado"] = e
 	}
 	// F3: vínculo formato/hook (solo referencia a contenido publicado).
@@ -1257,7 +1279,8 @@ type tareaPatchBody struct {
 }
 
 // patchTarea = reasignar (§5.13): solo admin/dueño, valida oficio (§5.8),
-// registra actividad y notifica al nuevo asignado.
+// registra actividad y notifica al nuevo asignado. No se reasignan tareas
+// aprobadas ni canceladas (ver F18: el cobro ya quedó a nombre del anterior).
 func (s *Server) patchTarea(w http.ResponseWriter, r *http.Request) {
 	actor, ok := s.usuarioActual(w, r)
 	if !ok {
@@ -1269,6 +1292,10 @@ func (s *Server) patchTarea(w http.ResponseWriter, r *http.Request) {
 	}
 	t, ok := s.conTarea(w, r.PathValue("id"))
 	if !ok {
+		return
+	}
+	if t.Estado == produccion.TareaAprobada || t.Estado == produccion.TareaCancelada {
+		writeError(w, http.StatusBadRequest, "no se puede reasignar una tarea aprobada o cancelada")
 		return
 	}
 	var body tareaPatchBody
@@ -1350,6 +1377,7 @@ type entregarBody struct {
 
 // entregarTarea: en curso/devuelta → entregada. Exige el dato de la etapa
 // (§5.9). Solo el asignado o admin. Idempotente con los mismos datos.
+// La etapa de publicación exige la pieza aprobada (ver F14).
 func (s *Server) entregarTarea(w http.ResponseWriter, r *http.Request) {
 	actor, ok := s.usuarioActual(w, r)
 	if !ok {
@@ -1362,6 +1390,17 @@ func (s *Server) entregarTarea(w http.ResponseWriter, r *http.Request) {
 	if !esAdmin(actor) && t.AsignadoID != actor.ID {
 		writeError(w, http.StatusForbidden, "no autorizado")
 		return
+	}
+	if t.Etapa == produccion.EtapaPublicacion {
+		p, existe, err := s.st.GetPieza(t.PiezaID)
+		if err != nil {
+			errorDatos(w, err)
+			return
+		}
+		if !existe || (p.Estado != produccion.PiezaAprobada && p.Estado != produccion.PiezaPublicada) {
+			writeError(w, http.StatusBadRequest, "la publicación exige la pieza aprobada")
+			return
+		}
 	}
 	var body entregarBody
 	if err := decodeBody(r, &body); err != nil {
@@ -1439,8 +1478,8 @@ func mismosDatos(t store.Tarea, d produccion.EntregaDatos) bool {
 }
 
 // aprobarTarea: entregada → aprobada (solo admin/dueño). Desbloquea la
-// siguiente etapa bloqueante (§4.2); el apoyo no bloquea (§5.15); publicar
-// exige pieza aprobada. Idempotente.
+// siguiente etapa bloqueante (§4.2); el apoyo no bloquea (§5.15); aprobar la
+// etapa de publicación exige la pieza aprobada (ver F14). Idempotente.
 func (s *Server) aprobarTarea(w http.ResponseWriter, r *http.Request) {
 	actor, ok := s.usuarioActual(w, r)
 	if !ok {
@@ -1457,6 +1496,17 @@ func (s *Server) aprobarTarea(w http.ResponseWriter, r *http.Request) {
 	if t.Estado == produccion.TareaAprobada {
 		writeJSON(w, http.StatusOK, tareaVistaSimple(t))
 		return
+	}
+	if t.Etapa == produccion.EtapaPublicacion {
+		p, existe, err := s.st.GetPieza(t.PiezaID)
+		if err != nil {
+			errorDatos(w, err)
+			return
+		}
+		if !existe || (p.Estado != produccion.PiezaAprobada && p.Estado != produccion.PiezaPublicada) {
+			writeError(w, http.StatusBadRequest, "la publicación exige la pieza aprobada")
+			return
+		}
 	}
 	if !produccion.TransicionTareaValida(t.Estado, produccion.TareaAprobada) {
 		writeError(w, http.StatusBadRequest, "esa transición de estado no es válida")
@@ -1525,7 +1575,8 @@ type devolverBody struct {
 }
 
 // devolverTarea: entregada → devuelta con comentario (solo admin/dueño).
-// Cada devolución queda en el historial (§5.11).
+// Cada devolución queda en el historial (§5.11). Idempotente (ver F16):
+// devolver una ya devuelta devuelve 200 sin duplicar evento ni aviso.
 func (s *Server) devolverTarea(w http.ResponseWriter, r *http.Request) {
 	actor, ok := s.usuarioActual(w, r)
 	if !ok {
@@ -1537,6 +1588,10 @@ func (s *Server) devolverTarea(w http.ResponseWriter, r *http.Request) {
 	}
 	t, ok := s.conTarea(w, r.PathValue("id"))
 	if !ok {
+		return
+	}
+	if t.Estado == produccion.TareaDevuelta {
+		writeJSON(w, http.StatusOK, tareaVistaSimple(t))
 		return
 	}
 	var body devolverBody

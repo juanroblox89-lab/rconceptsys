@@ -265,6 +265,18 @@ func TestFlujoDemo(t *testing.T) {
 		}
 	}
 	_ = pv
+	// F14: publicar sin pieza aprobada se rechaza (entregar/aprobar la
+	// etapa de publicación + PATCH a publicada exigen pieza aprobada).
+	w = llamar(s, "POST", "/piezas", "dueno", `{"cliente_id":"`+villa+`","titulo":"QA pub temprana","etapas":[{"etapa":"publicacion","asignado_id":"`+store.SemillaDuenoID+`"}]}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("crear pub temprana = %d (%s)", w.Code, w.Body.String())
+	}
+	temprana := dec(t, w)
+	pubTemprana := porEtapa(temprana, produccion.EtapaPublicacion)["id"].(string)
+	_ = llamar(s, "POST", "/tareas/"+pubTemprana+"/empezar", "dueno", `{}`)
+	if w := llamar(s, "POST", "/tareas/"+pubTemprana+"/entregar", "dueno", `{"publicado_url":"https://red/p/0"}`); w.Code != http.StatusBadRequest {
+		t.Errorf("entregar publicación sin pieza aprobada = %d, quería 400", w.Code)
+	}
 	// Publicar: la hace Samuel (dueño con oficio publicacion; Breiner solo
 	// tiene grabacion+edicion por semillas F0 y §5.8 lo rechazaría con 422).
 	_ = llamar(s, "PATCH", "/tareas/"+pubID, "dueno", `{"asignado_id":"`+store.SemillaDuenoID+`"}`)

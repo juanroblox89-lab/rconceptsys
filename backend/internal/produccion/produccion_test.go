@@ -120,6 +120,14 @@ func TestValidarEntrega(t *testing.T) {
 			t.Errorf("entrega %q incompleta debería fallar", c.etapa)
 		}
 	}
+	// F111: minutos negativos se rechazan (pasaban en demo, 500 en real).
+	neg := -5
+	for _, etapa := range []string{EtapaGrabPrincipal, EtapaGrabApoyo} {
+		d := EntregaDatos{MaterialURL: "https://x", Minutos: &neg}
+		if _, ok := ValidarEntrega(etapa, d); ok {
+			t.Errorf("entrega %q con minutos negativos debería fallar", etapa)
+		}
+	}
 }
 
 func TestEsVencida(t *testing.T) {

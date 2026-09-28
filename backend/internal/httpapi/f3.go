@@ -394,6 +394,22 @@ func (s *Server) createFormato(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "el nombre es obligatorio")
 		return
 	}
+	// F35: codigo UNIQUE (el SQL lo exige; aquí se valida para no fallar
+	// solo en real). Vacío = sin código (dos vacíos no colisionan).
+	codigo := strings.TrimSpace(body.Codigo)
+	if codigo != "" {
+		fs, err := s.st.ListFormatos()
+		if err != nil {
+			errorDatos(w, err)
+			return
+		}
+		for _, f := range fs {
+			if f.Codigo == codigo {
+				writeError(w, http.StatusConflict, "ese código ya existe")
+				return
+			}
+		}
+	}
 	estado := biblioteca.EstadoBorrador
 	publicadoPor := ""
 	if esAdmin(actor) {
@@ -408,7 +424,7 @@ func (s *Server) createFormato(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	f, err := s.st.CreateFormato(store.Formato{
-		Codigo: strings.TrimSpace(body.Codigo), Nombre: strings.TrimSpace(body.Nombre),
+		Codigo: codigo, Nombre: strings.TrimSpace(body.Nombre),
 		Objetivo: body.Objetivo, Estructura: body.Estructura,
 		HooksRecomendados: body.HooksRecomendados, KPIs: body.KPIs,
 		Ejemplos: limpias(body.Ejemplos), Etiquetas: limpias(body.Etiquetas),

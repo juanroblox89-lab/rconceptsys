@@ -95,6 +95,10 @@ func TestPeriodos(t *testing.T) {
 	if p := PeriodoDe(time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)); p != "2026-09" {
 		t.Errorf("PeriodoDe = %q, quería 2026-09", p)
 	}
+	// F29: 30-sep 19:30 Bogotá (= 1-oct 00:30 UTC) sigue siendo septiembre.
+	if p := PeriodoDe(time.Date(2026, 10, 1, 0, 30, 0, 0, time.UTC)); p != "2026-09" {
+		t.Errorf("PeriodoDe borde Bogotá = %q, quería 2026-09", p)
+	}
 	if s := PeriodoSiguiente("2026-12"); s != "2027-01" {
 		t.Errorf("PeriodoSiguiente(2026-12) = %q", s)
 	}

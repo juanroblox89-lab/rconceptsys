@@ -181,6 +181,31 @@ func TestSinTarifa(t *testing.T) {
 	if !hallada {
 		t.Errorf("no se halló línea sin_tarifa para %s (%v)", tid, lineas)
 	}
+	// F21: al fijar la tarifa de diseño se resuelve (por_confirmar con
+	// monto, sin duplicar líneas).
+	w = llamar(s, "POST", "/tarifas", "dueno",
+		`{"etapa":"diseno","unidad":"por_tarea","monto_cop":70000}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("crear tarifa diseno = %d (%s)", w.Code, w.Body.String())
+	}
+	lineas = listaLineas(t, s, "dueno", "")
+	n := 0
+	for _, item := range lineas {
+		lm := item.(map[string]any)
+		if lm["tarea_id"] != tid {
+			continue
+		}
+		n++
+		if lm["estado"] != cobros.LineaPorConfirmar {
+			t.Errorf("resuelta estado = %v, quería por_confirmar", lm["estado"])
+		}
+		if monto, _ := lm["monto_cop"].(float64); monto != 70000 {
+			t.Errorf("resuelta monto = %v, quería 70000", lm["monto_cop"])
+		}
+	}
+	if n != 1 {
+		t.Errorf("líneas de la tarea = %d, quería 1 (sin duplicar)", n)
+	}
 }
 
 func TestCicloConfirmarReclamarAprobar(t *testing.T) {

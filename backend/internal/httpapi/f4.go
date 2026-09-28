@@ -542,9 +542,10 @@ func (s *Server) patchLead(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "lead no encontrado")
 		return
 	}
-	// Ganado/perdido son finales: solo se reabre vía admin (mover a un
-	// estado abierto con motivo queda en el historial).
-	if !ventas.LeadAbierto(l.Estado) && !esAdmin(actor) {
+	// Ganado/perdido son finales (ver F44): moverLead no reabre; el PATCH
+	// de un cerrado se rechaza para todos (el admin corrige con un ajuste
+	// o un lead nuevo, nunca reescribiendo el historial).
+	if !ventas.LeadAbierto(l.Estado) {
 		writeError(w, http.StatusBadRequest, "el lead ya se cerró (ganado o perdido)")
 		return
 	}
@@ -560,8 +561,12 @@ func (s *Server) patchLead(w http.ResponseWriter, r *http.Request) {
 	if body.ContactoNombre != l.ContactoNombre && (body.ContactoNombre != "" || l.ContactoNombre != "") {
 		cambios["contacto_nombre"] = strings.TrimSpace(body.ContactoNombre)
 	}
+	// Teléfono: comparar normalizado (ver F417): un cambio solo de formato
+	// ("300 111" → "+57 300-111") no es un cambio real.
 	if body.Telefono != l.Telefono && (body.Telefono != "" || l.Telefono != "") {
-		cambios["telefono"] = strings.TrimSpace(body.Telefono)
+		if ventas.NormalizarTelefono(strings.TrimSpace(body.Telefono)) != ventas.NormalizarTelefono(l.Telefono) {
+			cambios["telefono"] = strings.TrimSpace(body.Telefono)
+		}
 	}
 	if body.Direccion != l.Direccion && (body.Direccion != "" || l.Direccion != "") {
 		cambios["direccion"] = strings.TrimSpace(body.Direccion)
@@ -608,9 +613,20 @@ func (s *Server) patchLead(w http.ResponseWriter, r *http.Request) {
 		cambios["paquete_id"] = pid
 	}
 	// El estado NO se edita por PATCH (usar /mover; ganado por /ganar).
+	// Los cerrados no se reabren por ningún camino (ver F44).
 	if strings.TrimSpace(body.Estado) != "" {
 		writeError(w, http.StatusBadRequest, "el estado se cambia con /mover (y /ganar para ganar)")
 		return
+	}
+	// PATCH parcial: valor_estimado_cop == 0 significa "ausente" en JSON
+	// (no se puede distinguir de un 0 real sin puntero; ver F420). Solo se
+	// aplica si difiere y el actual no era ya 0.
+	if body.ValorEstimado != 0 && body.ValorEstimado != l.ValorEstimadoCOP {
+		if body.ValorEstimado < 0 {
+			writeError(w, http.StatusBadRequest, "el valor estimado no puede ser negativo")
+			return
+		}
+		cambios["valor_estimado_cop"] = body.ValorEstimado
 	}
 	// Vendedor NO se edita por PATCH (usar /reasignar, solo admin).
 	if strings.TrimSpace(body.VendedorID) != "" && strings.TrimSpace(body.VendedorID) != l.VendedorID {
@@ -627,8 +643,14 @@ func (s *Server) patchLead(w http.ResponseWriter, r *http.Request) {
 		errorDatos(w, err)
 		return
 	}
-	s.registrarLead(actor, l.ID, "editar", antes, s.leadVista(act), "")
-	writeJSON(w, http.StatusOK, s.leadVista(act))
+	// Aviso de duplicados también al editar (ver F413): el PATCH que
+	// colisiona avisa sin bloquear, igual que al crear.
+	resp := s.leadVista(act)
+	if dups := s.duplicadosDe(act, act.ID); len(dups) > 0 {
+		resp["duplicados"] = dups
+	}
+	s.registrarLead(actor, l.ID, "editar", antes, resp, "")
+	writeJSON(w, http.StatusOK, resp)
 }
 
 type moverLeadBody struct {
@@ -785,6 +807,14 @@ func (s *Server) ganarLead(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, v)
 		return
 	}
+	// Ganado sin cliente enlazado (dato viejo/manual): no se puede
+	// reintentar a ciegas porque cada intento crearía otro cliente y otra
+	// comisión (ver F418). El admin lo enlaza a mano vía SQL; aquí se
+	// rechaza con mensaje claro en vez de duplicar.
+	if l.Estado == ventas.LeadGanado {
+		writeError(w, http.StatusBadRequest, "el lead ya está ganado pero sin cliente enlazado (pedí al dueño que lo enlace a mano)")
+		return
+	}
 	if !ventas.TransicionLeadValida(l.Estado, ventas.LeadGanado) {
 		writeError(w, http.StatusBadRequest, "el lead debe estar en negociación para ganarse")
 		return
@@ -822,6 +852,14 @@ func (s *Server) ganarLead(w http.ResponseWriter, r *http.Request) {
 	var cliente store.Cliente
 	if reactivarID != "" {
 		// Reactivar (§5.25): el cliente archivado/terminado vuelve a activo.
+		// Solo se acepta el match ofrecido por clientePrevio (el 409 de
+		// arriba): un reactivar_id arbitrario podría reescribir paquete y
+		// vendedor de cualquier cliente activo ajeno (ver F42).
+		match := s.clientePrevio(l)
+		if match == nil || match.ID != reactivarID {
+			writeError(w, http.StatusBadRequest, "ese cliente no corresponde a este lead (ganá de nuevo para ver el reactivar sugerido)")
+			return
+		}
 		c, existe, err := s.st.GetCliente(reactivarID)
 		if err != nil {
 			errorDatos(w, err)
@@ -835,6 +873,14 @@ func (s *Server) ganarLead(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusForbidden, "no autorizado")
 			return
 		}
+		if c.ArchivadoAt == "" && c.Estado == produccion.ClienteActivo {
+			// Ya activo (incl. el creado por un intento anterior de /ganar
+			// que falló al marcar el lead, ver F45): solo vincular, sin
+			// tocar paquete/vendedor del cliente (ver F42).
+			cliente = c
+			_, _ = actividad.Registrar(s.st, actor, "vincular_cliente", cliente.ID,
+				map[string]any{"negocio": l.Negocio}, map[string]any{"estado": cliente.Estado}, "lead ganado vincula cliente ya activo")
+		} else {
 		act2, err := s.st.UpdateCliente(reactivarID, map[string]any{
 			"estado": produccion.ClienteActivo, "paquete_id": paqueteID,
 			"vendido_por": vendedorID,
@@ -854,6 +900,7 @@ func (s *Server) ganarLead(w http.ResponseWriter, r *http.Request) {
 		cliente = act2
 		_, _ = actividad.Registrar(s.st, actor, "reactivar_cliente", cliente.ID,
 			map[string]any{"negocio": l.Negocio}, map[string]any{"estado": cliente.Estado}, "lead ganado reactiva cliente")
+		}
 	} else {
 		// ¿Ya fue cliente? Buscar match para ofrecer reactivar (§5.25).
 		if match := s.clientePrevio(l); match != nil {
@@ -1077,9 +1124,15 @@ func (s *Server) createVisita(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "client_id inválido")
 		return
 	}
-	// Idempotencia offline: el backend ignora duplicados (§5.23).
+	// Idempotencia offline: el backend ignora duplicados (§5.23). El
+	// client_id es por vendedor: un client_id de otro vendedor NO se
+	// devuelve (ver F46: antes filtraba lead_id/notas entre vendedores).
 	if clientID != "" {
 		if prev, existe, err := s.st.VisitaPorClientID(clientID); err == nil && existe {
+			if !esAdmin(actor) && prev.Vendedor != actor.ID {
+				writeError(w, http.StatusConflict, "ese registro ya existe en otro vendedor (revisá tu cola offline)")
+				return
+			}
 			writeJSON(w, http.StatusOK, s.visitaVista(prev))
 			return
 		}
@@ -1349,8 +1402,14 @@ func (s *Server) metricasVentas(w http.ResponseWriter, r *http.Request) {
 		conversion = float64(ganadosMes) / float64(ganadosMes+perdidosMes)
 	}
 	nombres := map[string]string{}
-	for id, u2 := range s.mapaUsuarios() {
-		nombres[id] = u2.Nombre
+	if esAdmin(u) {
+		for id, u2 := range s.mapaUsuarios() {
+			nombres[id] = u2.Nombre
+		}
+	} else {
+		// S6: el vendedor solo necesita su propio nombre (el directorio
+		// completo facilita cosecha de ids+nombres del equipo).
+		nombres[u.ID] = u.Nombre
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"por_etapa": porEtapa, "por_vendedor": porVendedor,

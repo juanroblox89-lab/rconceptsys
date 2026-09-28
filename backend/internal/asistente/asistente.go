@@ -43,8 +43,9 @@ type MensajeLLM struct {
 	Content string `json:"content"`
 }
 
-// DiaHoy devuelve hoy en UTC como YYYY-MM-DD (clave de asistente_uso).
-func DiaHoy() string { return time.Now().UTC().Format("2006-01-02") }
+// DiaHoy devuelve hoy en America/Bogota como YYYY-MM-DD (clave de
+// asistente_uso; misma zona que HoyFecha, ver F29).
+func DiaHoy() string { return time.Now().In(time.FixedZone("America/Bogota", -5*3600)).Format("2006-01-02") }
 
 // TituloDe saca un título corto de la primera pregunta (máx 60 runas).
 func TituloDe(pregunta string) string {

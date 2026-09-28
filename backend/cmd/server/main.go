@@ -262,6 +262,13 @@ func main() {
 	var st store.Store
 	var resolve httpapi.Resolver
 	if sb == nil {
+		// S1: el modo demo con semillas fijas y X-Demo-User solo es para
+		// desarrollo local. En cualquier despliegue real (VERCEL o no) sin
+		// credenciales, arrancar en demo expondría admin total sin secreto:
+		// fallar cerrado salvo ALLOW_DEMO=1 explícito.
+		if os.Getenv("ALLOW_DEMO") != "1" && (os.Getenv("VERCEL") != "" || os.Getenv("PORT") != "") {
+			log.Fatal("backend: faltan SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY (modo demo solo local con ALLOW_DEMO=1)")
+		}
 		st = store.NuevaMemoria()
 		resolve = func(r *http.Request) (permisos.Usuario, error) {
 			return httpapi.DemoResolve(st, r)

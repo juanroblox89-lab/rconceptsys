@@ -771,7 +771,7 @@ func (m *Memoria) semillasF2(fija string) {
 		{181, intPtr(600), 80000},
 		{601, intPtr(1800), 150000},
 		{1801, intPtr(3600), 250000},
-		{3661, nil, 400000},
+		{3601, nil, 400000}, // F25: sin hueco (antes 3661 dejaba 3601–3660 al monto base)
 	}
 	for i, tr := range tramosDemo {
 		id := "f5000000-0000-4000-8000-00000000000" + string(rune('1'+i))
@@ -1006,8 +1006,28 @@ func (m *Memoria) UpdateLineaEstado(id string, cambios map[string]any) (cobros.L
 	if !ok {
 		return cobros.LineaCobro{}, ErrNoExiste
 	}
+	// F21: resolver sin_tarifa al fijar tarifa (campos que el handler
+	// recalcula con la tarifa vigente). OJO: esta vía solo la usa
+	// resolverSinTarifa cuando la línea VIENE de sin_tarifa; el estado se
+	// evalúa ANTES de aplicar el cambio (ver TestNadieEditaMonto).
+	vieneDeSinTarifa := l.Estado == cobros.LineaSinTarifa
 	if v, ok := cambios["estado"].(string); ok {
 		l.Estado = v
+	}
+	if vieneDeSinTarifa {
+		if v, ok := cambios["tarifa_id"].(string); ok {
+			l.TarifaID = v
+		}
+		if v, ok := cambios["unidad"].(string); ok {
+			l.Unidad = v
+		}
+		if v, ok := cambios["cantidad"].(float64); ok {
+			c := v
+			l.Cantidad = &c
+		}
+		if v, ok := cambios["monto_cop"].(int64); ok {
+			l.MontoCOP = v
+		}
 	}
 	if v, ok := cambios["motivo"].(string); ok {
 		l.Motivo = v

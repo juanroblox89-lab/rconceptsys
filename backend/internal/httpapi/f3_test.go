@@ -52,6 +52,19 @@ func crearHookF3(t *testing.T, s *Server, demo, body string, quiere int) map[str
 	return m
 }
 
+// TestFormatoCodigoUnico: F35 — dos formatos con el mismo codigo → 409
+// (el SQL lo exige UNIQUE; antes pasaba en demo y reventaba solo en real).
+func TestFormatoCodigoUnico(t *testing.T) {
+	s := servidorPrueba()
+	w := llamar(s, "POST", "/formatos", "admin", `{"nombre":"Con código","codigo":"QA-01"}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("crear con código = %d (%s)", w.Code, w.Body.String())
+	}
+	if w := llamar(s, "POST", "/formatos", "admin", `{"nombre":"Duplicado","codigo":"QA-01"}`); w.Code != http.StatusConflict {
+		t.Errorf("código duplicado = %d, quería 409 (%s)", w.Code, w.Body.String())
+	}
+}
+
 // TestFlujoHookBorradorPublicar: Breiner propone → borrador (solo él y
 // admin lo ven) → admin publica → Breiner lo ve publicado (BRIEF F3 §4.3).
 func TestFlujoHookBorradorPublicar(t *testing.T) {
