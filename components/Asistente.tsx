@@ -97,6 +97,7 @@ export function AsistenteChat({
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pedidoRef = useRef(0);
 
   const cargarLista = useCallback(() => {
     void getConversaciones()
@@ -110,6 +111,7 @@ export function AsistenteChat({
   }, [cargarLista]);
 
   const abrir = async (id: string | null) => {
+    const pedido = ++pedidoRef.current;
     setConvId(id);
     setError(null);
     if (id === null) {
@@ -118,9 +120,12 @@ export function AsistenteChat({
     }
     try {
       const d = await getConversacion(id);
-      setMensajes(d.mensajes);
+      // W15: si el usuario ya abrió otra, no pisar sus mensajes.
+      if (pedidoRef.current === pedido) setMensajes(d.mensajes);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo abrir");
+      if (pedidoRef.current === pedido) {
+        setError(e instanceof Error ? e.message : "No se pudo abrir");
+      }
     }
   };
 

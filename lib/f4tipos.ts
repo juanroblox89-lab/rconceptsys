@@ -95,6 +95,15 @@ export const LEAD_ETAPAS: LeadEstado[] = [
   "ganado",
 ];
 
+/** Siguiente etapa válida desde cada estado abierto (F419: la UI solo
+ * ofrece el avance válido + perdido/ganado, en vez de saltos que dan 400). */
+export const SIGUIENTE_ETAPA: Partial<Record<LeadEstado, LeadEstado>> = {
+  prospecto: "en_contacto",
+  en_contacto: "propuesta_enviada",
+  propuesta_enviada: "negociacion",
+  negociacion: "ganado",
+};
+
 export function leadEstadoLabel(e: string): string {
   switch (e) {
     case "prospecto":

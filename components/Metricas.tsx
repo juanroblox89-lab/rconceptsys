@@ -62,31 +62,31 @@ export function MetricasPanel() {
   const [m, setM] = useState<Metricas | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const cargar = () => {
+    setError(null);
+    void getMetricas()
+      .then(setM)
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "No se pudo cargar");
+      });
+  };
+
   useEffect(() => {
-    let vivo = true;
-    const t = window.setTimeout(() => {
-      void getMetricas()
-        .then((d) => {
-          if (vivo) setM(d);
-        })
-        .catch((e: unknown) => {
-          if (vivo) setError(e instanceof Error ? e.message : "No se pudo cargar");
-        });
-    }, 0);
-    return () => {
-      vivo = false;
-      window.clearTimeout(t);
-    };
+    const t = window.setTimeout(cargar, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   if (error !== null) {
     return (
       <div className="error-box" role="alert">
         <p>{error}</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={cargar}>
+          Reintentar
+        </button>
       </div>
     );
   }
-  if (m === null) return null;
+  if (m === null) return <p style={{ fontSize: 12, color: "var(--c-text-2)" }}>Cargando métricas…</p>;
 
   const estados = Object.entries(m.piezas_por_estado).sort((a, b) => b[1] - a[1]);
   const etapas = Object.entries(m.ventas.leads_por_etapa).sort((a, b) => b[1] - a[1]);

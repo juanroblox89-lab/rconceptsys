@@ -1,4 +1,4 @@
-/** Re-exports F1 para las vistas + getUsuarios tolerante (equipo → []). */
+/** Re-exports F1 para las vistas + getUsuarios tolerante (equipo → []) + mensaje 409. */
 export {
   archivarCliente,
   crearCliente,
@@ -19,6 +19,7 @@ export {
   getTareas,
   leerNotif,
   contarNoLeidas,
+  mensajeConflicto,
   patchCliente,
   patchPieza,
 } from "./f1api";

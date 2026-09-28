@@ -47,7 +47,9 @@ export interface Pieza {
   guion_borrador: string | null;
   fecha_objetivo: string | null;
   estado: PiezaEstado;
+  /** Motivo de cancelación (el backend lo manda como motivo_cancelacion). */
   motivo: string | null;
+  motivo_cancelacion?: string | null;
   vencida: boolean;
   created_at: string;
   updated_at: string;
@@ -81,8 +83,13 @@ export interface Tarea {
   estado: TareaEstado;
   fecha_limite: string | null;
   vencida: boolean;
-  decision_pendiente: string | null;
-  /** Último dato entregado (link/minutos según etapa). Campo extra del demo. */
+  decision_pendiente: boolean;
+  /** Datos de entrega (los manda GET /piezas/:id y GET /tareas/:id). */
+  material_url?: string | null;
+  minutos?: number | null;
+  entregable_url?: string | null;
+  publicado_url?: string | null;
+  /** Compat: revisiones viejas leían dato_entrega (ya no lo manda el backend). */
   dato_entrega?: Record<string, string> | null;
   updated_at: string;
 }

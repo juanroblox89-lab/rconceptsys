@@ -10,6 +10,7 @@ import {
   devolverTarea,
   getEventosTarea,
   getTareas,
+  mensajeConflicto,
   reasignarTarea,
   getUsuariosF1,
 } from "@/lib/f1ui";
@@ -23,6 +24,23 @@ import {
 import { oficioDeEtapa } from "@/lib/f1tipos";
 import type { Usuario } from "@/lib/types";
 import f1 from "@/components/F1.module.css";
+
+/** Dato entregado por el trabajador (F13: el backend manda los campos por
+ * etapa; la UI vieja leía dato_entrega, que no existe). */
+function datoEntrega(t: Tarea): string | null {
+  const partes: string[] = [];
+  if (t.material_url !== null && t.material_url !== undefined && t.material_url !== "") {
+    partes.push(t.material_url);
+  }
+  if (t.minutos !== null && t.minutos !== undefined) partes.push(`${t.minutos} min`);
+  if (t.entregable_url !== null && t.entregable_url !== undefined && t.entregable_url !== "") {
+    partes.push(t.entregable_url);
+  }
+  if (t.publicado_url !== null && t.publicado_url !== undefined && t.publicado_url !== "") {
+    partes.push(t.publicado_url);
+  }
+  return partes.length > 0 ? partes.join(" · ") : null;
+}
 
 function Historial({ tareaId }: { tareaId: string }) {
   const [open, setOpen] = useState(false);
@@ -135,7 +153,7 @@ function ColaItem({
       setReasignar(false);
       setNuevo("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(mensajeConflicto(e) ?? (e instanceof Error ? e.message : "No se pudo guardar"));
     } finally {
       setSaving(false);
     }
@@ -154,9 +172,9 @@ function ColaItem({
           </span>
         )}
       </div>
-      {tarea.dato_entrega !== null && tarea.dato_entrega !== undefined && (
+      {datoEntrega(tarea) !== null && (
         <p className="hint" style={{ margin: "6px 0 0" }}>
-          Dato: {Object.values(tarea.dato_entrega).join(" · ")}
+          Dato: {datoEntrega(tarea)}
         </p>
       )}
       {error !== null && (

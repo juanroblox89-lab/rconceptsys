@@ -4,6 +4,7 @@
  */
 
 import { req } from "./api";
+import { authFetch } from "./supabase";
 import type {
   ConfigCobros,
   Corte,
@@ -139,6 +140,34 @@ export function revertirCorte(periodo: string, usuario_id?: string): Promise<{ r
     method: "POST",
     body: JSON.stringify(usuario_id ? { usuario_id } : {}),
   });
+}
+
+/**
+ * Descarga el CSV del corte con auth (W2: un <a href> directo no lleva
+ * Authorization ni X-Demo-User y el proxy responde 401).
+ */
+export async function descargarCSV(periodo: string): Promise<void> {
+  const res = await authFetch(`/api/backend/cortes/${encodeURIComponent(periodo)}/csv`);
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      const data = (await res.json()) as { error?: unknown };
+      if (typeof data.error === "string" && data.error !== "") msg = data.error;
+    } catch {
+      // Mensaje genérico si el cuerpo no es JSON.
+    }
+    throw new Error(msg);
+  }
+  const texto = await res.text();
+  const blob = new Blob([texto], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `corte-${periodo}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /* ---------- comisiones + decisión ---------- */

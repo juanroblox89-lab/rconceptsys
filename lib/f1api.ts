@@ -152,4 +152,17 @@ export function contarNoLeidas(): Promise<number> {
   return getNotifs().then((ns) => ns.filter((n) => !n.leida).length);
 }
 
+/** Mensaje amable para el 409 de edición concurrente (§5.14, W10). */
+export function mensajeConflicto(e: unknown): string | null {
+  if (
+    e !== null &&
+    typeof e === "object" &&
+    "status" in e &&
+    (e as { status: number }).status === 409
+  ) {
+    return "Esto cambió mientras editabas: recargá y probá de nuevo";
+  }
+  return null;
+}
+
 export { ApiError };

@@ -260,8 +260,13 @@ async function proxyTo(req: NextRequest, dest: string) {
   if (contentType !== null) headers.set("Content-Type", contentType);
   const authorization = req.headers.get("authorization");
   if (authorization !== null) headers.set("Authorization", authorization);
+  // S2: X-Demo-User solo en local sin Supabase. Con auth real configurada
+  // (o en build de producción) nunca se reenvía: evita suplantación si el
+  // backend alguna vez aceptara demo en otro entorno.
   const demoUser = req.headers.get("x-demo-user");
-  if (demoUser !== null) headers.set("X-Demo-User", demoUser);
+  if (demoUser !== null && process.env.NEXT_PUBLIC_SUPABASE_URL === undefined) {
+    headers.set("X-Demo-User", demoUser);
+  }
   // Nunca reenviar cookie ni host del navegador.
   const internalSecret = process.env.RC_INTERNAL_SECRET;
   if (internalSecret !== undefined && internalSecret !== "") {

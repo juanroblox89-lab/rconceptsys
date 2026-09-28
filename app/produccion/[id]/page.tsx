@@ -5,7 +5,7 @@ import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
 import { AsistenteEntrada } from "@/components/Asistente";
 import { useSession } from "@/components/SessionProvider";
-import { cancelarPieza, getPieza, patchPieza } from "@/lib/f1ui";
+import { cancelarPieza, getPieza, mensajeConflicto, patchPieza } from "@/lib/f1ui";
 import { getFormatos, getHooks } from "@/lib/f3api";
 import type { Formato, Hook } from "@/lib/f3tipos";
 import {
@@ -77,7 +77,7 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
       const p = await patchPieza(pieza.id, { estado, updated_at: pieza.updated_at });
       setPieza(p);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(mensajeConflicto(e) ?? (e instanceof Error ? e.message : "No se pudo guardar"));
     } finally {
       setSaving(false);
     }
@@ -243,6 +243,11 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
                     Pasar a producción
                   </button>
                 )}
+                {pieza.estado === "en_produccion" && (
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void avanzar("en_revision")}>
+                    Pedir revisión
+                  </button>
+                )}
                 {pieza.estado === "en_revision" && (
                   <>
                     <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void avanzar("aprobada")}>
@@ -281,9 +286,9 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
             )}
-            {pieza.motivo !== null && pieza.motivo !== "" && (
+            {(pieza.motivo_cancelacion ?? pieza.motivo) !== null && (pieza.motivo_cancelacion ?? pieza.motivo) !== "" && (
               <div className="error-box" role="note">
-                <p>Cancelada: {pieza.motivo}</p>
+                <p>Cancelada: {pieza.motivo_cancelacion ?? pieza.motivo}</p>
               </div>
             )}
             <h2 className={f1.f1sectionTitle}>Etapas</h2>
@@ -298,8 +303,8 @@ export default function PiezaDetallePage({ params }: { params: Promise<{ id: str
                   <div className={f1.f1row}>
                     <span className="chip">{tareaEstadoLabel(t.estado)}</span>
                     {t.vencida && <span className={f1.f1vencida} style={{ fontSize: 12 }}>Vencida</span>}
-                    {t.decision_pendiente !== null && (
-                      <span className="chip chip-warn" title={t.decision_pendiente}>Decisión pendiente</span>
+                    {t.decision_pendiente === true && (
+                      <span className="chip chip-warn">Decisión pendiente</span>
                     )}
                   </div>
                 </li>

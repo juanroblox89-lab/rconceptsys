@@ -26,6 +26,7 @@ import {
   crearPaquete,
   crearTarifa,
   decidirTarea,
+  descargarCSV,
   devolverLinea,
   getConfigCobros,
   getCorteActual,
@@ -281,7 +282,10 @@ function TarifasPanel({ onDone }: { onDone: () => void }) {
 
   const guardar = async () => {
     const n = Number(monto);
-    if (!Number.isInteger(n) || n < 0) return;
+    if (!Number.isInteger(n) || n < 0) {
+      setError("El monto debe ser un entero ≥ 0 (sin puntos ni comas)");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -402,7 +406,14 @@ function PaquetesPanel() {
 
   const guardarPaquete = async () => {
     const n = Number(precio);
-    if (nombre.trim() === "" || !Number.isInteger(n) || n < 0) return;
+    if (nombre.trim() === "") {
+      setError("El nombre es obligatorio");
+      return;
+    }
+    if (!Number.isInteger(n) || n < 0) {
+      setError("El precio debe ser un entero ≥ 0 (sin puntos ni comas)");
+      return;
+    }
     setSaving(true);
     try {
       await crearPaquete({ nombre: nombre.trim(), precio_cop: n });
@@ -419,7 +430,10 @@ function PaquetesPanel() {
 
   const guardarConfig = async () => {
     const n = Number(pct);
-    if (!(n >= 0 && n <= 100)) return;
+    if (!(n >= 0 && n <= 100)) {
+      setError("El % debe estar entre 0 y 100");
+      return;
+    }
     setSaving(true);
     try {
       // Comisión fija en una_vez (decisión de Juan, BRIEF F3 §2.1): el modo
@@ -495,7 +509,7 @@ function PaquetesPanel() {
   );
 }
 
-function CortePanel({ periodo }: { periodo: string }) {  const [detalle, setDetalle] = useState<CorteDetalle | null>(null);
+function CortePanel({ periodo, dueno }: { periodo: string; dueno: boolean }) {  const [detalle, setDetalle] = useState<CorteDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [ajuste, setAjuste] = useState({ usuario: "", monto: "", motivo: "" });
@@ -531,7 +545,18 @@ function CortePanel({ periodo }: { periodo: string }) {  const [detalle, setDeta
 
   const guardarAjuste = async () => {
     const n = Number(ajuste.monto);
-    if (ajuste.usuario === "" || !Number.isInteger(n) || n === 0 || ajuste.motivo.trim() === "") return;
+    if (ajuste.usuario === "") {
+      setError("Elegí la persona del ajuste");
+      return;
+    }
+    if (!Number.isInteger(n) || n === 0) {
+      setError("El monto debe ser un entero distinto de 0 (negativo = descuento)");
+      return;
+    }
+    if (ajuste.motivo.trim() === "") {
+      setError("El motivo es obligatorio");
+      return;
+    }
     await correr(() => crearAjuste({ usuario_id: ajuste.usuario, monto_cop: n, motivo: ajuste.motivo.trim(), periodo }));
     setAjuste({ usuario: "", monto: "", motivo: "" });
   };
@@ -543,15 +568,23 @@ function CortePanel({ periodo }: { periodo: string }) {  const [detalle, setDeta
       </h2>
       {error !== null && <p role="alert" style={{ fontSize: 12 }}>{error}</p>}
       <div className={f1.f1filters}>
-        <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={() => void correr(() => cerrarCorte(periodo))}>
-          Cerrar corte
-        </button>
-        <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void correr(() => pagarCorte(periodo))}>
-          Marcar pagado (todo)
-        </button>
-        <a className="btn btn-secondary btn-sm" href={`/api/backend/cortes/${periodo}/csv`}>
+        {dueno ? (
+          <>
+            <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={() => void correr(() => cerrarCorte(periodo))}>
+              Cerrar corte
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void correr(() => pagarCorte(periodo))}>
+              Marcar pagado (todo)
+            </button>
+          </>
+        ) : (
+          <p style={{ fontSize: 12, color: "var(--c-text-2)", margin: 0 }}>
+            Solo el dueño cierra el corte y marca pagado.
+          </p>
+        )}
+        <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void descargarCSV(periodo).catch((e: unknown) => setError(e instanceof Error ? e.message : "No se pudo descargar"))}>
           CSV
-        </a>
+        </button>
       </div>
       <ul className={f1.f1list}>
         {(detalle?.por_persona ?? []).map((p) => (
@@ -563,12 +596,22 @@ function CortePanel({ periodo }: { periodo: string }) {  const [detalle, setDeta
               </span>
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-              <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void correr(() => pagarCorte(periodo, p.usuario_id))}>
-                Pagar a esta persona
-              </button>
-              <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => void correr(() => revertirCorte(periodo, p.usuario_id))}>
-                Revertir
-              </button>
+              {dueno && (
+                <>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => {
+                    if (!window.confirm(`¿Marcar pagado a ${p.usuario_nombre} en ${periodo}?`)) return;
+                    void correr(() => pagarCorte(periodo, p.usuario_id));
+                  }}>
+                    Pagar a esta persona
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => {
+                    if (!window.confirm(`¿Revertir el pagado de ${p.usuario_nombre} en ${periodo}?`)) return;
+                    void correr(() => revertirCorte(periodo, p.usuario_id));
+                  }}>
+                    Revertir
+                  </button>
+                </>
+              )}
             </div>
           </li>
         ))}
@@ -598,7 +641,10 @@ function CortePanel({ periodo }: { periodo: string }) {  const [detalle, setDeta
 function DecisionesPanel({ onDone }: { onDone: () => void }) {
   const [tareas, setTareas] = useState<{ id: string; pieza_titulo: string; etapa: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [motivo, setMotivo] = useState("");
+  // Motivo + guard por tarjeta (W4: un motivo compartido lo mostraba en
+  // todas y el doble-clic disparaba 2 POST).
+  const [motivos, setMotivos] = useState<Record<string, string>>({});
+  const [decidiendo, setDecidiendo] = useState<Record<string, boolean>>({});
 
   const cargar = useCallback(async () => {
     try {
@@ -619,14 +665,19 @@ function DecisionesPanel({ onDone }: { onDone: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const decidir = async (id: string, decision: "pagar" | "no_pagar") => {    if (motivo.trim() === "") return;
+  const decidir = async (id: string, decision: "pagar" | "no_pagar") => {
+    const motivo = (motivos[id] ?? "").trim();
+    if (motivo === "" || decidiendo[id] === true) return;
+    setDecidiendo((d) => ({ ...d, [id]: true }));
     try {
-      await decidirTarea(id, { decision, motivo: motivo.trim() });
-      setMotivo("");
+      await decidirTarea(id, { decision, motivo });
+      setMotivos((m) => ({ ...m, [id]: "" }));
       await cargar();
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
+    } finally {
+      setDecidiendo((d) => ({ ...d, [id]: false }));
     }
   };
 
@@ -650,13 +701,13 @@ function DecisionesPanel({ onDone }: { onDone: () => void }) {
               <strong>{t.pieza_titulo}</strong> · {t.etapa}
             </div>
             <div className={f1.f1sheetFilters} style={{ marginTop: 6 }}>
-              <input className="input" placeholder="Motivo (obligatorio)" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+              <input className="input" placeholder="Motivo (obligatorio)" value={motivos[t.id] ?? ""} onChange={(e) => setMotivos((m) => ({ ...m, [t.id]: e.target.value }))} />
               <div className={f1.f1filters} style={{ marginBottom: 0 }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void decidir(t.id, "pagar")}>
-                  Pagar
+                <button type="button" className="btn btn-secondary btn-sm" disabled={decidiendo[t.id] === true} onClick={() => void decidir(t.id, "pagar")}>
+                  {decidiendo[t.id] === true ? "Guardando…" : "Pagar"}
                 </button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void decidir(t.id, "no_pagar")}>
-                  No pagar
+                <button type="button" className="btn btn-secondary btn-sm" disabled={decidiendo[t.id] === true} onClick={() => void decidir(t.id, "no_pagar")}>
+                  {decidiendo[t.id] === true ? "Guardando…" : "No pagar"}
                 </button>
               </div>
             </div>
@@ -825,7 +876,7 @@ export default function CobrosPage() {
             </ul>
           )
         ) : tab === "corte" && admin ? (
-          <CortePanel periodo={periodo} />
+          <CortePanel periodo={periodo} dueno={dueno} />
         ) : tab === "historial" && !admin ? (
           <HistorialMio periodo={periodo} />
         ) : tab === "tarifas" && dueno ? (

@@ -99,6 +99,8 @@ function AccionesBib({
   esAdmin,
   esMio,
   saving,
+  motivo,
+  setMotivo,
   onPublicar,
   onRechazar,
   onArchivar,
@@ -107,12 +109,21 @@ function AccionesBib({
   esAdmin: boolean;
   esMio: boolean;
   saving: boolean;
+  /** Motivo del card dueño (W3: el input vive en el card, no aquí). */
+  motivo: string;
+  setMotivo: (v: string) => void;
   onPublicar: () => void;
   onRechazar: () => void;
   onArchivar: () => void;
 }) {
-  const [motivo, setMotivo] = useState("");
+  // W3: un solo campo de motivo (el del card, vía props). pideMotivo solo
+  // controla si la cajita inline está abierta; se abre al tocar Rechazar o
+  // al escribir en el campo del card.
   const [pideMotivo, setPideMotivo] = useState(false);
+  const abrirMotivo = (v: string) => {
+    setMotivo(v);
+    if (v.trim() !== "") setPideMotivo(true);
+  };
   if (!esAdmin) return null;
   if (estado === "archivado") return null;
   return (
@@ -129,7 +140,7 @@ function AccionesBib({
               className="input"
               placeholder="Motivo del rechazo (obligatorio)"
               value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
+              onChange={(e) => abrirMotivo(e.target.value)}
             />
             <button
               type="button"
@@ -251,6 +262,8 @@ function FormatoCard({
         esAdmin={esAdmin}
         esMio={formato.propuesto_por === miId}
         saving={saving}
+        motivo={rechazo}
+        setMotivo={setRechazo}
         onPublicar={() => void correr(() => publicarFormato(formato.id))}
         onRechazar={() => {
           if (rechazo.trim() === "") {
@@ -261,16 +274,6 @@ function FormatoCard({
         }}
         onArchivar={() => void correr(() => archivarFormato(formato.id))}
       />
-      {esAdmin && formato.estado === "borrador" && (
-        <input
-          className="input"
-          style={{ marginTop: 6 }}
-          placeholder="Motivo del rechazo (para Rechazar)"
-          value={rechazo}
-          onChange={(e) => setRechazo(e.target.value)}
-          aria-label="Motivo del rechazo"
-        />
-      )}
       {error !== null && (
         <p style={{ margin: "6px 0 0", fontSize: 12 }} role="alert">
           {error}
@@ -334,6 +337,8 @@ function HookCard({
         esAdmin={esAdmin}
         esMio={hook.propuesto_por === miId}
         saving={saving}
+        motivo={rechazo}
+        setMotivo={setRechazo}
         onPublicar={() => void correr(() => publicarHook(hook.id))}
         onRechazar={() => {
           if (rechazo.trim() === "") {
@@ -344,16 +349,6 @@ function HookCard({
         }}
         onArchivar={() => void correr(() => archivarHook(hook.id))}
       />
-      {esAdmin && hook.estado === "borrador" && (
-        <input
-          className="input"
-          style={{ marginTop: 6 }}
-          placeholder="Motivo del rechazo (para Rechazar)"
-          value={rechazo}
-          onChange={(e) => setRechazo(e.target.value)}
-          aria-label="Motivo del rechazo"
-        />
-      )}
       {error !== null && (
         <p style={{ margin: "6px 0 0", fontSize: 12 }} role="alert">
           {error}
@@ -412,6 +407,8 @@ function ReferenciaCard({
         esAdmin={esAdmin}
         esMio={referencia.propuesto_por === miId}
         saving={saving}
+        motivo={rechazo}
+        setMotivo={setRechazo}
         onPublicar={() => void correr(() => publicarReferencia(referencia.id))}
         onRechazar={() => {
           if (rechazo.trim() === "") {
@@ -422,16 +419,6 @@ function ReferenciaCard({
         }}
         onArchivar={() => void correr(() => archivarReferencia(referencia.id))}
       />
-      {esAdmin && referencia.estado === "borrador" && (
-        <input
-          className="input"
-          style={{ marginTop: 6 }}
-          placeholder="Motivo del rechazo (para Rechazar)"
-          value={rechazo}
-          onChange={(e) => setRechazo(e.target.value)}
-          aria-label="Motivo del rechazo"
-        />
-      )}
       {error !== null && (
         <p style={{ margin: "6px 0 0", fontSize: 12 }} role="alert">
           {error}
@@ -529,6 +516,8 @@ function SOPCard({
         esAdmin={esAdmin}
         esMio={sop.propuesto_por === miId}
         saving={saving}
+        motivo={rechazo}
+        setMotivo={setRechazo}
         onPublicar={() => void correr(() => publicarSOP(sop.id))}
         onRechazar={() => {
           if (rechazo.trim() === "") {
@@ -539,16 +528,6 @@ function SOPCard({
         }}
         onArchivar={() => void correr(() => archivarSOP(sop.id))}
       />
-      {esAdmin && sop.estado === "borrador" && (
-        <input
-          className="input"
-          style={{ marginTop: 6 }}
-          placeholder="Motivo del rechazo (para Rechazar)"
-          value={rechazo}
-          onChange={(e) => setRechazo(e.target.value)}
-          aria-label="Motivo del rechazo"
-        />
-      )}
       {error !== null && (
         <p style={{ margin: "6px 0 0", fontSize: 12 }} role="alert">
           {error}

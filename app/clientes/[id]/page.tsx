@@ -6,7 +6,7 @@ import { Panel } from "@/components/Panel";
 import { BootSplash } from "@/components/BootSplash";
 import { AsistenteEntrada } from "@/components/Asistente";
 import { useSession } from "@/components/SessionProvider";
-import { archivarCliente, getCliente, getTareas, patchCliente } from "@/lib/f1ui";
+import { archivarCliente, getCliente, getTareas, mensajeConflicto, patchCliente } from "@/lib/f1ui";
 import { getFormatos, getHooks } from "@/lib/f3api";
 import type { Formato, Hook } from "@/lib/f3tipos";
 import {
@@ -26,6 +26,8 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
   const [id, setId] = useState<string | null>(null);
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [piezas, setPiezas] = useState<Pieza[] | null>(null);
+  const [eventos, setEventos] = useState<{ id: string; accion: string; actor_nombre: string; cuando: string }[] | null>(null);
+  const [tareasError, setTareasError] = useState(false);
   const [tareas, setTareas] = useState<Tarea[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +62,7 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
       const d = await getCliente(cid);
       setCliente(d.cliente);
       setPiezas(d.piezas);
+      setEventos((d.historial?.eventos ?? []) as { id: string; accion: string; actor_nombre: string; cuando: string }[]);
       setEstado(d.cliente.estado);
       setPaquete(d.cliente.paquete ?? "");
       setContacto(d.cliente.contacto_nombre ?? "");
@@ -83,8 +86,11 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
       }
       try {
         setTareas(await getTareas({ cliente: cid }));
+        setTareasError(false);
       } catch {
+        // W13: no disfrazar el error de vacío (antes setTareas([])).
         setTareas([]);
+        setTareasError(true);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "No se pudo cargar";
@@ -125,7 +131,7 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
       setCliente(c);
       setEdit(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(mensajeConflicto(e) ?? (e instanceof Error ? e.message : "No se pudo guardar"));
     } finally {
       setSaving(false);
     }
@@ -307,17 +313,19 @@ export default function ClienteFichaPage({ params }: { params: Promise<{ id: str
             </ul>
             <h2 className={f1.f1sectionTitle}>Historial (actividad del cliente)</h2>
             <ul className={f1.f1list}>
-              {(tareas ?? []).slice(0, 20).map((t) => (
-                <li key={t.id} className={f1.f1card}>
-                  <p className={f1.f1cardTitle}>{t.pieza_titulo}</p>
+              {(eventos ?? []).slice(0, 20).map((e) => (
+                <li key={e.id} className={f1.f1card}>
+                  <p className={f1.f1cardTitle}>{e.accion}</p>
                   <p className={f1.f1cardMeta}>
-                    {t.asignado_nombre ?? "Sin asignar"} · {t.estado}
-                    {t.fecha_limite ? ` · ${fmtFecha(t.fecha_limite)}` : ""}
+                    {e.actor_nombre}{e.cuando ? ` · ${fmtFecha(e.cuando)}` : ""}
                   </p>
                 </li>
               ))}
-              {(tareas ?? []).length === 0 && (
+              {(eventos ?? []).length === 0 && (tareas ?? []).length === 0 && !tareasError && (
                 <li className="card"><p className={f1.f1vacio}><strong>Sin movimiento todavía</strong>La actividad de este cliente aparece aquí.</p></li>
+              )}
+              {tareasError && (
+                <li className="card"><p className={f1.f1vacio}><strong>No se pudieron cargar las tareas</strong>Probá recargar la página.</p></li>
               )}
             </ul>
           </>

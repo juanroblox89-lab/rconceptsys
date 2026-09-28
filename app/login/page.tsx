@@ -32,7 +32,11 @@ function GoogleLogin() {
         provider: "google",
         options: { redirectTo: window.location.origin },
       });
-      if (error) setError(error.message);
+      if (error) {
+        setError(error.message);
+        setBusy(false);
+      }
+      // Sin error el navegador navega a Google: busy queda hasta salir.
     } catch {
       setError("No se pudo iniciar sesión, probá de nuevo");
       setBusy(false);

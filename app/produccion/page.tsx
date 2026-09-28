@@ -233,7 +233,7 @@ export default function ProduccionPage() {
   const [fEstado, setFEstado] = useState<PiezaEstado | "">("");
   const [filtros, setFiltros] = useState(false);
   const [crear, setCrear] = useState(false);
-  const conFiltros = fCliente !== "" || fPersona !== "";
+  const conFiltros = fCliente !== "" || fPersona !== "" || fEstado !== "";
 
   const load = async () => {
     setLoading(true);
@@ -337,6 +337,7 @@ export default function ProduccionPage() {
                 onClick={() => {
                   setFCliente("");
                   setFPersona("");
+                  setFEstado("");
                 }}
               >
                 Limpiar

@@ -158,7 +158,14 @@ function TareaCard({ tarea, onChange }: { tarea: Tarea; onChange: (t: Tarea) => 
 
 export default function MisTareasPage() {
   const { me } = useSession();
-  const [seccion, setSeccion] = useState<Seccion>("hoy");
+  // W7: honrar ?vencidas=1 (link de Métricas) como sección inicial.
+  const [seccion, setSeccion] = useState<Seccion>(() => {
+    if (typeof window !== "undefined") {
+      const v = new URLSearchParams(window.location.search).get("vencidas");
+      if (v === "1") return "vencidas";
+    }
+    return "hoy";
+  });
   const [tareas, setTareas] = useState<Tarea[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

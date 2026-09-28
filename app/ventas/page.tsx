@@ -51,6 +51,7 @@ import {
   fmtFechaHora,
   leadEstadoLabel,
   LEAD_ETAPAS,
+  SIGUIENTE_ETAPA,
   visitaResultadoLabel,
   type Lead,
   type LeadEstado,
@@ -204,7 +205,9 @@ function LeadCard({
                   void correr(() => moverLead(lead.id, v as LeadEstado));
                 }}
               >
-                {LEAD_ETAPAS.map((et) => (
+                {/* Solo el siguiente + actual (F419: el select ofrecía saltos
+                    inválidos que el backend rechaza con 400). */}
+                {[lead.estado, SIGUIENTE_ETAPA[lead.estado]].filter((x): x is LeadEstado => x !== undefined).map((et) => (
                   <option key={et} value={et}>
                     {leadEstadoLabel(et)}
                   </option>
@@ -281,7 +284,10 @@ export default function VentasPage() {
         setUsuarios(us);
         setPaquetes(ps.filter((p) => p.activo));
       } else {
-        const ps = await getPaquetes().catch(() => []);
+        // Vendedor: también ve sus métricas (el backend las recorta a lo
+        // suyo; antes la web ni las pedía y mostraba "solo admin", W20).
+        const [m, ps] = await Promise.all([getMetricasVentas().catch(() => null), getPaquetes().catch(() => [])]);
+        if (m !== null) setMetricas(m);
         setPaquetes(ps.filter((p) => p.activo));
       }
     } catch (e) {
@@ -540,8 +546,8 @@ export default function VentasPage() {
             {metricas === null ? (
               <div className="card">
                 <p className={f1.f1vacio}>
-                  <strong>{esAdmin ? "Sin métricas todavía" : "Solo admin ve métricas"}</strong>
-                  {esAdmin ? "Cuando haya leads y visitas, aparecen aquí." : "Pedile a un admin que te muestre los números."}
+                  <strong>Sin métricas todavía</strong>
+                  Cuando haya leads y visitas, aparecen aquí.
                 </p>
               </div>
             ) : (
@@ -751,7 +757,7 @@ function CrearLeadModal({
           })
             .then((l) => {
               if (l.duplicados !== undefined && l.duplicados.length > 0) {
-                setAviso(`Este negocio ya lo tiene ${l.duplicados[0].vendedor_nombre ?? "otro vendedor"}. Se creó igual.`);
+                setAviso(`Este negocio ya lo tiene ${l.duplicados[0].vendedor_nombre ?? "otro vendedor"}.`);
               }
               onDone(l);
             })
@@ -1157,10 +1163,14 @@ function GanarModal({
       setError("Elegí el paquete para crear el cliente");
       return;
     }
+    if (nombre.trim() === "") {
+      setError("El nombre del cliente es obligatorio");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      onDone(await ganarLead(lead.id, { paquete_id: paqueteId, nombre_cliente: nombre, reactivar_id: reactivarId }));
+      onDone(await ganarLead(lead.id, { paquete_id: paqueteId, nombre_cliente: nombre.trim(), reactivar_id: reactivarId }));
     } catch (e) {
       // 409 = el negocio ya fue cliente (§5.25): ofrecer reactivarlo en vez
       // de crear otro (el cuerpo viene pegado al error, ver req en api.ts).
