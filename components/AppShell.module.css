@@ -1,0 +1,336 @@
+.root {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  /* Que el scroll vertical viva en los paneles internos, no en el body. */
+  overscroll-behavior-y: none;
+  /* El teclado virtual achica el viewport: seguirlo sin saltos. */
+  transition: height 160ms ease-out;
+}
+
+/* M1: en táctil la transición persigue al teclado con saltos: sin animación. */
+@media (pointer: coarse) {
+  .root {
+    transition: none;
+  }
+}
+
+@supports (height: 100dvh) {
+  .root {
+    height: calc(var(--rc-visual-viewport, 100dvh));
+  }
+}
+
+/* Pastilla flotante (solo mobile: en desktop la sidebar ya está a la vista).
+   Sólida en touch (iOS Safari + blur = jank y taps fantasma); vidrio solo con mouse. */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--rc-glass-border);
+  border-radius: 999px;
+  background: var(--rc-bg-elevated);
+  box-shadow: var(--rc-glass-highlight), var(--rc-shadow-subtle);
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  z-index: var(--rc-z-pill);
+}
+
+@supports (backdrop-filter: blur(1px)) and (pointer: fine) {
+  .pill {
+    background: var(--rc-glass-bg);
+    backdrop-filter: var(--rc-glass-blur);
+    -webkit-backdrop-filter: var(--rc-glass-blur);
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .pill {
+    background: var(--rc-bg-elevated);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .pill {
+    background: var(--rc-bg-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.menuButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--rc-label-primary);
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  background: var(--rc-bg-hover);
+}
+
+
+
+.mobileTitle {
+  font-size: var(--rc-text-chat);
+  font-weight: 600;
+  color: var(--rc-label-primary);
+}
+
+/* Overlay mobile: fade 0→1 (negro 45% + blur 2px), 240ms. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--rc-z-pill);
+  background: var(--rc-overlay);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fade-in 240ms ease-out both;
+  will-change: opacity;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* M1: el alto lo manda .root (que sigue al teclado); 100dvh acá recortaba
+     el composer con el teclado abierto. */
+  height: 100%;
+  overflow: hidden;
+}
+
+/* M1: la pastilla flota sobre el contenido: compensar en mobile. */
+@media (max-width: 767px) {
+  .main {
+    padding-top: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .sidebarWrap,
+  .sidebarPanel,
+  .sidebarInner {
+    transition: none;
+  }
+
+  .railVisible {
+    animation: none;
+  }
+}
+
+/* Desktop: el contenedor anima su ANCHO (232px ↔ 0) y el panel hace slide adentro,
+   misma curva 280ms cubic-bezier(0.2,0,0,1) para abrir y cerrar. El chat se reacomoda
+   solo porque el ancho cambia de forma continua. */
+.sidebarWrap {
+  display: contents;
+}
+
+@media (min-width: 768px) {
+  .overlay {
+    display: none;
+  }
+
+  /* En desktop la pastilla solo aparece con la sidebar colapsada. */
+  .pill {
+    display: none;
+  }
+
+  .pillDesktop {
+    display: flex;
+  }
+
+  .sidebarWrap {
+    display: block;
+    flex: none;
+    width: 232px;
+    overflow: hidden;
+    transition: width 280ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .sidebarHidden {
+    width: 0;
+  }
+
+  /* El panel hace slide adentro del contenedor que se achica. */
+  .sidebarPanel {
+    width: 232px;
+    transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .sidebarHidden .sidebarPanel {
+    transform: translateX(-24px);
+  }
+
+  /* Fade del contenido: 1→0 en los primeros 120ms al cerrar,
+     0→1 en los últimos 160ms al abrir. */
+  .sidebarInner {
+    opacity: 1;
+    transition: opacity var(--rc-dur) var(--rc-ease) var(--rc-dur-fast);
+  }
+
+  .sidebarHidden .sidebarInner {
+    opacity: 0;
+    transition: opacity var(--rc-dur-fast) var(--rc-ease);
+  }
+}
+
+/* Estado pre-hidratación (script anti-flash): sin parpadeo ni error de hidratación. */
+@media (min-width: 768px) {
+  html[data-sidebar="closed"] .pill {
+    display: flex;
+  }
+
+  html[data-sidebar="closed"] .sidebarWrap {
+    width: 0;
+    min-width: 0;
+    flex: none;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  .sidebarHidden {
+    display: contents;
+  }
+}
+
+/* ─── Riel flotante (desktop, sidebar colapsada): aparece DESPUÉS de colapsar
+   (delay 180ms, fade + translateX -6px→0, 200ms) y desaparece instantáneo. ─── */
+.rail {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .railVisible {
+    position: fixed;
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    bottom: 14px;
+    left: 12px;
+    z-index: var(--rc-z-pill);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    width: 44px;
+    pointer-events: none; /* solo las piezas reciben clicks, no el hueco entre ellas */
+    animation: rail-in 200ms ease-out 180ms both;
+  }
+
+  html[data-sidebar="closed"] .rail {
+    position: fixed;
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    bottom: 14px;
+    left: 12px;
+    z-index: var(--rc-z-pill);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    width: 44px;
+    pointer-events: none;
+  }
+
+  /* El chat deja lugar al riel para que nada quede tapado en ventanas angostas. */
+  .mainWithRail {
+    padding-left: 64px;
+  }
+}
+
+@keyframes rail-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Cápsula vertical de vidrio: botones que van juntos. */
+.railGroup {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--rc-glass-border);
+  border-radius: 999px;
+  background: var(--rc-glass-bg);
+  backdrop-filter: var(--rc-glass-blur);
+  -webkit-backdrop-filter: var(--rc-glass-blur);
+  box-shadow: var(--rc-glass-highlight), var(--rc-shadow-subtle);
+}
+
+.railSep {
+  width: 18px;
+  height: 1px;
+  margin: 3px 0;
+  background: var(--rc-border-subtle);
+}
+
+.railButton {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--rc-label-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--rc-dur-fast) var(--rc-ease),
+    color var(--rc-dur-fast) var(--rc-ease),
+    transform var(--rc-dur-fast) var(--rc-ease);
+}
+
+.railButton:hover {
+  background: var(--rc-bg-hover);
+  color: var(--rc-label-primary);
+}
+
+.railButton:active {
+  transform: scale(0.94);
+}
+
+.railActive {
+  background: var(--rc-bg-hover);
+  color: var(--rc-label-primary);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .railGroup {
+    background: var(--rc-bg-elevated);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .railVisible {
+    animation: none;
+  }
+}
