@@ -131,8 +131,8 @@ export default function ClientesPage() {
                 <p className={f1.f1cardTitle}>
                   <Link href={`/clientes/${c.id}`}>{c.nombre}</Link>
                 </p>
-                <p className={f1.f1cardMeta}>{c.paquete ?? "Sin paquete"}</p>
-                <div className={f1.f1row}>
+                <div className={f1.f1row} style={{ marginTop: 2, flexWrap: "nowrap", justifyContent: "space-between" }}>
+                  <p className={f1.f1cardMeta}>{c.paquete ?? "Sin paquete"}</p>
                   <span className="chip">{clienteEstadoLabel(c.estado)}</span>
                 </div>
               </li>

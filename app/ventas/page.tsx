@@ -238,7 +238,7 @@ function LeadCard({
         )}
         {esAdmin && (
           <button type="button" className="btn btn-secondary btn-sm" disabled={moviendo} onClick={() => onVer(lead)}>
-            Ver / reasignar
+            Ver
           </button>
         )}
       </div>
@@ -472,7 +472,7 @@ export default function VentasPage() {
 
             <div className={f1.f1board}>
               {[...porEtapa.entries()].map(([etapa, ls]) => (
-                <section key={etapa} className={f1.f1col} aria-label={leadEstadoLabel(etapa)}>
+                <section key={etapa} className={`${f1.f1col} ${ls.length === 0 ? f1.f1colVacia : ""}`} aria-label={leadEstadoLabel(etapa)}>
                   <header className={f1.f1colHead}>
                     <span>{leadEstadoLabel(etapa)}</span>
                     <span className={f1.f1colCount}>{ls.length}</span>

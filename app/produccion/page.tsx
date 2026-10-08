@@ -373,7 +373,7 @@ export default function ProduccionPage() {
               {PIEZA_ESTADOS.map((e) => {
                 const ps = porEstado.get(e.value) ?? [];
                 return (
-                  <div key={e.value} className={f1.f1col}>
+                  <div key={e.value} className={`${f1.f1col} ${ps.length === 0 ? f1.f1colVacia : ""}`}>
                     <div className={f1.f1colHead}>
                       <span>{e.label}</span>
                       <span className={f1.f1colCount}>{ps.length}</span>

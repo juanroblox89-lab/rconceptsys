@@ -34,6 +34,14 @@
   flex: 0 0 auto;
 }
 
+/* Las pestañas/botones de la fila no se encogen (se aplastaban a 26 px y el
+ * texto se montaba); si no caben, la fila hace scroll-H. */
+.f1filters > button {
+  flex: 0 0 auto;
+  min-width: auto;
+  white-space: nowrap;
+}
+
 @media (min-width: 768px) {
   .f1filters {
     flex-wrap: wrap;
@@ -93,6 +101,13 @@
   border-radius: var(--r-lg);
   background: var(--c-bg-2);
   padding: 8px;
+}
+
+/* En móvil (una sola columna) las etapas sin tarjetas no ocupan espacio. */
+@media (max-width: 899px) {
+  .f1colVacia {
+    display: none;
+  }
 }
 
 .f1colHead {
