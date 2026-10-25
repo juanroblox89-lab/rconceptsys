@@ -256,24 +256,31 @@ export default function ChatPage() {
         </button>
       )}
 
-      <form className={styles.composer} onSubmit={enviarMensaje}>
-        <textarea
-          className={styles.textarea}
-          rows={1}
-          placeholder="Escribe un mensaje al equipo... (Enter para enviar, Shift+Enter para salto)"
-          value={cuerpo}
-          onChange={(e) => setCuerpo(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        <button
-          type="submit"
-          disabled={!cuerpo.trim()}
-          className={styles.sendBtn}
-          aria-label="Enviar mensaje"
-        >
-          <Send size={18} />
-        </button>
-      </form>
+      <div className={styles.composerWrapper}>
+        <form className={styles.composer} onSubmit={enviarMensaje}>
+          <textarea
+            className={styles.textarea}
+            rows={1}
+            placeholder="Escribe al equipo..."
+            aria-label="Escribe al equipo"
+            title="Enter para enviar, Shift+Enter para salto de línea"
+            value={cuerpo}
+            onChange={(e) => setCuerpo(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button
+            type="submit"
+            disabled={!cuerpo.trim()}
+            className={styles.sendBtn}
+            aria-label="Enviar mensaje"
+          >
+            <Send size={18} />
+          </button>
+        </form>
+        <span className={styles.composerHint}>
+          Presiona Enter para enviar, Shift+Enter para salto de línea
+        </span>
+      </div>
     </div>
   );
 }
