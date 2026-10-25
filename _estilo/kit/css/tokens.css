@@ -80,7 +80,8 @@
   --rc-elev-radio-activo: 0 0 0 1.5px var(--rc-azul-texto);
   --rc-elev-presencia: 0 0 0 1.5px var(--rc-superficie);
   --rc-elev-error-rojo: inset 2px 2px 5px rgba(163, 172, 190, 0.38), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1px var(--rc-rojo), 0 0 8px var(--rc-rojo-halo);
-  --rc-elev-perilla: 0 2px 5px var(--rc-sombra-suave), inset 0 1px 1px var(--rc-luz);
+  --rc-elev-perilla: 0 2px 4px rgba(31, 36, 48, 0.22), 0 1px 2px rgba(163, 172, 190, 0.50);
+  --rc-borde-perilla: rgba(163, 172, 190, 0.70);
 
   /* Radios de borde */
   --rc-radio-xs: 6px;

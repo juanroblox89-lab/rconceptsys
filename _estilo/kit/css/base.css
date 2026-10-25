@@ -161,7 +161,7 @@ svg {
 
 .rc-fila-2 {
   display: grid;
-  grid-template-columns: 468px 344px 260px 1fr;
+  grid-template-columns: 530px 320px 230px 1fr;
   gap: var(--rc-esp-12);
   align-items: start;
 }
@@ -213,21 +213,5 @@ svg {
   .rc-fila-2,
   .rc-fila-3 {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .rc-nav-rejilla {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--rc-esp-16);
-  }
-  .rc-nav-fila-inferior {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--rc-esp-12);
-  }
-  .rc-migas,
-  .rc-paginacion {
-    max-width: 100%;
-    flex-wrap: wrap;
-    height: auto;
-    min-height: 30px;
-    padding: var(--rc-esp-4) var(--rc-esp-6);
   }
 }

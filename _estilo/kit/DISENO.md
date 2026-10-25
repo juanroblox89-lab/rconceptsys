@@ -44,7 +44,7 @@ Documentación de referencia del sistema de diseño neumórfico con Liquid Glass
 | `--rc-azul` | `#5AA9FF` | Azul acento principal |
 | `--rc-azul-suave` | `#EAF3FF` | Fondo azul tenue para estados activos |
 | `--rc-azul-texto` | `#2F7FE0` | Azul de alto contraste para textos y enlaces (mínimo 4.5:1) |
-| `--rc-azul-oscuro` | `#134E9B` | Azul oscuro legible para pestañas activas |
+| `--rc-azul-oscuro` | `#134E9B` | Azul oscuro de alto contraste (6.5:1 sobre liquid glass) para botones liquid glass y pestañas activas |
 | `--rc-azul-halo` | `rgba(90, 169, 255, 0.28)` | Halo de foco azul |
 | `--rc-azul-tinte` | `rgba(90, 169, 255, 0.14)` | Tinte transparente para hover |
 | `--rc-rojo` | `#E5484D` | Rojo para peligro y errores |
@@ -95,7 +95,8 @@ Documentación de referencia del sistema de diseño neumórfico con Liquid Glass
 | `--rc-elev-radio-activo` | `0 0 0 1.5px var(--rc-azul-texto)` | Anillo de radio activo |
 | `--rc-elev-presencia` | `0 0 0 1.5px var(--rc-superficie)` | Anillo de corte para badges |
 | `--rc-elev-error-rojo` | `inset 2px ..., 0 0 0 1px var(--rc-rojo), 0 0 8px var(--rc-rojo-halo)` | Anillo de foco con error |
-| `--rc-elev-perilla` | `0 2px 5px var(--rc-sombra-suave), inset 0 1px 1px var(--rc-luz)` | Sombra nítida para perillas blancas |
+| `--rc-elev-perilla` | `0 2px 4px rgba(31, 36, 48, 0.22), 0 1px 2px rgba(163, 172, 190, 0.50)` | Sombra nítida para perillas blancas |
+| `--rc-borde-perilla` | `rgba(163, 172, 190, 0.70)` | Borde de contraste para perillas blancas sobre rieles |
 
 ### 1.7 Radios de Borde
 | Token | Valor | Uso |
