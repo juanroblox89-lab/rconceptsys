@@ -2,25 +2,62 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessagesSquare, PanelLeftClose, type LucideIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  MessagesSquare,
+  Users,
+  User,
+  Shield,
+  PanelLeftClose,
+  type LucideIcon,
+} from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { api } from "@/lib/api";
+import { Perfil } from "@/lib/types";
 import styles from "./Sidebar.module.css";
 
-export const navItems: { title: string; href: string; icon: LucideIcon }[] = [
+interface NavItemDef {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  adminOnly?: boolean;
+}
+
+export const navItems: NavItemDef[] = [
   { title: "Chat del equipo", href: "/", icon: MessagesSquare },
+  { title: "Equipo", href: "/equipo", icon: Users },
+  { title: "Mi perfil", href: "/perfil", icon: User },
+  { title: "Administración", href: "/admin", icon: Shield, adminOnly: true },
 ];
 
 export interface SidebarProps {
-  /** Estado abierto/cerrado en móvil (drawer). En desktop se ignora por CSS. */
   open?: boolean;
-  /** Se dispara al elegir una sección: en móvil cierra el drawer. */
   onNavigate?: () => void;
-  /** Botón "Cerrar barra": en desktop la oculta, en móvil cierra el drawer. */
   onCollapse?: () => void;
 }
 
 export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) {
   const pathname = usePathname();
+  const [yo, setYo] = useState<Perfil | null>(null);
+
+  useEffect(() => {
+    let montado = true;
+    api.getYo()
+      .then((p) => {
+        if (montado) setYo(p);
+      })
+      .catch(() => {
+        // En caso de no auth o error
+      });
+    return () => {
+      montado = false;
+    };
+  }, []);
+
+  const itemsVisibles = navItems.filter((item) => {
+    if (item.adminOnly && !yo?.es_admin) return false;
+    return true;
+  });
 
   return (
     <div className={`${styles.root} ${open ? styles.rootOpen : ""}`}>
@@ -40,7 +77,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
       </div>
 
       <nav className={styles.nav} aria-label="Secciones">
-        {navItems.map((item) => {
+        {itemsVisibles.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (

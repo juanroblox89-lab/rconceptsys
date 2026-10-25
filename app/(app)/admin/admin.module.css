@@ -1,0 +1,151 @@
+.container {
+  padding: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--rc-label-primary);
+}
+
+.subtitle {
+  font-size: 13.5px;
+  color: var(--rc-label-secondary);
+}
+
+.section {
+  background-color: var(--rc-bg-surface);
+  border: 1px solid var(--rc-border);
+  border-radius: var(--rc-radius-card);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sectionTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--rc-label-primary);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.table th {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--rc-border);
+  color: var(--rc-label-secondary);
+  font-weight: 500;
+}
+
+.table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--rc-border-subtle);
+  color: var(--rc-label-primary);
+  vertical-align: middle;
+}
+
+.actionsCell {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btnAction {
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--rc-radius-btn);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--rc-border);
+  background-color: var(--rc-bg-elevated);
+  color: var(--rc-label-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btnAction:hover {
+  background-color: var(--rc-bg-hover);
+}
+
+.btnApprove {
+  background-color: var(--rc-label-primary);
+  color: var(--rc-bg-page);
+  border: none;
+}
+
+.btnApprove:hover {
+  opacity: 0.9;
+}
+
+.btnDanger {
+  color: var(--rc-error-primary);
+  border-color: var(--rc-error-primary);
+}
+
+.roleSelectContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.roleToggle {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--rc-border);
+  background: transparent;
+  color: var(--rc-label-secondary);
+}
+
+.roleToggleActive {
+  background: var(--rc-bg-elevated);
+  border-color: currentColor;
+}
+
+.emptyNotice {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--rc-label-secondary);
+  font-size: 13px;
+}
+
+.newRoleForm {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.roleInput {
+  font-size: 13px;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--rc-radius-btn);
+  border: 1.5px solid var(--rc-border);
+  background-color: var(--rc-bg-elevated);
+  color: var(--rc-label-primary);
+}

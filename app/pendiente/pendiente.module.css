@@ -1,0 +1,110 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: var(--rc-bg-page);
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--rc-bg-surface);
+  border: 1px solid var(--rc-border);
+  border-radius: var(--rc-radius-card);
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: center;
+  box-shadow: var(--rc-shadow-subtle);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.iconCircle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--rc-bg-elevated);
+  border: 1px solid var(--rc-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rc-label-primary);
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--rc-label-primary);
+  line-height: 1.35;
+}
+
+.description {
+  font-size: 13.5px;
+  color: var(--rc-label-secondary);
+  line-height: 1.55;
+}
+
+.infoBox {
+  background-color: var(--rc-bg-elevated);
+  border: 1px solid var(--rc-border-subtle);
+  border-radius: var(--rc-radius-btn);
+  padding: 0.75rem 1rem;
+  font-size: 12.5px;
+  color: var(--rc-label-secondary);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.refreshBtn {
+  min-height: 44px;
+  background-color: var(--rc-label-primary);
+  color: var(--rc-bg-page);
+  border: none;
+  border-radius: var(--rc-radius-btn);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: opacity var(--rc-dur-fast) var(--rc-ease);
+}
+
+.refreshBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.logoutBtn {
+  min-height: 40px;
+  background-color: transparent;
+  color: var(--rc-label-secondary);
+  border: 1px solid var(--rc-border);
+  border-radius: var(--rc-radius-btn);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--rc-dur-fast) var(--rc-ease);
+}
+
+.logoutBtn:hover {
+  background-color: var(--rc-bg-hover);
+  color: var(--rc-label-primary);
+}
+
+.spin {
+  animation: rc-spin 1s linear infinite;
+}

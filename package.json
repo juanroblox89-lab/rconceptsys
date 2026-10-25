@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3300",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npx tsx lib/__tests__/chat-utils.test.ts"
   },
   "dependencies": {
     "lucide-react": "^1.47.0",

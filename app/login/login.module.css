@@ -1,0 +1,125 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: var(--rc-bg-page);
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  background-color: var(--rc-bg-surface);
+  border: 1px solid var(--rc-border);
+  border-radius: var(--rc-radius-card);
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: var(--rc-shadow-subtle);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--rc-label-primary);
+  margin-top: 0.25rem;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--rc-label-secondary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--rc-label-primary);
+}
+
+.input {
+  font-size: 16px; /* Evita zoom automático en iOS */
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--rc-radius-btn);
+  border: 1.5px solid var(--rc-border);
+  background-color: var(--rc-bg-elevated);
+  color: var(--rc-label-primary);
+  outline: none;
+  transition: border-color var(--rc-dur-fast) var(--rc-ease);
+}
+
+.input:focus {
+  border-color: var(--rc-label-primary);
+}
+
+.errorBanner {
+  background-color: var(--rc-error-bg);
+  border: 1px solid var(--rc-error-primary);
+  color: var(--rc-label-primary);
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--rc-radius-btn);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.submitBtn {
+  min-height: 48px;
+  background-color: var(--rc-label-primary);
+  color: var(--rc-bg-page);
+  border: none;
+  border-radius: var(--rc-radius-btn);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--rc-dur-fast) var(--rc-ease);
+}
+
+.submitBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.footer {
+  text-align: center;
+  font-size: 13px;
+  color: var(--rc-label-secondary);
+  border-top: 1px solid var(--rc-border-subtle);
+  padding-top: 1rem;
+}
+
+.link {
+  color: var(--rc-label-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
