@@ -34,10 +34,13 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     let mensaje = 'Ha ocurrido un error inesperado.';
     let codigo = 'error_desconocido';
     try {
-      const errJson = await res.json();
-      if (errJson?.error?.mensaje) {
-        mensaje = errJson.error.mensaje;
-        codigo = errJson.error.codigo;
+      const text = await res.text();
+      if (text) {
+        const errJson = JSON.parse(text);
+        if (errJson?.error?.mensaje) {
+          mensaje = errJson.error.mensaje;
+          codigo = errJson.error.codigo;
+        }
       }
     } catch {
       // Ignorar fallo de parsing
@@ -48,7 +51,11 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     throw err;
   }
 
-  return res.json();
+  const text = await res.text();
+  if (!text || text.trim() === '') {
+    return {} as T;
+  }
+  return JSON.parse(text);
 }
 
 // Endpoints
@@ -93,9 +100,9 @@ export const api = {
   // Chat
   getChat: (antes?: number, despues?: number, limite?: number) => {
     const q = new URLSearchParams();
-    if (antes) q.set('antes', antes.toString());
-    if (despues) q.set('despues', despues.toString());
-    if (limite) q.set('limite', limite.toString());
+    if (antes && antes > 0) q.set('antes', antes.toString());
+    if (despues && despues > 0) q.set('despues', despues.toString());
+    if (limite && limite > 0) q.set('limite', limite.toString());
     return fetchApi<ChatMensaje[]>(`/api/chat?${q.toString()}`);
   },
   postChat: (cuerpo: string) =>

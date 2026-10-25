@@ -27,7 +27,7 @@ func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
 		Store:          s,
 		Auth:           auth,
 		ChatLimiter:    NewRateLimiter(20, time.Minute),    // 20 mensajes por minuto por usuario
-		AuthLimiter:    NewRateLimiter(10, 5*time.Minute), // 10 intentos por 5 minutos por IP o correo
+		AuthLimiter:    NewRateLimiter(25, 5*time.Minute), // 25 intentos por 5 minutos por IP o correo
 		ModoDemoActivo: modoDemoActivo,
 	}
 }

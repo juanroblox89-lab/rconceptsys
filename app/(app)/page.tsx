@@ -42,12 +42,16 @@ export default function ChatPage() {
 
   const ultimoIdRef = useRef<number>(0);
 
-  // Mantener el último ID registrado para polling con 'despues'
+  // Mantener el último ID real registrado para polling con 'despues'
   useEffect(() => {
     if (mensajes.length > 0) {
-      const maxId = Math.max(...mensajes.map((m) => m.id));
-      if (maxId > ultimoIdRef.current) {
-        ultimoIdRef.current = maxId;
+      // Filtrar mensajes temporales de envío optimista (IDs grandes tipo timestamp)
+      const reales = mensajes.filter((m) => !m.enviando && m.id < 1000000000000);
+      if (reales.length > 0) {
+        const maxId = Math.max(...reales.map((m) => m.id));
+        if (maxId > ultimoIdRef.current) {
+          ultimoIdRef.current = maxId;
+        }
       }
     }
   }, [mensajes]);
@@ -76,21 +80,19 @@ export default function ChatPage() {
     const ejecutarPolling = async () => {
       if (!montado) return;
       try {
-        const ultId = ultimoIdRef.current;
-        if (ultId > 0) {
-          const nuevos = await api.getChat(undefined, ultId, 40);
-          if (montado && nuevos.length > 0) {
-            setMensajes((prev) => {
-              // Filtrar para evitar duplicados accidentales
-              const prevIds = new Set(prev.map((m) => m.id));
-              const filtrados = nuevos.filter((n) => !prevIds.has(n.id));
-              if (filtrados.length === 0) return prev;
+        const datos = await api.getChat(undefined, undefined, 40);
+        if (montado && datos && Array.isArray(datos)) {
+          const ordenados = [...datos].reverse();
+          setMensajes((prev) => {
+            if (ordenados.length > prev.length) {
+              const diff = ordenados.length - prev.length;
               if (!isNearBottomRef.current) {
-                setNuevosMensajes((count) => count + filtrados.length);
+                setNuevosMensajes((count) => count + diff);
               }
-              return [...prev, ...filtrados];
-            });
-          }
+              return ordenados;
+            }
+            return ordenados;
+          });
         }
       } catch {
         // Ignorar

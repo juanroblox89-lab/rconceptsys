@@ -256,7 +256,7 @@ func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, d
 		return nil, err
 	}
 
-	var res []*store.ChatMensaje
+	var res []*store.ChatMensaje = make([]*store.ChatMensaje, 0)
 	for i := range rows {
 		item := &rows[i]
 		t, _ := time.Parse(time.RFC3339, item.CreadoEn)
@@ -556,13 +556,6 @@ func (v *SupabaseAuthVerifier) esAdminEmail(email string) bool {
 }
 
 func (v *SupabaseAuthVerifier) VerificarToken(ctx context.Context, token string) (*store.Perfil, error) {
-	v.cacheMu.RLock()
-	entry, ok := v.tokenCache[token]
-	v.cacheMu.RUnlock()
-	if ok && entry.expiraEn.After(time.Now()) {
-		return entry.perfil, nil
-	}
-
 	userData, err := v.client.AuthUser(ctx, token)
 	if err != nil {
 		return nil, store.ErrUnauthorized
@@ -593,12 +586,10 @@ func (v *SupabaseAuthVerifier) VerificarToken(ctx context.Context, token string)
 		_ = v.store.CrearOActualizarPerfil(ctx, p)
 	}
 
-	v.cacheMu.Lock()
-	v.tokenCache[token] = &tokenCacheEntry{
-		perfil:   p,
-		expiraEn: time.Now().Add(10 * time.Second),
+	// Refrescar para garantizar que el estado y roles sean los más actualizados
+	if fresco, err := v.store.ObtenerPerfilPorID(ctx, id); err == nil && fresco != nil {
+		p = fresco
 	}
-	v.cacheMu.Unlock()
 
 	return p, nil
 }

@@ -177,7 +177,7 @@ func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, des
 
 	// Si piden 'despuesID', buscan mensajes más nuevos que despuesID (polling ascendente)
 	if despuesID > 0 {
-		var nuevos []*ChatMensaje
+		var nuevos []*ChatMensaje = make([]*ChatMensaje, 0)
 		for _, msg := range m.mensajes {
 			if msg.BorradoEn != nil {
 				continue
@@ -198,7 +198,7 @@ func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, des
 	}
 
 	// Recorrer de más recientes a más viejos (paginado hacia atrás con antesID)
-	var filtrados []*ChatMensaje
+	var filtrados []*ChatMensaje = make([]*ChatMensaje, 0)
 	for i := len(m.mensajes) - 1; i >= 0; i-- {
 		msg := m.mensajes[i]
 		if msg.BorradoEn != nil {
