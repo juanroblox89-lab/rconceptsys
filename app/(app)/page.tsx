@@ -40,13 +40,25 @@ export default function ChatPage() {
     };
   }, [router]);
 
+  const ultimoIdRef = useRef<number>(0);
+
+  // Mantener el último ID registrado para polling con 'despues'
+  useEffect(() => {
+    if (mensajes.length > 0) {
+      const maxId = Math.max(...mensajes.map((m) => m.id));
+      if (maxId > ultimoIdRef.current) {
+        ultimoIdRef.current = maxId;
+      }
+    }
+  }, [mensajes]);
+
   useEffect(() => {
     if (!yo) return;
 
     let montado = true;
     const cargar = async () => {
       try {
-        const datos = await api.getChat(undefined, 40);
+        const datos = await api.getChat(undefined, undefined, 40);
         if (montado) {
           const ordenados = [...datos].reverse();
           setMensajes(ordenados);
@@ -58,29 +70,59 @@ export default function ChatPage() {
     };
     cargar();
 
-    const interval = setInterval(async () => {
+    // Polling adaptativo: 3s con pestaña visible, 15s si está oculta
+    let pollTimer: NodeJS.Timeout;
+
+    const ejecutarPolling = async () => {
+      if (!montado) return;
       try {
-        const datos = await api.getChat(undefined, 40);
-        if (!montado) return;
-        const ordenados = [...datos].reverse();
-        setMensajes((prev) => {
-          if (ordenados.length > prev.length) {
-            const diferencia = ordenados.length - prev.length;
-            if (!isNearBottomRef.current) {
-              setNuevosMensajes((n) => n + diferencia);
-            }
-            return ordenados;
+        const ultId = ultimoIdRef.current;
+        if (ultId > 0) {
+          const nuevos = await api.getChat(undefined, ultId, 40);
+          if (montado && nuevos.length > 0) {
+            setMensajes((prev) => {
+              // Filtrar para evitar duplicados accidentales
+              const prevIds = new Set(prev.map((m) => m.id));
+              const filtrados = nuevos.filter((n) => !prevIds.has(n.id));
+              if (filtrados.length === 0) return prev;
+              if (!isNearBottomRef.current) {
+                setNuevosMensajes((count) => count + filtrados.length);
+              }
+              return [...prev, ...filtrados];
+            });
           }
-          return ordenados;
-        });
+        }
       } catch {
         // Ignorar
+      } finally {
+        if (montado) {
+          const delay = typeof document !== 'undefined' && document.hidden ? 15000 : 3000;
+          pollTimer = setTimeout(ejecutarPolling, delay);
+        }
       }
-    }, 3000);
+    };
+
+    pollTimer = setTimeout(ejecutarPolling, 3000);
+
+    const onVisibilityChange = () => {
+      clearTimeout(pollTimer);
+      if (typeof document !== 'undefined' && !document.hidden) {
+        ejecutarPolling();
+      } else {
+        pollTimer = setTimeout(ejecutarPolling, 15000);
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
 
     return () => {
       montado = false;
-      clearInterval(interval);
+      clearTimeout(pollTimer);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
     };
   }, [yo]);
 

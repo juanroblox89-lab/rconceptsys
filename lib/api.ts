@@ -1,32 +1,23 @@
 // lib/api.ts
 import { Perfil, ChatMensaje, Rol } from './types';
 
-// En el navegador usamos rutas relativas que Next.js reescribe al backend Go
+// En el navegador usamos rutas relativas con cookies httpOnly
 const API_BASE = '';
 
-export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('rc_token') || localStorage.getItem('rc_demo_user') || 'admin-1';
-}
-
-export function setAuthToken(token: string) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('rc_token', token);
-}
-
-export function clearAuthToken() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('rc_token');
-  localStorage.removeItem('rc_demo_user');
+export interface ApiError extends Error {
+  codigo: string;
+  status: number;
 }
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = getAuthToken();
   const headers = new Headers(options.headers || {});
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-    headers.set('X-Demo-User', token);
+  // Soporte explícito de modo demo en headers solo si NEXT_PUBLIC_RC_DEMO=1 en el cliente
+  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_RC_DEMO === '1') {
+    const demoUser = localStorage.getItem('rc_demo_user');
+    if (demoUser) {
+      headers.set('X-Demo-User', demoUser);
+    }
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -36,6 +27,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include', // Envía y recibe cookies httpOnly automáticamente
   });
 
   if (!res.ok) {
@@ -50,9 +42,9 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     } catch {
       // Ignorar fallo de parsing
     }
-    const err = new Error(mensaje);
-    (err as unknown as { codigo: string; status: number }).codigo = codigo;
-    (err as unknown as { codigo: string; status: number }).status = res.status;
+    const err = new Error(mensaje) as ApiError;
+    err.codigo = codigo;
+    err.status = res.status;
     throw err;
   }
 
@@ -61,6 +53,27 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
 // Endpoints
 export const api = {
+  // Auth Real
+  registro: (nombre: string, correo: string, contrasena: string, confirmar: string) =>
+    fetchApi<Perfil>('/api/auth/registro', {
+      method: 'POST',
+      body: JSON.stringify({ nombre, correo, contrasena, confirmar }),
+    }),
+  login: (correo: string, contrasena: string) =>
+    fetchApi<{ perfil: Perfil; access_token: string }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ correo, contrasena }),
+    }),
+  salir: () =>
+    fetchApi<{ mensaje: string }>('/api/auth/salir', {
+      method: 'POST',
+    }),
+  refresh: () =>
+    fetchApi<{ access_token: string; expires_in: number }>('/api/auth/refresh', {
+      method: 'POST',
+    }),
+
+  // Yo
   getYo: () => fetchApi<Perfil>('/api/yo'),
   patchYo: (nombre: string) =>
     fetchApi<Perfil>('/api/yo', {
@@ -72,11 +85,16 @@ export const api = {
       method: 'POST',
       body: formData,
     }),
+
+  // Equipo
   getEquipo: () => fetchApi<Perfil[]>('/api/equipo'),
   getMiembro: (id: string) => fetchApi<Perfil>(`/api/equipo/${id}`),
-  getChat: (antes?: number, limite?: number) => {
+
+  // Chat
+  getChat: (antes?: number, despues?: number, limite?: number) => {
     const q = new URLSearchParams();
     if (antes) q.set('antes', antes.toString());
+    if (despues) q.set('despues', despues.toString());
     if (limite) q.set('limite', limite.toString());
     return fetchApi<ChatMensaje[]>(`/api/chat?${q.toString()}`);
   },
@@ -85,6 +103,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ cuerpo }),
     }),
+
   // Admin
   adminGetMiembros: (estado?: string) => {
     const q = new URLSearchParams();

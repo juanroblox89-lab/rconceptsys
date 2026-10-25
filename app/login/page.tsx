@@ -3,14 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { setAuthToken, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,20 +22,15 @@ export default function LoginPage() {
     setCargando(true);
 
     try {
-      // Guardar identificador / token (soporta modo demo o token Supabase)
-      const token = correo.trim().toLowerCase();
-      setAuthToken(token);
-
-      // Probar si el usuario existe y su estado
-      const perfil = await api.getYo();
-      if (perfil.estado === "pendiente") {
+      const res = await api.login(correo.trim(), password);
+      if (res.perfil.estado === "pendiente") {
         router.push("/pendiente");
       } else {
         router.push("/");
       }
     } catch (err: unknown) {
       const e = err as { message?: string };
-      setError(e.message || "No se pudo iniciar sesión. Verifica tus credenciales.");
+      setError(e.message || "El correo o la contraseña no coinciden.");
     } finally {
       setCargando(false);
     }
@@ -57,7 +54,7 @@ export default function LoginPage() {
             </label>
             <input
               id="correo"
-              type="text"
+              type="email"
               required
               autoComplete="email"
               className={styles.input}
@@ -71,16 +68,26 @@ export default function LoginPage() {
             <label className={styles.label} htmlFor="password">
               Contraseña
             </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className={styles.input}
-              placeholder="••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className={styles.inputWrapper}>
+              <input
+                id="password"
+                type={mostrarPassword ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                className={styles.input}
+                placeholder="••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className={styles.togglePasswordBtn}
+                aria-label={mostrarPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                onClick={() => setMostrarPassword((v) => !v)}
+              >
+                {mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button type="submit" disabled={cargando} className={styles.submitBtn}>

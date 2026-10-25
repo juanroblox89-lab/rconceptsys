@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { setAuthToken, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import styles from "../login/login.module.css";
 
 export default function RegistroPage() {
@@ -13,6 +14,7 @@ export default function RegistroPage() {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [confirmar, setConfirmar] = useState("");
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,18 +34,18 @@ export default function RegistroPage() {
     setCargando(true);
 
     try {
-      // En modo local sin Supabase cloud, registramos el identificador y creamos perfil
-      const token = correo.trim().toLowerCase();
-      setAuthToken(token);
-
-      // Si existe o no, comprobamos yo
+      await api.registro(nombre.trim(), correo.trim(), password, confirmar);
+      // Tras registrarse correctamente, iniciamos sesión para obtener la cookie httpOnly
       try {
-        await api.getYo();
+        const loginRes = await api.login(correo.trim(), password);
+        if (loginRes.perfil.estado === "pendiente") {
+          router.push("/pendiente");
+        } else {
+          router.push("/");
+        }
       } catch {
-        // En modo real Supabase SignUp creará el usuario vía trigger
+        router.push("/pendiente");
       }
-
-      router.push("/pendiente");
     } catch (err: unknown) {
       const e = err as { message?: string };
       setError(e.message || "No se pudo completar el registro.");
@@ -99,34 +101,46 @@ export default function RegistroPage() {
             <label className={styles.label} htmlFor="password">
               Contraseña (10+ caracteres)
             </label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={10}
-              autoComplete="new-password"
-              className={styles.input}
-              placeholder="••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className={styles.inputWrapper}>
+              <input
+                id="password"
+                type={mostrarPassword ? "text" : "password"}
+                required
+                minLength={10}
+                autoComplete="new-password"
+                className={styles.input}
+                placeholder="••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className={styles.togglePasswordBtn}
+                aria-label={mostrarPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                onClick={() => setMostrarPassword((v) => !v)}
+              >
+                {mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="confirmar">
               Confirmar contraseña
             </label>
-            <input
-              id="confirmar"
-              type="password"
-              required
-              minLength={10}
-              autoComplete="new-password"
-              className={styles.input}
-              placeholder="••••••••••"
-              value={confirmar}
-              onChange={(e) => setConfirmar(e.target.value)}
-            />
+            <div className={styles.inputWrapper}>
+              <input
+                id="confirmar"
+                type={mostrarPassword ? "text" : "password"}
+                required
+                minLength={10}
+                autoComplete="new-password"
+                className={styles.input}
+                placeholder="••••••••••"
+                value={confirmar}
+                onChange={(e) => setConfirmar(e.target.value)}
+              />
+            </div>
           </div>
 
           <button type="submit" disabled={cargando} className={styles.submitBtn}>

@@ -59,16 +59,35 @@
   color: var(--rc-label-primary);
 }
 
-.input {
-  font-size: 16px; /* Evita zoom automático en iOS */
-  min-height: 44px;
-  padding: 0.5rem 0.75rem;
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputWrapper .input {
+  width: 100%;
+  padding-right: 2.5rem;
+}
+
+.togglePasswordBtn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--rc-label-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
   border-radius: var(--rc-radius-btn);
-  border: 1.5px solid var(--rc-border);
-  background-color: var(--rc-bg-elevated);
+}
+
+.togglePasswordBtn:hover {
   color: var(--rc-label-primary);
-  outline: none;
-  transition: border-color var(--rc-dur-fast) var(--rc-ease);
 }
 
 .input:focus {

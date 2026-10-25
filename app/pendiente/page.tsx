@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, RefreshCw } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { api, clearAuthToken } from "@/lib/api";
+import { api } from "@/lib/api";
 import styles from "./pendiente.module.css";
 
 export default function PendientePage() {
@@ -47,8 +47,12 @@ export default function PendientePage() {
     }
   };
 
-  const cerrarSesion = () => {
-    clearAuthToken();
+  const cerrarSesion = async () => {
+    try {
+      await api.salir();
+    } catch {
+      // Ignorar
+    }
     router.push("/login");
   };
 
