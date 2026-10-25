@@ -57,7 +57,7 @@ export default function LoginPage() {
             </label>
             <input
               id="correo"
-              type="email"
+              type="text"
               required
               autoComplete="email"
               className={styles.input}

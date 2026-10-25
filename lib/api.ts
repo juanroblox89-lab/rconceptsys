@@ -1,7 +1,8 @@
 // lib/api.ts
 import { Perfil, ChatMensaje, Rol } from './types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8310';
+// En el navegador usamos rutas relativas que Next.js reescribe al backend Go
+const API_BASE = '';
 
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
