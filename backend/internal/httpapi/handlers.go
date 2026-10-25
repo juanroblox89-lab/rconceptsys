@@ -196,15 +196,28 @@ func (a *API) handlePostYoFoto(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handleGetEquipo(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
 	equipo, err := a.Store.ListarEquipo(r.Context())
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_consulta", "No se pudo consultar el equipo.")
 		return
 	}
-	ResponderJSON(w, http.StatusOK, equipo)
+
+	// Regla de privacidad: solo el admin o el propio usuario ven su correo
+	var seguro []*store.Perfil
+	for _, m := range equipo {
+		cp := *m
+		if !yo.EsAdmin && yo.ID != m.ID {
+			cp.Correo = ""
+		}
+		seguro = append(seguro, &cp)
+	}
+
+	ResponderJSON(w, http.StatusOK, seguro)
 }
 
 func (a *API) handleGetEquipoDetalle(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
 	id := r.PathValue("id")
 	if id == "" {
 		ResponderError(w, http.StatusBadRequest, "id_requerido", "Se requiere el ID del miembro.")
@@ -216,7 +229,14 @@ func (a *API) handleGetEquipoDetalle(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, http.StatusNotFound, "miembro_no_encontrado", "No se encontró el perfil del miembro del equipo.")
 		return
 	}
-	ResponderJSON(w, http.StatusOK, miembro)
+
+	// Regla de privacidad: solo el admin o el propio usuario ven su correo
+	cp := *miembro
+	if !yo.EsAdmin && yo.ID != miembro.ID {
+		cp.Correo = ""
+	}
+
+	ResponderJSON(w, http.StatusOK, &cp)
 }
 
 func (a *API) handleGetChat(w http.ResponseWriter, r *http.Request) {

@@ -78,7 +78,7 @@ export default function MiembroDetallePage({ params }: PageProps) {
           )}
 
           <h1 className={styles.name}>{miembro.nombre}</h1>
-          <p className={styles.correo}>{miembro.correo}</p>
+          {miembro.correo ? <p className={styles.correo}>{miembro.correo}</p> : null}
 
           <div className={styles.roles}>
             {miembro.roles && miembro.roles.length > 0 ? (
