@@ -91,10 +91,15 @@ Métricas: piezas entregadas por semana, tareas vencidas, carga por empleado, co
 
 Cada fase: brief al harness → revisión del director a 375/1280 → commits → deploy de preview. El sistema viejo (`main`, rconceptsys.vercel.app) sigue en uso hasta que F1+F2 estén listas; ahí se cambia.
 
-## 6. Decisiones pendientes de Juan
+## 6. Decisiones de Juan (2026-10-25)
 
-1. **Datos del sistema viejo:** ¿empezamos con la base vacía, o migramos lo real del Supabase viejo (usuarios, clientes, facturas)?
-2. **Cobros:** ¿cómo se paga hoy? (por tarea con tarifa fija, por minutos, mensual…) y cada cuánto se hace el corte.
-3. **Equipo:** cuántas personas y qué roles reales.
-4. **Android:** ¿APK instalado directo o publicado en Google Play?
-5. **Dominio:** ¿`rconceptsys.vercel.app` sigue, o un dominio propio?
+1. **Datos:** base **vacía** (no se migra nada del sistema viejo). El proyecto de Supabase anterior (`vrztymbfeyrtnmlxnjsi`) ya no existe: se crea uno nuevo y el esquema se escribe desde cero, por fases.
+2. **Cobros:** **configurables** (tarifas y cortes los define el admin; nada fijo en el código). Se construye en una fase posterior.
+3. **Equipo:** unas **4 personas o más**. Roles de trabajo: **Camarógrafo**, **Editor** y **Subidor de contenido**. Una persona puede tener **varios roles a la vez** (por ejemplo camarógrafo y editor). Los roles son una lista editable por el admin, no un valor fijo.
+4. **Android:** **APK y sitio web** (el mismo sistema en ambos).
+5. **Dominio:** **Vercel** (`rconceptsys.vercel.app` o el que asigne el proyecto nuevo).
+
+### Cambios al plan por estas decisiones
+- La tabla de roles de la sección 1 se reemplaza por: **Admin** (permiso aparte, no es un rol de trabajo) y los roles de trabajo Camarógrafo, Editor y Subidor de contenido, combinables y editables.
+- Primera funcionalidad a construir (pedido de Juan, 2026-09-26): **chat grupal de todo el equipo**, con foto de perfil, rol y nombre en cada mensaje, y acceso directo al perfil de quien escribe.
+- Entrada al sistema: correo y contraseña con **aprobación de un admin** (Google queda para más adelante). Ver `_BRIEF_F0_base_y_chat.md`.
