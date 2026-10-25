@@ -1,105 +1,58 @@
-# RConcept Systems — v2 (desde cero)
+# RConcept Systems — v2 (F0 Base y Chat del Equipo)
 
-Sistema interno de producción creativa de Rohlfing Concept. Se rehace desde cero (2026-09-26).
-El sistema anterior quedó en el tag `legacy-v1`.
+Sistema operativo interno de producción de contenido para **Rohlfing Concept**.
 
-Se conservó (todo lo demás, incluida la base de datos, se rehace):
-- `marca/` — logos e íconos.
-- `contenido/formatos-y-hooks.js` — biblioteca de formatos y hooks del sistema anterior.
+## 1. Qué es
 
-Nunca subir claves al repo: van en variables de entorno (`.env.local` / Vercel).
-Ver `.env.example` para la lista completa (solo nombres, valores vacíos o localhost).
+Base del sistema y chat de coordinación para todo el equipo (camarógrafos, editores, subidores de contenido y administradores).
+Diseñado bajo el patrón de arquitectura de **Globe**:
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript estricto, CSS Modules y diseño móvil primero con `compact-ui`.
+- **Backend**: Go (librería estándar, sin dependencias externas pesadas) con interfaz `Store` (en memoria para desarrollo local / pruebas y cliente Supabase REST para producción).
+- **Despliegue**: Vercel con dos servicios vinculados (`web` y `api`).
 
-## Qué es
+## 2. Puertos de desarrollo
 
-Panel interno (Next.js 16 + TS, App Router, CSS Modules, sin Tailwind) + API en Go.
-Módulos: Inicio · Producción · Cobros · Clientes · Ventas · Biblioteca · Equipo · Mi perfil.
-En F0 solo **Equipo** y **Mi perfil** funcionan; el resto muestra un estado vacío honesto
-("Llega en la fase F1/F2/…").
+- **Web (Next.js)**: puerto **3310** (`http://localhost:3310`)
+- **API (Go)**: puerto **8310** (`http://localhost:8310`)
 
-## Estructura
+## 3. Cómo correr en local
 
-```text
-/                        (Next.js: app/  components/  lib/)
-backend/                 (Go: cmd/server, internal/{auth,permisos,store,httpapi,actividad})
-supabase/migrations/     (001_base.sql)
-android/                 (Capacitor — PENDIENTE F0, ver abajo)
-marca/  contenido/       (heredados, no tocar)
-capacitor.config.ts      (wrapper Android)
-vercel.json              (services web + api, como Globe)
-.env.example             (nombres de variables, sin valores reales)
-```
-
-## Correr en local (F0)
-
-Necesitas Go en PATH (`go version`) y Node 20+.
-
-1. Copiar variables: `Copy-Item .env.example .env.local` (dejar Supabase vacío = modo demo).
-2. Backend (puerto **8095**):
-   ```powershell
-   go run ./cmd/server
-   # health: http://localhost:8095/health
-   ```
-3. Frontend (puerto **3300**, build de producción, nunca `next dev` colgado):
-   ```powershell
-   npm run build
-   npx next start -p 3300
-   ```
-4. Abrir `http://localhost:3300`. Sin Supabase configurado aparece la **pantalla de modo demo**
-   para elegir usuario: dueño / admin / equipo / pendiente.
-5. Modo demo del backend: cabecera `X-Demo-User` con el id o email del usuario semilla
-   (dueño, admin, equipo con oficios grabación+edición, pendiente). Sin `SUPABASE_URL`
-   usa store en memoria. Al terminar, **matar ambos procesos**.
-
-Roles demo: `dueno` (todo, único que edita tarifas y cierra cortes por defecto),
-`admin` (gestiona equipo, no puede crear dueños), `equipo` (opera según sus oficios),
-`pendiente` (ve "Esperando aprobación"), `desactivado` (sin acceso).
-
-## Android / APK (Capacitor)
-
-Estado F0: `capacitor.config.ts` existe (`appId: co.rohlfingconcept.rsys` placeholder,
-`appName: "RConcept Systems"`, `webDir: www` —placeholder vacío documentado, porque el
-frontend usa Next.js en modo servidor sin `output: "export"`—, `server.url` desde
-`CAP_SERVER_URL`).
-`android/` **aún no generado**: `package.json` ya existe pero `node_modules/next` todavía
-no (el subagente frontend sigue con su `npm install`; por coordinación no se hacen
-installs concurrentes para no corromper `node_modules`). Tampoco se instaló
-`@capacitor/*` por la misma causa.
-
-Pasos exactos cuando haya SDK (hacerlos una sola vez, en orden):
-
+### Backend (Go)
 ```powershell
-# 1. Con package.json (next) ya creado por el frontend:
-npm i -S @capacitor/core @capacitor/cli @capacitor/android
-
-# 2. Inicializar (frontend en modo servidor: webDir www placeholder vacío;
-#    la app cargará la URL remota vía server.url; si el frontend cambiara a
-#    output:export, usar --web-dir=out):
-npx cap init "RConcept Systems" co.rohlfingconcept.rsys --web-dir=www
-
-# 3. Generar el proyecto nativo:
-npx cap add android
-
-# 4. Íconos/splash desde marca/ con Android Studio:
-#    - Abrir android/ en Android Studio → clic derecho en app/res →
-#      New → Image Asset → icono: marca/icon.svg (o logo-icon.svg).
-#    - Splash: marca/splash.svg como drawable (o con la librería
-#      @capacitor/splash-screen y la imagen en android/app/src/main/res/drawable/).
-#    - Paleta: fondo #0A0A0A, acento según marca/.
-
-# 5. Flujo de trabajo habitual:
-npx cap sync android    # copia la web + actualiza plugins
-npx cap open android    # abre Android Studio
-
-# 6. APK release (con SDK + keystore configurado en Android Studio):
-#    Build → Generate Signed Bundle / APK → APK → release.
+cd backend
+go run ./cmd/server
+# Health check: http://localhost:8310/healthz
 ```
 
-Sin Android SDK en esta máquina: no se compila el APK en F0.
+### Frontend (Next.js)
+```powershell
+npm run build
+npx next start -p 3310
+# O en desarrollo (un solo proceso a la vez):
+# npx next dev -p 3310
+```
 
-## Deploy
+## 4. Usuarios de prueba iniciales (Modo Memoria)
 
-**No desplegado aún.** Configuración lista: `vercel.json` con services `web` (Next.js,
-raíz, recibe `BACKEND_URL` por binding al servicio `api`) + `api` (Go, `backend/`),
-igual que Globe. Cuando se despliegue, fijar en Vercel las 7 variables de
-`.env.example` y apuntar `CAP_SERVER_URL` a la URL pública de la web.
+Al arrancar sin variables de Supabase, el backend inicializa automáticamente:
+1. `admin-1` (correo: `admin@rconcept.com`) — Rol Administrador con oficios completos (Camarógrafo, Editor, Subidor).
+2. `cam-1` (correo: `camarografo@rconcept.com`) — Miembro aprobado (Camarógrafo).
+3. `pend-1` (correo: `nuevo@rconcept.com`) — Cuenta pendiente por aprobar.
+
+Para ingresar desde `/login`, basta con ingresar cualquiera de estos correos o IDs.
+
+## 5. Cómo aprobar al primer administrador
+
+En producción con Supabase:
+1. El correo del administrador debe estar incluido en la variable de entorno `ADMIN_EMAILS` (ej: `ADMIN_EMAILS=juanroblox89@gmail.com,admin@rconcept.com`).
+2. Al registrarse e iniciar sesión por primera vez, el backend verifica `ADMIN_EMAILS`, aprueba automáticamente su cuenta y le asigna el flag `es_admin = true`.
+3. Una vez dentro, el administrador puede ir a `/admin` para aprobar nuevos registros, asignar roles y configurar nuevos oficios.
+
+## 6. Verificación y pruebas
+
+- Pruebas unitarias backend: `cd backend; go test ./...; go vet ./...`
+- Pruebas unitarias frontend: `npm test`
+- Typecheck frontend: `npm run typecheck`
+- Linter frontend: `npm run lint`
+- Pruebas E2E completas: `node scripts/e2e.mjs` (genera capturas a 375px y 1280px en `_qa/f0/`).
+- Migraciones a Supabase (cuando se cree el proyecto): `node scripts/migrar.mjs`
