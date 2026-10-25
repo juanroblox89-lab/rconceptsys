@@ -15,16 +15,20 @@ import (
 )
 
 type API struct {
-	Store       store.Store
-	Auth        AuthVerifier
-	ChatLimiter *RateLimiter
+	Store          store.Store
+	Auth           AuthVerifier
+	ChatLimiter    *RateLimiter
+	AuthLimiter    *RateLimiter
+	ModoDemoActivo bool
 }
 
-func NewAPI(s store.Store, auth AuthVerifier) *API {
+func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
 	return &API{
-		Store:       s,
-		Auth:        auth,
-		ChatLimiter: NewRateLimiter(20, time.Minute), // 20 mensajes por minuto por usuario
+		Store:          s,
+		Auth:           auth,
+		ChatLimiter:    NewRateLimiter(20, time.Minute),    // 20 mensajes por minuto por usuario
+		AuthLimiter:    NewRateLimiter(10, 5*time.Minute), // 10 intentos por 5 minutos por IP o correo
+		ModoDemoActivo: modoDemoActivo,
 	}
 }
 
@@ -33,6 +37,12 @@ func (a *API) Routes() http.Handler {
 
 	// Health check
 	mux.HandleFunc("GET /healthz", a.handleHealthz)
+
+	// Auth público
+	mux.HandleFunc("POST /api/auth/registro", a.handleAuthRegistro)
+	mux.HandleFunc("POST /api/auth/login", a.handleAuthLogin)
+	mux.HandleFunc("POST /api/auth/refresh", a.handleAuthRefresh)
+	mux.HandleFunc("POST /api/auth/salir", a.handleAuthSalir)
 
 	// Yo (perfil propio, incluso si está pendiente)
 	mux.HandleFunc("GET /api/yo", a.MiddlewareAuth(a.handleGetYo, false, false))
@@ -76,6 +86,220 @@ func (a *API) corsMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (a *API) getClientIP(r *http.Request) string {
+	xf := r.Header.Get("X-Forwarded-For")
+	if xf != "" {
+		parts := strings.Split(xf, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	ip := r.RemoteAddr
+	if colon := strings.LastIndex(ip, ":"); colon != -1 {
+		return ip[:colon]
+	}
+	return ip
+}
+
+func (a *API) setAuthCookies(w http.ResponseWriter, r *http.Request, accessToken, refreshToken string, expiresIn int) {
+	isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	if expiresIn <= 0 {
+		expiresIn = 3600
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "rc_access_token",
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   expiresIn,
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	if refreshToken != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "rc_refresh_token",
+			Value:    refreshToken,
+			Path:     "/",
+			MaxAge:   30 * 24 * 3600, // 30 días
+			HttpOnly: true,
+			Secure:   isSecure,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+}
+
+func (a *API) clearAuthCookies(w http.ResponseWriter, r *http.Request) {
+	isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	http.SetCookie(w, &http.Cookie{
+		Name:     "rc_access_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "rc_refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (a *API) handleAuthRegistro(w http.ResponseWriter, r *http.Request) {
+	ip := a.getClientIP(r)
+	if !a.AuthLimiter.Permitir("ip:" + ip) {
+		ResponderError(w, http.StatusTooManyRequests, "limite_intentos", "Demasiados intentos. Espera unos minutos antes de volver a intentar.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var req struct {
+		Nombre     string `json:"nombre"`
+		Correo     string `json:"correo"`
+		Contrasena string `json:"contrasena"`
+		Confirmar  string `json:"confirmar"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "El formato de los datos no es válido.")
+		return
+	}
+
+	nombre := strings.TrimSpace(req.Nombre)
+	if len([]rune(nombre)) < 2 || len([]rune(nombre)) > 60 {
+		ResponderError(w, http.StatusBadRequest, "nombre_invalido", "El nombre debe tener entre 2 y 60 caracteres.")
+		return
+	}
+
+	correo := strings.ToLower(strings.TrimSpace(req.Correo))
+	if !strings.Contains(correo, "@") || !strings.Contains(correo, ".") {
+		ResponderError(w, http.StatusBadRequest, "correo_invalido", "Ingresa un correo electrónico válido.")
+		return
+	}
+
+	if !a.AuthLimiter.Permitir("email:" + correo) {
+		ResponderError(w, http.StatusTooManyRequests, "limite_intentos", "Demasiados intentos con este correo. Espera unos minutos.")
+		return
+	}
+
+	if len(req.Contrasena) < 10 {
+		ResponderError(w, http.StatusBadRequest, "contrasena_corta", "La contraseña debe tener al menos 10 caracteres.")
+		return
+	}
+
+	if req.Confirmar != "" && req.Contrasena != req.Confirmar {
+		ResponderError(w, http.StatusBadRequest, "contrasenas_no_coinciden", "Las contraseñas no coinciden.")
+		return
+	}
+
+	perfil, err := a.Auth.Registro(r.Context(), correo, req.Contrasena, nombre)
+	if err == store.ErrConflict {
+		// Respuesta neutra si el correo ya existe
+		ResponderJSON(w, http.StatusOK, map[string]string{
+			"mensaje": "Si el correo no estaba registrado, tu cuenta ha sido creada y queda pendiente de aprobación.",
+		})
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_registro", "No se pudo completar el registro. Intenta más tarde.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusCreated, perfil)
+}
+
+func (a *API) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
+	ip := a.getClientIP(r)
+	if !a.AuthLimiter.Permitir("ip:" + ip) {
+		ResponderError(w, http.StatusTooManyRequests, "limite_intentos", "Demasiados intentos. Espera unos minutos antes de volver a intentar.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var req struct {
+		Correo     string `json:"correo"`
+		Contrasena string `json:"contrasena"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "El formato de los datos no es válido.")
+		return
+	}
+
+	correo := strings.ToLower(strings.TrimSpace(req.Correo))
+	if correo == "" || req.Contrasena == "" {
+		ResponderError(w, http.StatusBadRequest, "credenciales_incompletas", "Ingresa tu correo y contraseña.")
+		return
+	}
+
+	if !a.AuthLimiter.Permitir("email:" + correo) {
+		ResponderError(w, http.StatusTooManyRequests, "limite_intentos", "Demasiados intentos con este correo. Espera unos minutos.")
+		return
+	}
+
+	tok, perfil, err := a.Auth.Login(r.Context(), correo, req.Contrasena)
+	if err != nil || tok == nil || perfil == nil {
+		ResponderError(w, http.StatusUnauthorized, "credenciales_invalidas", "El correo o la contraseña no coinciden.")
+		return
+	}
+
+	if perfil.Estado == store.EstadoSuspendido {
+		ResponderError(w, http.StatusForbidden, "cuenta_suspendida", "Tu cuenta ha sido suspendida. Contacta a un administrador.")
+		return
+	}
+
+	// Entregar cookies httpOnly seguras
+	a.setAuthCookies(w, r, tok.AccessToken, tok.RefreshToken, tok.ExpiresIn)
+
+	ResponderJSON(w, http.StatusOK, map[string]any{
+		"perfil":       perfil,
+		"access_token": tok.AccessToken,
+	})
+}
+
+func (a *API) handleAuthRefresh(w http.ResponseWriter, r *http.Request) {
+	var refreshToken string
+	if c, err := r.Cookie("rc_refresh_token"); err == nil && c.Value != "" {
+		refreshToken = c.Value
+	}
+
+	if refreshToken == "" {
+		var req struct {
+			RefreshToken string `json:"refresh_token"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		refreshToken = req.RefreshToken
+	}
+
+	if refreshToken == "" {
+		ResponderError(w, http.StatusBadRequest, "sin_token_refresco", "No se proporcionó token de refresco.")
+		return
+	}
+
+	tok, err := a.Auth.RefrescarToken(r.Context(), refreshToken)
+	if err != nil || tok == nil {
+		a.clearAuthCookies(w, r)
+		ResponderError(w, http.StatusUnauthorized, "token_expirado", "La sesión no pudo renovarse. Inicia sesión nuevamente.")
+		return
+	}
+
+	a.setAuthCookies(w, r, tok.AccessToken, tok.RefreshToken, tok.ExpiresIn)
+	ResponderJSON(w, http.StatusOK, map[string]any{
+		"access_token": tok.AccessToken,
+		"expires_in":   tok.ExpiresIn,
+	})
+}
+
+func (a *API) handleAuthSalir(w http.ResponseWriter, r *http.Request) {
+	a.clearAuthCookies(w, r)
+	ResponderJSON(w, http.StatusOK, map[string]string{"mensaje": "Sesión cerrada correctamente."})
 }
 
 func (a *API) handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -245,6 +469,11 @@ func (a *API) handleGetChat(w http.ResponseWriter, r *http.Request) {
 		antesID, _ = strconv.ParseInt(s, 10, 64)
 	}
 
+	var despuesID int64
+	if s := r.URL.Query().Get("despues"); s != "" {
+		despuesID, _ = strconv.ParseInt(s, 10, 64)
+	}
+
 	limite := 40
 	if s := r.URL.Query().Get("limite"); s != "" {
 		if l, err := strconv.Atoi(s); err == nil && l > 0 && l <= 100 {
@@ -252,7 +481,7 @@ func (a *API) handleGetChat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	mensajes, err := a.Store.ListarMensajesChat(r.Context(), antesID, limite)
+	mensajes, err := a.Store.ListarMensajesChat(r.Context(), antesID, despuesID, limite)
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_chat", "No se pudieron cargar los mensajes del chat.")
 		return

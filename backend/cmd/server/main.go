@@ -36,19 +36,39 @@ func main() {
 		adminEmails = []string{"admin@rconcept.com", "juanroblox89@gmail.com"}
 	}
 
-	supaURL := os.Getenv("SUPABASE_URL")
-	supaKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	supaURL := strings.TrimSpace(os.Getenv("SUPABASE_URL"))
+	supaKey := strings.TrimSpace(os.Getenv("SUPABASE_SERVICE_ROLE_KEY"))
+	supaAnon := strings.TrimSpace(os.Getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY"))
+	if supaAnon == "" {
+		supaAnon = strings.TrimSpace(os.Getenv("SUPABASE_ANON_KEY"))
+	}
+	modoDemoEnv := strings.TrimSpace(os.Getenv("RC_MODO_DEMO")) == "1"
+
+	// Requisito 1: Modo Demo fuera de producción
+	// "Con el Store de Supabase (o sin RC_MODO_DEMO) la cabecera se IGNORA y el backend
+	// arranca fallando si detecta SUPABASE_URL y RC_MODO_DEMO=1 a la vez."
+	if supaURL != "" && modoDemoEnv {
+		log.Fatalf("[backend] Error fatal de seguridad: SUPABASE_URL configurado pero RC_MODO_DEMO=1 activado a la vez. No se permite modo demo con Supabase.")
+	}
 
 	var s store.Store
 	var auth httpapi.AuthVerifier
+	modoDemoActivo := false
 
 	if supaURL != "" && supaKey != "" {
 		log.Println("[backend] Conectando con cliente Supabase REST...")
-		sc := supa.New(supaURL, supaKey)
+		sc := supa.New(supaURL, supaKey, supaAnon)
 		s = supa.NewSupabaseStore(sc)
 		auth = supa.NewSupabaseAuthVerifier(sc, s, adminEmails)
+		modoDemoActivo = false
 	} else {
-		log.Println("[backend] Modo memoria (sin credenciales Supabase)...")
+		if !modoDemoEnv {
+			log.Println("[backend] AVISO: Sin credenciales de Supabase y sin RC_MODO_DEMO=1. El modo demo se encuentra DESACTIVADO.")
+		} else {
+			log.Println("[backend] MODO DEMO ACTIVO (Store en memoria y autenticación demo habilitada)...")
+			modoDemoActivo = true
+		}
+
 		memStore := store.NewMemoryStore()
 		
 		// Iniciar con usuarios semilla para desarrollo y pruebas
@@ -90,7 +110,7 @@ func main() {
 		auth = httpapi.NewDemoAuthVerifier(memStore, adminEmails)
 	}
 
-	api := httpapi.NewAPI(s, auth)
+	api := httpapi.NewAPI(s, auth, modoDemoActivo)
 	handler := api.Routes()
 
 	server := &http.Server{

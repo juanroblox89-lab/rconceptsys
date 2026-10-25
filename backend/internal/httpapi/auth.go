@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"rconceptsys/backend/internal/store"
+	"rconceptsys/backend/internal/supa"
 )
 
 type contextKey string
@@ -16,6 +17,9 @@ const usuarioKey contextKey = "usuario_autenticado"
 
 type AuthVerifier interface {
 	VerificarToken(ctx context.Context, token string) (*store.Perfil, error)
+	RefrescarToken(ctx context.Context, refreshToken string) (*supa.TokenResponse, error)
+	Login(ctx context.Context, email, password string) (*supa.TokenResponse, *store.Perfil, error)
+	Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error)
 }
 
 type DemoAuthVerifier struct {
@@ -26,8 +30,8 @@ type DemoAuthVerifier struct {
 }
 
 type tokenCacheEntry struct {
-	perfil    *store.Perfil
-	expiraEn  time.Time
+	perfil   *store.Perfil
+	expiraEn time.Time
 }
 
 func NewDemoAuthVerifier(s store.Store, adminEmails []string) *DemoAuthVerifier {
@@ -49,7 +53,6 @@ func (v *DemoAuthVerifier) esAdminEmail(email string) bool {
 }
 
 func (v *DemoAuthVerifier) VerificarToken(ctx context.Context, token string) (*store.Perfil, error) {
-	// Verificar caché rápido en memoria (unos segundos)
 	v.cacheMu.RLock()
 	entry, ok := v.tokenCache[token]
 	v.cacheMu.RUnlock()
@@ -57,7 +60,6 @@ func (v *DemoAuthVerifier) VerificarToken(ctx context.Context, token string) (*s
 		return entry.perfil, nil
 	}
 
-	// Si el token tiene formato Bearer o demo o id de usuario
 	userID := token
 	if strings.HasPrefix(token, "Bearer ") {
 		userID = strings.TrimPrefix(token, "Bearer ")
@@ -65,21 +67,18 @@ func (v *DemoAuthVerifier) VerificarToken(ctx context.Context, token string) (*s
 
 	p, err := v.Store.ObtenerPerfilPorID(ctx, userID)
 	if err != nil {
-		// Probar por correo
 		p, err = v.Store.ObtenerPerfilPorCorreo(ctx, userID)
 	}
 	if err != nil {
 		return nil, store.ErrUnauthorized
 	}
 
-	// Comprobar si su correo está en ADMIN_EMAILS y debe promoverse a admin
 	if v.esAdminEmail(p.Correo) && (!p.EsAdmin || p.Estado != store.EstadoAprobado) {
 		p.EsAdmin = true
 		p.Estado = store.EstadoAprobado
 		_ = v.Store.CrearOActualizarPerfil(ctx, p)
 	}
 
-	// Guardar en cache 5 segundos
 	v.cacheMu.Lock()
 	v.tokenCache[token] = &tokenCacheEntry{
 		perfil:   p,
@@ -90,22 +89,99 @@ func (v *DemoAuthVerifier) VerificarToken(ctx context.Context, token string) (*s
 	return p, nil
 }
 
+func (v *DemoAuthVerifier) RefrescarToken(ctx context.Context, refreshToken string) (*supa.TokenResponse, error) {
+	// En modo demo simula refresh devolviendo token con el mismo usuario
+	return &supa.TokenResponse{
+		AccessToken:  refreshToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    3600,
+	}, nil
+}
+
+func (v *DemoAuthVerifier) Login(ctx context.Context, email, password string) (*supa.TokenResponse, *store.Perfil, error) {
+	eNorm := strings.ToLower(strings.TrimSpace(email))
+	p, err := v.Store.ObtenerPerfilPorCorreo(ctx, eNorm)
+	if err != nil {
+		return nil, nil, store.ErrUnauthorized
+	}
+
+	if v.esAdminEmail(p.Correo) && (!p.EsAdmin || p.Estado != store.EstadoAprobado) {
+		p.EsAdmin = true
+		p.Estado = store.EstadoAprobado
+		_ = v.Store.CrearOActualizarPerfil(ctx, p)
+	}
+
+	tok := &supa.TokenResponse{
+		AccessToken:  p.ID,
+		RefreshToken: "ref-" + p.ID,
+		ExpiresIn:    3600,
+	}
+	tok.User.ID = p.ID
+	tok.User.Email = p.Correo
+
+	return tok, p, nil
+}
+
+func (v *DemoAuthVerifier) Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error) {
+	eNorm := strings.ToLower(strings.TrimSpace(email))
+	// Si ya existe devolvemos ErrConflict
+	if _, err := v.Store.ObtenerPerfilPorCorreo(ctx, eNorm); err == nil {
+		return nil, store.ErrConflict
+	}
+
+	esAdmin := v.esAdminEmail(eNorm)
+	estado := store.EstadoPendiente
+	if esAdmin {
+		estado = store.EstadoAprobado
+	}
+
+	nuevoID := "usr-" + strings.ReplaceAll(eNorm, "@", "-")
+	nuevoID = strings.ReplaceAll(nuevoID, ".", "-")
+
+	perfil := &store.Perfil{
+		ID:       nuevoID,
+		Correo:   eNorm,
+		Nombre:   strings.TrimSpace(nombre),
+		Estado:   estado,
+		EsAdmin:  esAdmin,
+		CreadoEn: time.Now(),
+	}
+
+	if err := v.Store.CrearOActualizarPerfil(ctx, perfil); err != nil {
+		return nil, err
+	}
+	return perfil, nil
+}
+
 // Middleware de autenticación y resolución de usuario
 func (a *API) MiddlewareAuth(next http.HandlerFunc, requiereAprobado bool, requiereAdmin bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		demoUserHeader := r.Header.Get("X-Demo-User")
-
 		var token string
-		if authHeader != "" {
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
-				token = parts[1]
-			} else {
-				token = authHeader
+
+		// 1. Leer de cookie httpOnly (estándar web seguro)
+		if c, err := r.Cookie("rc_access_token"); err == nil && c.Value != "" {
+			token = c.Value
+		}
+
+		// 2. Si no hay cookie, leer de Authorization: Bearer (para APK Capacitor)
+		if token == "" {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader != "" {
+				parts := strings.SplitN(authHeader, " ", 2)
+				if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
+					token = parts[1]
+				} else {
+					token = authHeader
+				}
 			}
-		} else if demoUserHeader != "" {
-			token = demoUserHeader
+		}
+
+		// 3. SOLO si ModoDemoActivo=true, considerar X-Demo-User
+		if token == "" && a.ModoDemoActivo {
+			demoUserHeader := r.Header.Get("X-Demo-User")
+			if demoUserHeader != "" {
+				token = demoUserHeader
+			}
 		}
 
 		if token == "" {
@@ -115,8 +191,22 @@ func (a *API) MiddlewareAuth(next http.HandlerFunc, requiereAprobado bool, requi
 
 		perfil, err := a.Auth.VerificarToken(r.Context(), token)
 		if err != nil || perfil == nil {
-			ResponderError(w, http.StatusUnauthorized, "token_invalido", "Tu sesión ha expirado o no es válida.")
-			return
+			// Intentar refresco si hay refresh_token en cookie
+			refreshed := false
+			if rc, rerr := r.Cookie("rc_refresh_token"); rerr == nil && rc.Value != "" {
+				if tok, terr := a.Auth.RefrescarToken(r.Context(), rc.Value); terr == nil && tok != nil && tok.AccessToken != "" {
+					a.setAuthCookies(w, r, tok.AccessToken, tok.RefreshToken, tok.ExpiresIn)
+					if p2, err2 := a.Auth.VerificarToken(r.Context(), tok.AccessToken); err2 == nil && p2 != nil {
+						perfil = p2
+						refreshed = true
+					}
+				}
+			}
+
+			if !refreshed {
+				ResponderError(w, http.StatusUnauthorized, "token_invalido", "Tu sesión ha expirado o no es válida.")
+				return
+			}
 		}
 
 		if requiereAprobado && perfil.Estado != store.EstadoAprobado {
@@ -133,7 +223,6 @@ func (a *API) MiddlewareAuth(next http.HandlerFunc, requiereAprobado bool, requi
 			return
 		}
 
-		// Inyectar perfil en el contexto
 		ctx := context.WithValue(r.Context(), usuarioKey, perfil)
 		next(w, r.WithContext(ctx))
 	}

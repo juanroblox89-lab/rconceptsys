@@ -72,7 +72,7 @@ type Store interface {
 	ObtenerMiembroEquipo(ctx context.Context, id string) (*Perfil, error)
 
 	// Chat
-	ListarMensajesChat(ctx context.Context, antesID int64, limite int) ([]*ChatMensaje, error)
+	ListarMensajesChat(ctx context.Context, antesID int64, despuesID int64, limite int) ([]*ChatMensaje, error)
 	CrearMensajeChat(ctx context.Context, autorID string, cuerpo string) (*ChatMensaje, error)
 
 	// Roles

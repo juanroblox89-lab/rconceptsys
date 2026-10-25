@@ -167,7 +167,7 @@ func (m *MemoryStore) ObtenerMiembroEquipo(ctx context.Context, id string) (*Per
 	return m.clonarPerfilLocked(p), nil
 }
 
-func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, limite int) ([]*ChatMensaje, error) {
+func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, despuesID int64, limite int) ([]*ChatMensaje, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -175,7 +175,29 @@ func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, lim
 		limite = 40
 	}
 
-	// Recorrer de más recientes a más viejos
+	// Si piden 'despuesID', buscan mensajes más nuevos que despuesID (polling ascendente)
+	if despuesID > 0 {
+		var nuevos []*ChatMensaje
+		for _, msg := range m.mensajes {
+			if msg.BorradoEn != nil {
+				continue
+			}
+			if msg.ID > despuesID {
+				autor := m.perfiles[msg.AutorID]
+				cpMsg := *msg
+				if autor != nil {
+					cpMsg.Autor = m.clonarPerfilLocked(autor)
+				}
+				nuevos = append(nuevos, &cpMsg)
+				if len(nuevos) >= limite {
+					break
+				}
+			}
+		}
+		return nuevos, nil
+	}
+
+	// Recorrer de más recientes a más viejos (paginado hacia atrás con antesID)
 	var filtrados []*ChatMensaje
 	for i := len(m.mensajes) - 1; i >= 0; i-- {
 		msg := m.mensajes[i]

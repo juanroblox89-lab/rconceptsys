@@ -19,27 +19,159 @@ import (
 type Client struct {
 	baseURL    string
 	serviceKey string
+	anonKey    string
 	http       *http.Client
 }
 
 func FromEnv() *Client {
 	base := strings.TrimRight(strings.TrimSpace(os.Getenv("SUPABASE_URL")), "/")
 	key := strings.TrimSpace(os.Getenv("SUPABASE_SERVICE_ROLE_KEY"))
+	anon := strings.TrimSpace(os.Getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY"))
+	if anon == "" {
+		anon = strings.TrimSpace(os.Getenv("SUPABASE_ANON_KEY"))
+	}
 	if base == "" || key == "" {
 		return nil
 	}
-	return New(base, key)
+	return New(base, key, anon)
 }
 
-func New(base, key string) *Client {
+func New(base, serviceKey, anonKey string) *Client {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.MaxIdleConnsPerHost = 32
 	tr.MaxIdleConns = 64
 	return &Client{
 		baseURL:    strings.TrimRight(base, "/"),
-		serviceKey: key,
+		serviceKey: serviceKey,
+		anonKey:    anonKey,
 		http:       &http.Client{Timeout: 10 * time.Second, Transport: tr},
 	}
+}
+
+// TokenResponse almacena la respuesta de token de Supabase Auth
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	User         struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+	} `json:"user"`
+}
+
+// AdminCreateUser crea un usuario usando la Admin API de Supabase Auth
+// POST /auth/v1/admin/users con email_confirm: true (sin enviar correos).
+func (c *Client) AdminCreateUser(ctx context.Context, email, password, nombre string) (string, error) {
+	u := c.baseURL + "/auth/v1/admin/users"
+	payload := map[string]any{
+		"email":         email,
+		"password":      password,
+		"email_confirm": true,
+		"user_metadata": map[string]any{
+			"nombre": nombre,
+		},
+	}
+
+	var res struct {
+		ID  string `json:"id"`
+		Msg string `json:"msg"`
+	}
+	err := c.do(ctx, http.MethodPost, u, payload, "", &res)
+	if err != nil {
+		return "", err
+	}
+	if res.ID == "" {
+		return "", errors.New("supabase: no se obtuvo id de usuario")
+	}
+	return res.ID, nil
+}
+
+// TokenPassword autentica al usuario contra {SUPABASE_URL}/auth/v1/token?grant_type=password con anonKey
+func (c *Client) TokenPassword(ctx context.Context, email, password string) (*TokenResponse, error) {
+	u := c.baseURL + "/auth/v1/token?grant_type=password"
+	payload := map[string]string{
+		"email":    email,
+		"password": password,
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+
+	key := c.anonKey
+	if key == "" {
+		key = c.serviceKey
+	}
+
+	req.Header.Set("apikey", key)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		rb, _ := io.ReadAll(resp.Body)
+		return nil, &Error{Status: resp.StatusCode, Body: string(rb)}
+	}
+
+	var tok TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+		return nil, err
+	}
+	return &tok, nil
+}
+
+// TokenRefresh renueva el access_token usando {SUPABASE_URL}/auth/v1/token?grant_type=refresh_token
+func (c *Client) TokenRefresh(ctx context.Context, refreshToken string) (*TokenResponse, error) {
+	u := c.baseURL + "/auth/v1/token?grant_type=refresh_token"
+	payload := map[string]string{
+		"refresh_token": refreshToken,
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+
+	key := c.anonKey
+	if key == "" {
+		key = c.serviceKey
+	}
+
+	req.Header.Set("apikey", key)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		rb, _ := io.ReadAll(resp.Body)
+		return nil, &Error{Status: resp.StatusCode, Body: string(rb)}
+	}
+
+	var tok TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+		return nil, err
+	}
+	return &tok, nil
 }
 
 type Error struct {

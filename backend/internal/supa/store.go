@@ -232,17 +232,22 @@ func (s *SupabaseStore) ObtenerMiembroEquipo(ctx context.Context, id string) (*s
 	return convertirPerfil(&rows[0], roles), nil
 }
 
-func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, limite int) ([]*store.ChatMensaje, error) {
+func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, despuesID int64, limite int) ([]*store.ChatMensaje, error) {
 	if limite <= 0 || limite > 100 {
 		limite = 40
 	}
 
 	q := url.Values{}
 	q.Set("borrado_en", "is.null")
-	if antesID > 0 {
-		q.Set("id", "lt."+strconv.FormatInt(antesID, 10))
+	if despuesID > 0 {
+		q.Set("id", "gt."+strconv.FormatInt(despuesID, 10))
+		q.Set("order", "id.asc")
+	} else {
+		if antesID > 0 {
+			q.Set("id", "lt."+strconv.FormatInt(antesID, 10))
+		}
+		q.Set("order", "id.desc")
 	}
-	q.Set("order", "id.desc")
 	q.Set("limit", strconv.Itoa(limite))
 	q.Set("select", "id,autor_id,cuerpo,creado_en,editado_en,borrado_en,perfiles(*)")
 
@@ -571,7 +576,6 @@ func (v *SupabaseAuthVerifier) VerificarToken(ctx context.Context, token string)
 
 	p, err := v.store.ObtenerPerfilPorID(ctx, id)
 	if err != nil {
-		// Crear perfil si no existe todavía
 		p = &store.Perfil{
 			ID:       id,
 			Correo:   email,
@@ -597,4 +601,59 @@ func (v *SupabaseAuthVerifier) VerificarToken(ctx context.Context, token string)
 	v.cacheMu.Unlock()
 
 	return p, nil
+}
+
+func (v *SupabaseAuthVerifier) RefrescarToken(ctx context.Context, refreshToken string) (*TokenResponse, error) {
+	return v.client.TokenRefresh(ctx, refreshToken)
+}
+
+func (v *SupabaseAuthVerifier) Login(ctx context.Context, email, password string) (*TokenResponse, *store.Perfil, error) {
+	tok, err := v.client.TokenPassword(ctx, email, password)
+	if err != nil {
+		return nil, nil, store.ErrUnauthorized
+	}
+
+	p, err := v.VerificarToken(ctx, tok.AccessToken)
+	if err != nil {
+		return nil, nil, err
+	}
+	return tok, p, nil
+}
+
+func (v *SupabaseAuthVerifier) Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error) {
+	// Verificar si ya existe en la base
+	eNorm := strings.ToLower(strings.TrimSpace(email))
+	if _, err := v.store.ObtenerPerfilPorCorreo(ctx, eNorm); err == nil {
+		return nil, store.ErrConflict
+	}
+
+	// Crear usuario en Supabase Auth Admin API (email_confirm: true, sin emails)
+	userID, err := v.client.AdminCreateUser(ctx, eNorm, password, nombre)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "already") || strings.Contains(strings.ToLower(err.Error()), "registered") {
+			return nil, store.ErrConflict
+		}
+		return nil, err
+	}
+
+	esAdmin := v.esAdminEmail(eNorm)
+	estado := store.EstadoPendiente
+	if esAdmin {
+		estado = store.EstadoAprobado
+	}
+
+	perfil := &store.Perfil{
+		ID:       userID,
+		Correo:   eNorm,
+		Nombre:   strings.TrimSpace(nombre),
+		Estado:   estado,
+		EsAdmin:  esAdmin,
+		CreadoEn: time.Now(),
+	}
+
+	if err := v.store.CrearOActualizarPerfil(ctx, perfil); err != nil {
+		return nil, err
+	}
+
+	return perfil, nil
 }

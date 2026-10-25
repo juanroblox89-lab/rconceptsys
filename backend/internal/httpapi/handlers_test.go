@@ -16,7 +16,7 @@ func configurarTestAPI() (*httpapi.API, *store.MemoryStore) {
 	s := store.NewMemoryStore()
 	adminEmails := []string{"juan@rconcept.com"}
 	auth := httpapi.NewDemoAuthVerifier(s, adminEmails)
-	api := httpapi.NewAPI(s, auth)
+	api := httpapi.NewAPI(s, auth, true) // modoDemoActivo = true para tests existentes
 	return api, s
 }
 
