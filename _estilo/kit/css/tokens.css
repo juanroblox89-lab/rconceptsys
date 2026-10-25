@@ -1,0 +1,159 @@
+:root {
+  /* Superficie neumorfica y luces */
+  --rc-superficie: #ECEEF3;
+  --rc-superficie-clara: #F2F4F8;
+  --rc-superficie-hundida: #E5E8F0;
+  --rc-luz: #FFFFFF;
+  --rc-sombra: #A3ACBE;
+  --rc-sombra-suave: rgba(163, 172, 190, 0.42);
+  --rc-sombra-fuerte: rgba(163, 172, 190, 0.62);
+  --rc-luz-suave: rgba(255, 255, 255, 0.88);
+  --rc-luz-fuerte: rgba(255, 255, 255, 0.96);
+
+  /* Escala de grises y texto */
+  --rc-gris-50: #F4F5F8;
+  --rc-gris-100: #E3E7EE;
+  --rc-gris-300: #C7CDD8;
+  --rc-gris-500: #8A93A5;
+  --rc-gris-700: #4A5262;
+  --rc-gris-900: #1F2430;
+  --rc-texto: #1F2430;
+  --rc-texto-secundario: #6B7385;
+  --rc-texto-tenue: #8A93A5;
+
+  /* Iconos */
+  --rc-icono: var(--rc-gris-700);
+  --rc-icono-activo: var(--rc-azul-texto);
+
+  /* Colores de acento y semanticos */
+  --rc-azul: #5AA9FF;
+  --rc-azul-suave: #EAF3FF;
+  --rc-azul-texto: #2F7FE0;
+  --rc-azul-oscuro: #134E9B;
+  --rc-azul-halo: rgba(90, 169, 255, 0.28);
+  --rc-azul-tinte: rgba(90, 169, 255, 0.14);
+
+  --rc-rojo: #E5484D;
+  --rc-rojo-suave: #FDECEC;
+  --rc-rojo-texto: #C2383D;
+  --rc-rojo-halo: rgba(229, 72, 77, 0.24);
+  --rc-rojo-tinte: rgba(229, 72, 77, 0.14);
+
+  --rc-verde: #2FA66A;
+  --rc-verde-suave: #E7F6EE;
+  --rc-verde-texto: #238252;
+  --rc-verde-tinte: rgba(47, 166, 106, 0.13);
+
+  --rc-ambar: #E8A33D;
+  --rc-ambar-suave: #FDF3E4;
+  --rc-ambar-texto: #B9781A;
+  --rc-ambar-tinte: rgba(232, 163, 61, 0.14);
+
+  --rc-morado: #9B6BFF;
+
+  /* Material de vidrio (Liquid Glass) */
+  --rc-vidrio-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.18) 55%, rgba(255, 255, 255, 0.08) 100%);
+  --rc-vidrio-azul-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.44) 0%, rgba(162, 208, 255, 0.28) 52%, rgba(90, 169, 255, 0.22) 100%);
+  --rc-vidrio-rojo-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.44) 0%, rgba(255, 182, 185, 0.28) 52%, rgba(229, 72, 77, 0.20) 100%);
+  --rc-vidrio-verde-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(176, 234, 205, 0.28) 55%, rgba(47, 166, 106, 0.16) 100%);
+  --rc-vidrio-ambar-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(250, 218, 170, 0.28) 55%, rgba(232, 163, 61, 0.16) 100%);
+  --rc-vidrio-oscuro-bg: linear-gradient(135deg, rgba(74, 86, 110, 0.86) 0%, rgba(46, 55, 74, 0.92) 100%);
+  --rc-vidrio-borde: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.42) 48%, rgba(255, 255, 255, 0.12) 100%);
+  --rc-vidrio-borde-azul: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(90, 169, 255, 0.65) 55%, rgba(90, 169, 255, 0.25) 100%);
+  --rc-vidrio-borde-rojo: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(229, 72, 77, 0.55) 55%, rgba(229, 72, 77, 0.22) 100%);
+  --rc-vidrio-brillo-esquina: radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 62%);
+  --rc-vidrio-filtro: blur(14px) saturate(1.6) brightness(1.05);
+  --rc-vidrio-filtro-svg: url(#rc-refraccion) blur(14px) saturate(1.6) brightness(1.05);
+  --rc-mancha-blur: blur(16px);
+
+  /* Elevaciones neumorficas (luz siempre arriba-izquierda) */
+  --rc-elev-plano: 0 0 0 rgba(0, 0, 0, 0), inset 0 0 0 1px rgba(199, 205, 216, 0.55);
+  --rc-elev-relieve-sm: -3px -3px 6px var(--rc-luz-suave), 3px 3px 7px var(--rc-sombra-suave);
+  --rc-elev-relieve-md: -5px -5px 10px var(--rc-luz-fuerte), 5px 5px 11px var(--rc-sombra-suave);
+  --rc-elev-relieve-lg: -8px -8px 16px var(--rc-luz-fuerte), 8px 8px 18px var(--rc-sombra-fuerte);
+  --rc-elev-hundido-sm: inset 2px 2px 5px rgba(163, 172, 190, 0.52), inset -2px -2px 5px var(--rc-luz-suave);
+  --rc-elev-hundido-md: inset 3px 3px 7px rgba(163, 172, 190, 0.62), inset -3px -3px 7px var(--rc-luz-fuerte);
+  --rc-elev-vidrio: inset 1px 1px 1px rgba(255, 255, 255, 0.9), inset -1px -1px 2px rgba(255, 255, 255, 0.35), 0 8px 24px rgba(30, 40, 60, 0.10);
+  --rc-elev-vidrio-azul: inset 1px 1px 1px rgba(255, 255, 255, 0.92), inset -1px -1px 2px rgba(90, 169, 255, 0.35), 0 8px 20px rgba(47, 127, 224, 0.22);
+  --rc-elev-vidrio-rojo: inset 1px 1px 1px rgba(255, 255, 255, 0.92), inset -1px -1px 2px rgba(229, 72, 77, 0.30), 0 8px 20px rgba(229, 72, 77, 0.20);
+  --rc-elev-foco-azul: inset 2px 2px 5px rgba(163, 172, 190, 0.38), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1.5px var(--rc-azul), 0 0 10px var(--rc-azul-halo);
+  --rc-elev-radio-activo: 0 0 0 1.5px var(--rc-azul-texto);
+  --rc-elev-presencia: 0 0 0 1.5px var(--rc-superficie);
+  --rc-elev-error-rojo: inset 2px 2px 5px rgba(163, 172, 190, 0.38), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1px var(--rc-rojo), 0 0 8px var(--rc-rojo-halo);
+  --rc-elev-perilla: 0 2px 5px var(--rc-sombra-suave), inset 0 1px 1px var(--rc-luz);
+
+  /* Radios de borde */
+  --rc-radio-xs: 6px;
+  --rc-radio-sm: 8px;
+  --rc-radio-md: 12px;
+  --rc-radio-lg: 16px;
+  --rc-radio-xl: 20px;
+  --rc-radio-pildora: 999px;
+
+  /* Escala de espaciado */
+  --rc-esp-2: 2px;
+  --rc-esp-4: 4px;
+  --rc-esp-6: 6px;
+  --rc-esp-8: 8px;
+  --rc-esp-10: 10px;
+  --rc-esp-12: 12px;
+  --rc-esp-14: 14px;
+  --rc-esp-16: 16px;
+  --rc-esp-20: 20px;
+  --rc-esp-24: 24px;
+
+  /* Tipografia */
+  --rc-fuente: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --rc-fs-titulo-pagina: 20px;
+  --rc-lh-titulo-pagina: 28px;
+  --rc-fs-titulo-seccion: 15px;
+  --rc-lh-titulo-seccion: 22px;
+  --rc-fs-cuerpo: 13px;
+  --rc-lh-cuerpo: 20px;
+  --rc-fs-secundario: 12px;
+  --rc-lh-secundario: 18px;
+  --rc-fs-etiqueta: 11px;
+  --rc-lh-etiqueta: 16px;
+  --rc-ls-etiqueta: 0.06em;
+  --rc-fs-micro: 10px;
+  --rc-lh-micro: 14px;
+  --rc-fs-numero-grande: 24px;
+  --rc-lh-numero-grande: 30px;
+
+  --rc-fw-regular: 400;
+  --rc-fw-medio: 500;
+  --rc-fw-semibold: 600;
+  --rc-fw-bold: 700;
+
+  /* Alturas de control (ningun boton pasa de 36px) */
+  --rc-alto-xs: 22px;
+  --rc-alto-sm: 26px;
+  --rc-alto-md: 30px;
+  --rc-alto-lg: 32px;
+  --rc-alto-max: 36px;
+
+  /* Transiciones */
+  --rc-curva: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --rc-transicion-rapida: 120ms var(--rc-curva);
+  --rc-transicion: 160ms var(--rc-curva);
+  --rc-transicion-lenta: 200ms var(--rc-curva);
+  --rc-fs-xs: 9.5px;
+  --rc-fs-xxs: 9px;
+  --rc-fs-nano: 8px;
+  --rc-fs-pico: 7px;
+  --rc-lh-xs: 13px;
+  --rc-lh-xxs: 12px;
+  --rc-esp-1: 1px;
+  --rc-esp-3: 3px;
+  --rc-esp-5: 5px;
+  --rc-esp-7: 7px;
+  --rc-esp-15: 15px;
+  --rc-esp-17: 17px;
+  --rc-esp-18: 18px;
+  --rc-alto-20: 20px;
+  --rc-alto-24: 24px;
+  --rc-alto-28: 28px;
+  --rc-alto-34: 34px;
+  --rc-alto-40: 40px;
+  --rc-alto-44: 44px;
+}
