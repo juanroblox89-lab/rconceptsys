@@ -49,7 +49,23 @@ export default function AdminPage() {
     };
   }, []);
 
+  const [rolesPendientes, setRolesPendientes] = useState<Record<string, number[]>>({});
+
+  const handleToggleRolPendiente = (miembroId: string, rolId: number) => {
+    setRolesPendientes((prev) => {
+      const actuales = prev[miembroId] || [];
+      if (actuales.includes(rolId)) {
+        return { ...prev, [miembroId]: actuales.filter((id) => id !== rolId) };
+      }
+      return { ...prev, [miembroId]: [...actuales, rolId] };
+    });
+  };
+
   const handleAprobar = async (id: string) => {
+    const rolesElegidos = rolesPendientes[id] || [];
+    if (rolesElegidos.length > 0) {
+      await api.adminSetRoles(id, rolesElegidos);
+    }
     await api.adminAprobar(id);
     await cargarDatos();
   };
@@ -149,7 +165,8 @@ export default function AdminPage() {
                         <td>
                           <div className={styles.roleSelectContainer}>
                             {roles.map((r) => {
-                              const activo = m.roles?.some((mr) => mr.id === r.id);
+                              const elegidos = rolesPendientes[m.id] || [];
+                              const activo = elegidos.includes(r.id);
                               return (
                                 <button
                                   key={r.id}
@@ -157,8 +174,8 @@ export default function AdminPage() {
                                   className={`${styles.roleToggle} ${
                                     activo ? styles.roleToggleActive : ""
                                   }`}
-                                  style={{ color: r.color }}
-                                  onClick={() => handleToggleRol(m, r.id)}
+                                  style={activo ? { color: r.color, borderColor: r.color } : { color: "var(--rc-label-tertiary)", borderColor: "var(--rc-border)" }}
+                                  onClick={() => handleToggleRolPendiente(m.id, r.id)}
                                 >
                                   {r.nombre}
                                 </button>

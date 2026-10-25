@@ -119,7 +119,8 @@
   cursor: pointer;
   border: 1px solid var(--rc-border);
   background: transparent;
-  color: var(--rc-label-secondary);
+  color: var(--rc-label-tertiary);
+  transition: all var(--rc-dur-fast) var(--rc-ease);
 }
 
 .roleToggleActive {
