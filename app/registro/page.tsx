@@ -37,15 +37,11 @@ export default function RegistroPage() {
     try {
       await api.registro(nombre.trim(), correo.trim(), password, confirmar);
       // Tras registrarse correctamente, iniciamos sesión para obtener la cookie httpOnly
-      try {
-        const loginRes = await api.login(correo.trim(), password);
-        if (loginRes.perfil.estado === "pendiente") {
-          router.push("/pendiente");
-        } else {
-          router.push("/");
-        }
-      } catch {
+      const loginRes = await api.login(correo.trim(), password);
+      if (loginRes.perfil.estado === "pendiente") {
         router.push("/pendiente");
+      } else {
+        router.push("/");
       }
     } catch (err: unknown) {
       const e = err as { message?: string };
