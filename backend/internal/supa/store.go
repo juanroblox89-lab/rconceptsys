@@ -57,13 +57,21 @@ type dbChatMensaje struct {
 	Autor     *dbPerfil `json:"perfiles"`
 }
 
-// Modelos DB PostgREST para F2
+// Modelos DB PostgREST para F2 y F3
+type dbCliente struct {
+	ID       int    `json:"id"`
+	Nombre   string `json:"nombre"`
+	Activo   bool   `json:"activo"`
+	CreadoEn string `json:"creado_en"`
+}
+
 type dbTipoTrabajo struct {
 	ID       int    `json:"id"`
 	Clave    string `json:"clave"`
 	Nombre   string `json:"nombre"`
 	RolID    *int   `json:"rol_id"`
 	Precio   int    `json:"precio"`
+	Unidad   string `json:"unidad"`
 	Activo   bool   `json:"activo"`
 	Orden    int    `json:"orden"`
 	CreadoEn string `json:"creado_en"`
@@ -71,25 +79,30 @@ type dbTipoTrabajo struct {
 }
 
 type dbTarea struct {
-	ID              int64          `json:"id"`
-	TipoID          int            `json:"tipo_id"`
-	Titulo          string         `json:"titulo"`
-	Descripcion     *string        `json:"descripcion"`
-	AsignadoA       string         `json:"asignado_a"`
-	CreadoPor       string         `json:"creado_por"`
-	Estado          string         `json:"estado"`
-	FechaLimite     *string        `json:"fecha_limite"`
-	NotaPersona     *string        `json:"nota_persona"`
-	MotivoRechazo   *string        `json:"motivo_rechazo"`
-	PrecioCongelado *int           `json:"precio_congelado"`
-	FacturaID       *int64         `json:"factura_id"`
-	CreadaEn        string         `json:"creada_en"`
-	HechaEn         *string        `json:"hecha_en"`
-	ResueltaEn      *string        `json:"resuelta_en"`
-	ResueltaPor     *string        `json:"resuelta_por"`
-	Tipo            *dbTipoTrabajo `json:"tipos_trabajo"`
-	Asignado        *dbPerfil      `json:"asignado"`
-	Creador         *dbPerfil      `json:"creador"`
+	ID                      int64          `json:"id"`
+	TipoID                  int            `json:"tipo_id"`
+	ClienteID               *int           `json:"cliente_id"`
+	Titulo                  string         `json:"titulo"`
+	Descripcion             *string        `json:"descripcion"`
+	AsignadoA               string         `json:"asignado_a"`
+	CreadoPor               string         `json:"creado_por"`
+	Estado                  string         `json:"estado"`
+	FechaLimite             *string        `json:"fecha_limite"`
+	NotaPersona             *string        `json:"nota_persona"`
+	MotivoRechazo           *string        `json:"motivo_rechazo"`
+	Cantidad                *int           `json:"cantidad"`
+	CantidadAceptada        *int           `json:"cantidad_aceptada"`
+	PrecioUnitarioCongelado *int64         `json:"precio_unitario_congelado"`
+	PrecioCongelado         *int64         `json:"precio_congelado"`
+	FacturaID               *int64         `json:"factura_id"`
+	CreadaEn                string         `json:"creada_en"`
+	HechaEn                 *string        `json:"hecha_en"`
+	ResueltaEn              *string        `json:"resuelta_en"`
+	ResueltaPor             *string        `json:"resuelta_por"`
+	Tipo                    *dbTipoTrabajo `json:"tipos_trabajo"`
+	Cliente                 *dbCliente     `json:"clientes"`
+	Asignado                *dbPerfil      `json:"asignado"`
+	Creador                 *dbPerfil      `json:"creador"`
 }
 
 type dbFactura struct {
@@ -576,12 +589,17 @@ func convertirTipoTrabajo(dt *dbTipoTrabajo) *store.TipoTrabajo {
 		return nil
 	}
 	t, _ := time.Parse(time.RFC3339, dt.CreadoEn)
+	unidad := dt.Unidad
+	if unidad == "" {
+		unidad = "trabajo"
+	}
 	res := &store.TipoTrabajo{
 		ID:       dt.ID,
 		Clave:    dt.Clave,
 		Nombre:   dt.Nombre,
 		RolID:    dt.RolID,
 		Precio:   dt.Precio,
+		Unidad:   unidad,
 		Activo:   dt.Activo,
 		Orden:    dt.Orden,
 		CreadoEn: t,
@@ -597,6 +615,19 @@ func convertirTipoTrabajo(dt *dbTipoTrabajo) *store.TipoTrabajo {
 		}
 	}
 	return res
+}
+
+func convertirCliente(dc *dbCliente) *store.Cliente {
+	if dc == nil {
+		return nil
+	}
+	t, _ := time.Parse(time.RFC3339, dc.CreadoEn)
+	return &store.Cliente{
+		ID:       dc.ID,
+		Nombre:   dc.Nombre,
+		Activo:   dc.Activo,
+		CreadoEn: t,
+	}
 }
 
 func parseTimePtr(s *string) *time.Time {
@@ -616,23 +647,28 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 	}
 	creadaEn, _ := time.Parse(time.RFC3339, dt.CreadaEn)
 	res := &store.Tarea{
-		ID:              dt.ID,
-		TipoID:          dt.TipoID,
-		Titulo:          dt.Titulo,
-		Descripcion:     dt.Descripcion,
-		AsignadoA:       dt.AsignadoA,
-		CreadoPor:       dt.CreadoPor,
-		Estado:          store.EstadoTarea(dt.Estado),
-		FechaLimite:     dt.FechaLimite,
-		NotaPersona:     dt.NotaPersona,
-		MotivoRechazo:   dt.MotivoRechazo,
-		PrecioCongelado: dt.PrecioCongelado,
-		FacturaID:       dt.FacturaID,
-		CreadaEn:        creadaEn,
-		HechaEn:         parseTimePtr(dt.HechaEn),
-		ResueltaEn:      parseTimePtr(dt.ResueltaEn),
-		ResueltaPor:     dt.ResueltaPor,
-		Tipo:            convertirTipoTrabajo(dt.Tipo),
+		ID:                      dt.ID,
+		TipoID:                  dt.TipoID,
+		ClienteID:               dt.ClienteID,
+		Titulo:                  dt.Titulo,
+		Descripcion:             dt.Descripcion,
+		AsignadoA:               dt.AsignadoA,
+		CreadoPor:               dt.CreadoPor,
+		Estado:                  store.EstadoTarea(dt.Estado),
+		FechaLimite:             dt.FechaLimite,
+		NotaPersona:             dt.NotaPersona,
+		MotivoRechazo:           dt.MotivoRechazo,
+		Cantidad:                dt.Cantidad,
+		CantidadAceptada:        dt.CantidadAceptada,
+		PrecioUnitarioCongelado: dt.PrecioUnitarioCongelado,
+		PrecioCongelado:         dt.PrecioCongelado,
+		FacturaID:               dt.FacturaID,
+		CreadaEn:                creadaEn,
+		HechaEn:                 parseTimePtr(dt.HechaEn),
+		ResueltaEn:              parseTimePtr(dt.ResueltaEn),
+		ResueltaPor:             dt.ResueltaPor,
+		Tipo:                    convertirTipoTrabajo(dt.Tipo),
+		Cliente:                 convertirCliente(dt.Cliente),
 	}
 	if dt.Asignado != nil {
 		res.Asignado = convertirPerfil(dt.Asignado, nil)
@@ -678,11 +714,16 @@ func (s *SupabaseStore) ObtenerTipoTrabajoPorID(ctx context.Context, id int) (*s
 }
 
 func (s *SupabaseStore) CrearTipoTrabajo(ctx context.Context, t *store.TipoTrabajo) (*store.TipoTrabajo, error) {
+	unidad := "trabajo"
+	if t.Unidad != "" {
+		unidad = t.Unidad
+	}
 	payload := map[string]any{
 		"clave":  strings.ToLower(strings.TrimSpace(t.Clave)),
 		"nombre": strings.TrimSpace(t.Nombre),
 		"rol_id": t.RolID,
 		"precio": t.Precio,
+		"unidad": unidad,
 		"activo": t.Activo,
 		"orden":  t.Orden,
 	}
@@ -719,16 +760,18 @@ func (s *SupabaseStore) ActualizarTipoTrabajo(ctx context.Context, id int, campo
 func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.Tarea, error) {
 	payload := map[string]any{
 		"tipo_id":      t.TipoID,
+		"cliente_id":   t.ClienteID,
 		"titulo":       strings.TrimSpace(t.Titulo),
 		"descripcion":  t.Descripcion,
 		"asignado_a":   t.AsignadoA,
 		"creado_por":   t.CreadoPor,
 		"estado":       store.EstadoTareaPendiente,
 		"fecha_limite": t.FechaLimite,
+		"cantidad":     t.Cantidad,
 	}
 	var rows []dbTarea
 	q := url.Values{}
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 	if err := s.client.REST(ctx, "POST", "tareas", q, payload, "return=representation", &rows); err != nil {
 		return nil, err
 	}
@@ -741,7 +784,7 @@ func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.
 func (s *SupabaseStore) ObtenerTareaPorID(ctx context.Context, id int64) (*store.Tarea, error) {
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
@@ -755,12 +798,15 @@ func (s *SupabaseStore) ObtenerTareaPorID(ctx context.Context, id int64) (*store
 
 func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTareas) ([]*store.Tarea, error) {
 	q := url.Values{}
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 	if filtro.Estado != nil {
 		q.Set("estado", fmt.Sprintf("eq.%s", *filtro.Estado))
 	}
 	if filtro.AsignadoA != nil {
 		q.Set("asignado_a", fmt.Sprintf("eq.%s", *filtro.AsignadoA))
+	}
+	if filtro.ClienteID != nil {
+		q.Set("cliente_id", fmt.Sprintf("eq.%d", *filtro.ClienteID))
 	}
 	q.Set("order", "creada_en.desc")
 
@@ -789,7 +835,7 @@ func (s *SupabaseStore) ContarTareasPorRevisar(ctx context.Context) (int, error)
 	return len(rows), nil
 }
 
-func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string) (*store.Tarea, error) {
+func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int) (*store.Tarea, error) {
 	tarea, err := s.ObtenerTareaPorID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -807,9 +853,19 @@ func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignado
 		"nota_persona":   nota,
 		"motivo_rechazo": nil,
 	}
+
+	if tarea.Tipo != nil && tarea.Tipo.Unidad == "minuto" {
+		if cantidad == nil || *cantidad < 1 || *cantidad > 1440 {
+			return nil, fmt.Errorf("%w: los minutos deben estar entre 1 y 1440", store.ErrValidation)
+		}
+		payload["cantidad"] = *cantidad
+	} else {
+		payload["cantidad"] = nil
+	}
+
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
@@ -821,18 +877,15 @@ func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignado
 	return convertirTarea(&rows[0]), nil
 }
 
-func (s *SupabaseStore) AceptarTarea(ctx context.Context, id int64, adminID string) (*store.Tarea, error) {
+func (s *SupabaseStore) AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*store.Tarea, error) {
 	payload := map[string]any{
 		"p_tarea": id,
 		"p_admin": adminID,
 	}
-	var res struct {
-		TareaID         int64  `json:"tarea_id"`
-		FacturaID       int64  `json:"factura_id"`
-		PrecioCongelado int    `json:"precio_congelado"`
-		Estado          string `json:"estado"`
-		ResueltaEn      string `json:"resuelta_en"`
+	if cantidad != nil {
+		payload["p_cantidad"] = *cantidad
 	}
+	var res map[string]any
 	if err := s.client.RPC(ctx, "aceptar_tarea", payload, &res); err != nil {
 		return nil, err
 	}
@@ -856,7 +909,7 @@ func (s *SupabaseStore) RechazarTarea(ctx context.Context, id int64, adminID str
 	}
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
@@ -884,7 +937,7 @@ func (s *SupabaseStore) CancelarTarea(ctx context.Context, id int64, adminID str
 	}
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
@@ -900,14 +953,14 @@ func (s *SupabaseStore) cargarLineasFactura(ctx context.Context, f *store.Factur
 	q := url.Values{}
 	q.Set("factura_id", fmt.Sprintf("eq.%d", f.ID))
 	q.Set("estado", "eq.aceptada")
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 	q.Set("order", "id.asc")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
 		return err
 	}
-	total := 0
+	var total int64 = 0
 	lineas := make([]*store.Tarea, len(rows))
 	for i := range rows {
 		t := convertirTarea(&rows[i])
@@ -1080,6 +1133,201 @@ func (s *SupabaseStore) MarcarFacturaPagada(ctx context.Context, id int64, admin
 		return nil, err
 	}
 	return res, nil
+}
+
+// ==========================================
+// F3: Implementación Clientes (Supabase)
+// ==========================================
+
+func (s *SupabaseStore) ListarClientes(ctx context.Context, soloActivos bool) ([]*store.Cliente, error) {
+	q := url.Values{}
+	q.Set("select", "*")
+	if soloActivos {
+		q.Set("activo", "eq.true")
+	}
+	q.Set("order", "nombre.asc")
+
+	var rows []dbCliente
+	if err := s.client.REST(ctx, "GET", "clientes", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	res := make([]*store.Cliente, len(rows))
+	for i := range rows {
+		res[i] = convertirCliente(&rows[i])
+	}
+	return res, nil
+}
+
+func (s *SupabaseStore) ObtenerClientePorID(ctx context.Context, id int) (*store.Cliente, error) {
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*")
+
+	var rows []dbCliente
+	if err := s.client.REST(ctx, "GET", "clientes", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirCliente(&rows[0]), nil
+}
+
+func (s *SupabaseStore) CrearCliente(ctx context.Context, nombre string) (*store.Cliente, error) {
+	nombreLimpio := strings.TrimSpace(nombre)
+	if len(nombreLimpio) < 1 || len(nombreLimpio) > 80 {
+		return nil, fmt.Errorf("%w: el nombre del cliente debe tener entre 1 y 80 caracteres", store.ErrValidation)
+	}
+
+	payload := map[string]any{
+		"nombre": nombreLimpio,
+		"activo": true,
+	}
+	var rows []dbCliente
+	q := url.Values{}
+	q.Set("select", "*")
+	if err := s.client.REST(ctx, "POST", "clientes", q, payload, "return=representation", &rows); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(err.Error(), "23505") {
+			return nil, fmt.Errorf("%w: ya existe un cliente con ese nombre", store.ErrConflict)
+		}
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirCliente(&rows[0]), nil
+}
+
+func (s *SupabaseStore) ActualizarCliente(ctx context.Context, id int, campos map[string]any) (*store.Cliente, error) {
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*")
+
+	var rows []dbCliente
+	if err := s.client.REST(ctx, "PATCH", "clientes", q, campos, "return=representation", &rows); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(err.Error(), "23505") {
+			return nil, fmt.Errorf("%w: ya existe un cliente con ese nombre", store.ErrConflict)
+		}
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirCliente(&rows[0]), nil
+}
+
+// ==========================================
+// F3: Implementación Estadísticas (Supabase)
+// ==========================================
+
+func (s *SupabaseStore) ObtenerEstadisticasYo(ctx context.Context, perfilID string, filtro store.FiltroEstadisticasYo) (*store.EstadisticasYoResponse, error) {
+	var todasTareas []*store.Tarea
+	limit := 1000
+	offset := 0
+
+	for {
+		q := url.Values{}
+		q.Set("asignado_a", fmt.Sprintf("eq.%s", perfilID))
+		q.Set("estado", "eq.aceptada")
+		q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*)")
+		q.Set("order", "resuelta_en.desc")
+		q.Set("limit", fmt.Sprintf("%d", limit))
+		q.Set("offset", fmt.Sprintf("%d", offset))
+
+		var rows []dbTarea
+		if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		for i := range rows {
+			todasTareas = append(todasTareas, convertirTarea(&rows[i]))
+		}
+		if len(rows) < limit {
+			break
+		}
+		offset += limit
+	}
+
+	tipos, err := s.ListarTiposTrabajo(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	tiposMap := make(map[int]*store.TipoTrabajo)
+	for _, tp := range tipos {
+		tiposMap[tp.ID] = tp
+	}
+
+	return store.CalcularEstadisticasYo(perfilID, todasTareas, tiposMap, filtro, time.Now()), nil
+}
+
+func (s *SupabaseStore) ObtenerEstadisticasAdmin(ctx context.Context, filtro store.FiltroEstadisticasAdmin) (*store.EstadisticasAdminResponse, error) {
+	var todasTareas []*store.Tarea
+	limit := 1000
+	offset := 0
+
+	desdeBog := store.InicioDiaBogota(filtro.Desde)
+	hastaBog := store.FinDiaBogota(filtro.Hasta)
+
+	for {
+		q := url.Values{}
+		q.Set("estado", "eq.aceptada")
+		q.Set("resuelta_en", fmt.Sprintf("gte.%s", desdeBog.Format(time.RFC3339)))
+		q.Set("resuelta_en", fmt.Sprintf("lte.%s", hastaBog.Format(time.RFC3339)))
+		if filtro.PersonaID != nil {
+			q.Set("asignado_a", fmt.Sprintf("eq.%s", *filtro.PersonaID))
+		}
+		if filtro.SinCliente {
+			q.Set("cliente_id", "is.null")
+		} else if filtro.ClienteID != nil {
+			q.Set("cliente_id", fmt.Sprintf("eq.%d", *filtro.ClienteID))
+		}
+		if filtro.TipoID != nil {
+			q.Set("tipo_id", fmt.Sprintf("eq.%d", *filtro.TipoID))
+		}
+		q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*)")
+		q.Set("order", "resuelta_en.asc")
+		q.Set("limit", fmt.Sprintf("%d", limit))
+		q.Set("offset", fmt.Sprintf("%d", offset))
+
+		var rows []dbTarea
+		if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		for i := range rows {
+			todasTareas = append(todasTareas, convertirTarea(&rows[i]))
+		}
+		if len(rows) < limit {
+			break
+		}
+		offset += limit
+	}
+
+	perfilesMap := make(map[string]*store.Perfil)
+	clientesMap := make(map[int]*store.Cliente)
+	tiposMap := make(map[int]*store.TipoTrabajo)
+
+	if tipos, err := s.ListarTiposTrabajo(ctx, false); err == nil {
+		for _, tp := range tipos {
+			tiposMap[tp.ID] = tp
+		}
+	}
+	if clientes, err := s.ListarClientes(ctx, false); err == nil {
+		for _, c := range clientes {
+			clientesMap[c.ID] = c
+		}
+	}
+	if miembros, err := s.ListarMiembros(ctx, store.FiltroMiembros{}); err == nil {
+		for _, m := range miembros {
+			perfilesMap[m.ID] = m
+		}
+	}
+
+	return store.CalcularEstadisticasAdmin(todasTareas, perfilesMap, clientesMap, tiposMap, filtro), nil
 }
 
 // SupabaseAuthVerifier valida JWTs contra Supabase Auth
