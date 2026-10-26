@@ -7,6 +7,7 @@ import { Send, ArrowDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { ChatMensaje, Perfil } from "@/lib/types";
 import { agruparMensajes } from "@/lib/chat-utils";
+import { Avatar } from "@/components/ui/Avatar";
 import styles from "./chat.module.css";
 
 export default function ChatPage() {
@@ -45,7 +46,6 @@ export default function ChatPage() {
   // Mantener el último ID real registrado para polling con 'despues'
   useEffect(() => {
     if (mensajes.length > 0) {
-      // Filtrar mensajes temporales de envío optimista (IDs grandes tipo timestamp)
       const reales = mensajes.filter((m) => !m.enviando && m.id < 1000000000000);
       if (reales.length > 0) {
         const maxId = Math.max(...reales.map((m) => m.id));
@@ -74,7 +74,6 @@ export default function ChatPage() {
     };
     cargar();
 
-    // Polling adaptativo: 3s con pestaña visible, 15s si está oculta
     let pollTimer: NodeJS.Timeout;
 
     const ejecutarPolling = async () => {
@@ -98,7 +97,7 @@ export default function ChatPage() {
         // Ignorar
       } finally {
         if (montado) {
-          const delay = typeof document !== 'undefined' && document.hidden ? 15000 : 3000;
+          const delay = typeof document !== "undefined" && document.hidden ? 15000 : 3000;
           pollTimer = setTimeout(ejecutarPolling, delay);
         }
       }
@@ -108,22 +107,22 @@ export default function ChatPage() {
 
     const onVisibilityChange = () => {
       clearTimeout(pollTimer);
-      if (typeof document !== 'undefined' && !document.hidden) {
+      if (typeof document !== "undefined" && !document.hidden) {
         ejecutarPolling();
       } else {
         pollTimer = setTimeout(ejecutarPolling, 15000);
       }
     };
 
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', onVisibilityChange);
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibilityChange);
     }
 
     return () => {
       montado = false;
       clearTimeout(pollTimer);
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
       }
     };
   }, [yo]);
@@ -218,7 +217,7 @@ export default function ChatPage() {
 
       <div className={styles.messageList} ref={scrollRef} onScroll={handleScroll}>
         {cargando && (
-          <div style={{ textAlign: "center", padding: "2rem", color: "var(--rc-label-secondary)" }}>
+          <div style={{ textAlign: "center", padding: "2rem", color: "var(--rc-texto-secundario)" }}>
             Cargando mensajes...
           </div>
         )}
@@ -233,14 +232,12 @@ export default function ChatPage() {
 
             <div className={`${styles.group} ${grupo.es_mio ? styles.groupMine : ""}`}>
               <Link href={`/equipo/${grupo.autor_id}`} className={styles.avatarLink}>
-                {grupo.autor_foto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={grupo.autor_foto} alt={grupo.autor_nombre} className={styles.avatar} />
-                ) : (
-                  <div className={styles.avatarPlaceholder}>
-                    {grupo.autor_nombre.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                <Avatar
+                  tamano={32}
+                  src={grupo.autor_foto || undefined}
+                  iniciales={grupo.autor_nombre.charAt(0).toUpperCase()}
+                  alt={grupo.autor_nombre}
+                />
               </Link>
 
               <div className={styles.groupContent}>
@@ -302,24 +299,30 @@ export default function ChatPage() {
 
       <div className={styles.composerWrapper}>
         <form className={styles.composer} onSubmit={enviarMensaje}>
-          <textarea
-            className={styles.textarea}
-            rows={1}
-            placeholder="Escribe al equipo..."
-            aria-label="Escribe al equipo"
-            title="Enter para enviar, Shift+Enter para salto de línea"
-            value={cuerpo}
-            onChange={(e) => setCuerpo(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <button
-            type="submit"
-            disabled={!cuerpo.trim()}
-            className={styles.sendBtn}
-            aria-label="Enviar mensaje"
-          >
-            <Send size={18} />
-          </button>
+          <div className={styles.composerCaja}>
+            <textarea
+              className={styles.textarea}
+              rows={1}
+              placeholder="Escribe al equipo..."
+              aria-label="Escribe al equipo"
+              title="Enter para enviar, Shift+Enter para salto de línea"
+              value={cuerpo}
+              onChange={(e) => setCuerpo(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+          <div className="rc-escena-vidrio">
+            <span className="rc-mancha rc-mancha--azul" aria-hidden="true" />
+            <button
+              type="submit"
+              disabled={!cuerpo.trim()}
+              className="rc-btn-enviar rc-vidrio rc-vidrio--azul"
+              aria-label="Enviar mensaje"
+              style={{ width: "34px", height: "34px", cursor: cuerpo.trim() ? "pointer" : "default" }}
+            >
+              <Send size={15} strokeWidth={1.75} color="var(--rc-azul-texto)" />
+            </button>
+          </div>
         </form>
         <span className={styles.composerHint}>
           Presiona Enter para enviar, Shift+Enter para salto de línea
