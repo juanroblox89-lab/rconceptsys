@@ -1,152 +1,160 @@
 .container {
-  padding: 1.5rem;
-  max-width: 960px;
+  padding: var(--rc-esp-20) var(--rc-esp-16);
+  max-width: 1040px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: var(--rc-esp-20);
 }
 
 .header {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--rc-esp-4);
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--rc-label-primary);
+  font-size: var(--rc-fs-titulo-pagina);
+  line-height: var(--rc-lh-titulo-pagina);
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-gris-900);
 }
 
 .subtitle {
-  font-size: 13.5px;
-  color: var(--rc-label-secondary);
+  font-size: var(--rc-fs-secundario);
+  line-height: var(--rc-lh-secundario);
+  color: var(--rc-texto-secundario);
 }
 
 .section {
-  background-color: var(--rc-bg-surface);
-  border: 1px solid var(--rc-border);
-  border-radius: var(--rc-radius-card);
-  padding: 1.5rem;
+  background-color: var(--rc-superficie);
+  border-radius: var(--rc-radio-xl);
+  box-shadow: var(--rc-elev-relieve-md);
+  padding: var(--rc-esp-20) var(--rc-esp-16);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--rc-esp-14);
 }
 
 .sectionTitle {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--rc-label-primary);
+  font-size: var(--rc-fs-titulo-seccion);
+  line-height: var(--rc-lh-titulo-seccion);
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-gris-900);
 }
 
-.tableWrap {
-  overflow-x: auto;
+.desktopTable {
+  display: block;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  text-align: left;
+.mobileCards {
+  display: none;
 }
 
-.table th {
-  padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid var(--rc-border);
-  color: var(--rc-label-secondary);
-  font-weight: 500;
+@media (max-width: 767px) {
+  .desktopTable {
+    display: none;
+  }
+  .mobileCards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--rc-esp-12);
+  }
 }
 
-.table td {
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--rc-border-subtle);
-  color: var(--rc-label-primary);
-  vertical-align: middle;
-}
-
-.actionsCell {
+.mobileCard {
+  background-color: var(--rc-superficie);
+  border-radius: var(--rc-radio-lg);
+  box-shadow: var(--rc-elev-relieve-sm);
+  padding: var(--rc-esp-14);
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--rc-esp-10);
 }
 
-.btnAction {
-  padding: 0.35rem 0.65rem;
-  border-radius: var(--rc-radius-btn);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid var(--rc-border);
-  background-color: var(--rc-bg-elevated);
-  color: var(--rc-label-primary);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
+.mobileCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--rc-esp-8);
 }
 
-.btnAction:hover {
-  background-color: var(--rc-bg-hover);
+.mobileCardName {
+  font-size: var(--rc-fs-cuerpo);
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-gris-900);
 }
 
-.btnApprove {
-  background-color: var(--rc-label-primary);
-  color: var(--rc-bg-page);
-  border: none;
-}
-
-.btnApprove:hover {
-  opacity: 0.9;
-}
-
-.btnDanger {
-  color: var(--rc-error-primary);
-  border-color: var(--rc-error-primary);
+.mobileCardEmail {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto-secundario);
+  word-break: break-all;
 }
 
 .roleSelectContainer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.35rem;
+  gap: var(--rc-esp-4);
+  align-items: center;
 }
 
 .roleToggle {
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
+  height: 24px;
+  padding: 0 var(--rc-esp-8);
+  border-radius: var(--rc-radio-pildora);
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-semibold);
   cursor: pointer;
-  border: 1px solid var(--rc-border);
-  background: transparent;
-  color: var(--rc-label-tertiary);
-  transition: all var(--rc-dur-fast) var(--rc-ease);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
+  color: var(--rc-texto-secundario);
+  transition: all var(--rc-transicion);
+  border: none;
+}
+
+.roleToggle:hover {
+  color: var(--rc-gris-900);
 }
 
 .roleToggleActive {
-  background: var(--rc-bg-elevated);
-  border-color: currentColor;
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-hundido-sm);
+  font-weight: var(--rc-fw-bold);
+}
+
+.actionsCell {
+  display: flex;
+  gap: var(--rc-esp-6);
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .emptyNotice {
-  padding: 1.5rem 0;
+  padding: var(--rc-esp-16) 0;
   text-align: center;
-  color: var(--rc-label-secondary);
-  font-size: 13px;
+  color: var(--rc-texto-secundario);
+  font-size: var(--rc-fs-cuerpo);
 }
 
 .newRoleForm {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--rc-esp-8);
   flex-wrap: wrap;
-  margin-top: 0.5rem;
+  align-items: center;
 }
 
 .roleInput {
-  font-size: 13px;
-  padding: 0.4rem 0.6rem;
-  border-radius: var(--rc-radius-btn);
-  border: 1.5px solid var(--rc-border);
-  background-color: var(--rc-bg-elevated);
-  color: var(--rc-label-primary);
+  font-size: var(--rc-fs-secundario);
+  height: 32px;
+  padding: 0 var(--rc-esp-10);
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-hundido-sm);
+  color: var(--rc-gris-900);
+  border: none;
+  outline: none;
+}
+
+.roleInput:focus {
+  box-shadow: var(--rc-elev-foco-azul);
 }
