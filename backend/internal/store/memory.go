@@ -1055,6 +1055,15 @@ func (m *MemoryStore) CancelarTarea(ctx context.Context, id int64, adminID strin
 	return m.clonarTareaLocked(t), nil
 }
 
+// SetResueltaEnParaPruebas permite a los tests fijar la fecha exacta de resolución
+func (m *MemoryStore) SetResueltaEnParaPruebas(tareaID int64, t time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if tarea, ok := m.tareas[tareaID]; ok {
+		tarea.ResueltaEn = &t
+	}
+}
+
 // ==========================================
 // F2: Implementación Facturas
 // ==========================================
