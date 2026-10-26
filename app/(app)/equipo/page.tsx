@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
+import { Avatar } from "@/components/ui/Avatar";
+import { Chip } from "@/components/ui/Chip";
+import { Tarjeta } from "@/components/ui/Tarjeta";
+import { Esqueleto } from "@/components/ui/Esqueleto";
 import styles from "./equipo.module.css";
 
 export default function EquipoPage() {
@@ -49,37 +53,37 @@ export default function EquipoPage() {
       </div>
 
       {cargando ? (
-        <div className={styles.empty}>Cargando equipo...</div>
+        <div style={{ maxWidth: 480, margin: "2rem auto", width: "100%" }}>
+          <Esqueleto filas={3} />
+        </div>
       ) : miembros.length === 0 ? (
-        <div className={styles.empty}>No hay miembros aprobados en este momento.</div>
+        <Tarjeta
+          variante="vacia"
+          tituloVacio="No hay miembros"
+          textoVacio="No hay miembros aprobados en este momento."
+        />
       ) : (
         <div className={styles.grid}>
           {miembros.map((m) => (
             <Link key={m.id} href={`/equipo/${m.id}`} className={styles.card}>
-              {m.foto_path ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.foto_path} alt={m.nombre} className={styles.avatar} />
-              ) : (
-                <div className={styles.avatarPlaceholder}>
-                  {m.nombre.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <Avatar
+                tamano={40}
+                src={m.foto_path || undefined}
+                iniciales={m.nombre.charAt(0).toUpperCase()}
+                alt={m.nombre}
+              />
 
               <div className={styles.name}>{m.nombre}</div>
 
               <div className={styles.roles}>
                 {m.roles && m.roles.length > 0 ? (
                   m.roles.map((r) => (
-                    <span
-                      key={r.id}
-                      className={styles.roleChip}
-                      style={{ color: r.color, borderColor: r.color }}
-                    >
+                    <Chip key={r.id} punto="azul">
                       {r.nombre}
-                    </span>
+                    </Chip>
                   ))
                 ) : (
-                  <span style={{ fontSize: "12px", color: "var(--rc-label-tertiary)" }}>
+                  <span style={{ fontSize: "11px", color: "var(--rc-texto-tenue)" }}>
                     Sin rol asignado
                   </span>
                 )}

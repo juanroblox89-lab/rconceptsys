@@ -1,0 +1,217 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--rc-fuente);
+  font-size: var(--rc-fs-cuerpo);
+  line-height: var(--rc-lh-cuerpo);
+  color: var(--rc-texto);
+  background-color: var(--rc-superficie);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--rc-superficie);
+  color: var(--rc-texto);
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Sprite SVG oculto pero activo para referencias <use> y filtro #rc-refraccion */
+.rc-svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Contenedor principal del tablero (1440px exactos de diseño) */
+.rc-tablero {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--rc-esp-10) var(--rc-esp-16) var(--rc-esp-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-10);
+}
+
+/* Cabecera del tablero */
+.rc-cabecera {
+  display: grid;
+  grid-template-columns: 280px 1fr auto auto;
+  align-items: center;
+  gap: var(--rc-esp-16);
+  padding: 0 var(--rc-esp-4);
+}
+
+.rc-cabecera__marca {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-2);
+}
+
+.rc-cabecera__titulo {
+  font-size: var(--rc-fs-titulo-pagina);
+  line-height: var(--rc-lh-titulo-pagina);
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-gris-900);
+  letter-spacing: -0.02em;
+}
+
+.rc-cabecera__subtitulo {
+  font-size: var(--rc-fs-secundario);
+  line-height: var(--rc-lh-secundario);
+  color: var(--rc-texto-secundario);
+  font-weight: var(--rc-fw-regular);
+}
+
+.rc-cabecera__descripcion {
+  font-size: var(--rc-fs-etiqueta);
+  line-height: 15px;
+  color: var(--rc-texto-secundario);
+  max-width: 245px;
+}
+
+.rc-cabecera__insignia {
+  height: var(--rc-alto-lg);
+  padding: 0 var(--rc-esp-16);
+  border-radius: var(--rc-radio-pildora);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--rc-fs-etiqueta);
+  line-height: var(--rc-lh-etiqueta);
+  font-weight: var(--rc-fw-semibold);
+  letter-spacing: var(--rc-ls-etiqueta);
+  color: var(--rc-gris-700);
+  text-transform: uppercase;
+}
+
+.rc-cabecera__meta {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-2);
+}
+
+.rc-cabecera__meta-titulo {
+  font-size: var(--rc-fs-etiqueta);
+  line-height: var(--rc-lh-etiqueta);
+  font-weight: var(--rc-fw-medio);
+  color: var(--rc-gris-700);
+}
+
+.rc-cabecera__meta-lista {
+  font-size: var(--rc-fs-micro);
+  line-height: var(--rc-lh-micro);
+  color: var(--rc-texto-secundario);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--rc-esp-6);
+}
+
+/* Filas del tablero */
+.rc-fila-1 {
+  display: grid;
+  grid-template-columns: 384px 318px 220px 1fr;
+  gap: var(--rc-esp-12);
+  align-items: start;
+}
+
+.rc-fila-2 {
+  display: grid;
+  grid-template-columns: 530px 320px 230px 1fr;
+  gap: var(--rc-esp-12);
+  align-items: start;
+}
+
+.rc-fila-3 {
+  display: grid;
+  grid-template-columns: 312px 440px 412px 1fr;
+  gap: var(--rc-esp-12);
+  align-items: start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+  }
+}
+
+@media (max-width: 1280px) {
+  .rc-fila-1,
+  .rc-fila-2,
+  .rc-fila-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rc-cabecera {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .rc-tablero {
+    padding: var(--rc-esp-12);
+  }
+  .rc-cabecera {
+    grid-template-columns: 1fr;
+    gap: var(--rc-esp-8);
+  }
+  .rc-cabecera__meta {
+    text-align: left;
+  }
+  .rc-cabecera__meta-lista {
+    justify-content: flex-start;
+  }
+  .rc-fila-1,
+  .rc-fila-2,
+  .rc-fila-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

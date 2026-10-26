@@ -1,88 +1,45 @@
-/* Paleta y tokens de RConcept Systems (base copiada del layout de Globe, sin degradados). */
+/* Estilos globales complementarios de RConcept Systems (Neumorfismo + Liquid Glass).
+   Los tokens base, resets y componentes residen en app/estilo/{tokens,base,componentes}.css. */
 
-:root,
-:root[data-theme="dark"] {
-  /* Tema oscuro (por defecto): paleta neutra sofisticada (charcoal, no negro puro) */
-  --rc-bg-page: #0d0f12;
-  --rc-bg-surface: #111317; /* sidebar */
-  --rc-bg-elevated: #17191d; /* composer, cards */
-  --rc-bg-hover: #1d2025;
-  --rc-bg-bubble: #1d2025;
-  --rc-border: rgba(255, 255, 255, 0.08);
-  --rc-border-subtle: rgba(255, 255, 255, 0.06);
+/* Alias de compatibilidad hacia los nuevos tokens neumórficos --rc-* */
+:root {
+  --rc-bg-page: var(--rc-superficie);
+  --rc-bg-surface: var(--rc-superficie);
+  --rc-bg-elevated: var(--rc-superficie-clara);
+  --rc-bg-hover: var(--rc-superficie-hundida);
+  --rc-bg-bubble: var(--rc-superficie-hundida);
+  --rc-border: var(--rc-gris-100);
+  --rc-border-subtle: rgba(163, 172, 190, 0.35);
 
-  --rc-label-primary: #f5f5f5;
-  --rc-label-secondary: #9ca3af;
-  --rc-label-tertiary: #6b7280;
-  --rc-label-caption: #4b5563;
+  --rc-label-primary: var(--rc-gris-900);
+  --rc-label-secondary: var(--rc-texto-secundario);
+  --rc-label-tertiary: var(--rc-texto-tenue);
+  --rc-label-caption: var(--rc-gris-500);
 
-  /* Único acento de color — se usa solo en elementos interactivos importantes */
-  --rc-accent: #3b82f6;
-  --rc-accent-hover: #2563eb;
-  --rc-accent-on: #ffffff;
+  --rc-accent: var(--rc-azul);
+  --rc-accent-hover: var(--rc-azul-texto);
+  --rc-accent-on: var(--rc-luz);
 
-  --rc-warn-primary: #f7ad31;
-  --rc-warn-bg: #f59e0b26;
-  --rc-warn-border: #f59e0b4d;
+  --rc-error-primary: var(--rc-rojo);
+  --rc-error-bg: var(--rc-rojo-suave);
 
-  --rc-error-primary: #f25a5a;
-  --rc-error-bg: #ef44441f;
+  --rc-success: var(--rc-verde);
+  --rc-warn-primary: var(--rc-ambar);
+  --rc-warn-bg: var(--rc-ambar-suave);
+  --rc-warn-border: var(--rc-ambar-tinte);
 
-  --rc-success: #4ade80;
+  --rc-radius-btn: var(--rc-radio-sm);
+  --rc-radius-card: var(--rc-radio-md);
+  --rc-radius-modal: var(--rc-radio-xl);
 
-  --rc-bg-code: #0a0b0d;
-  --rc-code-keyword: #7dd3fc;
-  --rc-code-string: #86efac;
-  --rc-code-comment: #6b7280;
-  --rc-code-number: #fbbf24;
-  --rc-code-fn: #c4b5fd;
+  --rc-shadow-lv2: var(--rc-elev-relieve-md);
+  --rc-shadow-subtle: var(--rc-elev-relieve-sm);
 
-  --rc-focus-ring: rgba(255, 255, 255, 0.16);
-  --rc-overlay: rgba(0, 0, 0, 0.5);
-  --rc-on-accent: #ffffff;
-
-  /* Vidrio: fondos translúcidos para difuminar lo que pasa por debajo. */
-  --rc-glass-bg: color-mix(in srgb, var(--rc-bg-elevated) 58%, transparent);
-  --rc-glass-border: rgba(255, 255, 255, 0.08);
-  --rc-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --rc-glass-blur: saturate(160%) blur(16px);
-
-  --rc-font-family: var(--font-geist-sans), Inter, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", system-ui, sans-serif;
-  --rc-font-family-code: var(--font-geist-mono), "SF Mono", "JetBrains Mono", "Fira Code",
-    Consolas, "Liberation Mono", Menlo, Courier, monospace;
-
-  --rc-shadow-lv2: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --rc-shadow-subtle: 0 2px 12px rgba(0, 0, 0, 0.2);
-
-  /* D1 — escala compacta: tipografía, línea, radios, espaciados e íconos. */
-  --rc-text-chat: 15px;
-  --rc-text-ui: 14px;
-  --rc-text-secondary: 13px;
-  --rc-text-caption: 12px;
-  --rc-line-chat: 1.65;
-  --rc-title-page: 22px;
-  --rc-icon-ui: 16px;
-  --rc-icon-chip: 14px;
-  --rc-btn-icon: 32px;
-  --rc-radius-btn: 8px;
-  --rc-radius-card: 12px;
-  --rc-radius-modal: 16px;
-  --rc-space-1: 4px;
-  --rc-space-2: 8px;
-  --rc-space-3: 12px;
-  --rc-space-4: 16px;
-  --rc-space-5: 20px;
-  --rc-space-6: 24px;
-
-  /* N2/N4 — movimiento discreto y consistente (brief 18). */
-  --rc-ease: cubic-bezier(0.2, 0, 0, 1);
+  --rc-ease: var(--rc-curva);
   --rc-dur-fast: 120ms;
-  --rc-dur: 200ms;
-  --rc-dur-slow: 320ms;
+  --rc-dur: 160ms;
+  --rc-dur-slow: 200ms;
 
-  /* X1 — escala z (drawer < menus < sheets < modales < toast/onboarding). */
-  --rc-z-content: 10;
   --rc-z-pill: 30;
   --rc-z-drawer: 40;
   --rc-z-menu: 50;
@@ -91,70 +48,7 @@
   --rc-z-top: 90;
 }
 
-/* X1 — skeletons y spinners globales (antes: @keyframes pulse/spin
-   duplicados en 6 archivos). Respetan reduced-motion. */
-@keyframes rc-pulse {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes rc-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .rc-skeleton {
-    animation: rc-pulse 1.2s ease-in-out infinite;
-  }
-
-  .rc-spinner {
-    animation: rc-spin 700ms linear infinite;
-  }
-}
-
-/* Animaciones de ventanas y formularios: cada CSS module define sus keyframes (g-pop-in,
-   g-sheet-up, g-rise…) porque los modules renombran los nombres de animación. */
-
-/* Sin movimiento si el sistema lo pide: todo aparece directo. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* F3-001: ajustes locales de tamaño de texto y movimiento (antes "Guardado"
- * falso: el backend los descartaba y nada los leía). Viven en localStorage
- * rc-textsize/rc-motion y se aplican vía dataset en <html>.
- */
-:root[data-textsize="grande"] {
-  --rc-text-chat: 17px;
-  --rc-text-ui: 16px;
-  --rc-text-secondary: 15px;
-  --rc-text-caption: 14px;
-}
-
-:root[data-motion="reducido"] *,
-:root[data-motion="reducido"] *::before,
-:root[data-motion="reducido"] *::after {
-  animation-duration: 0.01ms !important;
-  animation-delay: 0ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-}
-
-/* N2 — transición de contenido entre rutas (fade + 4px). */
+/* Transición de contenido entre rutas */
 @keyframes app-route-in {
   from {
     opacity: 0;
@@ -166,8 +60,6 @@
   }
 }
 
-/* El envoltorio de la transición ocupa todo el alto de <main>: sin esto las páginas
-   (height: 100% + scroll interno) crecen de más y no se pueden desplazar. */
 .app-route-in {
   height: 100%;
   min-height: 0;
@@ -175,119 +67,22 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .app-route-in {
-    animation: app-route-in 160ms var(--rc-ease);
+    animation: app-route-in 160ms var(--rc-curva);
   }
 }
 
-:root[data-theme="light"] {
-  --rc-bg-page: #ffffff;
-  --rc-bg-surface: #f7f7f8;
-  --rc-bg-elevated: #ffffff;
-  --rc-bg-hover: #ececf1;
-  --rc-bg-bubble: #f1f1f3;
-  --rc-border: rgba(0, 0, 0, 0.1);
-  --rc-border-subtle: rgba(0, 0, 0, 0.06);
-  --rc-label-primary: #0d0d0d;
-  --rc-label-secondary: #5d5d66;
-  --rc-label-tertiary: #8e8e96;
-  --rc-label-caption: #a3a3aa;
-  --rc-shadow-lv2: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --rc-shadow-subtle: 0 2px 12px rgba(0, 0, 0, 0.06);
-  --rc-success: #16a34a;
-  --rc-bg-code: #f6f6f7;
-  --rc-code-keyword: #0550ae;
-  --rc-code-string: #0a3069;
-  --rc-code-comment: #6e7781;
-  --rc-code-number: #953800;
-  --rc-code-fn: #8250df;
-  --rc-focus-ring: rgba(0, 0, 0, 0.16);
-  --rc-overlay: rgba(0, 0, 0, 0.35);
-  --rc-on-accent: #ffffff;
-  --rc-glass-bg: color-mix(in srgb, #ffffff 66%, transparent);
-  --rc-glass-border: rgba(0, 0, 0, 0.07);
-  --rc-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  --rc-glass-blur: saturate(160%) blur(16px);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --rc-bg-page: #ffffff;
-    --rc-bg-surface: #f7f7f8;
-    --rc-bg-elevated: #ffffff;
-    --rc-bg-hover: #ececf1;
-    --rc-bg-bubble: #f1f1f3;
-    --rc-border: rgba(0, 0, 0, 0.1);
-    --rc-border-subtle: rgba(0, 0, 0, 0.06);
-    --rc-label-primary: #0d0d0d;
-    --rc-label-secondary: #5d5d66;
-    --rc-label-tertiary: #8e8e96;
-    --rc-label-caption: #a3a3aa;
-    --rc-shadow-lv2: 0 8px 24px rgba(0, 0, 0, 0.1);
-    --rc-shadow-subtle: 0 2px 12px rgba(0, 0, 0, 0.06);
-    --rc-success: #16a34a;
-    --rc-bg-code: #f6f6f7;
-    --rc-code-keyword: #0550ae;
-    --rc-code-string: #0a3069;
-    --rc-code-comment: #6e7781;
-    --rc-code-number: #953800;
-    --rc-code-fn: #8250df;
-    --rc-focus-ring: rgba(0, 0, 0, 0.16);
-    --rc-overlay: rgba(0, 0, 0, 0.35);
-    --rc-on-accent: #ffffff;
-    --rc-glass-bg: color-mix(in srgb, #ffffff 66%, transparent);
-    --rc-glass-border: rgba(0, 0, 0, 0.07);
-    --rc-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-    --rc-glass-blur: saturate(160%) blur(16px);
-  }
-}
-
-html {
-  height: 100%;
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  min-height: 100%;
-  color: var(--rc-label-primary);
-  background: var(--rc-bg-page);
-  font-family: var(--rc-font-family);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  font-family: inherit;
-  color: inherit;
-}
-
-/* Foco visible en toda la app (navegación por teclado). */
+/* Foco visible unificado para navegación por teclado */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--rc-accent);
+  outline: 2px solid var(--rc-azul);
   outline-offset: 2px;
 }
 
-/* Mobile: taps sin delay ni highlight gris, scroll con momentum en iOS. */
+/* Interacciones táctiles móviles */
 button,
 a,
 [role="button"] {
@@ -299,8 +94,8 @@ a,
   -webkit-overflow-scrolling: touch;
 }
 
-/* Scrollbar delgado consistente con el look de DSH */
+/* Barra de desplazamiento delgada en tono neumórfico */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--rc-border) transparent;
+  scrollbar-color: var(--rc-sombra-suave) transparent;
 }

@@ -4,21 +4,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  background-color: var(--rc-bg-page);
+  padding: var(--rc-esp-16);
+  background-color: var(--rc-superficie);
 }
 
 .card {
   width: 100%;
   max-width: 380px;
-  background-color: var(--rc-bg-surface);
-  border: 1px solid var(--rc-border);
-  border-radius: var(--rc-radius-card);
-  padding: 1.75rem 1.5rem;
+  background-color: var(--rc-superficie);
+  border-radius: var(--rc-radio-xl);
+  box-shadow: var(--rc-elev-relieve-md);
+  padding: var(--rc-esp-24) var(--rc-esp-20);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  box-shadow: var(--rc-shadow-subtle);
+  gap: var(--rc-esp-16);
 }
 
 .header {
@@ -26,119 +25,97 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.5rem;
+  gap: var(--rc-esp-6);
 }
 
 .title {
-  font-size: 1.35rem;
-  font-weight: 600;
-  color: var(--rc-label-primary);
-  margin-top: 0.25rem;
+  font-size: var(--rc-fs-titulo-pagina);
+  line-height: var(--rc-lh-titulo-pagina);
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-gris-900);
 }
 
 .subtitle {
-  font-size: 13px;
-  color: var(--rc-label-secondary);
+  font-size: var(--rc-fs-secundario);
+  line-height: var(--rc-lh-secundario);
+  color: var(--rc-texto-secundario);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--rc-esp-12);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--rc-esp-4);
 }
 
 .label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--rc-label-primary);
+  font-size: var(--rc-fs-etiqueta);
+  line-height: var(--rc-lh-etiqueta);
+  font-weight: var(--rc-fw-medio);
+  color: var(--rc-gris-700);
 }
 
 .inputWrapper {
   position: relative;
   display: flex;
   align-items: center;
-}
-
-.inputWrapper .input {
   width: 100%;
-  padding-right: 2.5rem;
 }
 
 .togglePasswordBtn {
   position: absolute;
-  right: 0.5rem;
+  right: var(--rc-esp-6);
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: var(--rc-label-tertiary);
+  color: var(--rc-icono);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.35rem;
-  border-radius: var(--rc-radius-btn);
+  padding: var(--rc-esp-4);
+  border-radius: var(--rc-radio-xs);
+  transition: color var(--rc-transicion);
 }
 
 .togglePasswordBtn:hover {
-  color: var(--rc-label-primary);
-}
-
-.input:focus {
-  border-color: var(--rc-label-primary);
+  color: var(--rc-gris-900);
 }
 
 .errorBanner {
-  background-color: var(--rc-error-bg);
-  border: 1px solid var(--rc-error-primary);
-  color: var(--rc-label-primary);
-  padding: 0.65rem 0.75rem;
-  border-radius: var(--rc-radius-btn);
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.submitBtn {
-  min-height: 48px;
-  background-color: var(--rc-label-primary);
-  color: var(--rc-bg-page);
-  border: none;
-  border-radius: var(--rc-radius-btn);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity var(--rc-dur-fast) var(--rc-ease);
-}
-
-.submitBtn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.submitBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  background-color: var(--rc-rojo-suave);
+  color: var(--rc-rojo-texto);
+  padding: var(--rc-esp-8) var(--rc-esp-12);
+  border-radius: var(--rc-radio-sm);
+  font-size: var(--rc-fs-secundario);
+  line-height: var(--rc-lh-secundario);
+  font-weight: var(--rc-fw-medio);
+  box-shadow: inset 0 0 0 1px var(--rc-rojo-tinte);
 }
 
 .footer {
   text-align: center;
-  font-size: 13px;
-  color: var(--rc-label-secondary);
-  border-top: 1px solid var(--rc-border-subtle);
-  padding-top: 1rem;
+  font-size: var(--rc-fs-secundario);
+  line-height: var(--rc-lh-secundario);
+  color: var(--rc-texto-secundario);
+  border-top: 1px solid var(--rc-gris-100);
+  padding-top: var(--rc-esp-12);
 }
 
 .link {
-  color: var(--rc-label-primary);
-  font-weight: 500;
+  color: var(--rc-azul-texto);
+  font-weight: var(--rc-fw-medio);
   text-decoration: underline;
   text-underline-offset: 3px;
+  transition: color var(--rc-transicion);
+}
+
+.link:hover {
+  color: var(--rc-azul-oscuro);
 }
