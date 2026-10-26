@@ -1,110 +1,216 @@
-# REPORTE DE EJECUCIÓN: FASE F3 - PARTE A
+# REPORTE DE EJECUCIÓN: FASE F3 (PARTE A + PARTE B)
 
 **Fecha de ejecución:** 2026-10-26  
 **Repositorio:** `C:\Users\USUARIO\Desktop\jestalvz\proyectos\rconceptsys`  
 **Rama activa:** `desde-cero`  
-**Alcance:** **SOLO PARTE A** (Migración 004, Modelos, Store Go en memoria y Supabase, Endpoints HTTP F3, Tests Go exhaustivos, Documentación en `docs/API-F3.md` y Recompilación de `_qa/rc-api.exe`).  
+**Alcance:** **FASE F3 COMPLETA (PARTE A + PARTE B)**.  
 **Reglas duras respetadas:**
 - No se tocaron `.env*`, `Sensible\`, ni las migraciones 001 a 003.
-- No se aplicó SQL directamente a Supabase (lo revisa y aplica el director Claude entre la Parte A y la Parte B).
+- La migración 004 fue revisada y aplicada en Supabase por el director Claude.
 - No se realizaron deploys ni `git push`.
+- Los datos de Juan existentes en Supabase (`jestalvz@gmail.com`, `ladlejuan26@gmail.com` y precios originales de `tipos_trabajo`) **no fueron alterados** ni ensuciados. Se realizó una verificación estricta antes de comenzar y al finalizar con `_qa/limpiar_f3.mjs`.
 - Commits locales por partes, ordenados, con el autor configurado (`Juan <juanroblox89@gmail.com>`), sin force-push, reset ni stash.
 - No se crearon worktrees ni junctions de `node_modules` (evitando roturas en Turbopack).
 - Fechas siempre en zona horaria **America/Bogota** (UTC-5, sin horario de verano).
-- Todo en español neutro, sin emojis y con mensajes de error humanos.
+- Todo en español neutro, sin emojis, botones compactos (máx 36 px), diseño compacto minimalista parejo (`compact-ui`), primitivas de `components/ui/` y tokens `var(--rc-*)`.
 
 ---
 
-## 1. Resumen de Implementación
+## 1. Resumen de Implementación de la PARTE A
 
 ### 1.1 Migración `supabase/migrations/004_minutos_clientes_estadisticas.sql`
-- **Idempotente y segura:** Utiliza bloques `DO $$ ... $$` con validaciones de existencia en `information_schema` y `drop ... if exists`.
-- **`tipos_trabajo`:**
-  - Nueva columna `unidad text not null default 'trabajo' check (unidad in ('trabajo', 'minuto'))`.
-  - Actualización automática de la semilla: `grabacion_video` pasa a `unidad = 'minuto'`.
-- **`clientes`:**
-  - Nueva tabla `public.clientes(id serial primary key, nombre text not null, activo boolean not null default true, creado_en timestamptz not null default now())`.
-  - Restricción de longitud: `char_length(trim(nombre)) >= 1 and char_length(nombre) <= 80`.
-  - Índice único insensible a mayúsculas: `idx_clientes_nombre_lower on public.clientes(lower(nombre))`.
-  - RLS activado: política `clientes_select_miembros` para lectura exclusiva de miembros aprobados; mutaciones directas revocadas para `anon` y `authenticated` (toda mutación pasa por backend con `service_role`).
-- **`tareas`:**
-  - `cliente_id integer references public.clientes(id) on delete set null` con índice `idx_tareas_cliente`.
-  - `cantidad integer null check (cantidad is null or (cantidad between 1 and 1440))` (minutos reportados por la persona).
-  - `cantidad_aceptada integer null check (cantidad_aceptada is null or (cantidad_aceptada between 1 and 1440))` (minutos congelados por admin).
-  - `precio_unitario_congelado bigint null check (precio_unitario_congelado is null or (precio_unitario_congelado >= 0 and precio_unitario_congelado <= 100000000000))`.
-  - `precio_congelado` elevado a tipo `bigint` con check de tope `100000000000`.
-  - Restricción `ck_tareas_aceptada_datos` actualizada: exige que una tarea `aceptada` tenga `precio_congelado`, `precio_unitario_congelado`, `cantidad_aceptada` y `factura_id` no nulos.
-- **Función atómica `public.aceptar_tarea(p_tarea bigint, p_admin uuid, p_cantidad integer default null)`:**
-  - Reemplaza de forma segura la función anterior. Ejecución revocada para `anon` y `authenticated`; concedida únicamente a `service_role`.
-  - Si el tipo es `'minuto'`, toma `coalesce(p_cantidad, tareas.cantidad)` verificando rango 1 a 1440; si es `'trabajo'`, fija cantidad en 1.
-  - Calcula `total = (precio_vigente::bigint) * (cantidad::bigint)`.
-  - Bloquea/abre la factura abierta de la persona asignada de forma atómica y congela precio unitario, cantidad aceptada, total y factura en una sola transacción.
+- **Idempotente y segura:** Bloques `DO $$ ... $$` con validaciones de existencia en `information_schema` y `drop ... if exists`.
+- **`tipos_trabajo`:** Columna `unidad text not null default 'trabajo' check (unidad in ('trabajo', 'minuto'))` y semilla `grabacion_video` en `'minuto'`.
+- **`clientes`:** Tabla `public.clientes(id serial primary key, nombre text not null, activo boolean not null default true, creado_en timestamptz not null default now())`, con índice único insensible a mayúsculas sobre `lower(nombre)`, validación 1 a 80 caracteres y RLS para miembros aprobados.
+- **`tareas`:** `cliente_id` FK, `cantidad` (1-1440), `cantidad_aceptada` (1-1440), `precio_unitario_congelado` (`bigint`) y `precio_congelado` elevado a `bigint` con check hasta 100.000.000.000 y restricción `ck_tareas_aceptada_datos` actualizada.
+- **Función atómica `public.aceptar_tarea(p_tarea bigint, p_admin uuid, p_cantidad integer default null)`:** Acepta cantidad opcional para corregir minutos reportados antes de congelar, calcula `total = precio_vigente * cantidad`, bloquea/abre factura y congela precio unitario, cantidad aceptada y total.
 
-### 1.2 Store Go (`backend/internal/store/`)
-- **Modelos e Interfaces (`store.go`):**
-  - Incorporación de `Cliente`, `TipoTrabajo.Unidad`, campos de minutos y cantidades en `Tarea`, y ampliación a `int64` en acumulados de facturas y estadísticas.
-  - Modelos de estadísticas: `EstadisticasYoResponse`, `EstadisticasAdminResponse`, `TotalesAdmin`, `PuntoSerieAdmin`, `ItemPersonaEstadistica`, `ItemClienteEstadistica`, `ItemTipoEstadistica`.
-  - Nuevas operaciones en interfaz `Store`: `ListarClientes`, `ObtenerClientePorID`, `CrearCliente`, `ActualizarCliente`, `MarcarTareaHecha` (con `cantidad`), `AceptarTarea` (con `cantidad` opcional), `ObtenerEstadisticasYo` y `ObtenerEstadisticasAdmin`.
-- **Agregador de Estadísticas (`estadisticas.go`):**
-  - Módulo desacoplado y compartido entre memoria y Supabase.
-  - Zona horaria `America/Bogota` (UTC-5) con respaldo seguro `time.FixedZone` y `_ "time/tzdata"`.
-  - Funciones auxiliares de cortes de fecha: `InicioDiaBogota`, `FinDiaBogota` (23:59:59.999), `InicioSemanaBogota` (lunes), `InicioMesBogota`.
-  - `CalcularEstadisticasYo`: calcula rango solicitado, `este_mes` y `total` histórico sin requerir múltiples llamadas. Desglose por tipo ordenado por trabajos desc (empate por valor).
-  - `CalcularEstadisticasAdmin`: calcula totales, serie temporal continua rellenando huecos en 0 (`dia`, `semana`, `mes`), listas ordenadas por trabajos y valor (`por_persona`, `por_cliente` con agrupación "Sin cliente", `por_tipo`), límite de 20 elementos con indicador `hay_mas` y filtros combinables (`persona_id`, `cliente_id`, `tipo_id`).
-- **Memoria (`memory.go`):**
-  - Soporte completo para clientes (validación de nombre 1-80 chars, unicidad `EqualFold`).
-  - Validación de minutos al entregar tarea por minuto (obligatorio 1-1440; ignorado en tipo por trabajo).
-  - Aceptación con corrección opcional de minutos por admin.
-  - Inmutabilidad de precios congelados ante cambios posteriores de precio o unidad.
-- **Supabase (`supa/store.go`):**
-  - Mapeo de columnas y relaciones REST PostgREST (`clientes(*)`, `tipos_trabajo(*)`, `roles(*)`).
-  - Llamada RPC a `aceptar_tarea` enviando `p_cantidad` opcional.
-  - Consultas paginadas (`limit: 1000`, `offset`) para cálculo de estadísticas de gran volumen.
-
-### 1.3 Endpoints HTTP (`backend/internal/httpapi/handlers.go`)
-- **Miembros Aprobados:**
-  - `GET /api/clientes`: Lista clientes activos alfabéticamente.
-  - `GET /api/yo/estadisticas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`: Retorna estadísticas personales del miembro, siempre incluyendo `este_mes` y `total`.
-  - `POST /api/tareas/{id}/hecha`: Exige `cantidad` (1-1440) si el tipo es por minuto; ignora cantidad si es por trabajo.
-  - `GET /api/facturas/mia`: Retorna factura con líneas detalladas (precio unitario, cantidad aceptada y total congelado en `int64`).
-- **Administrador:**
-  - `GET /api/admin/clientes`: Lista completa de clientes (activos e inactivos).
-  - `POST /api/admin/clientes`: Crea cliente con validación 1-80 caracteres y rechazo de duplicados (409 Conflict).
-  - `PATCH /api/admin/clientes/{id}`: Edición parcial (nombre, activo).
-  - `POST /api/admin/trabajos`: Acepta campo opcional `unidad` (`trabajo` o `minuto`, por defecto `trabajo`).
-  - `PATCH /api/admin/trabajos/{id}`: Acepta actualización de `unidad`.
-  - `POST /api/admin/tareas`: Acepta `cliente_id` opcional (valida existencia y estado activo; 400 si inactivo o inexistente).
-  - `POST /api/admin/tareas/{id}/aceptar`: Acepta `{cantidad?}` opcional para corregir minutos grabados antes de congelar.
-  - `GET /api/admin/estadisticas?desde&hasta&agrupar=dia|semana|mes`: Genera reporte integral con serie continua con huecos en 0, desglose por personas (excluyendo admins), por clientes (con "Sin cliente") y por tipos. Validación de rango `<= 5 años`, `desde <= hasta` y zona Bogotá.
-- **Documentación de API:**
-  - Archivo `docs/API-F3.md` con especificación de formatos, ejemplos de request/response y códigos de error humanos.
+### 1.2 Backend Go (`backend/`)
+- **Store (`store.go`, `memory.go`, `estadisticas.go`, `supa/store.go`):**
+  - Modelos `Cliente`, `TipoTrabajo.Unidad`, cantidades y precios en `int64`.
+  - Agregador de estadísticas en hora de Bogotá (UTC-5): serie continua rellenando huecos en 0, cortes de fecha exactos (`InicioDiaBogota`, `FinDiaBogota`, `InicioSemanaBogota`, `InicioMesBogota`), totales, desgloses por persona, cliente (con soporte para "Sin cliente") y tipo con tope de 20 elementos e indicador `hay_mas`.
+- **Endpoints HTTP (`handlers.go`):**
+  - `GET /api/clientes` (activos) y `GET /api/yo/estadisticas?desde&hasta` (con `este_mes` y `total` precalculados).
+  - `GET /api/admin/clientes`, `POST /api/admin/clientes` y `PATCH /api/admin/clientes/{id}`.
+  - `POST /api/admin/trabajos` y `PATCH` con soporte de `unidad`.
+  - `POST /api/admin/tareas` con `cliente_id` opcional y `POST /api/tareas/{id}/hecha` con `cantidad` obligatoria en minutos.
+  - `POST /api/admin/tareas/{id}/aceptar` con `{cantidad?}` opcional.
+  - `GET /api/admin/estadisticas?desde&hasta&agrupar=dia|semana|mes&persona_id=&cliente_id=&tipo_id=`.
+- **Documentación de API:** `docs/API-F3.md`.
+- **Tests Go:** 9 suites en `backend/internal/httpapi/f3_test.go` cubriendo cobro por minuto, corrección, inmutabilidad, CRUD de clientes, estadísticas y bordes de fecha de Bogotá.
 
 ---
 
-## 2. Evidencia de Pruebas y Verificación
+## 2. Resumen de Implementación de la PARTE B (Frontend)
 
-### 2.1 Cobertura de Tests Unitarios y de Integración (`backend/internal/httpapi/f3_test.go`)
-Se implementaron 9 suites de pruebas específicas para F3:
-1. `TestF3CobroPorMinuto`: Cálculo `precio × minutos` (1.500 COP × 120 min = 180.000 COP), rechazo por falta de minutos (400), rechazo por minutos fuera de rango (0 o 1500) y reflejo en factura abierta.
-2. `TestF3CorreccionMinutosAdmin`: Corrección de minutos por el admin al aceptar (de 100 reportados a 90 corregidos -> 135.000 COP) y rechazo de corrección inválida.
-3. `TestF3TipoPorTrabajoIgnoraCantidad`: Una tarea por trabajo (`edicion_video`) ignora la cantidad reportada por el usuario y fija `cantidad_aceptada: 1` al ser aceptada por admin.
-4. `TestF3PrecioCongeladoInmutable`: Modificación del precio y unidad de `grabacion_video` posterior a la aceptación no altera los valores congelados de la tarea ni de la factura.
-5. `TestF3ClientesCRUDYValidaciones`: Creación de cliente, rechazo por nombre duplicado insensible a mayúsculas (409), desactivación de cliente, exclusión para miembros y visibilidad para admin, rechazo al asignar tarea con cliente inactivo y asignación exitosa con cliente activo.
-6. `TestF3EstadisticasYo`: Consulta de estadísticas del miembro autenticado, aislamiento entre personas (no ve tareas de otros) y cálculo automático de `este_mes` y `total`.
-7. `TestF3EstadisticasAdmin`: Verificación de permisos (miembro no admin recibe 403 Forbidden), cálculo de totales (`trabajos`, `minutos`, `valor`, `personas`, `clientes`), serie continua de 5 días con huecos rellenados en 0, desglose por cliente con grupo `"Sin cliente"` y filtros combinados (`cliente_id`, `sin_cliente`).
-8. `TestF3ZonaBogotaBordeFecha`: Tarea aceptada a las 23:30 hora de Bogotá (que en UTC corresponde a las 04:30 del día siguiente) se computa en el día correcto de Bogotá, se incluye en el rango `hasta = 2026-10-26` y no computa en el día siguiente.
-9. `TestF3ValidacionRangosFecha`: Validación de `desde > hasta` (400), formato de fecha no ISO (400), rango superior a 5 años (400) tanto en admin como en yo/estadisticas.
+### 2.1 Componentes de Gráficas Propias SVG (`components/ui/graficos/`)
+- Construidos desde cero con SVG puro sin librerías externas pesadas:
+  - **`GraficaLinea.tsx`:** Curva de serie temporal en el tiempo con pestañas interactivas **Trabajos / Minutos / Valor**, área sombreada con degradado sutil (`#5AA9FF`), líneas de cuadrícula punteadas, ejes formateados (pesos colombianos, minutos y fechas abreviadas `DD/MM`), puntos interactivos con **tooltip flotante** al pasar el cursor o pulsar en táctil (fecha y cifra exacta), y tabla alternativa oculta accesible para lectores de pantalla.
+  - **`GraficaBarras.tsx`:** Paneles de barras horizontales neumórficas con porcentaje dinámico, posición (`#1`, `#2`, `#3`), avatar o iniciales del miembro/cliente, chip de volumen principal (`X trab.`) y valor secundario (`$ Y`), y tabla oculta accesible. Paleta coherente del kit: azul, verde, ámbar, morado y gris.
+  - Estilos compactos en `graficos.module.css`.
 
-### 2.2 Resultados de los Comandos de Verificación
-- `go vet ./...` en `backend/`: **PASS** (completamente limpio, sin advertencias).
-- `go test -v ./...` en `backend/`: **PASS** (todas las pruebas de `httpapi` y `store` pasando al 100%).
-- Recompilación de binario local: `go build -o ..\_qa\rc-api.exe .\cmd\server` ejecutado exitosamente (`_qa/rc-api.exe` actualizado con tamaño 11.77 MB).
+### 2.2 Gestión > Trabajos (`app/(app)/admin/page.tsx`)
+- **Columna "Se cobra por":** Selector interactivo por fila con opciones `Por trabajo` y `Por minuto`.
+- **Etiquetas de precio:** Muestra claramente `COP por minuto` o `COP por trabajo` según la unidad seleccionada.
+- **Modal Nuevo Trabajo:** Incorpora el selector "Se cobra por" y adapta el campo de precio automáticamente.
+- **Inmutabilidad:** Aviso explícito indicando que modificar la unidad o el precio no altera tareas ya congeladas en facturas.
+
+### 2.3 Gestión > Clientes (Nueva Pestaña en `/admin`)
+- Listado completo de clientes en tabla de escritorio y tarjetas apiladas en móvil.
+- Botón **"Nuevo cliente"** que abre modal con validación de nombre (1 a 80 caracteres) y control de duplicados.
+- Botón **"Renombrar"** para edición rápida de nombre.
+- Interruptor neumórfico para activar/desactivar clientes en tiempo real.
+
+### 2.4 Modal Nueva Tarea y Creación de Cliente al Vuelo
+- Selector de cliente destacado que filtra clientes activos y permite dejar la tarea sin cliente (`Sin cliente asociado`).
+- Botón directo **"+ Nuevo cliente al vuelo"** que abre un submodal ágil para registrar un cliente en ese instante sin abandonar la creación de la tarea, seleccionándolo de inmediato al crearse.
+
+### 2.5 Mis Tareas (`app/(app)/tareas/page.tsx`)
+- En las tarjetas se visualiza el badge del cliente (chip verde) y la etiqueta destacada `Cobro por minuto` / `X min reportados`.
+- Modal "Marcar como hecha": Cuando la tarea es de tipo por minuto, presenta el campo numérico **"Minutos grabados *"** (entero obligatorio entre 1 y 1440) con texto explicativo. Si es por trabajo, el campo no se solicita.
+
+### 2.6 Admin Por Revisar y Corrección de Minutos
+- La bandeja "Por revisar" en `/admin` muestra los minutos grabados reportados por la persona y el cálculo del valor estimado a congelar (`minutos × precio_unitario`).
+- El botón de aceptación abre el modal **"Aceptar tarea y congelar en factura"**, mostrando la tarifa por minuto, el total a liquidar y permitiendo al administrador corregir los minutos antes de congelar de forma definitiva.
+
+### 2.7 Mi Factura (`app/(app)/factura/page.tsx`)
+- Desglose por línea exacto cuando el trabajo es por minuto: `"100 min × $ 9.000 = $ 900.000"`.
+- Muestra el chip del cliente asociado a cada trabajo liquidado.
+- Totales en tarjeta de estadística y tabla responsiva en escritorio y móvil.
+
+### 2.8 Mi Perfil (`app/(app)/perfil/page.tsx`)
+- Nueva tarjeta destacada **"Trabajos hechos"**:
+  - Métricas rápidas: **Este mes** y **Total acumulado** con trabajos, minutos y valor ganado.
+  - Selector de Presets de fecha: `Hoy`, `7 días`, `Este mes`, `Mes pasado`, `Este año`, `Todo` y `Personalizado` (con campos de fecha Desde y Hasta).
+  - Métricas del rango: Trabajos, Minutos de grabación y Total ganado.
+  - **Desglose por tipo de trabajo:** Tarjetas con barra de progreso proporcional, chip de unidad (`Por minuto` o `Por trabajo`), cantidad de trabajos, minutos asociados y monto total en COP.
+
+### 2.9 Gestión > Estadísticas (Nueva Pestaña en `/admin`)
+- Panel integral para administradores:
+  - Selector de presets de fecha y selector de rango personalizado.
+  - Filtros combinables: Agrupar por (`Automático`, `Por día`, `Por semana`, `Por mes`), Persona asignada, Cliente (incluyendo opción `Sin cliente asignado`) y Tipo de trabajo.
+  - **Tarjetas de métricas globales:** Trabajos, Minutos grabados, Valor total, Personas activas y Clientes.
+  - **Gráfica de línea interactiva:** Evolución en el tiempo continua rellenando huecos en 0, con pestañas Trabajos / Minutos / Valor y tooltip hover.
+  - **Tres paneles de barras horizontales:**
+    1. "Más trabajos por persona" (con foto o iniciales).
+    2. "Más trabajos por cliente" (incluyendo grupo "Sin cliente").
+    3. "Por tipo de trabajo" (con indicador de unidad).
 
 ---
 
-## 3. Hashes de Git (Commits de Fase F3 - Parte A)
+## 3. Verificación y Evidencia de Pruebas
 
-| Hash | Mensaje de Commit |
+### 3.1 Comandos de Verificación Estática
+- `npm run typecheck`: **PASS** (`tsc --noEmit` limpio, 0 errores).
+- `npm run lint`: **PASS** (`eslint` limpio, 0 advertencias, 0 errores).
+- `npm test`: **PASS** (utilidades y helpers pasando).
+- `go vet ./...` en `backend/`: **PASS** (limpio, sin advertencias).
+- `go test -v ./...` en `backend/`: **PASS** (100% pruebas de store y httpapi pasando).
+
+### 3.2 Pruebas E2E Reales (`_qa/e2e_f3_completo.py`)
+Ejecutadas con Playwright sobre el backend real de Go en puerto `8310` y Next.js en puerto `3310`, conectado a la base Supabase real:
+- **Paso 1:** Registro de Admin (`rc-prueba-admin@example.com`) y Camarógrafo (`rc-prueba-cam@example.com`).
+- **Paso 2:** Aprobación administrativa con asignación de rol Camarógrafo.
+- **Paso 3:** Verificación de pestaña Trabajos (columna "Se cobra por", precios y unidades).
+- **Paso 4:** Gestión de Clientes: creación de `rc-prueba-cliente-alfa` y `rc-prueba-cliente-beta`, renombrado de Beta a `rc-prueba-cliente-beta-editado` e interruptor activo/inactivo.
+- **Paso 5:** Creación de cliente al vuelo `rc-prueba-cliente-vuelo` desde modal de Nueva Tarea y creación de 3 tareas (con cliente al vuelo, con cliente Alfa y sin cliente).
+- **Paso 6:** Camarógrafo reporta tareas con minutos obligatorios: 120 min, 90 min y 60 min.
+- **Paso 7:** Admin revisa bandeja, abre modal de liquidación y corrige la Tarea 1 de 120 a 100 minutos. Acepta y congela las 3 tareas.
+- **Paso 8:** Camarógrafo entra a `/factura`: verifica formato `100 min × $ 9.000 = $ 900.000`, `90 min × $ 9.000 = $ 810.000` y `60 min × $ 9.000 = $ 540.000` con total $ 2.250.000.
+- **Paso 9:** Camarógrafo entra a `/perfil`: verifica tarjeta "Trabajos hechos" con 3 trabajos, 250 min, $ 2.250.000 y desglose.
+- **Paso 10:** Admin entra a `/admin` pestaña Estadísticas: verifica totales (3 trab, 250 min, $ 2.250.000, 1 persona, 2 clientes), gráfica de línea con tooltip interactivo activado, y 3 paneles de barras horizontales (por persona, por cliente con "Sin cliente" y por tipo de trabajo).
+- **Geometría móvil 375 px:** Verificación con script en cada pantalla (`scrollWidth === clientWidth`) confirmando **cero desbordamiento horizontal** en 375 px.
+
+### 3.3 Capturas Generadas y Revisadas
+
+| Archivo de Captura | Vista / Componente | Resolución |
+|---|---|---|
+| `_qa/f3/01-admin-trabajos-1280.png` | Admin: Trabajos ("Se cobra por" y COP por minuto/trabajo) | 1280×800 |
+| `_qa/f3/01-admin-trabajos-375.png` | Admin: Trabajos en móvil | 375×812 |
+| `_qa/f3/02-admin-clientes-1280.png` | Admin: Pestaña Clientes y aviso de vidrio | 1280×800 |
+| `_qa/f3/02-admin-clientes-375.png` | Admin: Clientes en móvil | 375×812 |
+| `_qa/f3/03-admin-nueva-tarea-1280.png` | Admin: Modal nueva tarea con cliente y cliente al vuelo | 1280×800 |
+| `_qa/f3/03-admin-nueva-tarea-375.png` | Admin: Modal nueva tarea en móvil | 375×812 |
+| `_qa/f3/04-miembro-tareas-minutos-modal-1280.png` | Miembro: Modal marcar hecha con campo minutos grabados | 1280×800 |
+| `_qa/f3/04-miembro-tareas-minutos-modal-375.png` | Miembro: Modal marcar hecha en móvil | 375×812 |
+| `_qa/f3/05-admin-por-revisar-minutos-1280.png` | Admin: Modal liquidación y corrección de minutos | 1280×800 |
+| `_qa/f3/05-admin-por-revisar-minutos-375.png` | Admin: Modal liquidación en móvil | 375×812 |
+| `_qa/f3/06-miembro-factura-1280.png` | Miembro: Factura abierta con formato X min × $ Y = $ Z | 1280×800 |
+| `_qa/f3/06-miembro-factura-375.png` | Miembro: Factura abierta en tarjetas apiladas móvil | 375×812 |
+| `_qa/f3/07-miembro-perfil-trabajos-hechos-1280.png` | Miembro: Perfil con tarjeta Trabajos hechos y desglose | 1280×800 |
+| `_qa/f3/07-miembro-perfil-trabajos-hechos-375.png` | Miembro: Perfil con Trabajos hechos en móvil | 375×812 |
+| `_qa/f3/08-admin-estadisticas-1280.png` | Admin: Estadísticas con gráfica de línea y tooltip | 1280×800 |
+| `_qa/f3/08-admin-estadisticas-375.png` | Admin: Estadísticas en móvil | 375×812 |
+| `_qa/f3/zonas/zona_grafica_linea_1280.png` | Recorte enfocado: gráfica de línea y tooltip hover | Recorte |
+| `_qa/f3/zonas/zona_tres_paneles_barras_1280.png` | Recorte enfocado: 3 paneles de barras horizontales | Recorte |
+| `_qa/f3/zonas/zona_perfil_trabajos_hechos_1280.png` | Recorte enfocado: tarjeta de perfil con métricas y barras | Recorte |
+| `_qa/f3/zonas/zona_factura_lineas_1280.png` | Recorte enfocado: líneas de factura calculadas | Recorte |
+
+---
+
+## 4. Verificación de No Alteración de la Base de Datos Real de Juan
+
+Al inicio de la sesión se tomó la siguiente línea base de la base de datos real:
+- `tipos_trabajo`:
+  - `grabacion_video`: precio 9.000 COP, unidad: `minuto`, activo: `true`
+  - `edicion_video`: precio 9.000 COP, unidad: `trabajo`, activo: `true`
+  - `subida_video`: precio 1.000 COP, unidad: `trabajo`, activo: `true`
+- `clientes count`: 0
+- `tareas count`: 0
+- `facturas count`: 0
+- `auth.users`: 2 cuentas reales (`jestalvz@gmail.com` y `ladlejuan26@gmail.com`)
+
+Al finalizar la corrida de pruebas E2E, el script `_qa/limpiar_f3.mjs` ejecutó la limpieza y verificación contra Supabase:
+```text
+=== ESTADO TRAS LIMPIEZA ===
+tipos_trabajo: [
+  {
+    "id": 1,
+    "clave": "grabacion_video",
+    "nombre": "Grabación de video",
+    "precio": 9000,
+    "unidad": "minuto",
+    "activo": true
+  },
+  {
+    "id": 2,
+    "clave": "edicion_video",
+    "nombre": "Edición de video",
+    "precio": 9000,
+    "unidad": "trabajo",
+    "activo": true
+  },
+  {
+    "id": 3,
+    "clave": "subida_video",
+    "nombre": "Subir video",
+    "precio": 1000,
+    "unidad": "trabajo",
+    "activo": true
+  }
+]
+clientes count: 0
+tareas count: 0
+facturas count: 0
+auth.users: [
+  {
+    "id": "3c462a40-fb1f-4080-bb1c-a8ee2256cb4d",
+    "email": "jestalvz@gmail.com"
+  },
+  {
+    "id": "1d5448b6-8c66-436e-aee3-5966e47ab81d",
+    "email": "ladlejuan26@gmail.com"
+  }
+]
+
+VERIFICACIÓN DE LIMPIEZA: PASS (100% LIMPIO E IDÉNTICO AL INICIO)
+```
+
+---
+
+## 5. Hashes de Git (Commits de Fase F3)
+
+| Hash | Descripción de Commit |
 |---|---|
 | `f461b54` | `feat(f3): migración 004 minutos, clientes y campos de congelacion` |
 | `a5ea1ef` | `feat(f3): modelos, memoria y agregaciones de estadisticas en store` |
@@ -112,28 +218,9 @@ Se implementaron 9 suites de pruebas específicas para F3:
 | `4eb4c59` | `feat(f3): endpoints HTTP para unidad en trabajos, clientes CRUD, tareas con minutos y estadisticas` |
 | `0e39403` | `docs(f3): documentacion de endpoints API F3` |
 | `87fc55e` | `test(f3): tests exhaustivos para cobro por minuto, clientes, congelacion y estadisticas` |
+| `9d1c889` | `docs(f3): reporte de ejecucion Fase F3 - Parte A` |
+| `1a3ed3b` | `feat(f3): interfaz de minutos, clientes, trabajos hechos en perfil y estadisticas de admin` |
 
 ---
 
-## 4. ESTADO PARA RETOMAR
-
-1. **Migración SQL lista para aplicar por el director:**
-   - Archivo: `supabase/migrations/004_minutos_clientes_estadisticas.sql`.
-   - Idempotente y probada conceptualmente contra el esquema existente.
-   - Debe ejecutarse en Supabase antes de iniciar las pruebas de la PARTE B.
-2. **Backend Go:**
-   - Listo y verificado con tests automatizados.
-   - Binario `_qa/rc-api.exe` recompilado y listo para ser utilizado por los scripts de prueba `run_rc.mjs` y E2E.
-3. **Siguiente fase (PARTE B - Frontend):**
-   - UI de Trabajos: selector de unidad "Se cobra por" (Trabajo / Minuto) y etiqueta COP correspondiente.
-   - Pestaña Clientes en Gestión: lista, agregar, renombrar, activar/desactivar.
-   - Nueva Tarea: selector de cliente destacado con modal para crear cliente al vuelo.
-   - Mis Tareas: modal para ingresar minutos grabados obligatorios en tareas de grabación.
-   - Admin Por Revisar: visualización y corrección opcional de minutos antes de aceptar.
-   - Mi Factura: desglose "X min × $ Y = $ Z".
-   - Mi Perfil: tarjeta "Trabajos hechos" con Total, Este mes, presets de rango y desglose por tipo.
-   - Gestión > Estadísticas: panel administrativo con presets de fechas, tarjetas de métricas, gráfica de línea interactiva SVG y gráficos de barras horizontales ("Más trabajos por persona", "Más trabajos por cliente", "Por tipo de trabajo").
-
----
-
-FASE-F3-A TERMINADA
+FASE-F3-B TERMINADA
