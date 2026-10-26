@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Check } from "lucide-react";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
+import { Avatar } from "@/components/ui/Avatar";
+import { Boton } from "@/components/ui/Boton";
+import { Aviso, useAviso } from "@/components/ui/Aviso";
 import styles from "./perfil.module.css";
 
 export default function MiPerfilPage() {
@@ -11,8 +14,9 @@ export default function MiPerfilPage() {
   const [nombre, setNombre] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
-  const [mensaje, setMensaje] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
+  const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
+  const { mostrarAviso } = useAviso();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -32,16 +36,34 @@ export default function MiPerfilPage() {
 
   const handleGuardarNombre = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMensaje(null);
+    setErrorLocal(null);
+
+    const limpio = nombre.trim();
+    if (limpio.length < 2) {
+      setErrorLocal("El nombre debe tener al menos 2 caracteres.");
+      return;
+    }
+
     setGuardando(true);
 
     try {
-      const actualizado = await api.patchYo(nombre);
+      const actualizado = await api.patchYo(limpio);
       setYo(actualizado);
-      setMensaje({ tipo: "exito", texto: "Nombre actualizado correctamente." });
+      mostrarAviso({
+        tipo: "exito",
+        titulo: "Cambios guardados",
+        texto: "Tu nombre de visualización se actualizó correctamente.",
+      });
     } catch (err: unknown) {
       const e = err as { message?: string };
-      setMensaje({ tipo: "error", texto: e.message || "Error al actualizar el nombre." });
+      const mensajeHumano =
+        e.message || "No se pudo actualizar el nombre. Por favor, intenta nuevamente.";
+      setErrorLocal(mensajeHumano);
+      mostrarAviso({
+        tipo: "error",
+        titulo: "Error al guardar",
+        texto: mensajeHumano,
+      });
     } finally {
       setGuardando(false);
     }
@@ -52,12 +74,14 @@ export default function MiPerfilPage() {
     if (!file) return;
 
     if (file.size > 1024 * 1024) {
-      setMensaje({ tipo: "error", texto: "La imagen no debe superar 1 MB." });
+      const msg = "La imagen supera el límite de 1 MB. Elige una imagen más liviana.";
+      setErrorLocal(msg);
+      mostrarAviso({ tipo: "error", titulo: "Imagen muy pesada", texto: msg });
       return;
     }
 
     setSubiendoFoto(true);
-    setMensaje(null);
+    setErrorLocal(null);
 
     const formData = new FormData();
     formData.append("foto", file);
@@ -65,14 +89,23 @@ export default function MiPerfilPage() {
     try {
       const actualizado = await api.subirFoto(formData);
       setYo(actualizado);
-      setMensaje({ tipo: "exito", texto: "Foto de perfil actualizada correctamente." });
+      mostrarAviso({
+        tipo: "exito",
+        titulo: "Foto actualizada",
+        texto: "Tu nueva foto de perfil ya está visible.",
+      });
     } catch (err: unknown) {
       const e = err as { message?: string };
-      setMensaje({ tipo: "error", texto: e.message || "Error al subir la imagen." });
+      const mensajeHumano =
+        e.message || "No se pudo subir la fotografía. Intenta con formato JPEG o PNG.";
+      setErrorLocal(mensajeHumano);
+      mostrarAviso({ tipo: "error", titulo: "Error al subir", texto: mensajeHumano });
     } finally {
       setSubiendoFoto(false);
     }
   };
+
+  const sinCambios = !nombre.trim() || nombre.trim() === yo?.nombre;
 
   return (
     <div className={styles.container}>
@@ -82,25 +115,23 @@ export default function MiPerfilPage() {
       </div>
 
       <div className={styles.card}>
-        {mensaje && (
-          <div
-            className={`${styles.statusMsg} ${
-              mensaje.tipo === "exito" ? styles.statusSuccess : styles.statusError
-            }`}
-          >
-            {mensaje.texto}
-          </div>
+        {errorLocal && (
+          <Aviso
+            tipo="error"
+            titulo="No se pudo guardar"
+            texto={errorLocal}
+            onCerrar={() => setErrorLocal(null)}
+          />
         )}
 
         <div className={styles.avatarSection}>
-          {yo?.foto_path ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={yo.foto_path} alt={yo.nombre} className={styles.avatarPreview} />
-          ) : (
-            <div className={styles.avatarPlaceholder}>
-              {yo?.nombre ? yo.nombre.charAt(0).toUpperCase() : "U"}
-            </div>
-          )}
+          <Avatar
+            tamano={40}
+            src={yo?.foto_path || undefined}
+            iniciales={yo?.nombre ? yo.nombre.charAt(0).toUpperCase() : "U"}
+            alt={yo?.nombre}
+            style={{ width: "64px", height: "64px", fontSize: "24px" }}
+          />
 
           <div className={styles.avatarActions}>
             <input
@@ -110,16 +141,18 @@ export default function MiPerfilPage() {
               accept="image/jpeg,image/png,image/webp"
               onChange={handleSeleccionarFoto}
             />
-            <button
+            <Boton
               type="button"
-              className={styles.uploadBtn}
+              variante="secundario"
+              tamano="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={subiendoFoto}
+              cargando={subiendoFoto}
+              style={{ height: "30px" }}
             >
-              <Camera size={15} />
+              <Camera size={14} strokeWidth={1.75} style={{ marginRight: 6 }} />
               {subiendoFoto ? "Subiendo..." : "Cambiar foto"}
-            </button>
-            <span className={styles.helperText}>Máx 1 MB (JPEG, PNG o WebP)</span>
+            </Boton>
+            <span className={styles.helperText}>Máximo 1 MB (JPEG, PNG o WebP)</span>
           </div>
         </div>
 
@@ -128,39 +161,49 @@ export default function MiPerfilPage() {
             <label className={styles.label} htmlFor="correo">
               Correo electrónico
             </label>
-            <input
-              id="correo"
-              type="email"
-              readOnly
-              className={`${styles.input} ${styles.inputReadonly}`}
-              value={yo?.correo || ""}
-            />
+            <span className="rc-input-contenedor" style={{ opacity: 0.85 }}>
+              <input
+                id="correo"
+                type="email"
+                readOnly
+                className="rc-input"
+                value={yo?.correo || ""}
+                style={{ cursor: "not-allowed" }}
+              />
+            </span>
           </div>
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="nombre">
               Nombre de visualización
             </label>
-            <input
-              id="nombre"
-              type="text"
-              required
-              minLength={2}
-              maxLength={60}
-              className={styles.input}
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-            />
+            <div className={styles.nameRow}>
+              <div className={styles.nameField}>
+                <span className="rc-input-contenedor" style={{ width: "100%" }}>
+                  <input
+                    id="nombre"
+                    type="text"
+                    required
+                    minLength={2}
+                    maxLength={60}
+                    className="rc-input"
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                  />
+                </span>
+              </div>
+              <Boton
+                type="submit"
+                variante="vidrio"
+                cargando={guardando}
+                disabled={guardando || sinCambios}
+                style={{ height: "30px", whiteSpace: "nowrap" }}
+              >
+                <Check size={14} strokeWidth={1.75} style={{ marginRight: 4 }} />
+                {guardando ? "Guardando..." : "Guardar"}
+              </Boton>
+            </div>
           </div>
-
-          <button
-            type="submit"
-            disabled={guardando || nombre.trim() === yo?.nombre}
-            className={styles.saveBtn}
-          >
-            <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
-            {guardando ? "Guardando..." : "Guardar cambios"}
-          </button>
         </form>
       </div>
     </div>

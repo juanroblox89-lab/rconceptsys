@@ -1,175 +1,97 @@
 .container {
-  padding: 1.5rem;
+  padding: var(--rc-esp-20) var(--rc-esp-16);
   max-width: 580px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--rc-esp-16);
 }
 
 .header {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--rc-esp-4);
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--rc-label-primary);
+  font-size: var(--rc-fs-titulo-pagina);
+  line-height: var(--rc-lh-titulo-pagina);
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-gris-900);
 }
 
 .subtitle {
-  font-size: 13.5px;
-  color: var(--rc-label-secondary);
+  font-size: var(--rc-fs-secundario);
+  line-height: var(--rc-lh-secundario);
+  color: var(--rc-texto-secundario);
 }
 
 .card {
-  background-color: var(--rc-bg-surface);
-  border: 1px solid var(--rc-border);
-  border-radius: var(--rc-radius-card);
-  padding: 1.75rem 1.5rem;
+  background-color: var(--rc-superficie);
+  border-radius: var(--rc-radio-xl);
+  box-shadow: var(--rc-elev-relieve-md);
+  padding: var(--rc-esp-24) var(--rc-esp-20);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  box-shadow: var(--rc-shadow-subtle);
+  gap: var(--rc-esp-16);
 }
 
 .avatarSection {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-}
-
-.avatarPreview {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--rc-border);
-  background-color: var(--rc-bg-elevated);
-}
-
-.avatarPlaceholder {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background-color: var(--rc-bg-elevated);
-  border: 2px solid var(--rc-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--rc-label-primary);
+  gap: var(--rc-esp-16);
+  padding-bottom: var(--rc-esp-14);
+  border-bottom: 1px solid var(--rc-gris-100);
 }
 
 .avatarActions {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--rc-esp-4);
 }
 
 .fileInput {
   display: none;
 }
 
-.uploadBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.85rem;
-  background-color: var(--rc-bg-elevated);
-  color: var(--rc-label-primary);
-  border: 1px solid var(--rc-border);
-  border-radius: var(--rc-radius-btn);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color var(--rc-dur-fast) var(--rc-ease);
-}
-
-.uploadBtn:hover {
-  background-color: var(--rc-bg-hover);
-}
-
 .helperText {
-  font-size: 11.5px;
-  color: var(--rc-label-tertiary);
+  font-size: var(--rc-fs-micro);
+  line-height: var(--rc-lh-micro);
+  color: var(--rc-texto-tenue);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--rc-esp-14);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--rc-esp-4);
 }
 
 .label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--rc-label-primary);
+  font-size: var(--rc-fs-etiqueta);
+  line-height: var(--rc-lh-etiqueta);
+  font-weight: var(--rc-fw-medio);
+  color: var(--rc-gris-700);
 }
 
-.input {
-  font-size: 16px;
-  min-height: 44px;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--rc-radius-btn);
-  border: 1.5px solid var(--rc-border);
-  background-color: var(--rc-bg-elevated);
-  color: var(--rc-label-primary);
-  outline: none;
-}
-
-.input:focus {
-  border-color: var(--rc-label-primary);
-}
-
-.inputReadonly {
-  opacity: 0.7;
-  cursor: not-allowed;
-  background-color: var(--rc-bg-surface);
-}
-
-.saveBtn {
-  min-height: 44px;
-  background-color: var(--rc-label-primary);
-  color: var(--rc-bg-page);
-  border: none;
-  border-radius: var(--rc-radius-btn);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+.nameRow {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  gap: var(--rc-esp-8);
 }
 
-.saveBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.nameField {
+  flex: 1;
 }
 
-.statusMsg {
-  font-size: 13px;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--rc-radius-btn);
-}
-
-.statusSuccess {
-  background-color: var(--rc-success-bg, #16a34a15);
-  border: 1px solid var(--rc-success);
-  color: var(--rc-label-primary);
-}
-
-.statusError {
-  background-color: var(--rc-error-bg);
-  border: 1px solid var(--rc-error-primary);
-  color: var(--rc-label-primary);
+@media (max-width: 480px) {
+  .nameRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
