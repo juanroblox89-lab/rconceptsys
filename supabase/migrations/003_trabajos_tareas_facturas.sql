@@ -181,10 +181,18 @@ begin
     for update;
 
     -- Si no existe factura abierta para esta persona, se crea una
+    -- (on conflict evita el choque si otra aceptacion de la misma persona la abre a la vez)
     if v_factura_id is null then
         insert into public.facturas (perfil_id, estado, creada_en)
         values (v_tarea.asignado_a, 'abierta', v_ahora)
+        on conflict (perfil_id) where estado = 'abierta' do nothing
         returning id into v_factura_id;
+        if v_factura_id is null then
+            select id into v_factura_id
+            from public.facturas
+            where perfil_id = v_tarea.asignado_a and estado = 'abierta'
+            for update;
+        end if;
     end if;
 
     -- Actualizar la tarea de forma atómica: congelar precio, factura_id y estado aceptada
