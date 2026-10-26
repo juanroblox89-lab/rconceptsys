@@ -1,5 +1,19 @@
 // lib/api.ts
-import { Perfil, ChatMensaje, Rol, TipoTrabajo, Tarea, Factura, FacturaMiaRespuesta, ResumenFacturasPersona, AdminTareasRespuesta } from './types';
+import {
+  Perfil,
+  ChatMensaje,
+  Rol,
+  TipoTrabajo,
+  Cliente,
+  Tarea,
+  Factura,
+  FacturaMiaRespuesta,
+  ResumenFacturasPersona,
+  AdminTareasRespuesta,
+  EstadisticasYoResponse,
+  EstadisticasAdminResponse,
+  UnidadTrabajo,
+} from './types';
 
 // En el navegador usamos rutas relativas con cookies httpOnly
 const API_BASE = '';
@@ -145,27 +159,36 @@ export const api = {
       body: JSON.stringify(campos),
     }),
 
-  // F2: Trabajos, Tareas y Facturas (Miembro)
+  // F2 y F3: Trabajos, Tareas y Facturas (Miembro)
   getTrabajos: () => fetchApi<TipoTrabajo[]>('/api/trabajos'),
+  getClientes: () => fetchApi<Cliente[]>('/api/clientes'),
+  getYoEstadisticas: (desde?: string, hasta?: string) => {
+    const q = new URLSearchParams();
+    if (desde) q.set('desde', desde);
+    if (hasta) q.set('hasta', hasta);
+    const qs = q.toString();
+    return fetchApi<EstadisticasYoResponse>(`/api/yo/estadisticas${qs ? `?${qs}` : ''}`);
+  },
   getTareas: (estado?: string) => {
     const q = new URLSearchParams();
     if (estado) q.set('estado', estado);
     return fetchApi<Tarea[]>(`/api/tareas?${q.toString()}`);
   },
-  postTareaHecha: (id: number, nota?: string) =>
+  postTareaHecha: (id: number, nota?: string, cantidad?: number) =>
     fetchApi<Tarea>(`/api/tareas/${id}/hecha`, {
       method: 'POST',
-      body: JSON.stringify({ nota }),
+      body: JSON.stringify({ nota, cantidad }),
     }),
   getFacturaMia: () => fetchApi<FacturaMiaRespuesta>('/api/facturas/mia'),
 
-  // F2: Solo Admin (Gestión de Trabajos, Tareas y Facturas)
+  // F2 y F3: Solo Admin (Gestión de Trabajos, Clientes, Tareas, Facturas y Estadísticas)
   adminGetTrabajos: () => fetchApi<TipoTrabajo[]>('/api/admin/trabajos'),
   adminPostTrabajo: (trabajo: {
     clave: string;
     nombre: string;
     rol_id?: number | null;
     precio?: number;
+    unidad?: UnidadTrabajo;
     activo?: boolean;
     orden?: number;
   }) =>
@@ -179,6 +202,18 @@ export const api = {
       body: JSON.stringify(campos),
     }),
 
+  adminGetClientes: () => fetchApi<Cliente[]>('/api/admin/clientes'),
+  adminPostCliente: (nombre: string) =>
+    fetchApi<Cliente>('/api/admin/clientes', {
+      method: 'POST',
+      body: JSON.stringify({ nombre }),
+    }),
+  adminPatchCliente: (id: number, campos: Partial<Cliente>) =>
+    fetchApi<Cliente>(`/api/admin/clientes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(campos),
+    }),
+
   adminGetTareas: (filtros?: { estado?: string; persona?: string }) => {
     const q = new URLSearchParams();
     if (filtros?.estado) q.set('estado', filtros.estado);
@@ -187,6 +222,7 @@ export const api = {
   },
   adminPostTarea: (tarea: {
     tipo_id: number;
+    cliente_id?: number | null;
     asignado_a: string;
     titulo: string;
     descripcion?: string;
@@ -197,8 +233,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(tarea),
     }),
-  adminAceptarTarea: (id: number) =>
-    fetchApi<Tarea>(`/api/admin/tareas/${id}/aceptar`, { method: 'POST' }),
+  adminAceptarTarea: (id: number, cantidad?: number) =>
+    fetchApi<Tarea>(`/api/admin/tareas/${id}/aceptar`, {
+      method: 'POST',
+      body: JSON.stringify({ cantidad }),
+    }),
   adminRechazarTarea: (id: number, motivo: string) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/rechazar`, {
       method: 'POST',
@@ -211,4 +250,23 @@ export const api = {
   adminGetFactura: (id: number) => fetchApi<Factura>(`/api/admin/facturas/${id}`),
   adminPagarFactura: (id: number) =>
     fetchApi<Factura>(`/api/admin/facturas/${id}/pagar`, { method: 'POST' }),
+
+  adminGetEstadisticas: (filtros?: {
+    desde?: string;
+    hasta?: string;
+    agrupar?: string;
+    persona_id?: string;
+    cliente_id?: string;
+    tipo_id?: number;
+  }) => {
+    const q = new URLSearchParams();
+    if (filtros?.desde) q.set('desde', filtros.desde);
+    if (filtros?.hasta) q.set('hasta', filtros.hasta);
+    if (filtros?.agrupar) q.set('agrupar', filtros.agrupar);
+    if (filtros?.persona_id) q.set('persona_id', filtros.persona_id);
+    if (filtros?.cliente_id) q.set('cliente_id', filtros.cliente_id);
+    if (filtros?.tipo_id) q.set('tipo_id', filtros.tipo_id.toString());
+    const qs = q.toString();
+    return fetchApi<EstadisticasAdminResponse>(`/api/admin/estadisticas${qs ? `?${qs}` : ''}`);
+  },
 };

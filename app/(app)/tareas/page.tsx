@@ -18,6 +18,7 @@ export default function MisTareasPage() {
   const [cargando, setCargando] = useState(true);
   const [modalTarea, setModalTarea] = useState<Tarea | null>(null);
   const [nota, setNota] = useState("");
+  const [minutos, setMinutos] = useState<string>("");
   const [enviando, setEnviando] = useState(false);
   const { mostrarAviso } = useAviso();
 
@@ -63,18 +64,36 @@ export default function MisTareasPage() {
   const abrirModalHecha = (t: Tarea) => {
     setModalTarea(t);
     setNota(t.nota_persona || "");
+    setMinutos(t.cantidad ? String(t.cantidad) : "");
   };
 
   const cerrarModal = () => {
     setModalTarea(null);
     setNota("");
+    setMinutos("");
   };
 
   const handleMarcarHecha = async () => {
     if (!modalTarea) return;
+    const esMinuto = modalTarea.tipo?.unidad === "minuto";
+    let cantNum: number | undefined = undefined;
+
+    if (esMinuto) {
+      const num = parseInt(minutos, 10);
+      if (isNaN(num) || num < 1 || num > 1440) {
+        mostrarAviso({
+          tipo: "error",
+          titulo: "Minutos requeridos",
+          texto: "Debes ingresar los minutos grabados (entero entre 1 y 1440).",
+        });
+        return;
+      }
+      cantNum = num;
+    }
+
     setEnviando(true);
     try {
-      await api.postTareaHecha(modalTarea.id, nota.trim() || undefined);
+      await api.postTareaHecha(modalTarea.id, nota.trim() || undefined, cantNum);
       mostrarAviso({
         tipo: "exito",
         titulo: "Tarea completada",
@@ -231,6 +250,23 @@ export default function MisTareasPage() {
           }
         >
           <div className={styles.modalContent}>
+            {modalTarea.tipo?.unidad === "minuto" && (
+              <div style={{ marginBottom: "var(--rc-esp-12)" }}>
+                <Campo
+                  etiqueta="Minutos grabados *"
+                  type="number"
+                  min={1}
+                  max={1440}
+                  placeholder="Ej. 120 (entre 1 y 1440)"
+                  value={minutos}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setMinutos(e.target.value)}
+                  disabled={enviando}
+                />
+                <div style={{ fontSize: "var(--rc-fs-etiqueta)", color: "var(--rc-texto-secundario)", marginTop: "4px" }}>
+                  Este trabajo se cobra por minuto. Ingresa la duración real de grabación (1 a 1440).
+                </div>
+              </div>
+            )}
             <Campo
               etiqueta="Nota opcional (hasta 500 caracteres)"
               como="textarea"
@@ -261,7 +297,10 @@ function renderTarjeta(
     <article key={t.id} className={styles.tareaCard}>
       <div className={styles.tareaCardTop}>
         <h3 className={styles.tareaTitulo}>{t.titulo}</h3>
-        <Chip punto="azul">{chipRol}</Chip>
+        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <Chip punto="azul">{chipRol}</Chip>
+          {t.cliente && <Chip punto="verde">{t.cliente.nombre}</Chip>}
+        </div>
       </div>
 
       {t.descripcion && <p className={styles.tareaDescripcion}>{t.descripcion}</p>}
@@ -274,9 +313,21 @@ function renderTarjeta(
           </span>
         )}
 
+        {t.tipo?.unidad === "minuto" && (
+          <span style={{ fontSize: "var(--rc-fs-etiqueta)", color: "var(--rc-azul-texto)", fontWeight: 600 }}>
+            {t.cantidad_aceptada
+              ? `${t.cantidad_aceptada} min grabados`
+              : t.cantidad
+              ? `${t.cantidad} min reportados`
+              : "Cobro por minuto"}
+          </span>
+        )}
+
         {t.precio_congelado !== null && t.precio_congelado !== undefined && (
           <span className={styles.precioCongelado}>
-            $ {t.precio_congelado.toLocaleString("es-CO")}
+            {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
+              ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${t.precio_congelado.toLocaleString("es-CO")}`
+              : `$ ${t.precio_congelado.toLocaleString("es-CO")}`}
           </span>
         )}
       </div>

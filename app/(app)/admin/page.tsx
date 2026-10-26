@@ -12,14 +12,21 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  BarChart2,
+  Users2,
+  Calendar,
+  Edit2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
   Perfil,
   Rol,
   TipoTrabajo,
+  Cliente,
   Tarea,
   ResumenFacturasPersona,
+  EstadisticasAdminResponse,
+  UnidadTrabajo,
 } from "@/lib/types";
 import { Tabla, TablaFila } from "@/components/ui/Tabla";
 import { Boton } from "@/components/ui/Boton";
@@ -32,7 +39,48 @@ import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
 import { useAviso } from "@/components/ui/Aviso";
+import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
 import styles from "./admin.module.css";
+
+type PresetFechaAdmin = "hoy" | "7dias" | "este_mes" | "mes_pasado" | "este_ano" | "todo" | "personalizado";
+
+function obtenerFechasPresetAdmin(preset: PresetFechaAdmin): { desde?: string; hasta?: string } {
+  const ahora = new Date();
+  const formatYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dia}`;
+  };
+
+  const hoyStr = formatYMD(ahora);
+
+  switch (preset) {
+    case "hoy":
+      return { desde: hoyStr, hasta: hoyStr };
+    case "7dias": {
+      const d = new Date(ahora);
+      d.setDate(d.getDate() - 6);
+      return { desde: formatYMD(d), hasta: hoyStr };
+    }
+    case "este_mes": {
+      const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+      return { desde: formatYMD(inicio), hasta: hoyStr };
+    }
+    case "mes_pasado": {
+      const inicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+      const fin = new Date(ahora.getFullYear(), ahora.getMonth(), 0);
+      return { desde: formatYMD(inicio), hasta: formatYMD(fin) };
+    }
+    case "este_ano": {
+      const inicio = new Date(ahora.getFullYear(), 0, 1);
+      return { desde: formatYMD(inicio), hasta: hoyStr };
+    }
+    case "todo":
+    default:
+      return {};
+  }
+}
 
 export default function AdminPage() {
   const [pestanaActiva, setPestanaActiva] = useState("trabajos");
@@ -43,6 +91,7 @@ export default function AdminPage() {
   const [miembros, setMiembros] = useState<Perfil[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [trabajos, setTrabajos] = useState<TipoTrabajo[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [porRevisarCount, setPorRevisarCount] = useState(0);
   const [facturas, setFacturas] = useState<ResumenFacturasPersona[]>([]);
@@ -54,13 +103,23 @@ export default function AdminPage() {
   const [nuevoTrabNombre, setNuevoTrabNombre] = useState("");
   const [nuevoTrabRolId, setNuevoTrabRolId] = useState<number | "">("");
   const [nuevoTrabPrecio, setNuevoTrabPrecio] = useState<number>(0);
+  const [nuevoTrabUnidad, setNuevoTrabUnidad] = useState<UnidadTrabajo>("trabajo");
   const [guardandoTrabajo, setGuardandoTrabajo] = useState(false);
+
+  // Estados locales - Clientes
+  const [modalNuevoCliente, setModalNuevoCliente] = useState(false);
+  const [nuevoClienteNombre, setNuevoClienteNombre] = useState("");
+  const [guardandoCliente, setGuardandoCliente] = useState(false);
+  const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
+  const [nombreEditado, setNombreEditado] = useState("");
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
   // Estados locales - Tareas
   const [filtroPersona, setFiltroPersona] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("");
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false);
   const [nuevaTareaTipoId, setNuevaTareaTipoId] = useState<number | "">("");
+  const [nuevaTareaClienteId, setNuevaTareaClienteId] = useState<number | "">("");
   const [nuevaTareaAsignadoA, setNuevaTareaAsignadoA] = useState<string>("");
   const [nuevaTareaTitulo, setNuevaTareaTitulo] = useState("");
   const [nuevaTareaDescripcion, setNuevaTareaDescripcion] = useState("");
@@ -68,10 +127,31 @@ export default function AdminPage() {
   const [nuevaTareaForzar, setNuevaTareaForzar] = useState(false);
   const [creandoTarea, setCreandoTarea] = useState(false);
 
+  // Cliente al vuelo desde modal Nueva Tarea
+  const [modalCrearClienteAlVuelo, setModalCrearClienteAlVuelo] = useState(false);
+  const [clienteAlVueloNombre, setClienteAlVueloNombre] = useState("");
+  const [guardandoClienteAlVuelo, setGuardandoClienteAlVuelo] = useState(false);
+
+  // Modal Aceptar Tarea con corrección opcional de minutos
+  const [modalAceptarTarea, setModalAceptarTarea] = useState<Tarea | null>(null);
+  const [minutosAceptarInput, setMinutosAceptarInput] = useState<string>("");
+  const [aceptandoTarea, setAceptandoTarea] = useState(false);
+
   // Modal Rechazar Tarea
   const [tareaARechazar, setTareaARechazar] = useState<Tarea | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [rechazando, setRechazando] = useState(false);
+
+  // Estados locales - Estadísticas
+  const [statsAdmin, setStatsAdmin] = useState<EstadisticasAdminResponse | null>(null);
+  const [cargandoStatsAdmin, setCargandoStatsAdmin] = useState(false);
+  const [presetStats, setPresetStats] = useState<PresetFechaAdmin>("este_mes");
+  const [fechaDesdeStats, setFechaDesdeStats] = useState("");
+  const [fechaHastaStats, setFechaHastaStats] = useState("");
+  const [agruparStats, setAgruparStats] = useState("");
+  const [filtroPersonaStats, setFiltroPersonaStats] = useState("");
+  const [filtroClienteStats, setFiltroClienteStats] = useState("");
+  const [filtroTipoStats, setFiltroTipoStats] = useState<number | "">("");
 
   // Modal Pagar Factura
   const [facturaAPagar, setFacturaAPagar] = useState<{ id: number; total: number; persona: string } | null>(null);
@@ -84,14 +164,29 @@ export default function AdminPage() {
   const [nuevoColor, setNuevoColor] = useState("#2F7FE0");
   const [rolesPendientes, setRolesPendientes] = useState<Record<string, number[]>>({});
 
+  const formatearFechaHora = (iso?: string | null) => {
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString("es-CO", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return iso;
+    }
+  };
+
   const cargarDatos = useCallback(async () => {
     try {
-      const [mList, rList, tList, tareasRes, fList] = await Promise.all([
+      const [mList, rList, tList, tareasRes, fList, cList] = await Promise.all([
         api.adminGetMiembros(),
         api.adminGetRoles(),
         api.adminGetTrabajos(),
         api.adminGetTareas(),
         api.adminGetFacturas(),
+        api.adminGetClientes(),
       ]);
       setMiembros(mList);
       setRoles(rList);
@@ -99,6 +194,7 @@ export default function AdminPage() {
       setTareas(tareasRes?.tareas || []);
       setPorRevisarCount(tareasRes?.por_revisar || 0);
       setFacturas(fList);
+      setClientes(cList);
 
       const preciosMap: Record<number, number> = {};
       tList.forEach((t) => {
@@ -116,10 +212,55 @@ export default function AdminPage() {
     }
   }, [mostrarAviso]);
 
+  const cargarEstadisticasAdmin = useCallback(async (
+    p: PresetFechaAdmin,
+    d?: string,
+    h?: string,
+    agr?: string,
+    pers?: string,
+    cli?: string,
+    tip?: number | ""
+  ) => {
+    setCargandoStatsAdmin(true);
+    try {
+      let desdeParam = d;
+      let hastaParam = h;
+      if (p !== "personalizado") {
+        const fechas = obtenerFechasPresetAdmin(p);
+        desdeParam = fechas.desde;
+        hastaParam = fechas.hasta;
+      }
+      const data = await api.adminGetEstadisticas({
+        desde: desdeParam,
+        hasta: hastaParam,
+        agrupar: agr || undefined,
+        persona_id: pers || undefined,
+        cliente_id: cli || undefined,
+        tipo_id: tip ? Number(tip) : undefined,
+      });
+      setStatsAdmin(data);
+    } catch {
+      mostrarAviso({
+        tipo: "error",
+        titulo: "Error al cargar estadísticas",
+        texto: "No se pudieron calcular las estadísticas de administración.",
+      });
+    } finally {
+      setCargandoStatsAdmin(false);
+    }
+  }, [mostrarAviso]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarDatos();
   }, [cargarDatos]);
+
+  useEffect(() => {
+    if (pestanaActiva === "estadisticas" && !statsAdmin) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      cargarEstadisticasAdmin("este_mes");
+    }
+  }, [pestanaActiva, statsAdmin, cargarEstadisticasAdmin]);
 
   // ==========================================
   // Acciones: Pestaña Miembros
@@ -253,6 +394,21 @@ export default function AdminPage() {
     }
   };
 
+  const handleCambiarUnidadTrabajo = async (trabajoId: number, nuevaUnidad: UnidadTrabajo) => {
+    try {
+      await api.adminPatchTrabajo(trabajoId, { unidad: nuevaUnidad });
+      mostrarAviso({
+        tipo: "exito",
+        titulo: "Unidad actualizada",
+        texto: `El trabajo ahora se cobra por ${nuevaUnidad === "minuto" ? "minuto" : "trabajo"}.`,
+      });
+      await cargarDatos();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      mostrarAviso({ tipo: "error", titulo: "Error", texto: e.message || "No se pudo actualizar la unidad." });
+    }
+  };
+
   const handleCrearTrabajo = async () => {
     if (!nuevoTrabNombre.trim() || !nuevoTrabClave.trim()) {
       mostrarAviso({ tipo: "error", titulo: "Campos requeridos", texto: "El nombre y la clave son obligatorios." });
@@ -265,6 +421,7 @@ export default function AdminPage() {
         nombre: nuevoTrabNombre.trim(),
         rol_id: nuevoTrabRolId === "" ? null : Number(nuevoTrabRolId),
         precio: nuevoTrabPrecio || 0,
+        unidad: nuevoTrabUnidad,
         activo: true,
         orden: trabajos.length + 1,
       });
@@ -274,6 +431,7 @@ export default function AdminPage() {
       setNuevoTrabNombre("");
       setNuevoTrabRolId("");
       setNuevoTrabPrecio(0);
+      setNuevoTrabUnidad("trabajo");
       await cargarDatos();
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -284,20 +442,136 @@ export default function AdminPage() {
   };
 
   // ==========================================
+  // Acciones: Pestaña Clientes
+  // ==========================================
+  const handleCrearCliente = async () => {
+    const limpio = nuevoClienteNombre.trim();
+    if (limpio.length < 1 || limpio.length > 80) {
+      mostrarAviso({ tipo: "error", titulo: "Nombre inválido", texto: "El nombre debe tener entre 1 y 80 caracteres." });
+      return;
+    }
+    setGuardandoCliente(true);
+    try {
+      await api.adminPostCliente(limpio);
+      mostrarAviso({ tipo: "exito", titulo: "Cliente creado", texto: `El cliente "${limpio}" fue creado con éxito.` });
+      setModalNuevoCliente(false);
+      setNuevoClienteNombre("");
+      const clis = await api.adminGetClientes();
+      setClientes(clis);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      mostrarAviso({ tipo: "error", titulo: "Error al crear cliente", texto: e.message || "Verifica los datos." });
+    } finally {
+      setGuardandoCliente(false);
+    }
+  };
+
+  const handleRenombrarCliente = async () => {
+    if (!clienteAEditar) return;
+    const limpio = nombreEditado.trim();
+    if (limpio.length < 1 || limpio.length > 80) {
+      mostrarAviso({ tipo: "error", titulo: "Nombre inválido", texto: "El nombre debe tener entre 1 y 80 caracteres." });
+      return;
+    }
+    setGuardandoEdicion(true);
+    try {
+      await api.adminPatchCliente(clienteAEditar.id, { nombre: limpio });
+      mostrarAviso({ tipo: "exito", titulo: "Cliente actualizado", texto: "El nombre fue modificado con éxito." });
+      setClienteAEditar(null);
+      setNombreEditado("");
+      const clis = await api.adminGetClientes();
+      setClientes(clis);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      mostrarAviso({ tipo: "error", titulo: "Error al renombrar", texto: e.message || "Error al actualizar." });
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  };
+
+  const handleToggleClienteActivo = async (c: Cliente) => {
+    try {
+      await api.adminPatchCliente(c.id, { activo: !c.activo });
+      mostrarAviso({
+        tipo: "info",
+        titulo: "Estado actualizado",
+        texto: `El cliente "${c.nombre}" ahora está ${!c.activo ? "activo" : "inactivo"}.`,
+      });
+      const clis = await api.adminGetClientes();
+      setClientes(clis);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      mostrarAviso({ tipo: "error", titulo: "Error", texto: e.message || "No se pudo cambiar el estado." });
+    }
+  };
+
+  const handleCrearClienteAlVuelo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const limpio = clienteAlVueloNombre.trim();
+    if (limpio.length < 1 || limpio.length > 80) {
+      mostrarAviso({ tipo: "error", titulo: "Nombre inválido", texto: "El nombre debe tener entre 1 y 80 caracteres." });
+      return;
+    }
+    setGuardandoClienteAlVuelo(true);
+    try {
+      const nuevo = await api.adminPostCliente(limpio);
+      mostrarAviso({ tipo: "exito", titulo: "Cliente creado", texto: `El cliente "${limpio}" fue creado y seleccionado.` });
+      const clis = await api.adminGetClientes();
+      setClientes(clis);
+      setNuevaTareaClienteId(nuevo.id);
+      setModalCrearClienteAlVuelo(false);
+      setClienteAlVueloNombre("");
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      mostrarAviso({ tipo: "error", titulo: "Error", texto: e.message || "No se pudo crear el cliente." });
+    } finally {
+      setGuardandoClienteAlVuelo(false);
+    }
+  };
+
+  // ==========================================
   // Acciones: Pestaña Tareas
   // ==========================================
-  const handleAceptarTarea = async (tarea: Tarea) => {
+  const handleAbrirAceptarTarea = (tarea: Tarea) => {
+    setModalAceptarTarea(tarea);
+    setMinutosAceptarInput(tarea.cantidad ? String(tarea.cantidad) : "1");
+  };
+
+  const handleConfirmarAceptarTarea = async () => {
+    if (!modalAceptarTarea) return;
+    const esMinuto = modalAceptarTarea.tipo?.unidad === "minuto";
+    let cant: number | undefined = undefined;
+    if (esMinuto) {
+      const num = parseInt(minutosAceptarInput, 10);
+      if (isNaN(num) || num < 1 || num > 1440) {
+        mostrarAviso({
+          tipo: "error",
+          titulo: "Minutos inválidos",
+          texto: "Los minutos aceptados deben ser un número entre 1 y 1440.",
+        });
+        return;
+      }
+      cant = num;
+    }
+    setAceptandoTarea(true);
     try {
-      await api.adminAceptarTarea(tarea.id);
+      await api.adminAceptarTarea(modalAceptarTarea.id, cant);
       mostrarAviso({
         tipo: "exito",
         titulo: "Tarea aceptada",
-        texto: `Se congeló el valor vigente y se añadió a la factura de ${tarea.asignado?.nombre || "la persona"}.`,
+        texto: `La tarea fue aceptada y su valor congelado en la factura.`,
       });
+      setModalAceptarTarea(null);
       await cargarDatos();
     } catch (err: unknown) {
       const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "No se pudo aceptar", texto: e.message || "Error al aceptar tarea." });
+      mostrarAviso({
+        tipo: "error",
+        titulo: "No se pudo aceptar",
+        texto: e.message || "Error al aceptar tarea.",
+      });
+    } finally {
+      setAceptandoTarea(false);
     }
   };
 
@@ -347,6 +621,7 @@ export default function AdminPage() {
     try {
       await api.adminPostTarea({
         tipo_id: Number(nuevaTareaTipoId),
+        cliente_id: nuevaTareaClienteId === "" ? null : Number(nuevaTareaClienteId),
         asignado_a: nuevaTareaAsignadoA,
         titulo: nuevaTareaTitulo.trim(),
         descripcion: nuevaTareaDescripcion.trim() || undefined,
@@ -356,6 +631,7 @@ export default function AdminPage() {
       mostrarAviso({ tipo: "exito", titulo: "Tarea creada y asignada" });
       setModalNuevaTarea(false);
       setNuevaTareaTipoId("");
+      setNuevaTareaClienteId("");
       setNuevaTareaAsignadoA("");
       setNuevaTareaTitulo("");
       setNuevaTareaDescripcion("");
@@ -431,6 +707,7 @@ export default function AdminPage() {
 
   const tabsItems = [
     { id: "trabajos", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Briefcase size={14} /> Trabajos</span> },
+    { id: "clientes", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Users2 size={14} /> Clientes</span> },
     {
       id: "tareas",
       etiqueta: (
@@ -454,6 +731,7 @@ export default function AdminPage() {
         </span>
       ),
     },
+    { id: "estadisticas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><BarChart2 size={14} /> Estadísticas</span> },
     { id: "facturas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Receipt size={14} /> Facturas</span> },
     { id: "miembros", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Users size={14} /> Miembros</span> },
   ];
@@ -507,6 +785,7 @@ export default function AdminPage() {
                     <tr>
                       <th>Nombre</th>
                       <th>Rol que lo realiza</th>
+                      <th>Se cobra por</th>
                       <th>Precio (COP)</th>
                       <th>Estado</th>
                       <th style={{ textAlign: "right" }}>Acción</th>
@@ -538,22 +817,39 @@ export default function AdminPage() {
                           </select>
                         </td>
                         <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span>$</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100000000}
-                              className={styles.inputPrecio}
-                              value={preciosEditados[t.id] ?? t.precio}
-                              onChange={(e) =>
-                                setPreciosEditados((prev) => ({
-                                  ...prev,
-                                  [t.id]: Math.max(0, parseInt(e.target.value, 10) || 0),
-                                }))
-                              }
-                              onBlur={() => handleGuardarPrecio(t)}
-                            />
+                          <select
+                            className={styles.selectCompacto}
+                            value={t.unidad || "trabajo"}
+                            onChange={(e) =>
+                              handleCambiarUnidadTrabajo(t.id, e.target.value as UnidadTrabajo)
+                            }
+                          >
+                            <option value="trabajo">Por trabajo</option>
+                            <option value="minuto">Por minuto</option>
+                          </select>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span>$</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100000000}
+                                className={styles.inputPrecio}
+                                value={preciosEditados[t.id] ?? t.precio}
+                                onChange={(e) =>
+                                  setPreciosEditados((prev) => ({
+                                    ...prev,
+                                    [t.id]: Math.max(0, parseInt(e.target.value, 10) || 0),
+                                  }))
+                                }
+                                onBlur={() => handleGuardarPrecio(t)}
+                              />
+                            </div>
+                            <span style={{ fontSize: 10, color: "var(--rc-texto-secundario)", textAlign: "right" }}>
+                              {t.unidad === "minuto" ? "COP por minuto" : "COP por trabajo"}
+                            </span>
                           </div>
                         </td>
                         <td>
@@ -618,35 +914,178 @@ export default function AdminPage() {
                       </select>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span>$</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100000000}
-                          className={styles.inputPrecio}
-                          value={preciosEditados[t.id] ?? t.precio}
-                          onChange={(e) =>
-                            setPreciosEditados((prev) => ({
-                              ...prev,
-                              [t.id]: Math.max(0, parseInt(e.target.value, 10) || 0),
-                            }))
-                          }
-                        />
-                      </div>
-                      <Boton
-                        variante="secundario"
-                        disabled={preciosEditados[t.id] === t.precio}
-                        onClick={() => handleGuardarPrecio(t)}
+                    <div>
+                      <label style={{ fontSize: 11, color: "var(--rc-texto-secundario)", display: "block", marginBottom: 4 }}>
+                        Se cobra por
+                      </label>
+                      <select
+                        className={styles.selectCompacto}
+                        style={{ width: "100%" }}
+                        value={t.unidad || "trabajo"}
+                        onChange={(e) =>
+                          handleCambiarUnidadTrabajo(t.id, e.target.value as UnidadTrabajo)
+                        }
                       >
-                        Guardar precio
-                      </Boton>
+                        <option value="trabajo">Por trabajo</option>
+                        <option value="minuto">Por minuto</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: 11, color: "var(--rc-texto-secundario)", display: "block", marginBottom: 4 }}>
+                        Precio ({t.unidad === "minuto" ? "COP por minuto" : "COP por trabajo"})
+                      </label>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1 }}>
+                          <span>$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100000000}
+                            className={styles.inputPrecio}
+                            style={{ width: "100%" }}
+                            value={preciosEditados[t.id] ?? t.precio}
+                            onChange={(e) =>
+                              setPreciosEditados((prev) => ({
+                                ...prev,
+                                ...{ [t.id]: Math.max(0, parseInt(e.target.value, 10) || 0) },
+                              }))
+                            }
+                            onBlur={() => handleGuardarPrecio(t)}
+                          />
+                        </div>
+                        <Boton
+                          variante="secundario"
+                          disabled={preciosEditados[t.id] === t.precio}
+                          onClick={() => handleGuardarPrecio(t)}
+                        >
+                          Guardar
+                        </Boton>
+                      </div>
                     </div>
                   </article>
                 ))}
               </div>
             </section>
+          )}
+
+          {/* ========================================================= */}
+          {/* PESTAÑA: CLIENTES                                         */}
+          {/* ========================================================= */}
+          {pestanaActiva === "clientes" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--rc-esp-20)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                <div>
+                  <h2 className={styles.sectionTitle}>Clientes</h2>
+                  <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)" }}>
+                    Gestiona los clientes para vincularlos a tareas y reportes de facturación
+                  </div>
+                </div>
+                <Boton
+                  variante="primario"
+                  onClick={() => {
+                    setNuevoClienteNombre("");
+                    setModalNuevoCliente(true);
+                  }}
+                >
+                  <Plus size={14} style={{ marginRight: 6 }} />
+                  Nuevo cliente
+                </Boton>
+              </div>
+
+              <section className={styles.section}>
+                {clientes.length === 0 ? (
+                  <Tarjeta
+                    variante="vacia"
+                    tituloVacio="Sin clientes registrados"
+                    textoVacio="Crea clientes para asociar a los trabajos y filtrar estadísticas."
+                  />
+                ) : (
+                  <>
+                    <div className={styles.desktopTable}>
+                      <Tabla>
+                        <thead>
+                          <tr>
+                            <th>Nombre del cliente</th>
+                            <th>Estado</th>
+                            <th>Fecha de creación</th>
+                            <th style={{ textAlign: "right" }}>Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {clientes.map((c) => (
+                            <TablaFila key={c.id}>
+                              <td>
+                                <strong>{c.nombre}</strong>
+                              </td>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <Interruptor
+                                    checked={c.activo}
+                                    onCheckedChange={() => handleToggleClienteActivo(c)}
+                                  />
+                                  <span style={{ fontSize: 12, color: c.activo ? "var(--rc-verde-texto)" : "var(--rc-texto-secundario)" }}>
+                                    {c.activo ? "Activo" : "Inactivo"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ fontSize: "12px", color: "var(--rc-texto-secundario)" }}>
+                                {formatearFechaHora(c.creado_en)}
+                              </td>
+                              <td style={{ textAlign: "right" }}>
+                                <Boton
+                                  variante="secundario"
+                                  tamano="sm"
+                                  onClick={() => {
+                                    setClienteAEditar(c);
+                                    setNombreEditado(c.nombre);
+                                  }}
+                                >
+                                  <Edit2 size={13} style={{ marginRight: 4 }} />
+                                  Renombrar
+                                </Boton>
+                              </td>
+                            </TablaFila>
+                          ))}
+                        </tbody>
+                      </Tabla>
+                    </div>
+
+                    <div className={styles.mobileCards}>
+                      {clientes.map((c) => (
+                        <article key={c.id} className={styles.mobileCard}>
+                          <div className={styles.mobileCardHeader}>
+                            <div>
+                              <div className={styles.mobileCardName}>{c.nombre}</div>
+                              <div className={styles.mobileCardEmail}>
+                                Creado el {formatearFechaHora(c.creado_en)}
+                              </div>
+                            </div>
+                            <Interruptor
+                              checked={c.activo}
+                              onCheckedChange={() => handleToggleClienteActivo(c)}
+                            />
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                            <Boton
+                              variante="secundario"
+                              tamano="sm"
+                              onClick={() => {
+                                setClienteAEditar(c);
+                                setNombreEditado(c.nombre);
+                              }}
+                            >
+                              <Edit2 size={13} style={{ marginRight: 4 }} />
+                              Renombrar
+                            </Boton>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+            </div>
           )}
 
           {/* ========================================================= */}
@@ -688,15 +1127,28 @@ export default function AdminPage() {
                           <span className={styles.reviewPersona}>
                             {t.asignado?.nombre || "Miembro"}
                           </span>
-                          <Chip punto="azul">
-                            {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
-                          </Chip>
+                          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                            <Chip punto="azul">
+                              {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
+                            </Chip>
+                            {t.cliente && (
+                              <Chip punto="verde">
+                                {t.cliente.nombre}
+                              </Chip>
+                            )}
+                          </div>
                         </div>
 
                         <div className={styles.reviewTitulo}>{t.titulo}</div>
                         {t.descripcion && (
                           <div style={{ fontSize: 12, color: "var(--rc-texto-secundario)" }}>
                             {t.descripcion}
+                          </div>
+                        )}
+
+                        {t.tipo?.unidad === "minuto" && (
+                          <div style={{ fontSize: 12, color: "var(--rc-azul-texto)", fontWeight: 600 }}>
+                            Minutos grabados reportados: {t.cantidad || 0} min
                           </div>
                         )}
 
@@ -707,9 +1159,11 @@ export default function AdminPage() {
                         )}
 
                         <div className={styles.reviewValor}>
-                          <span>Valor que se congelará:</span>
+                          <span>Valor estimado a congelar:</span>
                           <span className={styles.reviewValorMonto}>
-                            $ {(t.tipo?.precio || 0).toLocaleString("es-CO")}
+                            {t.tipo?.unidad === "minuto" && t.cantidad && t.tipo?.precio
+                              ? `$ ${(t.cantidad * t.tipo.precio).toLocaleString("es-CO")} (${t.cantidad} min × $ ${t.tipo.precio.toLocaleString("es-CO")})`
+                              : `$ ${(t.tipo?.precio || 0).toLocaleString("es-CO")}`}
                           </span>
                         </div>
 
@@ -725,10 +1179,10 @@ export default function AdminPage() {
                           </Boton>
                           <Boton
                             variante="primario"
-                            onClick={() => handleAceptarTarea(t)}
+                            onClick={() => handleAbrirAceptarTarea(t)}
                           >
                             <Check size={14} style={{ marginRight: 4 }} />
-                            Aceptar
+                            {t.tipo?.unidad === "minuto" ? "Revisar y aceptar" : "Aceptar"}
                           </Boton>
                         </div>
                       </article>
@@ -787,6 +1241,7 @@ export default function AdminPage() {
                             <th>Título</th>
                             <th>Persona</th>
                             <th>Trabajo</th>
+                            <th>Cliente</th>
                             <th>Estado</th>
                             <th>Valor</th>
                             <th style={{ textAlign: "right" }}>Acción</th>
@@ -806,6 +1261,13 @@ export default function AdminPage() {
                               <td>{t.asignado?.nombre || "—"}</td>
                               <td>{t.tipo?.nombre || "—"}</td>
                               <td>
+                                {t.cliente ? (
+                                  <Chip punto="verde">{t.cliente.nombre}</Chip>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: "var(--rc-texto-secundario)" }}>—</span>
+                                )}
+                              </td>
+                              <td>
                                 <Estado
                                   variante={
                                     t.estado === "aceptada"
@@ -820,7 +1282,9 @@ export default function AdminPage() {
                               </td>
                               <td>
                                 <span className={styles.montoVerde}>
-                                  $ {(t.precio_congelado ?? t.tipo?.precio ?? 0).toLocaleString("es-CO")}
+                                  {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
+                                    ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`
+                                    : `$ ${(t.precio_congelado ?? t.tipo?.precio ?? 0).toLocaleString("es-CO")}`}
                                 </span>
                               </td>
                               <td style={{ textAlign: "right" }}>
@@ -857,12 +1321,15 @@ export default function AdminPage() {
                               {t.estado === "hecha" ? "por revisar" : t.estado}
                             </Estado>
                           </div>
-                          <div style={{ fontSize: 12, color: "var(--rc-texto-secundario)" }}>
-                            Asignado a: <strong>{t.asignado?.nombre || "—"}</strong> ({t.tipo?.nombre})
+                          <div style={{ fontSize: 12, color: "var(--rc-texto-secundario)", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                            <span>Asignado a: <strong>{t.asignado?.nombre || "—"}</strong> ({t.tipo?.nombre})</span>
+                            {t.cliente && <Chip punto="verde">{t.cliente.nombre}</Chip>}
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <span className={styles.montoVerde}>
-                              $ {(t.precio_congelado ?? t.tipo?.precio ?? 0).toLocaleString("es-CO")}
+                              {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
+                                ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`
+                                : `$ ${(t.precio_congelado ?? t.tipo?.precio ?? 0).toLocaleString("es-CO")}`}
                             </span>
                             {(t.estado === "pendiente" || t.estado === "rechazada") && (
                               <Boton
@@ -879,6 +1346,284 @@ export default function AdminPage() {
                   </>
                 )}
               </section>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* PESTAÑA: ESTADÍSTICAS (F3)                                */}
+          {/* ========================================================= */}
+          {pestanaActiva === "estadisticas" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--rc-esp-20)" }}>
+              {/* Controles de Filtros y Presets */}
+              <div className={styles.statsFiltrosContenedor}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                  <span style={{ fontSize: "var(--rc-fs-titulo-seccion)", fontWeight: 600, color: "var(--rc-texto)" }}>
+                    Período de análisis
+                  </span>
+                  <div className={styles.statsPresetsBar} role="tablist">
+                    {(
+                      [
+                        { id: "hoy", label: "Hoy" },
+                        { id: "7dias", label: "7 días" },
+                        { id: "este_mes", label: "Este mes" },
+                        { id: "mes_pasado", label: "Mes pasado" },
+                        { id: "este_ano", label: "Este año" },
+                        { id: "todo", label: "Todo" },
+                        { id: "personalizado", label: "Personalizado" },
+                      ] as const
+                    ).map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={presetStats === p.id}
+                        style={{
+                          background: presetStats === p.id ? "var(--rc-luz)" : "transparent",
+                          color: presetStats === p.id ? "var(--rc-azul-texto)" : "var(--rc-texto-secundario)",
+                          fontWeight: presetStats === p.id ? 600 : 500,
+                          border: "none",
+                          borderRadius: "var(--rc-radio-sm)",
+                          padding: "4px 8px",
+                          fontSize: "var(--rc-fs-etiqueta)",
+                          cursor: "pointer",
+                          height: "26px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          boxShadow: presetStats === p.id ? "0 1px 3px rgba(31, 36, 48, 0.12)" : "none",
+                        }}
+                        onClick={() => {
+                          setPresetStats(p.id);
+                          if (p.id !== "personalizado") {
+                            cargarEstadisticasAdmin(p.id, undefined, undefined, agruparStats, filtroPersonaStats, filtroClienteStats, filtroTipoStats);
+                          }
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {presetStats === "personalizado" && (
+                  <div style={{ display: "flex", gap: "8px", alignItems: "flex-end", flexWrap: "wrap", marginTop: "4px" }}>
+                    <div style={{ flex: 1, minWidth: "130px" }}>
+                      <Campo
+                        etiqueta="Desde"
+                        type="date"
+                        value={fechaDesdeStats}
+                        onChange={(e) => setFechaDesdeStats(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: "130px" }}>
+                      <Campo
+                        etiqueta="Hasta"
+                        type="date"
+                        value={fechaHastaStats}
+                        onChange={(e) => setFechaHastaStats(e.target.value)}
+                      />
+                    </div>
+                    <Boton
+                      variante="primario"
+                      tamano="sm"
+                      style={{ height: "36px" }}
+                      onClick={() => {
+                        if (!fechaDesdeStats || !fechaHastaStats) {
+                          mostrarAviso({ tipo: "error", titulo: "Rango incompleto", texto: "Ingresa ambas fechas." });
+                          return;
+                        }
+                        if (fechaDesdeStats > fechaHastaStats) {
+                          mostrarAviso({ tipo: "error", titulo: "Rango inválido", texto: "La fecha 'Desde' no puede ser posterior a 'Hasta'." });
+                          return;
+                        }
+                        cargarEstadisticasAdmin("personalizado", fechaDesdeStats, fechaHastaStats, agruparStats, filtroPersonaStats, filtroClienteStats, filtroTipoStats);
+                      }}
+                    >
+                      <Calendar size={13} style={{ marginRight: 4 }} />
+                      Aplicar
+                    </Boton>
+                  </div>
+                )}
+
+                {/* Filtros combinables y agrupación */}
+                <div className={styles.statsFiltrosComb}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
+                      Agrupar por
+                    </label>
+                    <select
+                      className={styles.selectCompacto}
+                      value={agruparStats}
+                      onChange={(e) => {
+                        setAgruparStats(e.target.value);
+                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, e.target.value, filtroPersonaStats, filtroClienteStats, filtroTipoStats);
+                      }}
+                    >
+                      <option value="">Automático</option>
+                      <option value="dia">Por día</option>
+                      <option value="semana">Por semana</option>
+                      <option value="mes">Por mes</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
+                      Persona
+                    </label>
+                    <select
+                      className={styles.selectCompacto}
+                      value={filtroPersonaStats}
+                      onChange={(e) => {
+                        setFiltroPersonaStats(e.target.value);
+                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, e.target.value, filtroClienteStats, filtroTipoStats);
+                      }}
+                    >
+                      <option value="">Todas las personas</option>
+                      {miembrosAprobados.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
+                      Cliente
+                    </label>
+                    <select
+                      className={styles.selectCompacto}
+                      value={filtroClienteStats}
+                      onChange={(e) => {
+                        setFiltroClienteStats(e.target.value);
+                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, filtroPersonaStats, e.target.value, filtroTipoStats);
+                      }}
+                    >
+                      <option value="">Todos los clientes</option>
+                      <option value="sin_cliente">Sin cliente asignado</option>
+                      {clientes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
+                      Tipo de trabajo
+                    </label>
+                    <select
+                      className={styles.selectCompacto}
+                      value={filtroTipoStats}
+                      onChange={(e) => {
+                        const val = e.target.value === "" ? "" : Number(e.target.value);
+                        setFiltroTipoStats(val);
+                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, filtroPersonaStats, filtroClienteStats, val);
+                      }}
+                    >
+                      <option value="">Todos los tipos</option>
+                      {trabajos.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {cargandoStatsAdmin ? (
+                <Esqueleto filas={6} />
+              ) : statsAdmin ? (
+                <>
+                  {/* Tarjetas de Totales */}
+                  <div className={styles.statsTotalesGrid}>
+                    <div className={styles.statsTotalCard}>
+                      <span className={styles.statsTotalLabel}>Trabajos</span>
+                      <span className={styles.statsTotalValor}>{statsAdmin.totales.trabajos}</span>
+                    </div>
+                    <div className={styles.statsTotalCard}>
+                      <span className={styles.statsTotalLabel}>Minutos grabados</span>
+                      <span className={styles.statsTotalValor}>{statsAdmin.totales.minutos} min</span>
+                    </div>
+                    <div className={styles.statsTotalCard}>
+                      <span className={styles.statsTotalLabel}>Valor total</span>
+                      <span className={styles.statsTotalValor} style={{ color: "var(--rc-verde-texto)" }}>
+                        $ {statsAdmin.totales.valor.toLocaleString("es-CO")}
+                      </span>
+                    </div>
+                    <div className={styles.statsTotalCard}>
+                      <span className={styles.statsTotalLabel}>Personas activas</span>
+                      <span className={styles.statsTotalValor}>{statsAdmin.totales.personas}</span>
+                    </div>
+                    <div className={styles.statsTotalCard}>
+                      <span className={styles.statsTotalLabel}>Clientes</span>
+                      <span className={styles.statsTotalValor}>{statsAdmin.totales.clientes}</span>
+                    </div>
+                  </div>
+
+                  {/* Gráfica de Línea de Serie Temporal */}
+                  <section className={styles.section}>
+                    <GraficaLinea
+                      serie={statsAdmin.serie || []}
+                      titulo="Evolución de trabajos"
+                      subtitulo={`Serie continua por ${statsAdmin.rango.agrupar === "semana" ? "semana" : statsAdmin.rango.agrupar === "mes" ? "mes" : "día"} (${statsAdmin.rango.desde} a ${statsAdmin.rango.hasta})`}
+                    />
+                  </section>
+
+                  {/* Tres Paneles de Barras Horizontales */}
+                  <div className={styles.statsPanelesGrid}>
+                    <section className={styles.section}>
+                      <GraficaBarras
+                        items={(statsAdmin.por_persona || []).map((p) => ({
+                          id: p.perfil_id,
+                          nombre: p.nombre,
+                          avatar: p.foto,
+                          valorPrincipal: p.trabajos,
+                          etiquetaPrincipal: `${p.trabajos} trab.`,
+                          valorSecundario: `${p.minutos > 0 ? `${p.minutos} min • ` : ""}$ ${p.valor.toLocaleString("es-CO")}`,
+                        }))}
+                        titulo="Más trabajos por persona"
+                        subtitulo="Miembros con mayor volumen aceptado"
+                        color="azul"
+                        vacioTexto="No hay trabajos por persona en este período."
+                      />
+                    </section>
+
+                    <section className={styles.section}>
+                      <GraficaBarras
+                        items={(statsAdmin.por_cliente || []).map((c) => ({
+                          id: c.cliente_id ?? "sin_cliente",
+                          nombre: c.nombre,
+                          valorPrincipal: c.trabajos,
+                          etiquetaPrincipal: `${c.trabajos} trab.`,
+                          valorSecundario: `${c.minutos > 0 ? `${c.minutos} min • ` : ""}$ ${c.valor.toLocaleString("es-CO")}`,
+                        }))}
+                        titulo="Más trabajos por cliente"
+                        subtitulo="Clientes con mayor actividad"
+                        color="verde"
+                        vacioTexto="No hay trabajos por cliente en este período."
+                      />
+                    </section>
+
+                    <section className={styles.section}>
+                      <GraficaBarras
+                        items={(statsAdmin.por_tipo || []).map((tp) => ({
+                          id: tp.tipo_id,
+                          nombre: `${tp.nombre} (${tp.unidad === "minuto" ? "Minuto" : "Trabajo"})`,
+                          valorPrincipal: tp.trabajos,
+                          etiquetaPrincipal: `${tp.trabajos} trab.`,
+                          valorSecundario: `${tp.minutos > 0 ? `${tp.minutos} min • ` : ""}$ ${tp.valor.toLocaleString("es-CO")}`,
+                        }))}
+                        titulo="Por tipo de trabajo"
+                        subtitulo="Distribución por servicio liquidado"
+                        color="morado"
+                        vacioTexto="No hay tipos de trabajo en este período."
+                      />
+                    </section>
+                  </div>
+                </>
+              ) : null}
             </div>
           )}
 
@@ -1373,8 +2118,23 @@ export default function AdminPage() {
                 ))}
               </select>
             </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
+                Se cobra por
+              </label>
+              <select
+                className={styles.selectCompacto}
+                style={{ width: "100%", height: 36 }}
+                value={nuevoTrabUnidad}
+                onChange={(e) => setNuevoTrabUnidad(e.target.value as UnidadTrabajo)}
+                disabled={guardandoTrabajo}
+              >
+                <option value="trabajo">Por trabajo (precio fijo por entrega)</option>
+                <option value="minuto">Por minuto (precio × minutos grabados)</option>
+              </select>
+            </div>
             <Campo
-              etiqueta="Precio por trabajo en pesos colombianos (COP)"
+              etiqueta={nuevoTrabUnidad === "minuto" ? "Precio por minuto en pesos colombianos (COP)" : "Precio por trabajo en pesos colombianos (COP)"}
               type="number"
               min={0}
               max={100000000}
@@ -1429,6 +2189,49 @@ export default function AdminPage() {
                 {trabajos.filter((t) => t.activo).map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.nombre} {t.rol ? `(${t.rol.nombre})` : ""} — $ {t.precio.toLocaleString("es-CO")}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)" }}>
+                  Cliente (opcional)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClienteAlVueloNombre("");
+                    setModalCrearClienteAlVuelo(true);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--rc-azul-texto)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <Plus size={12} />
+                  Nuevo cliente al vuelo
+                </button>
+              </div>
+              <select
+                className={styles.selectCompacto}
+                style={{ width: "100%", height: 36 }}
+                value={nuevaTareaClienteId}
+                onChange={(e) => setNuevaTareaClienteId(e.target.value === "" ? "" : Number(e.target.value))}
+                disabled={creandoTarea}
+              >
+                <option value="">Sin cliente asociado</option>
+                {clientes.filter((c) => c.activo).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
                   </option>
                 ))}
               </select>
@@ -1514,6 +2317,199 @@ export default function AdminPage() {
               onChange={(e) => setNuevaTareaFechaLimite(e.target.value)}
               disabled={creandoTarea}
             />
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Crear Cliente al Vuelo */}
+      {modalCrearClienteAlVuelo && (
+        <Modal
+          abierto={true}
+          titulo="Nuevo cliente"
+          descripcion="Crea un cliente rápidamente para asociarlo a esta tarea."
+          onCerrar={() => setModalCrearClienteAlVuelo(false)}
+          accionPrimaria={
+            <Boton
+              variante="primario"
+              cargando={guardandoClienteAlVuelo}
+              onClick={handleCrearClienteAlVuelo}
+            >
+              Crear y seleccionar
+            </Boton>
+          }
+          accionSecundaria={
+            <Boton
+              variante="secundario"
+              onClick={() => setModalCrearClienteAlVuelo(false)}
+              disabled={guardandoClienteAlVuelo}
+            >
+              Cancelar
+            </Boton>
+          }
+        >
+          <form onSubmit={handleCrearClienteAlVuelo} className={styles.modalForm}>
+            <Campo
+              etiqueta="Nombre del cliente (1 a 80 caracteres) *"
+              placeholder="Ej. Alcaldía de Bucaramanga"
+              value={clienteAlVueloNombre}
+              onChange={(e) => setClienteAlVueloNombre(e.target.value.slice(0, 80))}
+              disabled={guardandoClienteAlVuelo}
+              autoFocus
+            />
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal Crear Cliente (desde pestaña Clientes) */}
+      {modalNuevoCliente && (
+        <Modal
+          abierto={true}
+          titulo="Nuevo cliente"
+          descripcion="Registra un nuevo cliente para asociarlo a tareas y reportes."
+          onCerrar={() => setModalNuevoCliente(false)}
+          accionPrimaria={
+            <Boton
+              variante="primario"
+              cargando={guardandoCliente}
+              onClick={handleCrearCliente}
+            >
+              Guardar cliente
+            </Boton>
+          }
+          accionSecundaria={
+            <Boton
+              variante="secundario"
+              onClick={() => setModalNuevoCliente(false)}
+              disabled={guardandoCliente}
+            >
+              Cancelar
+            </Boton>
+          }
+        >
+          <div className={styles.modalForm}>
+            <Campo
+              etiqueta="Nombre del cliente *"
+              placeholder="Ej. Empresa ABC"
+              value={nuevoClienteNombre}
+              onChange={(e) => setNuevoClienteNombre(e.target.value.slice(0, 80))}
+              disabled={guardandoCliente}
+              autoFocus
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Renombrar Cliente */}
+      {clienteAEditar && (
+        <Modal
+          abierto={true}
+          titulo="Renombrar cliente"
+          descripcion={`Modifica el nombre registrado para "${clienteAEditar.nombre}".`}
+          onCerrar={() => setClienteAEditar(null)}
+          accionPrimaria={
+            <Boton
+              variante="primario"
+              cargando={guardandoEdicion}
+              onClick={handleRenombrarCliente}
+            >
+              Actualizar nombre
+            </Boton>
+          }
+          accionSecundaria={
+            <Boton
+              variante="secundario"
+              onClick={() => setClienteAEditar(null)}
+              disabled={guardandoEdicion}
+            >
+              Cancelar
+            </Boton>
+          }
+        >
+          <div className={styles.modalForm}>
+            <Campo
+              etiqueta="Nombre del cliente *"
+              value={nombreEditado}
+              onChange={(e) => setNombreEditado(e.target.value.slice(0, 80))}
+              disabled={guardandoEdicion}
+              autoFocus
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Aceptar Tarea con corrección opcional de minutos */}
+      {modalAceptarTarea && (
+        <Modal
+          abierto={true}
+          titulo="Aceptar tarea y congelar en factura"
+          descripcion={`Revisa y confirma la liquidación para "${modalAceptarTarea.titulo}".`}
+          onCerrar={() => setModalAceptarTarea(null)}
+          accionPrimaria={
+            <Boton
+              variante="primario"
+              cargando={aceptandoTarea}
+              onClick={handleConfirmarAceptarTarea}
+            >
+              <Check size={14} style={{ marginRight: 4 }} />
+              Aceptar y congelar
+            </Boton>
+          }
+          accionSecundaria={
+            <Boton
+              variante="secundario"
+              onClick={() => setModalAceptarTarea(null)}
+              disabled={aceptandoTarea}
+            >
+              Cancelar
+            </Boton>
+          }
+        >
+          <div className={styles.modalForm}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--rc-superficie-clara)", padding: "10px", borderRadius: "var(--rc-radio-md)" }}>
+              <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)" }}>
+                Asignado a: <strong style={{ color: "var(--rc-texto)" }}>{modalAceptarTarea.asignado?.nombre || "Miembro"}</strong>
+              </div>
+              <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)" }}>
+                Trabajo: <strong style={{ color: "var(--rc-texto)" }}>{modalAceptarTarea.tipo?.nombre}</strong> ({modalAceptarTarea.tipo?.unidad === "minuto" ? "Cobro por minuto" : "Cobro por trabajo"})
+              </div>
+              {modalAceptarTarea.cliente && (
+                <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-verde-texto)" }}>
+                  Cliente: <strong>{modalAceptarTarea.cliente.nombre}</strong>
+                </div>
+              )}
+              {modalAceptarTarea.nota_persona && (
+                <div style={{ fontSize: "11px", color: "var(--rc-azul-texto)", marginTop: 4 }}>
+                  Nota: &ldquo;{modalAceptarTarea.nota_persona}&rdquo;
+                </div>
+              )}
+            </div>
+
+            {modalAceptarTarea.tipo?.unidad === "minuto" ? (
+              <div>
+                <Campo
+                  etiqueta="Minutos aceptados (puedes corregir la duración) *"
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={minutosAceptarInput}
+                  onChange={(e) => setMinutosAceptarInput(e.target.value)}
+                  disabled={aceptandoTarea}
+                />
+                <div style={{ marginTop: 6, fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)", display: "flex", justifyContent: "space-between" }}>
+                  <span>Tarifa: $ {modalAceptarTarea.tipo?.precio?.toLocaleString("es-CO")} / min</span>
+                  <span style={{ fontWeight: 600, color: "var(--rc-verde-texto)" }}>
+                    Total a congelar: $ {((Number(minutosAceptarInput) || 0) * (modalAceptarTarea.tipo?.precio || 0)).toLocaleString("es-CO")}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: "var(--rc-fs-cuerpo)", color: "var(--rc-texto)", padding: "8px 0" }}>
+                Total a congelar en factura:{" "}
+                <strong style={{ color: "var(--rc-verde-texto)" }}>
+                  $ {(modalAceptarTarea.tipo?.precio || 0).toLocaleString("es-CO")}
+                </strong>
+              </div>
+            )}
           </div>
         </Modal>
       )}

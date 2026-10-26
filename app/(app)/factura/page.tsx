@@ -134,16 +134,25 @@ export default function MiFacturaPage() {
                         <TablaFila key={t.id}>
                           <td>{formatearFechaHora(t.resuelta_en)}</td>
                           <td>
-                            <Chip punto="azul">
-                              {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
-                            </Chip>
+                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
+                              <Chip punto="azul">
+                                {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
+                              </Chip>
+                              {t.cliente && (
+                                <Chip punto="verde">
+                                  {t.cliente.nombre}
+                                </Chip>
+                              )}
+                            </div>
                           </td>
                           <td>
                             <strong>{t.titulo}</strong>
                           </td>
                           <td style={{ textAlign: "right" }}>
                             <span className={styles.monto}>
-                              $ {(t.precio_congelado || 0).toLocaleString("es-CO")}
+                              {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
+                                ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`
+                                : `$ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`}
                             </span>
                           </td>
                         </TablaFila>
@@ -159,13 +168,20 @@ export default function MiFacturaPage() {
                       <div className={styles.lineaCardTop}>
                         <strong>{t.titulo}</strong>
                         <span className={styles.lineaCardPrecio}>
-                          $ {(t.precio_congelado || 0).toLocaleString("es-CO")}
+                          {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
+                            ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`
+                            : `$ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`}
                         </span>
                       </div>
-                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
                         <Chip punto="azul">
                           {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
                         </Chip>
+                        {t.cliente && (
+                          <Chip punto="verde">
+                            {t.cliente.nombre}
+                          </Chip>
+                        )}
                         <span style={{ fontSize: "11px", color: "var(--rc-texto-secundario)" }}>
                           {formatearFechaHora(t.resuelta_en)}
                         </span>
@@ -244,11 +260,22 @@ export default function MiFacturaPage() {
                                     justifyContent: "space-between",
                                     fontSize: "12px",
                                     padding: "4px 0",
+                                    flexWrap: "wrap",
+                                    gap: "4px",
                                   }}
                                 >
-                                  <span>{linea.titulo}</span>
+                                  <span>
+                                    {linea.titulo}
+                                    {linea.cliente && (
+                                      <span style={{ color: "var(--rc-verde-texto)", marginLeft: "6px", fontSize: "11px" }}>
+                                        ({linea.cliente.nombre})
+                                      </span>
+                                    )}
+                                  </span>
                                   <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: "var(--rc-fw-medium)" }}>
-                                    $ {(linea.precio_congelado || 0).toLocaleString("es-CO")}
+                                    {linea.tipo?.unidad === "minuto" && linea.cantidad_aceptada && linea.precio_unitario_congelado
+                                      ? `${linea.cantidad_aceptada} min × $ ${linea.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(linea.precio_congelado || 0).toLocaleString("es-CO")}`
+                                      : `$ ${(linea.precio_congelado || 0).toLocaleString("es-CO")}`}
                                   </span>
                                 </div>
                               ))}

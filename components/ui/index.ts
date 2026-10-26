@@ -14,3 +14,4 @@ export * from "./Menu";
 export * from "./Tooltip";
 export * from "./Esqueleto";
 export * from "./Tabla";
+export * from "./graficos";

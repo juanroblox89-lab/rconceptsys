@@ -1,0 +1,239 @@
+/* components/ui/graficos/graficos.module.css */
+
+.contenedorGrafica {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-12);
+  width: 100%;
+}
+
+.cabeceraGrafica {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-esp-12);
+  flex-wrap: wrap;
+}
+
+.tituloGrafica {
+  font-size: var(--rc-fs-titulo-seccion);
+  font-weight: 600;
+  color: var(--rc-texto);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.subtituloGrafica {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto-secundario);
+  margin-top: 2px;
+}
+
+.tabsMetrica {
+  display: inline-flex;
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  padding: 3px;
+  border-radius: var(--rc-radio-md);
+  gap: 2px;
+}
+
+.tabBtn {
+  background: transparent;
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  padding: 4px 10px;
+  font-size: var(--rc-fs-etiqueta);
+  font-weight: 500;
+  color: var(--rc-texto-secundario);
+  cursor: pointer;
+  transition: all 140ms ease;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tabBtn:hover {
+  color: var(--rc-texto);
+}
+
+.tabBtnActivo {
+  background: var(--rc-luz);
+  color: var(--rc-azul-texto);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(31, 36, 48, 0.12);
+}
+
+.cajaSvg {
+  position: relative;
+  width: 100%;
+  border-radius: var(--rc-radio-md);
+  background: var(--rc-superficie-clara);
+  border: 1px solid rgba(199, 205, 216, 0.4);
+  padding: var(--rc-esp-12) var(--rc-esp-8) var(--rc-esp-8) var(--rc-esp-8);
+  box-sizing: border-box;
+}
+
+.svgLinea {
+  width: 100%;
+  height: auto;
+  min-height: 180px;
+  max-height: 250px;
+  display: block;
+  overflow: visible;
+}
+
+.ejeTexto {
+  font-family: var(--rc-fuente);
+  font-size: 10px;
+  fill: var(--rc-texto-secundario);
+  user-select: none;
+}
+
+.gridLinea {
+  stroke: rgba(199, 205, 216, 0.45);
+  stroke-dasharray: 4 4;
+  stroke-width: 1px;
+}
+
+.puntoActivo {
+  cursor: pointer;
+  transition: r 120ms ease;
+}
+
+.tooltipCaja {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--rc-gris-900);
+  color: var(--rc-luz);
+  padding: 4px 10px;
+  border-radius: var(--rc-radio-sm);
+  font-size: var(--rc-fs-secundario);
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.tooltipFecha {
+  color: var(--rc-gris-300);
+  font-size: var(--rc-fs-etiqueta);
+}
+
+.tooltipValor {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #70B8FF;
+}
+
+/* Gráfica de Barras Horizontales */
+.listaBarras {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  width: 100%;
+}
+
+.filaBarra {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+
+.infoBarra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-esp-8);
+  font-size: var(--rc-fs-secundario);
+}
+
+.nombreBarra {
+  font-weight: 500;
+  color: var(--rc-texto);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cifrasBarra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cifraPrincipal {
+  font-weight: 600;
+  color: var(--rc-texto);
+}
+
+.cifraSecundaria {
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-texto-secundario);
+}
+
+.pistaBarra {
+  width: 100%;
+  height: 8px;
+  background: var(--rc-superficie-hundida);
+  border-radius: var(--rc-radio-pildora);
+  overflow: hidden;
+  box-shadow: var(--rc-elev-hundido-sm);
+}
+
+.rellenoBarra {
+  height: 100%;
+  border-radius: var(--rc-radio-pildora);
+  transition: width 350ms cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 4px;
+}
+
+.barraAzul {
+  background: linear-gradient(90deg, #5AA9FF, #2F7FE0);
+}
+
+.barraVerde {
+  background: linear-gradient(90deg, #2FA66A, #1E6B45);
+}
+
+.barraAmbar {
+  background: linear-gradient(90deg, #E8A33D, #B9781A);
+}
+
+.barraMorado {
+  background: linear-gradient(90deg, #9B6BFF, #6B3AE8);
+}
+
+.barraGris {
+  background: linear-gradient(90deg, #8A93A5, #6B7385);
+}
+
+.tablaOculta {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.vacioGrafica {
+  padding: 24px;
+  text-align: center;
+  color: var(--rc-texto-secundario);
+  font-size: var(--rc-fs-secundario);
+}

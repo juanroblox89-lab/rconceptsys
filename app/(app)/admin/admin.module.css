@@ -337,3 +337,68 @@
   flex-direction: column;
   gap: var(--rc-esp-8);
 }
+
+/* Estilos Estadísticas F3 */
+.statsTotalesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--rc-esp-12);
+}
+
+.statsTotalCard {
+  background: var(--rc-superficie-clara);
+  border: 1px solid rgba(199, 205, 216, 0.45);
+  border-radius: var(--rc-radio-lg);
+  padding: var(--rc-esp-12) var(--rc-esp-14);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statsTotalLabel {
+  font-size: var(--rc-fs-etiqueta);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--rc-ls-etiqueta);
+  color: var(--rc-texto-secundario);
+}
+
+.statsTotalValor {
+  font-size: 20px;
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-texto);
+  font-variant-numeric: tabular-nums;
+}
+
+.statsPanelesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: var(--rc-esp-16);
+}
+
+.statsFiltrosContenedor {
+  background: var(--rc-superficie-clara);
+  border: 1px solid rgba(199, 205, 216, 0.4);
+  border-radius: var(--rc-radio-lg);
+  padding: var(--rc-esp-12) var(--rc-esp-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-10);
+}
+
+.statsPresetsBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  padding: 3px;
+  border-radius: var(--rc-radio-md);
+}
+
+.statsFiltrosComb {
+  display: flex;
+  gap: var(--rc-esp-10);
+  align-items: center;
+  flex-wrap: wrap;
+}
