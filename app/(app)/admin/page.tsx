@@ -117,6 +117,7 @@ export default function AdminPage() {
   }, [mostrarAviso]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarDatos();
   }, [cargarDatos]);
 
