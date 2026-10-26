@@ -58,7 +58,7 @@ type FiltroMiembros struct {
 	Estado *EstadoPerfil
 }
 
-// Modelos F2: Tipos de trabajo, Tareas y Facturas
+// Modelos F2 y F3: Tipos de trabajo, Clientes, Tareas, Facturas y Estadísticas
 
 type TipoTrabajo struct {
 	ID       int       `json:"id"`
@@ -67,8 +67,16 @@ type TipoTrabajo struct {
 	RolID    *int      `json:"rol_id"`
 	Rol      *Rol      `json:"rol,omitempty"`
 	Precio   int       `json:"precio"` // Pesos colombianos enteros
+	Unidad   string    `json:"unidad"` // "trabajo" o "minuto"
 	Activo   bool      `json:"activo"`
 	Orden    int       `json:"orden"`
+	CreadoEn time.Time `json:"creado_en"`
+}
+
+type Cliente struct {
+	ID       int       `json:"id"`
+	Nombre   string    `json:"nombre"`
+	Activo   bool      `json:"activo"`
 	CreadoEn time.Time `json:"creado_en"`
 }
 
@@ -83,25 +91,30 @@ const (
 )
 
 type Tarea struct {
-	ID              int64        `json:"id"`
-	TipoID          int          `json:"tipo_id"`
-	Tipo            *TipoTrabajo `json:"tipo,omitempty"`
-	Titulo          string       `json:"titulo"`
-	Descripcion     *string      `json:"descripcion,omitempty"`
-	AsignadoA       string       `json:"asignado_a"`
-	Asignado        *Perfil      `json:"asignado,omitempty"`
-	CreadoPor       string       `json:"creado_por"`
-	Creador         *Perfil      `json:"creador,omitempty"`
-	Estado          EstadoTarea  `json:"estado"`
-	FechaLimite     *string      `json:"fecha_limite,omitempty"` // YYYY-MM-DD
-	NotaPersona     *string      `json:"nota_persona,omitempty"`
-	MotivoRechazo   *string      `json:"motivo_rechazo,omitempty"`
-	PrecioCongelado *int         `json:"precio_congelado,omitempty"`
-	FacturaID       *int64       `json:"factura_id,omitempty"`
-	CreadaEn        time.Time    `json:"creada_en"`
-	HechaEn         *time.Time   `json:"hecha_en,omitempty"`
-	ResueltaEn      *time.Time   `json:"resuelta_en,omitempty"`
-	ResueltaPor     *string      `json:"resuelta_por,omitempty"`
+	ID                      int64        `json:"id"`
+	TipoID                  int          `json:"tipo_id"`
+	Tipo                    *TipoTrabajo `json:"tipo,omitempty"`
+	ClienteID               *int         `json:"cliente_id,omitempty"`
+	Cliente                 *Cliente     `json:"cliente,omitempty"`
+	Titulo                  string       `json:"titulo"`
+	Descripcion             *string      `json:"descripcion,omitempty"`
+	AsignadoA               string       `json:"asignado_a"`
+	Asignado                *Perfil      `json:"asignado,omitempty"`
+	CreadoPor               string       `json:"creado_por"`
+	Creador                 *Perfil      `json:"creador,omitempty"`
+	Estado                  EstadoTarea  `json:"estado"`
+	FechaLimite             *string      `json:"fecha_limite,omitempty"` // YYYY-MM-DD
+	NotaPersona             *string      `json:"nota_persona,omitempty"`
+	MotivoRechazo           *string      `json:"motivo_rechazo,omitempty"`
+	Cantidad                *int         `json:"cantidad,omitempty"`
+	CantidadAceptada        *int         `json:"cantidad_aceptada,omitempty"`
+	PrecioUnitarioCongelado *int64       `json:"precio_unitario_congelado,omitempty"`
+	PrecioCongelado         *int64       `json:"precio_congelado,omitempty"`
+	FacturaID               *int64       `json:"factura_id,omitempty"`
+	CreadaEn                time.Time    `json:"creada_en"`
+	HechaEn                 *time.Time   `json:"hecha_en,omitempty"`
+	ResueltaEn              *time.Time   `json:"resuelta_en,omitempty"`
+	ResueltaPor             *string      `json:"resuelta_por,omitempty"`
 }
 
 type EstadoFactura string
@@ -120,21 +133,132 @@ type Factura struct {
 	PagadaEn  *time.Time    `json:"pagada_en,omitempty"`
 	PagadaPor *string       `json:"pagada_por,omitempty"`
 	Lineas    []*Tarea      `json:"lineas,omitempty"`
-	Total     int           `json:"total"`
+	Total     int64         `json:"total"`
 }
 
 type ResumenFacturasPersona struct {
 	PerfilID       string     `json:"perfil_id"`
 	Perfil         *Perfil    `json:"perfil"`
 	FacturaAbierta *Factura   `json:"factura_abierta,omitempty"`
-	TotalPendiente int        `json:"total_pendiente"`
+	TotalPendiente int64      `json:"total_pendiente"`
 	Pagadas        []*Factura `json:"pagadas,omitempty"`
-	TotalPagado    int        `json:"total_pagado"`
+	TotalPagado    int64      `json:"total_pagado"`
 }
 
 type FiltroTareas struct {
 	Estado    *EstadoTarea
 	AsignadoA *string
+	ClienteID *int
+}
+
+// Modelos F3: Estadísticas
+
+type TotalesYo struct {
+	Trabajos int   `json:"trabajos"`
+	Minutos  int   `json:"minutos"`
+	Valor    int64 `json:"valor"`
+}
+
+type EstadisticaTipoYo struct {
+	TipoID   int    `json:"tipo_id"`
+	Nombre   string `json:"nombre"`
+	Unidad   string `json:"unidad"`
+	Trabajos int    `json:"trabajos"`
+	Minutos  int    `json:"minutos"`
+	Valor    int64  `json:"valor"`
+}
+
+type RangoEstadisticaYo struct {
+	Desde *string `json:"desde"`
+	Hasta *string `json:"hasta"`
+}
+
+type EstadisticasYoResponse struct {
+	Trabajos int                  `json:"trabajos"`
+	Minutos  int                  `json:"minutos"`
+	Valor    int64                `json:"valor"`
+	PorTipo  []*EstadisticaTipoYo `json:"por_tipo"`
+	Rango    *RangoEstadisticaYo  `json:"rango"`
+	EsteMes  TotalesYo            `json:"este_mes"`
+	Total    TotalesYo            `json:"total"`
+}
+
+type FiltroEstadisticasYo struct {
+	Desde *time.Time
+	Hasta *time.Time
+}
+
+type FiltroEstadisticasAdmin struct {
+	Desde      time.Time
+	Hasta      time.Time
+	Agrupar    string // "dia", "semana", "mes"
+	PersonaID  *string
+	ClienteID  *int
+	SinCliente bool
+	TipoID     *int
+}
+
+type TotalesAdmin struct {
+	Trabajos int   `json:"trabajos"`
+	Minutos  int   `json:"minutos"`
+	Valor    int64 `json:"valor"`
+	Personas int   `json:"personas"`
+	Clientes int   `json:"clientes"`
+}
+
+type PuntoSerieAdmin struct {
+	Fecha    string `json:"fecha"`
+	Trabajos int    `json:"trabajos"`
+	Minutos  int    `json:"minutos"`
+	Valor    int64  `json:"valor"`
+}
+
+type ItemPersonaEstadistica struct {
+	PerfilID string  `json:"perfil_id"`
+	Nombre   string  `json:"nombre"`
+	Foto     *string `json:"foto"`
+	Trabajos int     `json:"trabajos"`
+	Minutos  int     `json:"minutos"`
+	Valor    int64   `json:"valor"`
+}
+
+type ItemClienteEstadistica struct {
+	ClienteID *int   `json:"cliente_id"`
+	Nombre    string `json:"nombre"`
+	Trabajos  int    `json:"trabajos"`
+	Minutos   int    `json:"minutos"`
+	Valor     int64  `json:"valor"`
+}
+
+type ItemTipoEstadistica struct {
+	TipoID   int    `json:"tipo_id"`
+	Nombre   string `json:"nombre"`
+	Unidad   string `json:"unidad"`
+	Trabajos int    `json:"trabajos"`
+	Minutos  int    `json:"minutos"`
+	Valor    int64  `json:"valor"`
+}
+
+type HayMasEstadisticas struct {
+	PorPersona bool `json:"por_persona"`
+	PorCliente bool `json:"por_cliente"`
+	PorTipo    bool `json:"por_tipo"`
+}
+
+type RangoEstadisticasAdmin struct {
+	Desde   string `json:"desde"`
+	Hasta   string `json:"hasta"`
+	Agrupar string `json:"agrupar"`
+}
+
+type EstadisticasAdminResponse struct {
+	Rango      RangoEstadisticasAdmin    `json:"rango"`
+	Totales    TotalesAdmin              `json:"totales"`
+	Serie      []*PuntoSerieAdmin        `json:"serie"`
+	PorPersona []*ItemPersonaEstadistica `json:"por_persona"`
+	PorCliente []*ItemClienteEstadistica `json:"por_cliente"`
+	PorTipo    []*ItemTipoEstadistica    `json:"por_tipo"`
+	HayMas     HayMasEstadisticas        `json:"hay_mas"`
 }
 
 // Store define las operaciones que necesita el backend para F0 y F2.
@@ -176,20 +300,30 @@ type Store interface {
 	CrearTipoTrabajo(ctx context.Context, t *TipoTrabajo) (*TipoTrabajo, error)
 	ActualizarTipoTrabajo(ctx context.Context, id int, campos map[string]any) (*TipoTrabajo, error)
 
-	// F2: Tareas
+	// F3: Clientes
+	ListarClientes(ctx context.Context, soloActivos bool) ([]*Cliente, error)
+	ObtenerClientePorID(ctx context.Context, id int) (*Cliente, error)
+	CrearCliente(ctx context.Context, nombre string) (*Cliente, error)
+	ActualizarCliente(ctx context.Context, id int, campos map[string]any) (*Cliente, error)
+
+	// F2 y F3: Tareas
 	CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error)
 	ObtenerTareaPorID(ctx context.Context, id int64) (*Tarea, error)
 	ListarTareas(ctx context.Context, filtro FiltroTareas) ([]*Tarea, error)
 	ContarTareasPorRevisar(ctx context.Context) (int, error)
-	MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string) (*Tarea, error)
-	AceptarTarea(ctx context.Context, id int64, adminID string) (*Tarea, error)
+	MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int) (*Tarea, error)
+	AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*Tarea, error)
 	RechazarTarea(ctx context.Context, id int64, adminID string, motivo string) (*Tarea, error)
 	CancelarTarea(ctx context.Context, id int64, adminID string) (*Tarea, error)
 
-	// F2: Facturas
+	// F2 y F3: Facturas
 	ObtenerFacturaAbierta(ctx context.Context, perfilID string) (*Factura, error)
 	ListarFacturasPerfil(ctx context.Context, perfilID string) ([]*Factura, error)
 	ObtenerFacturaPorID(ctx context.Context, id int64) (*Factura, error)
 	ListarResumenFacturasAdmin(ctx context.Context) ([]*ResumenFacturasPersona, error)
 	MarcarFacturaPagada(ctx context.Context, id int64, adminID string) (*Factura, error)
+
+	// F3: Estadísticas
+	ObtenerEstadisticasYo(ctx context.Context, perfilID string, filtro FiltroEstadisticasYo) (*EstadisticasYoResponse, error)
+	ObtenerEstadisticasAdmin(ctx context.Context, filtro FiltroEstadisticasAdmin) (*EstadisticasAdminResponse, error)
 }

@@ -19,7 +19,9 @@ type MemoryStore struct {
 	nextMsgID   int64
 	avatares    map[string][]byte
 
-	// F2: Tipos de trabajo, tareas, facturas
+	// F2 y F3: Clientes, tipos de trabajo, tareas, facturas
+	clientes     map[int]*Cliente
+	nextClienteID int
 	tiposTrabajo map[int]*TipoTrabajo
 	nextTipoID   int
 	tareas       map[int64]*Tarea
@@ -37,6 +39,8 @@ func NewMemoryStore() *MemoryStore {
 		nextRolID:    4,
 		nextMsgID:    1,
 		avatares:     make(map[string][]byte),
+		clientes:     make(map[int]*Cliente),
+		nextClienteID: 1,
 		tiposTrabajo: make(map[int]*TipoTrabajo),
 		nextTipoID:   4,
 		tareas:       make(map[int64]*Tarea),
@@ -50,14 +54,14 @@ func NewMemoryStore() *MemoryStore {
 	m.roles[2] = &Rol{ID: 2, Clave: "editor", Nombre: "Editor", Color: "#7C3AED", Orden: 2, Activo: true}
 	m.roles[3] = &Rol{ID: 3, Clave: "subidor_contenido", Nombre: "Subidor de contenido", Color: "#059669", Orden: 3, Activo: true}
 
-	// Semilla de tipos de trabajo iniciales (F2)
+	// Semilla de tipos de trabajo iniciales (F2 y F3)
 	rolCam := 1
 	rolEd := 2
 	rolSub := 3
 	ahora := time.Now()
-	m.tiposTrabajo[1] = &TipoTrabajo{ID: 1, Clave: "grabacion_video", Nombre: "Grabación de video", RolID: &rolCam, Precio: 0, Activo: true, Orden: 1, CreadoEn: ahora}
-	m.tiposTrabajo[2] = &TipoTrabajo{ID: 2, Clave: "edicion_video", Nombre: "Edición de video", RolID: &rolEd, Precio: 0, Activo: true, Orden: 2, CreadoEn: ahora}
-	m.tiposTrabajo[3] = &TipoTrabajo{ID: 3, Clave: "subida_video", Nombre: "Subir video", RolID: &rolSub, Precio: 0, Activo: true, Orden: 3, CreadoEn: ahora}
+	m.tiposTrabajo[1] = &TipoTrabajo{ID: 1, Clave: "grabacion_video", Nombre: "Grabación de video", RolID: &rolCam, Precio: 0, Unidad: "minuto", Activo: true, Orden: 1, CreadoEn: ahora}
+	m.tiposTrabajo[2] = &TipoTrabajo{ID: 2, Clave: "edicion_video", Nombre: "Edición de video", RolID: &rolEd, Precio: 0, Unidad: "trabajo", Activo: true, Orden: 2, CreadoEn: ahora}
+	m.tiposTrabajo[3] = &TipoTrabajo{ID: 3, Clave: "subida_video", Nombre: "Subir video", RolID: &rolSub, Precio: 0, Unidad: "trabajo", Activo: true, Orden: 3, CreadoEn: ahora}
 
 	return m
 }
@@ -542,12 +546,21 @@ func (m *MemoryStore) CrearTipoTrabajo(ctx context.Context, t *TipoTrabajo) (*Ti
 	id := m.nextTipoID
 	m.nextTipoID++
 
+	unidad := "trabajo"
+	if t.Unidad != "" {
+		if t.Unidad != "trabajo" && t.Unidad != "minuto" {
+			return nil, ErrValidation
+		}
+		unidad = t.Unidad
+	}
+
 	nuevo := &TipoTrabajo{
 		ID:       id,
 		Clave:    clave,
 		Nombre:   strings.TrimSpace(t.Nombre),
 		RolID:    t.RolID,
 		Precio:   t.Precio,
+		Unidad:   unidad,
 		Activo:   t.Activo,
 		Orden:    t.Orden,
 		CreadoEn: time.Now(),
@@ -568,6 +581,17 @@ func (m *MemoryStore) ActualizarTipoTrabajo(ctx context.Context, id int, campos 
 	if v, exists := campos["nombre"]; exists {
 		if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
 			t.Nombre = strings.TrimSpace(s)
+		} else {
+			return nil, ErrValidation
+		}
+	}
+	if v, exists := campos["unidad"]; exists {
+		if s, ok := v.(string); ok {
+			sLimpio := strings.TrimSpace(s)
+			if sLimpio != "trabajo" && sLimpio != "minuto" {
+				return nil, fmt.Errorf("%w: la unidad debe ser 'trabajo' o 'minuto'", ErrValidation)
+			}
+			t.Unidad = sLimpio
 		} else {
 			return nil, ErrValidation
 		}
@@ -624,6 +648,111 @@ func (m *MemoryStore) ActualizarTipoTrabajo(ctx context.Context, id int, campos 
 }
 
 // ==========================================
+// F3: Implementación Clientes
+// ==========================================
+
+func (m *MemoryStore) clonarClienteLocked(c *Cliente) *Cliente {
+	if c == nil {
+		return nil
+	}
+	cp := *c
+	return &cp
+}
+
+func (m *MemoryStore) ListarClientes(ctx context.Context, soloActivos bool) ([]*Cliente, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var res []*Cliente
+	for _, c := range m.clientes {
+		if soloActivos && !c.Activo {
+			continue
+		}
+		res = append(res, m.clonarClienteLocked(c))
+	}
+	sort.Slice(res, func(i, j int) bool {
+		return strings.ToLower(res[i].Nombre) < strings.ToLower(res[j].Nombre)
+	})
+	return res, nil
+}
+
+func (m *MemoryStore) ObtenerClientePorID(ctx context.Context, id int) (*Cliente, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	c, ok := m.clientes[id]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return m.clonarClienteLocked(c), nil
+}
+
+func (m *MemoryStore) CrearCliente(ctx context.Context, nombre string) (*Cliente, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	nombreLimpio := strings.TrimSpace(nombre)
+	if len(nombreLimpio) < 1 || len(nombreLimpio) > 80 {
+		return nil, fmt.Errorf("%w: el nombre del cliente debe tener entre 1 y 80 caracteres", ErrValidation)
+	}
+
+	for _, c := range m.clientes {
+		if strings.EqualFold(c.Nombre, nombreLimpio) {
+			return nil, fmt.Errorf("%w: ya existe un cliente con ese nombre", ErrConflict)
+		}
+	}
+
+	id := m.nextClienteID
+	m.nextClienteID++
+
+	c := &Cliente{
+		ID:       id,
+		Nombre:   nombreLimpio,
+		Activo:   true,
+		CreadoEn: time.Now(),
+	}
+	m.clientes[id] = c
+	return m.clonarClienteLocked(c), nil
+}
+
+func (m *MemoryStore) ActualizarCliente(ctx context.Context, id int, campos map[string]any) (*Cliente, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	c, ok := m.clientes[id]
+	if !ok {
+		return nil, ErrNotFound
+	}
+
+	if v, exists := campos["nombre"]; exists {
+		if s, ok := v.(string); ok {
+			sLimpio := strings.TrimSpace(s)
+			if len(sLimpio) < 1 || len(sLimpio) > 80 {
+				return nil, fmt.Errorf("%w: el nombre del cliente debe tener entre 1 y 80 caracteres", ErrValidation)
+			}
+			for otherID, other := range m.clientes {
+				if otherID != id && strings.EqualFold(other.Nombre, sLimpio) {
+					return nil, fmt.Errorf("%w: ya existe un cliente con ese nombre", ErrConflict)
+				}
+			}
+			c.Nombre = sLimpio
+		} else {
+			return nil, ErrValidation
+		}
+	}
+
+	if v, exists := campos["activo"]; exists {
+		if b, ok := v.(bool); ok {
+			c.Activo = b
+		} else {
+			return nil, ErrValidation
+		}
+	}
+
+	return m.clonarClienteLocked(c), nil
+}
+
+// ==========================================
 // F2: Implementación Tareas
 // ==========================================
 
@@ -634,6 +763,11 @@ func (m *MemoryStore) clonarTareaLocked(t *Tarea) *Tarea {
 	cp := *t
 	if tipo, ok := m.tiposTrabajo[t.TipoID]; ok {
 		cp.Tipo = m.clonarTipoTrabajoLocked(tipo)
+	}
+	if t.ClienteID != nil {
+		if cli, ok := m.clientes[*t.ClienteID]; ok {
+			cp.Cliente = m.clonarClienteLocked(cli)
+		}
 	}
 	if asig, ok := m.perfiles[t.AsignadoA]; ok {
 		cp.Asignado = m.clonarPerfilLocked(asig)
@@ -660,6 +794,14 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 		return nil, ErrValidation
 	}
 
+	// Cliente opcional: debe existir y estar activo
+	if t.ClienteID != nil {
+		cli, ok := m.clientes[*t.ClienteID]
+		if !ok || !cli.Activo {
+			return nil, fmt.Errorf("%w: el cliente especificado no existe o no está activo", ErrValidation)
+		}
+	}
+
 	// Asignado y Creador deben existir
 	if _, ok := m.perfiles[t.AsignadoA]; !ok {
 		return nil, ErrValidation
@@ -679,12 +821,14 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 	nueva := &Tarea{
 		ID:          id,
 		TipoID:      t.TipoID,
+		ClienteID:   t.ClienteID,
 		Titulo:      strings.TrimSpace(t.Titulo),
 		Descripcion: t.Descripcion,
 		AsignadoA:   t.AsignadoA,
 		CreadoPor:   t.CreadoPor,
 		Estado:      estado,
 		FechaLimite: t.FechaLimite,
+		Cantidad:    t.Cantidad,
 		CreadaEn:    time.Now(),
 	}
 	m.tareas[id] = nueva
@@ -714,6 +858,11 @@ func (m *MemoryStore) ListarTareas(ctx context.Context, filtro FiltroTareas) ([]
 		if filtro.AsignadoA != nil && t.AsignadoA != *filtro.AsignadoA {
 			continue
 		}
+		if filtro.ClienteID != nil {
+			if t.ClienteID == nil || *t.ClienteID != *filtro.ClienteID {
+				continue
+			}
+		}
 		res = append(res, m.clonarTareaLocked(t))
 	}
 
@@ -737,7 +886,7 @@ func (m *MemoryStore) ContarTareasPorRevisar(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string) (*Tarea, error) {
+func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int) (*Tarea, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -750,6 +899,16 @@ func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID
 	}
 	if t.Estado != EstadoTareaPendiente && t.Estado != EstadoTareaRechazada {
 		return nil, fmt.Errorf("%w: la tarea no está en estado pendiente ni rechazada", ErrValidation)
+	}
+
+	tipo := m.tiposTrabajo[t.TipoID]
+	if tipo != nil && tipo.Unidad == "minuto" {
+		if cantidad == nil || *cantidad < 1 || *cantidad > 1440 {
+			return nil, fmt.Errorf("%w: los minutos deben estar entre 1 y 1440", ErrValidation)
+		}
+		t.Cantidad = cantidad
+	} else {
+		t.Cantidad = nil
 	}
 
 	if nota != nil {
@@ -767,7 +926,7 @@ func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID
 	return m.clonarTareaLocked(t), nil
 }
 
-func (m *MemoryStore) AceptarTarea(ctx context.Context, id int64, adminID string) (*Tarea, error) {
+func (m *MemoryStore) AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*Tarea, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -787,6 +946,22 @@ func (m *MemoryStore) AceptarTarea(ctx context.Context, id int64, adminID string
 	tipo, ok := m.tiposTrabajo[t.TipoID]
 	if !ok {
 		return nil, ErrValidation
+	}
+
+	var cantAceptada int
+	if tipo.Unidad == "minuto" {
+		if cantidad != nil {
+			cantAceptada = *cantidad
+		} else if t.Cantidad != nil {
+			cantAceptada = *t.Cantidad
+		} else {
+			return nil, fmt.Errorf("%w: la cantidad de minutos es requerida", ErrValidation)
+		}
+		if cantAceptada < 1 || cantAceptada > 1440 {
+			return nil, fmt.Errorf("%w: los minutos deben estar entre 1 y 1440", ErrValidation)
+		}
+	} else {
+		cantAceptada = 1
 	}
 
 	// Buscar o abrir factura abierta para la persona
@@ -811,9 +986,12 @@ func (m *MemoryStore) AceptarTarea(ctx context.Context, id int64, adminID string
 		m.facturas[fID] = factAbierta
 	}
 
-	precio := tipo.Precio
+	unit := int64(tipo.Precio)
+	total := int64(tipo.Precio) * int64(cantAceptada)
 	t.Estado = EstadoTareaAceptada
-	t.PrecioCongelado = &precio
+	t.CantidadAceptada = &cantAceptada
+	t.PrecioUnitarioCongelado = &unit
+	t.PrecioCongelado = &total
 	t.FacturaID = &factAbierta.ID
 	t.ResueltaEn = &ahora
 	t.ResueltaPor = &adminID
@@ -891,7 +1069,7 @@ func (m *MemoryStore) hidratarFacturaLocked(f *Factura) *Factura {
 	}
 
 	var lineas []*Tarea
-	total := 0
+	var total int64 = 0
 	for _, t := range m.tareas {
 		if t.FacturaID != nil && *t.FacturaID == f.ID && t.Estado == EstadoTareaAceptada {
 			lineas = append(lineas, m.clonarTareaLocked(t))
@@ -1014,4 +1192,56 @@ func (m *MemoryStore) MarcarFacturaPagada(ctx context.Context, id int64, adminID
 	f.PagadaPor = &adminID
 
 	return m.hidratarFacturaLocked(f), nil
+}
+
+// ==========================================
+// F3: Implementación Estadísticas
+// ==========================================
+
+func (m *MemoryStore) ObtenerEstadisticasYo(ctx context.Context, perfilID string, filtro FiltroEstadisticasYo) (*EstadisticasYoResponse, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var tareas []*Tarea
+	for _, t := range m.tareas {
+		if t.AsignadoA == perfilID && t.Estado == EstadoTareaAceptada {
+			tareas = append(tareas, m.clonarTareaLocked(t))
+		}
+	}
+
+	tiposMap := make(map[int]*TipoTrabajo)
+	for id, tp := range m.tiposTrabajo {
+		tiposMap[id] = m.clonarTipoTrabajoLocked(tp)
+	}
+
+	return CalcularEstadisticasYo(perfilID, tareas, tiposMap, filtro, time.Now()), nil
+}
+
+func (m *MemoryStore) ObtenerEstadisticasAdmin(ctx context.Context, filtro FiltroEstadisticasAdmin) (*EstadisticasAdminResponse, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var tareas []*Tarea
+	for _, t := range m.tareas {
+		if t.Estado == EstadoTareaAceptada {
+			tareas = append(tareas, m.clonarTareaLocked(t))
+		}
+	}
+
+	perfilesMap := make(map[string]*Perfil)
+	for id, p := range m.perfiles {
+		perfilesMap[id] = m.clonarPerfilLocked(p)
+	}
+
+	clientesMap := make(map[int]*Cliente)
+	for id, c := range m.clientes {
+		clientesMap[id] = m.clonarClienteLocked(c)
+	}
+
+	tiposMap := make(map[int]*TipoTrabajo)
+	for id, tp := range m.tiposTrabajo {
+		tiposMap[id] = m.clonarTipoTrabajoLocked(tp)
+	}
+
+	return CalcularEstadisticasAdmin(tareas, perfilesMap, clientesMap, tiposMap, filtro), nil
 }
