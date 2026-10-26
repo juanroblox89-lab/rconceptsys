@@ -57,6 +57,51 @@ type dbChatMensaje struct {
 	Autor     *dbPerfil `json:"perfiles"`
 }
 
+// Modelos DB PostgREST para F2
+type dbTipoTrabajo struct {
+	ID       int       `json:"id"`
+	Clave    string    `json:"clave"`
+	Nombre   string    `json:"nombre"`
+	RolID    *int      `json:"rol_id"`
+	Precio   int       `json:"precio"`
+	Activo   bool      `json:"activo"`
+	Orden    int       `json:"orden"`
+	CreadoEn string    `json:"creado_en"`
+	Rol      *dbRol    `json:"roles"`
+}
+
+type dbTarea struct {
+	ID              int64          `json:"id"`
+	TipoID          int            `json:"tipo_id"`
+	Titulo          string         `json:"titulo"`
+	Descripcion     *string        `json:"descripcion"`
+	AsignadoA       string         `json:"asignado_a"`
+	CreadoPor       string         `json:"creado_por"`
+	Estado          string         `json:"estado"`
+	FechaLimite     *string        `json:"fecha_limite"`
+	NotaPersona     *string        `json:"nota_persona"`
+	MotivoRechazo   *string        `json:"motivo_rechazo"`
+	PrecioCongelado *int           `json:"precio_congelado"`
+	FacturaID       *int64         `json:"factura_id"`
+	CreadaEn        string         `json:"creada_en"`
+	HechaEn         *string        `json:"hecha_en"`
+	ResueltaEn      *string        `json:"resuelta_en"`
+	ResueltaPor     *string        `json:"resuelta_por"`
+	Tipo            *dbTipoTrabajo `json:"tipos_trabajo"`
+	Asignado        *dbPerfil      `json:"asignado"`
+	Creador         *dbPerfil      `json:"creador"`
+}
+
+type dbFactura struct {
+	ID        int64     `json:"id"`
+	PerfilID  string    `json:"perfil_id"`
+	Estado    string    `json:"estado"`
+	CreadaEn  string    `json:"creada_en"`
+	PagadaEn  *string   `json:"pagada_en"`
+	PagadaPor *string   `json:"pagada_por"`
+	Perfil    *dbPerfil `json:"perfiles"`
+}
+
 func convertirPerfil(dp *dbPerfil, roles []store.Rol) *store.Perfil {
 	if dp == nil {
 		return nil
@@ -520,6 +565,518 @@ func (s *SupabaseStore) GuardarAvatar(ctx context.Context, nombreArchivo string,
 		return "", err
 	}
 	return fmt.Sprintf("%s/storage/v1/object/public/avatares/%s", s.client.baseURL, nombreArchivo), nil
+}
+
+// ==========================================
+// F2: Métodos de SupabaseStore
+// ==========================================
+
+func convertirTipoTrabajo(dt *dbTipoTrabajo) *store.TipoTrabajo {
+	if dt == nil {
+		return nil
+	}
+	t, _ := time.Parse(time.RFC3339, dt.CreadoEn)
+	res := &store.TipoTrabajo{
+		ID:       dt.ID,
+		Clave:    dt.Clave,
+		Nombre:   dt.Nombre,
+		RolID:    dt.RolID,
+		Precio:   dt.Precio,
+		Activo:   dt.Activo,
+		Orden:    dt.Orden,
+		CreadoEn: t,
+	}
+	if dt.Rol != nil {
+		res.Rol = &store.Rol{
+			ID:     dt.Rol.ID,
+			Clave:  dt.Rol.Clave,
+			Nombre: dt.Rol.Nombre,
+			Color:  dt.Rol.Color,
+			Orden:  dt.Rol.Orden,
+			Activo: dt.Rol.Activo,
+		}
+	}
+	return res
+}
+
+func parseTimePtr(s *string) *time.Time {
+	if s == nil || *s == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, *s)
+	if err != nil {
+		return nil
+	}
+	return &t
+}
+
+func convertirTarea(dt *dbTarea) *store.Tarea {
+	if dt == nil {
+		return nil
+	}
+	creadaEn, _ := time.Parse(time.RFC3339, dt.CreadaEn)
+	res := &store.Tarea{
+		ID:              dt.ID,
+		TipoID:          dt.TipoID,
+		Titulo:          dt.Titulo,
+		Descripcion:     dt.Descripcion,
+		AsignadoA:       dt.AsignadoA,
+		CreadoPor:       dt.CreadoPor,
+		Estado:          store.EstadoTarea(dt.Estado),
+		FechaLimite:     dt.FechaLimite,
+		NotaPersona:     dt.NotaPersona,
+		MotivoRechazo:   dt.MotivoRechazo,
+		PrecioCongelado: dt.PrecioCongelado,
+		FacturaID:       dt.FacturaID,
+		CreadaEn:        creadaEn,
+		HechaEn:         parseTimePtr(dt.HechaEn),
+		ResueltaEn:      parseTimePtr(dt.ResueltaEn),
+		ResueltaPor:     dt.ResueltaPor,
+		Tipo:            convertirTipoTrabajo(dt.Tipo),
+	}
+	if dt.Asignado != nil {
+		res.Asignado = convertirPerfil(dt.Asignado, nil)
+	}
+	if dt.Creador != nil {
+		res.Creador = convertirPerfil(dt.Creador, nil)
+	}
+	return res
+}
+
+func (s *SupabaseStore) ListarTiposTrabajo(ctx context.Context, soloActivos bool) ([]*store.TipoTrabajo, error) {
+	q := url.Values{}
+	q.Set("select", "*,roles(*)")
+	if soloActivos {
+		q.Set("activo", "eq.true")
+	}
+	q.Set("order", "orden.asc,id.asc")
+
+	var rows []dbTipoTrabajo
+	if err := s.client.REST(ctx, "GET", "tipos_trabajo", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	res := make([]*store.TipoTrabajo, len(rows))
+	for i := range rows {
+		res[i] = convertirTipoTrabajo(&rows[i])
+	}
+	return res, nil
+}
+
+func (s *SupabaseStore) ObtenerTipoTrabajoPorID(ctx context.Context, id int) (*store.TipoTrabajo, error) {
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,roles(*)")
+
+	var rows []dbTipoTrabajo
+	if err := s.client.REST(ctx, "GET", "tipos_trabajo", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTipoTrabajo(&rows[0]), nil
+}
+
+func (s *SupabaseStore) CrearTipoTrabajo(ctx context.Context, t *store.TipoTrabajo) (*store.TipoTrabajo, error) {
+	payload := map[string]any{
+		"clave":  strings.ToLower(strings.TrimSpace(t.Clave)),
+		"nombre": strings.TrimSpace(t.Nombre),
+		"rol_id": t.RolID,
+		"precio": t.Precio,
+		"activo": t.Activo,
+		"orden":  t.Orden,
+	}
+	var rows []dbTipoTrabajo
+	q := url.Values{}
+	q.Set("select", "*,roles(*)")
+	if err := s.client.REST(ctx, "POST", "tipos_trabajo", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTipoTrabajo(&rows[0]), nil
+}
+
+func (s *SupabaseStore) ActualizarTipoTrabajo(ctx context.Context, id int, campos map[string]any) (*store.TipoTrabajo, error) {
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,roles(*)")
+
+	var rows []dbTipoTrabajo
+	if err := s.client.REST(ctx, "PATCH", "tipos_trabajo", q, campos, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTipoTrabajo(&rows[0]), nil
+}
+
+func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.Tarea, error) {
+	payload := map[string]any{
+		"tipo_id":      t.TipoID,
+		"titulo":       strings.TrimSpace(t.Titulo),
+		"descripcion":  t.Descripcion,
+		"asignado_a":   t.AsignadoA,
+		"creado_por":   t.CreadoPor,
+		"estado":       store.EstadoTareaPendiente,
+		"fecha_limite": t.FechaLimite,
+	}
+	var rows []dbTarea
+	q := url.Values{}
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	if err := s.client.REST(ctx, "POST", "tareas", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTarea(&rows[0]), nil
+}
+
+func (s *SupabaseStore) ObtenerTareaPorID(ctx context.Context, id int64) (*store.Tarea, error) {
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+
+	var rows []dbTarea
+	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTarea(&rows[0]), nil
+}
+
+func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTareas) ([]*store.Tarea, error) {
+	q := url.Values{}
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	if filtro.Estado != nil {
+		q.Set("estado", fmt.Sprintf("eq.%s", *filtro.Estado))
+	}
+	if filtro.AsignadoA != nil {
+		q.Set("asignado_a", fmt.Sprintf("eq.%s", *filtro.AsignadoA))
+	}
+	q.Set("order", "creada_en.desc")
+
+	var rows []dbTarea
+	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	res := make([]*store.Tarea, len(rows))
+	for i := range rows {
+		res[i] = convertirTarea(&rows[i])
+	}
+	return res, nil
+}
+
+func (s *SupabaseStore) ContarTareasPorRevisar(ctx context.Context) (int, error) {
+	q := url.Values{}
+	q.Set("estado", "eq.hecha")
+	q.Set("select", "id")
+
+	var rows []struct {
+		ID int64 `json:"id"`
+	}
+	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+		return 0, err
+	}
+	return len(rows), nil
+}
+
+func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string) (*store.Tarea, error) {
+	tarea, err := s.ObtenerTareaPorID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if tarea.AsignadoA != asignadoID {
+		return nil, store.ErrForbidden
+	}
+	if tarea.Estado != store.EstadoTareaPendiente && tarea.Estado != store.EstadoTareaRechazada {
+		return nil, fmt.Errorf("%w: la tarea no está en estado pendiente ni rechazada", store.ErrValidation)
+	}
+
+	payload := map[string]any{
+		"estado":         store.EstadoTareaHecha,
+		"hecha_en":       time.Now().Format(time.RFC3339),
+		"nota_persona":   nota,
+		"motivo_rechazo": nil,
+	}
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+
+	var rows []dbTarea
+	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTarea(&rows[0]), nil
+}
+
+func (s *SupabaseStore) AceptarTarea(ctx context.Context, id int64, adminID string) (*store.Tarea, error) {
+	payload := map[string]any{
+		"p_tarea": id,
+		"p_admin": adminID,
+	}
+	var res struct {
+		TareaID         int64  `json:"tarea_id"`
+		FacturaID       int64  `json:"factura_id"`
+		PrecioCongelado int    `json:"precio_congelado"`
+		Estado          string `json:"estado"`
+		ResueltaEn      string `json:"resuelta_en"`
+	}
+	if err := s.client.RPC(ctx, "aceptar_tarea", payload, &res); err != nil {
+		return nil, err
+	}
+	return s.ObtenerTareaPorID(ctx, id)
+}
+
+func (s *SupabaseStore) RechazarTarea(ctx context.Context, id int64, adminID string, motivo string) (*store.Tarea, error) {
+	tarea, err := s.ObtenerTareaPorID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if tarea.Estado != store.EstadoTareaHecha {
+		return nil, fmt.Errorf("%w: solo se pueden rechazar tareas en estado hecha", store.ErrValidation)
+	}
+
+	payload := map[string]any{
+		"estado":         store.EstadoTareaRechazada,
+		"motivo_rechazo": motivo,
+		"resuelta_en":    time.Now().Format(time.RFC3339),
+		"resuelta_por":   adminID,
+	}
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+
+	var rows []dbTarea
+	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTarea(&rows[0]), nil
+}
+
+func (s *SupabaseStore) CancelarTarea(ctx context.Context, id int64, adminID string) (*store.Tarea, error) {
+	tarea, err := s.ObtenerTareaPorID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if tarea.Estado != store.EstadoTareaPendiente && tarea.Estado != store.EstadoTareaRechazada {
+		return nil, fmt.Errorf("%w: solo se pueden cancelar tareas en estado pendiente o rechazada", store.ErrValidation)
+	}
+
+	payload := map[string]any{
+		"estado":       store.EstadoTareaCancelada,
+		"resuelta_en":  time.Now().Format(time.RFC3339),
+		"resuelta_por": adminID,
+	}
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+
+	var rows []dbTarea
+	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return convertirTarea(&rows[0]), nil
+}
+
+func (s *SupabaseStore) cargarLineasFactura(ctx context.Context, f *store.Factura) error {
+	q := url.Values{}
+	q.Set("factura_id", fmt.Sprintf("eq.%d", f.ID))
+	q.Set("estado", "eq.aceptada")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("order", "id.asc")
+
+	var rows []dbTarea
+	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+		return err
+	}
+	total := 0
+	lineas := make([]*store.Tarea, len(rows))
+	for i := range rows {
+		t := convertirTarea(&rows[i])
+		lineas[i] = t
+		if t.PrecioCongelado != nil {
+			total += *t.PrecioCongelado
+		}
+	}
+	f.Lineas = lineas
+	f.Total = total
+	return nil
+}
+
+func (s *SupabaseStore) ObtenerFacturaAbierta(ctx context.Context, perfilID string) (*store.Factura, error) {
+	q := url.Values{}
+	q.Set("perfil_id", fmt.Sprintf("eq.%s", perfilID))
+	q.Set("estado", "eq.abierta")
+	q.Set("select", "*,perfiles(*)")
+
+	var rows []dbFactura
+	if err := s.client.REST(ctx, "GET", "facturas", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+
+	creadaEn, _ := time.Parse(time.RFC3339, rows[0].CreadaEn)
+	f := &store.Factura{
+		ID:        rows[0].ID,
+		PerfilID:  rows[0].PerfilID,
+		Estado:    store.EstadoFactura(rows[0].Estado),
+		CreadaEn:  creadaEn,
+		PagadaEn:  parseTimePtr(rows[0].PagadaEn),
+		PagadaPor: rows[0].PagadaPor,
+		Perfil:    convertirPerfil(rows[0].Perfil, nil),
+	}
+	if err := s.cargarLineasFactura(ctx, f); err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func (s *SupabaseStore) ListarFacturasPerfil(ctx context.Context, perfilID string) ([]*store.Factura, error) {
+	q := url.Values{}
+	q.Set("perfil_id", fmt.Sprintf("eq.%s", perfilID))
+	q.Set("select", "*,perfiles(*)")
+	q.Set("order", "creada_en.desc")
+
+	var rows []dbFactura
+	if err := s.client.REST(ctx, "GET", "facturas", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	res := make([]*store.Factura, len(rows))
+	for i := range rows {
+		creadaEn, _ := time.Parse(time.RFC3339, rows[i].CreadaEn)
+		f := &store.Factura{
+			ID:        rows[i].ID,
+			PerfilID:  rows[i].PerfilID,
+			Estado:    store.EstadoFactura(rows[i].Estado),
+			CreadaEn:  creadaEn,
+			PagadaEn:  parseTimePtr(rows[i].PagadaEn),
+			PagadaPor: rows[i].PagadaPor,
+			Perfil:    convertirPerfil(rows[i].Perfil, nil),
+		}
+		_ = s.cargarLineasFactura(ctx, f)
+		res[i] = f
+	}
+	return res, nil
+}
+
+func (s *SupabaseStore) ObtenerFacturaPorID(ctx context.Context, id int64) (*store.Factura, error) {
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,perfiles(*)")
+
+	var rows []dbFactura
+	if err := s.client.REST(ctx, "GET", "facturas", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	creadaEn, _ := time.Parse(time.RFC3339, rows[0].CreadaEn)
+	f := &store.Factura{
+		ID:        rows[0].ID,
+		PerfilID:  rows[0].PerfilID,
+		Estado:    store.EstadoFactura(rows[0].Estado),
+		CreadaEn:  creadaEn,
+		PagadaEn:  parseTimePtr(rows[0].PagadaEn),
+		PagadaPor: rows[0].PagadaPor,
+		Perfil:    convertirPerfil(rows[0].Perfil, nil),
+	}
+	if err := s.cargarLineasFactura(ctx, f); err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func (s *SupabaseStore) ListarResumenFacturasAdmin(ctx context.Context) ([]*store.ResumenFacturasPersona, error) {
+	miembros, err := s.ListarMiembros(ctx, store.FiltroMiembros{})
+	if err != nil {
+		return nil, err
+	}
+
+	var res []*store.ResumenFacturasPersona
+	for _, m := range miembros {
+		if m.Estado != store.EstadoAprobado {
+			continue
+		}
+		facts, err := s.ListarFacturasPerfil(ctx, m.ID)
+		if err != nil {
+			return nil, err
+		}
+		item := &store.ResumenFacturasPersona{
+			PerfilID: m.ID,
+			Perfil:   m,
+			Pagadas:  make([]*store.Factura, 0),
+		}
+		for _, f := range facts {
+			if f.Estado == store.EstadoFacturaAbierta {
+				item.FacturaAbierta = f
+				item.TotalPendiente = f.Total
+			} else if f.Estado == store.EstadoFacturaPagada {
+				item.Pagadas = append(item.Pagadas, f)
+				item.TotalPagado += f.Total
+			}
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
+func (s *SupabaseStore) MarcarFacturaPagada(ctx context.Context, id int64, adminID string) (*store.Factura, error) {
+	f, err := s.ObtenerFacturaPorID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if f.Estado != store.EstadoFacturaAbierta {
+		return nil, fmt.Errorf("%w: solo se puede marcar pagada una factura abierta", store.ErrValidation)
+	}
+
+	payload := map[string]any{
+		"estado":     store.EstadoFacturaPagada,
+		"pagada_en":  time.Now().Format(time.RFC3339),
+		"pagada_por": adminID,
+	}
+	q := url.Values{}
+	q.Set("id", fmt.Sprintf("eq.%d", id))
+	q.Set("select", "*,perfiles(*)")
+
+	var rows []dbFactura
+	if err := s.client.REST(ctx, "PATCH", "facturas", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	creadaEn, _ := time.Parse(time.RFC3339, rows[0].CreadaEn)
+	res := &store.Factura{
+		ID:        rows[0].ID,
+		PerfilID:  rows[0].PerfilID,
+		Estado:    store.EstadoFactura(rows[0].Estado),
+		CreadaEn:  creadaEn,
+		PagadaEn:  parseTimePtr(rows[0].PagadaEn),
+		PagadaPor: rows[0].PagadaPor,
+		Perfil:    convertirPerfil(rows[0].Perfil, nil),
+	}
+	if err := s.cargarLineasFactura(ctx, res); err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // SupabaseAuthVerifier valida JWTs contra Supabase Auth

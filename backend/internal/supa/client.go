@@ -280,6 +280,11 @@ func (c *Client) do(ctx context.Context, method, u string, body any, prefer stri
 	return nil
 }
 
+func (c *Client) RPC(ctx context.Context, fn string, body any, out any) error {
+	u := c.baseURL + "/rest/v1/rpc/" + fn
+	return c.do(ctx, http.MethodPost, u, body, "", out)
+}
+
 func IsNotFound(err error) bool {
 	var se *Error
 	return errors.As(err, &se) && se.Status == http.StatusNotFound

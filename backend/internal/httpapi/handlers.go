@@ -69,6 +69,27 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/admin/roles", a.MiddlewareAuth(a.handleAdminPostRol, true, true))
 	mux.HandleFunc("PATCH /api/admin/roles/{id}", a.MiddlewareAuth(a.handleAdminPatchRol, true, true))
 
+	// F2: Miembros aprobados (Trabajos, Tareas y Factura propia)
+	mux.HandleFunc("GET /api/trabajos", a.MiddlewareAuth(a.handleGetTrabajos, true, false))
+	mux.HandleFunc("GET /api/tareas", a.MiddlewareAuth(a.handleGetTareas, true, false))
+	mux.HandleFunc("POST /api/tareas/{id}/hecha", a.MiddlewareAuth(a.handlePostTareaHecha, true, false))
+	mux.HandleFunc("GET /api/facturas/mia", a.MiddlewareAuth(a.handleGetFacturaMia, true, false))
+
+	// F2: Solo Admin (Trabajos, Tareas y Facturas)
+	mux.HandleFunc("GET /api/admin/trabajos", a.MiddlewareAuth(a.handleAdminGetTrabajos, true, true))
+	mux.HandleFunc("POST /api/admin/trabajos", a.MiddlewareAuth(a.handleAdminPostTrabajo, true, true))
+	mux.HandleFunc("PATCH /api/admin/trabajos/{id}", a.MiddlewareAuth(a.handleAdminPatchTrabajo, true, true))
+
+	mux.HandleFunc("GET /api/admin/tareas", a.MiddlewareAuth(a.handleAdminGetTareas, true, true))
+	mux.HandleFunc("POST /api/admin/tareas", a.MiddlewareAuth(a.handleAdminPostTarea, true, true))
+	mux.HandleFunc("POST /api/admin/tareas/{id}/aceptar", a.MiddlewareAuth(a.handleAdminPostTareaAceptar, true, true))
+	mux.HandleFunc("POST /api/admin/tareas/{id}/rechazar", a.MiddlewareAuth(a.handleAdminPostTareaRechazar, true, true))
+	mux.HandleFunc("POST /api/admin/tareas/{id}/cancelar", a.MiddlewareAuth(a.handleAdminPostTareaCancelar, true, true))
+
+	mux.HandleFunc("GET /api/admin/facturas", a.MiddlewareAuth(a.handleAdminGetFacturas, true, true))
+	mux.HandleFunc("GET /api/admin/facturas/{id}", a.MiddlewareAuth(a.handleAdminGetFacturaDetalle, true, true))
+	mux.HandleFunc("POST /api/admin/facturas/{id}/pagar", a.MiddlewareAuth(a.handleAdminPostFacturaPagar, true, true))
+
 	return a.corsMiddleware(mux)
 }
 
@@ -671,4 +692,638 @@ func (a *API) handleAdminPatchRol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ResponderJSON(w, http.StatusOK, actualizado)
+}
+
+// ==========================================
+// F2: Handlers para Miembros Aprobados
+// ==========================================
+
+// GET /api/trabajos
+func (a *API) handleGetTrabajos(w http.ResponseWriter, r *http.Request) {
+	trabajos, err := a.Store.ListarTiposTrabajo(r.Context(), true)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_listar_trabajos", "No se pudieron obtener los tipos de trabajo.")
+		return
+	}
+	if trabajos == nil {
+		trabajos = []*store.TipoTrabajo{}
+	}
+	ResponderJSON(w, http.StatusOK, trabajos)
+}
+
+// GET /api/tareas?estado=
+func (a *API) handleGetTareas(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	if yo == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil autenticado.")
+		return
+	}
+
+	filtro := store.FiltroTareas{
+		AsignadoA: &yo.ID,
+	}
+	estadoQuery := strings.TrimSpace(r.URL.Query().Get("estado"))
+	if estadoQuery != "" {
+		st := store.EstadoTarea(estadoQuery)
+		filtro.Estado = &st
+	}
+
+	tareas, err := a.Store.ListarTareas(r.Context(), filtro)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_listar_tareas", "No se pudieron obtener tus tareas.")
+		return
+	}
+	if tareas == nil {
+		tareas = []*store.Tarea{}
+	}
+	ResponderJSON(w, http.StatusOK, tareas)
+}
+
+// POST /api/tareas/{id}/hecha
+func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	if yo == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil autenticado.")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de tarea inválido.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var body struct {
+		Nota *string `json:"nota"`
+	}
+	// El cuerpo es opcional
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_tarea", "No se pudo consultar la tarea.")
+		return
+	}
+
+	if tarea.AsignadoA != yo.ID {
+		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
+		return
+	}
+
+	if tarea.Estado != store.EstadoTareaPendiente && tarea.Estado != store.EstadoTareaRechazada {
+		ResponderError(w, http.StatusBadRequest, "estado_invalido", "Solo puedes marcar como hecha una tarea pendiente o rechazada.")
+		return
+	}
+
+	var notaPtr *string
+	if body.Nota != nil {
+		trimmed := strings.TrimSpace(*body.Nota)
+		if len(trimmed) > 500 {
+			ResponderError(w, http.StatusBadRequest, "nota_demasiado_larga", "La nota no puede tener más de 500 caracteres.")
+			return
+		}
+		if trimmed != "" {
+			notaPtr = &trimmed
+		}
+	}
+
+	actualizada, err := a.Store.MarcarTareaHecha(r.Context(), id, yo.ID, notaPtr)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_marcar_hecha", "No se pudo marcar la tarea como hecha.")
+		return
+	}
+	ResponderJSON(w, http.StatusOK, actualizada)
+}
+
+// GET /api/facturas/mia
+func (a *API) handleGetFacturaMia(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	if yo == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil autenticado.")
+		return
+	}
+
+	facturas, err := a.Store.ListarFacturasPerfil(r.Context(), yo.ID)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_facturas", "No se pudieron obtener tus facturas.")
+		return
+	}
+
+	var abierta *store.Factura
+	var pagadas []*store.Factura
+	totalPagado := 0
+	totalPendiente := 0
+
+	for _, f := range facturas {
+		if f.Estado == store.EstadoFacturaAbierta {
+			abierta = f
+			totalPendiente = f.Total
+		} else if f.Estado == store.EstadoFacturaPagada {
+			pagadas = append(pagadas, f)
+			totalPagado += f.Total
+		}
+	}
+
+	if pagadas == nil {
+		pagadas = []*store.Factura{}
+	}
+
+	respuesta := map[string]any{
+		"abierta":         abierta,
+		"total_pendiente": totalPendiente,
+		"pagadas":         pagadas,
+		"total_pagado":    totalPagado,
+	}
+	ResponderJSON(w, http.StatusOK, respuesta)
+}
+
+// ==========================================
+// F2: Handlers Solo Admin
+// ==========================================
+
+// GET /api/admin/trabajos
+func (a *API) handleAdminGetTrabajos(w http.ResponseWriter, r *http.Request) {
+	trabajos, err := a.Store.ListarTiposTrabajo(r.Context(), false)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_listar_trabajos", "No se pudieron obtener los tipos de trabajo.")
+		return
+	}
+	if trabajos == nil {
+		trabajos = []*store.TipoTrabajo{}
+	}
+	ResponderJSON(w, http.StatusOK, trabajos)
+}
+
+// POST /api/admin/trabajos
+func (a *API) handleAdminPostTrabajo(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var req struct {
+		Clave  string `json:"clave"`
+		Nombre string `json:"nombre"`
+		RolID  *int   `json:"rol_id"`
+		Precio *int   `json:"precio"`
+		Activo *bool  `json:"activo"`
+		Orden  *int   `json:"orden"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	clave := strings.ToLower(strings.TrimSpace(req.Clave))
+	nombre := strings.TrimSpace(req.Nombre)
+	if clave == "" || nombre == "" {
+		ResponderError(w, http.StatusBadRequest, "campos_requeridos", "El nombre y la clave del tipo de trabajo son obligatorios.")
+		return
+	}
+
+	precio := 0
+	if req.Precio != nil {
+		precio = *req.Precio
+	}
+	if precio < 0 || precio > 100000000 {
+		ResponderError(w, http.StatusBadRequest, "precio_invalido", "El precio debe ser un número entero entre 0 y 100.000.000 pesos.")
+		return
+	}
+
+	activo := true
+	if req.Activo != nil {
+		activo = *req.Activo
+	}
+
+	orden := 0
+	if req.Orden != nil {
+		orden = *req.Orden
+	}
+
+	t := &store.TipoTrabajo{
+		Clave:  clave,
+		Nombre: nombre,
+		RolID:  req.RolID,
+		Precio: precio,
+		Activo: activo,
+		Orden:  orden,
+	}
+
+	creado, err := a.Store.CrearTipoTrabajo(r.Context(), t)
+	if err == store.ErrConflict {
+		ResponderError(w, http.StatusConflict, "trabajo_duplicado", "Ya existe un trabajo con esa misma clave.")
+		return
+	}
+	if err == store.ErrValidation {
+		ResponderError(w, http.StatusBadRequest, "validacion_fallida", "Los datos enviados no son válidos (revisa el rol_id o el precio).")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_crear_trabajo", "No se pudo crear el tipo de trabajo.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusCreated, creado)
+}
+
+// PATCH /api/admin/trabajos/{id}
+func (a *API) handleAdminPatchTrabajo(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de tipo de trabajo inválido.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var campos map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&campos); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	if p, exists := campos["precio"]; exists {
+		switch n := p.(type) {
+		case float64:
+			if n < 0 || n > 100000000 || n != float64(int(n)) {
+				ResponderError(w, http.StatusBadRequest, "precio_invalido", "El precio debe ser un número entero entre 0 y 100.000.000 pesos.")
+				return
+			}
+		case int:
+			if n < 0 || n > 100000000 {
+				ResponderError(w, http.StatusBadRequest, "precio_invalido", "El precio debe ser un número entero entre 0 y 100.000.000 pesos.")
+				return
+			}
+		default:
+			ResponderError(w, http.StatusBadRequest, "precio_invalido", "El precio debe ser un valor numérico entero.")
+			return
+		}
+	}
+
+	actualizado, err := a.Store.ActualizarTipoTrabajo(r.Context(), id, campos)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "trabajo_no_encontrado", "El tipo de trabajo no existe.")
+		return
+	}
+	if err == store.ErrValidation {
+		ResponderError(w, http.StatusBadRequest, "validacion_fallida", "Uno de los campos a actualizar no es válido.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_actualizar_trabajo", "No se pudo actualizar el tipo de trabajo.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, actualizado)
+}
+
+// GET /api/admin/tareas?estado=&persona=
+func (a *API) handleAdminGetTareas(w http.ResponseWriter, r *http.Request) {
+	filtro := store.FiltroTareas{}
+	estadoQuery := strings.TrimSpace(r.URL.Query().Get("estado"))
+	if estadoQuery != "" {
+		st := store.EstadoTarea(estadoQuery)
+		filtro.Estado = &st
+	}
+	personaQuery := strings.TrimSpace(r.URL.Query().Get("persona"))
+	if personaQuery != "" {
+		filtro.AsignadoA = &personaQuery
+	}
+
+	tareas, err := a.Store.ListarTareas(r.Context(), filtro)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_listar_tareas", "No se pudieron obtener las tareas.")
+		return
+	}
+	if tareas == nil {
+		tareas = []*store.Tarea{}
+	}
+
+	porRevisar, err := a.Store.ContarTareasPorRevisar(r.Context())
+	if err != nil {
+		porRevisar = 0
+	}
+
+	respuesta := map[string]any{
+		"tareas":      tareas,
+		"por_revisar": porRevisar,
+	}
+	ResponderJSON(w, http.StatusOK, respuesta)
+}
+
+// POST /api/admin/tareas
+func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
+	admin := UsuarioDesdeContexto(r.Context())
+	if admin == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil administrador.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*32)
+	var req struct {
+		TipoID      int     `json:"tipo_id"`
+		AsignadoA   string  `json:"asignado_a"`
+		Titulo      string  `json:"titulo"`
+		Descripcion *string `json:"descripcion"`
+		FechaLimite *string `json:"fecha_limite"`
+		Forzar      bool    `json:"forzar"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	titulo := strings.TrimSpace(req.Titulo)
+	if titulo == "" || len(titulo) > 120 {
+		ResponderError(w, http.StatusBadRequest, "titulo_invalido", "El título es obligatorio y debe tener entre 1 y 120 caracteres.")
+		return
+	}
+
+	if req.Descripcion != nil && len(*req.Descripcion) > 1000 {
+		ResponderError(w, http.StatusBadRequest, "descripcion_larga", "La descripción no puede superar los 1000 caracteres.")
+		return
+	}
+
+	if req.TipoID <= 0 {
+		ResponderError(w, http.StatusBadRequest, "tipo_requerido", "Debes especificar un tipo de trabajo válido.")
+		return
+	}
+
+	tipo, err := a.Store.ObtenerTipoTrabajoPorID(r.Context(), req.TipoID)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "tipo_no_encontrado", "El tipo de trabajo especificado no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_tipo", "Error al consultar el tipo de trabajo.")
+		return
+	}
+
+	asignadoID := strings.TrimSpace(req.AsignadoA)
+	if asignadoID == "" {
+		ResponderError(w, http.StatusBadRequest, "asignado_requerido", "Debes asignar la tarea a una persona.")
+		return
+	}
+
+	asignado, err := a.Store.ObtenerPerfilPorID(r.Context(), asignadoID)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "asignado_no_encontrado", "La persona asignada no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_asignado", "Error al consultar la persona asignada.")
+		return
+	}
+
+	if asignado.Estado != store.EstadoAprobado {
+		ResponderError(w, http.StatusBadRequest, "asignado_no_aprobado", "Solo puedes asignar tareas a miembros aprobados del equipo.")
+		return
+	}
+
+	// Validación de rol del tipo de trabajo
+	if tipo.RolID != nil && !req.Forzar {
+		tieneRol := false
+		for _, rol := range asignado.Roles {
+			if rol.ID == *tipo.RolID {
+				tieneRol = true
+				break
+			}
+		}
+		if !tieneRol {
+			nombreRol := "el rol correspondiente"
+			if tipo.Rol != nil && tipo.Rol.Nombre != "" {
+				nombreRol = tipo.Rol.Nombre
+			}
+			ResponderError(w, http.StatusUnprocessableEntity, "rol_no_coincide", fmt.Sprintf("La persona no tiene asignado %s para este trabajo. Usa forzar: true si deseas asignarla de todos modos.", nombreRol))
+			return
+		}
+	}
+
+	tarea := &store.Tarea{
+		TipoID:      tipo.ID,
+		Titulo:      titulo,
+		Descripcion: req.Descripcion,
+		AsignadoA:   asignado.ID,
+		CreadoPor:   admin.ID,
+		FechaLimite: req.FechaLimite,
+	}
+
+	creada, err := a.Store.CrearTarea(r.Context(), tarea)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_crear_tarea", "No se pudo crear la tarea.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusCreated, creada)
+}
+
+// POST /api/admin/tareas/{id}/aceptar
+func (a *API) handleAdminPostTareaAceptar(w http.ResponseWriter, r *http.Request) {
+	admin := UsuarioDesdeContexto(r.Context())
+	if admin == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil administrador.")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de tarea inválido.")
+		return
+	}
+
+	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_tarea", "Error al consultar la tarea.")
+		return
+	}
+
+	if tarea.Estado != store.EstadoTareaHecha {
+		ResponderError(w, http.StatusBadRequest, "estado_invalido", fmt.Sprintf("Solo se pueden aceptar tareas en estado 'hecha' (estado actual: %s).", tarea.Estado))
+		return
+	}
+
+	aceptada, err := a.Store.AceptarTarea(r.Context(), id, admin.ID)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_aceptar_tarea", "No se pudo aceptar la tarea.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, aceptada)
+}
+
+// POST /api/admin/tareas/{id}/rechazar
+func (a *API) handleAdminPostTareaRechazar(w http.ResponseWriter, r *http.Request) {
+	admin := UsuarioDesdeContexto(r.Context())
+	if admin == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil administrador.")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de tarea inválido.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var body struct {
+		Motivo string `json:"motivo"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	motivo := strings.TrimSpace(body.Motivo)
+	if motivo == "" || len(motivo) > 500 {
+		ResponderError(w, http.StatusBadRequest, "motivo_requerido", "Debes ingresar un motivo de rechazo (hasta 500 caracteres).")
+		return
+	}
+
+	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_tarea", "Error al consultar la tarea.")
+		return
+	}
+
+	if tarea.Estado != store.EstadoTareaHecha {
+		ResponderError(w, http.StatusBadRequest, "estado_invalido", fmt.Sprintf("Solo se pueden rechazar tareas en estado 'hecha' (estado actual: %s).", tarea.Estado))
+		return
+	}
+
+	rechazada, err := a.Store.RechazarTarea(r.Context(), id, admin.ID, motivo)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_rechazar_tarea", "No se pudo rechazar la tarea.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, rechazada)
+}
+
+// POST /api/admin/tareas/{id}/cancelar
+func (a *API) handleAdminPostTareaCancelar(w http.ResponseWriter, r *http.Request) {
+	admin := UsuarioDesdeContexto(r.Context())
+	if admin == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil administrador.")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de tarea inválido.")
+		return
+	}
+
+	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_tarea", "Error al consultar la tarea.")
+		return
+	}
+
+	if tarea.Estado != store.EstadoTareaPendiente && tarea.Estado != store.EstadoTareaRechazada {
+		ResponderError(w, http.StatusBadRequest, "estado_invalido", fmt.Sprintf("Solo se pueden cancelar tareas en estado pendiente o rechazada (estado actual: %s).", tarea.Estado))
+		return
+	}
+
+	cancelada, err := a.Store.CancelarTarea(r.Context(), id, admin.ID)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_cancelar_tarea", "No se pudo cancelar la tarea.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, cancelada)
+}
+
+// GET /api/admin/facturas
+func (a *API) handleAdminGetFacturas(w http.ResponseWriter, r *http.Request) {
+	resumen, err := a.Store.ListarResumenFacturasAdmin(r.Context())
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_listar_facturas", "No se pudo obtener el resumen de facturas.")
+		return
+	}
+	if resumen == nil {
+		resumen = []*store.ResumenFacturasPersona{}
+	}
+	ResponderJSON(w, http.StatusOK, resumen)
+}
+
+// GET /api/admin/facturas/{id}
+func (a *API) handleAdminGetFacturaDetalle(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de factura inválido.")
+		return
+	}
+
+	factura, err := a.Store.ObtenerFacturaPorID(r.Context(), id)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "factura_no_encontrada", "La factura no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_factura", "Error al consultar la factura.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, factura)
+}
+
+// POST /api/admin/facturas/{id}/pagar
+func (a *API) handleAdminPostFacturaPagar(w http.ResponseWriter, r *http.Request) {
+	admin := UsuarioDesdeContexto(r.Context())
+	if admin == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil administrador.")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de factura inválido.")
+		return
+	}
+
+	factura, err := a.Store.ObtenerFacturaPorID(r.Context(), id)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "factura_no_encontrada", "La factura no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_factura", "Error al consultar la factura.")
+		return
+	}
+
+	if factura.Estado != store.EstadoFacturaAbierta {
+		ResponderError(w, http.StatusBadRequest, "factura_ya_pagada", "Esta factura ya fue pagada o no está abierta.")
+		return
+	}
+
+	pagada, err := a.Store.MarcarFacturaPagada(r.Context(), id, admin.ID)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_pagar_factura", "No se pudo marcar la factura como pagada.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, pagada)
 }
