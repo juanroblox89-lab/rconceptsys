@@ -1,5 +1,5 @@
 // lib/api.ts
-import { Perfil, ChatMensaje, Rol } from './types';
+import { Perfil, ChatMensaje, Rol, TipoTrabajo, Tarea, Factura, FacturaMiaRespuesta, ResumenFacturasPersona, AdminTareasRespuesta } from './types';
 
 // En el navegador usamos rutas relativas con cookies httpOnly
 const API_BASE = '';
@@ -144,4 +144,71 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(campos),
     }),
+
+  // F2: Trabajos, Tareas y Facturas (Miembro)
+  getTrabajos: () => fetchApi<TipoTrabajo[]>('/api/trabajos'),
+  getTareas: (estado?: string) => {
+    const q = new URLSearchParams();
+    if (estado) q.set('estado', estado);
+    return fetchApi<Tarea[]>(`/api/tareas?${q.toString()}`);
+  },
+  postTareaHecha: (id: number, nota?: string) =>
+    fetchApi<Tarea>(`/api/tareas/${id}/hecha`, {
+      method: 'POST',
+      body: JSON.stringify({ nota }),
+    }),
+  getFacturaMia: () => fetchApi<FacturaMiaRespuesta>('/api/facturas/mia'),
+
+  // F2: Solo Admin (Gestión de Trabajos, Tareas y Facturas)
+  adminGetTrabajos: () => fetchApi<TipoTrabajo[]>('/api/admin/trabajos'),
+  adminPostTrabajo: (trabajo: {
+    clave: string;
+    nombre: string;
+    rol_id?: number | null;
+    precio?: number;
+    activo?: boolean;
+    orden?: number;
+  }) =>
+    fetchApi<TipoTrabajo>('/api/admin/trabajos', {
+      method: 'POST',
+      body: JSON.stringify(trabajo),
+    }),
+  adminPatchTrabajo: (id: number, campos: Partial<TipoTrabajo>) =>
+    fetchApi<TipoTrabajo>(`/api/admin/trabajos/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(campos),
+    }),
+
+  adminGetTareas: (filtros?: { estado?: string; persona?: string }) => {
+    const q = new URLSearchParams();
+    if (filtros?.estado) q.set('estado', filtros.estado);
+    if (filtros?.persona) q.set('persona', filtros.persona);
+    return fetchApi<AdminTareasRespuesta>(`/api/admin/tareas?${q.toString()}`);
+  },
+  adminPostTarea: (tarea: {
+    tipo_id: number;
+    asignado_a: string;
+    titulo: string;
+    descripcion?: string;
+    fecha_limite?: string;
+    forzar?: boolean;
+  }) =>
+    fetchApi<Tarea>('/api/admin/tareas', {
+      method: 'POST',
+      body: JSON.stringify(tarea),
+    }),
+  adminAceptarTarea: (id: number) =>
+    fetchApi<Tarea>(`/api/admin/tareas/${id}/aceptar`, { method: 'POST' }),
+  adminRechazarTarea: (id: number, motivo: string) =>
+    fetchApi<Tarea>(`/api/admin/tareas/${id}/rechazar`, {
+      method: 'POST',
+      body: JSON.stringify({ motivo }),
+    }),
+  adminCancelarTarea: (id: number) =>
+    fetchApi<Tarea>(`/api/admin/tareas/${id}/cancelar`, { method: 'POST' }),
+
+  adminGetFacturas: () => fetchApi<ResumenFacturasPersona[]>('/api/admin/facturas'),
+  adminGetFactura: (id: number) => fetchApi<Factura>(`/api/admin/facturas/${id}`),
+  adminPagarFactura: (id: number) =>
+    fetchApi<Factura>(`/api/admin/facturas/${id}/pagar`, { method: 'POST' }),
 };

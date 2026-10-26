@@ -43,6 +43,14 @@
   color: var(--rc-gris-900);
 }
 
+.sectionHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-esp-8);
+  flex-wrap: wrap;
+}
+
 .desktopTable {
   display: block;
 }
@@ -150,11 +158,182 @@
   border-radius: var(--rc-radio-sm);
   background: var(--rc-superficie);
   box-shadow: var(--rc-elev-hundido-sm);
-  color: var(--rc-gris-900);
   border: none;
-  outline: none;
+  color: var(--rc-gris-900);
 }
 
 .roleInput:focus {
-  box-shadow: var(--rc-elev-foco-azul);
+  outline: none;
+  box-shadow: var(--rc-elev-foco);
+}
+
+/* Estilos de gestión F2 */
+.avisoInfo {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto-secundario);
+  line-height: var(--rc-lh-secundario);
+  background-color: var(--rc-azul-fondo);
+  padding: var(--rc-esp-10) var(--rc-esp-12);
+  border-radius: var(--rc-radio-sm);
+}
+
+.inputPrecio {
+  font-size: var(--rc-fs-secundario);
+  height: 30px;
+  padding: 0 var(--rc-esp-8);
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-hundido-sm);
+  border: none;
+  color: var(--rc-gris-900);
+  font-variant-numeric: tabular-nums;
+  width: 130px;
+  text-align: right;
+}
+
+.inputPrecio:focus {
+  outline: none;
+  box-shadow: var(--rc-elev-foco);
+}
+
+.selectCompacto {
+  font-size: var(--rc-fs-secundario);
+  height: 30px;
+  padding: 0 var(--rc-esp-8);
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-hundido-sm);
+  border: none;
+  color: var(--rc-gris-900);
+}
+
+.selectCompacto:focus {
+  outline: none;
+  box-shadow: var(--rc-elev-foco);
+}
+
+.filtrosRow {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-12);
+  flex-wrap: wrap;
+  padding: var(--rc-esp-8) 0;
+}
+
+.bandejaReviewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--rc-esp-12);
+}
+
+.reviewCard {
+  background-color: var(--rc-superficie);
+  border-radius: var(--rc-radio-lg);
+  box-shadow: var(--rc-elev-relieve-sm);
+  padding: var(--rc-esp-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-10);
+  border-left: 3px solid var(--rc-azul);
+}
+
+.reviewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--rc-esp-8);
+}
+
+.reviewPersona {
+  font-weight: var(--rc-fw-bold);
+  font-size: var(--rc-fs-cuerpo);
+  color: var(--rc-gris-900);
+}
+
+.reviewTitulo {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-gris-900);
+  font-weight: var(--rc-fw-semibold);
+}
+
+.reviewNota {
+  background-color: var(--rc-azul-fondo);
+  color: var(--rc-azul-texto);
+  padding: var(--rc-esp-8);
+  border-radius: var(--rc-radio-sm);
+  font-size: var(--rc-fs-etiqueta);
+  line-height: 1.4;
+}
+
+.reviewValor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-texto-secundario);
+  padding-top: var(--rc-esp-4);
+  border-top: 1px solid var(--rc-borde-linea);
+}
+
+.reviewValorMonto {
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-verde-texto);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--rc-fs-cuerpo);
+}
+
+.reviewAcciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--rc-esp-8);
+  margin-top: var(--rc-esp-6);
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-12);
+  margin-top: var(--rc-esp-10);
+}
+
+.advertenciaRol {
+  background-color: var(--rc-ambar-fondo);
+  color: var(--rc-ambar-texto);
+  padding: var(--rc-esp-10);
+  border-radius: var(--rc-radio-sm);
+  font-size: var(--rc-fs-etiqueta);
+  line-height: 1.4;
+}
+
+.facturaPersonaCard {
+  background-color: var(--rc-superficie);
+  border-radius: var(--rc-radio-lg);
+  box-shadow: var(--rc-elev-relieve-sm);
+  padding: var(--rc-esp-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-10);
+}
+
+.facturaPersonaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.montoVerde {
+  color: var(--rc-verde-texto);
+  font-weight: var(--rc-fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.lineasDesplegadas {
+  margin-top: var(--rc-esp-8);
+  padding-top: var(--rc-esp-8);
+  border-top: 1px solid var(--rc-borde-linea);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
 }

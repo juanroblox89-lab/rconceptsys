@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   MessagesSquare,
   Users,
   User,
   Shield,
+  CheckSquare,
+  Receipt,
   PanelLeftClose,
   type LucideIcon,
 } from "lucide-react";
@@ -17,6 +19,7 @@ import { Perfil } from "@/lib/types";
 import styles from "./Sidebar.module.css";
 
 interface NavItemDef {
+  id: string;
   title: string;
   href: string;
   icon: LucideIcon;
@@ -24,10 +27,12 @@ interface NavItemDef {
 }
 
 export const navItems: NavItemDef[] = [
-  { title: "Chat del equipo", href: "/", icon: MessagesSquare },
-  { title: "Equipo", href: "/equipo", icon: Users },
-  { title: "Mi perfil", href: "/perfil", icon: User },
-  { title: "Administración", href: "/admin", icon: Shield, adminOnly: true },
+  { id: "chat", title: "Chat del equipo", href: "/", icon: MessagesSquare },
+  { id: "tareas", title: "Tareas", href: "/tareas", icon: CheckSquare },
+  { id: "factura", title: "Mi factura", href: "/factura", icon: Receipt },
+  { id: "equipo", title: "Equipo", href: "/equipo", icon: Users },
+  { id: "perfil", title: "Mi perfil", href: "/perfil", icon: User },
+  { id: "admin", title: "Gestión", href: "/admin", icon: Shield, adminOnly: true },
 ];
 
 export interface SidebarProps {
@@ -39,20 +44,67 @@ export interface SidebarProps {
 export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) {
   const pathname = usePathname();
   const [yo, setYo] = useState<Perfil | null>(null);
+  const [pendientesCount, setPendientesCount] = useState<number>(0);
+  const [porRevisarCount, setPorRevisarCount] = useState<number>(0);
+
+  const actualizarContadores = useCallback((esAdmin: boolean) => {
+    // Contador de tareas pendientes para la persona
+    api.getTareas("pendiente")
+      .then((tareas) => {
+        setPendientesCount(Array.isArray(tareas) ? tareas.length : 0);
+      })
+      .catch(() => {});
+
+    // Contador de tareas por revisar para el admin
+    if (esAdmin) {
+      api.adminGetTareas({ estado: "hecha" })
+        .then((res) => {
+          setPorRevisarCount(res?.por_revisar ?? 0);
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     let montado = true;
     api.getYo()
       .then((p) => {
-        if (montado) setYo(p);
+        if (!montado) return;
+        setYo(p);
+        actualizarContadores(p.es_admin);
       })
-      .catch(() => {
-        // En caso de no auth o error
-      });
+      .catch(() => {});
+
+    // Intervalo de actualización cada 60s si el documento está visible
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        api.getYo()
+          .then((p) => {
+            if (!montado) return;
+            actualizarContadores(p.es_admin);
+          })
+          .catch(() => {});
+      }
+    }, 60000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        api.getYo()
+          .then((p) => {
+            if (!montado) return;
+            actualizarContadores(p.es_admin);
+          })
+          .catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       montado = false;
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, []);
+  }, [actualizarContadores]);
 
   const itemsVisibles = navItems.filter((item) => {
     if (item.adminOnly && !yo?.es_admin) return false;
@@ -80,6 +132,14 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
         {itemsVisibles.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const Icon = item.icon;
+
+          let badgeCount = 0;
+          if (item.id === "tareas") {
+            badgeCount = pendientesCount;
+          } else if (item.id === "admin") {
+            badgeCount = porRevisarCount;
+          }
+
           return (
             <Link
               key={item.href}
@@ -91,7 +151,12 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
               <span className={styles.navIcon}>
                 <Icon size={16} strokeWidth={1.75} />
               </span>
-              {item.title}
+              <span className={styles.navLabel}>{item.title}</span>
+              {badgeCount > 0 && (
+                <span className={styles.navBadge} aria-label={`${badgeCount} pendientes`}>
+                  {badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}
