@@ -75,10 +75,20 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/tareas/{id}/hecha", a.MiddlewareAuth(a.handlePostTareaHecha, true, false))
 	mux.HandleFunc("GET /api/facturas/mia", a.MiddlewareAuth(a.handleGetFacturaMia, true, false))
 
+	// F3: Miembros aprobados (Clientes y Mis Estadísticas)
+	mux.HandleFunc("GET /api/clientes", a.MiddlewareAuth(a.handleGetClientes, true, false))
+	mux.HandleFunc("GET /api/yo/estadisticas", a.MiddlewareAuth(a.handleGetYoEstadisticas, true, false))
+
 	// F2: Solo Admin (Trabajos, Tareas y Facturas)
 	mux.HandleFunc("GET /api/admin/trabajos", a.MiddlewareAuth(a.handleAdminGetTrabajos, true, true))
 	mux.HandleFunc("POST /api/admin/trabajos", a.MiddlewareAuth(a.handleAdminPostTrabajo, true, true))
 	mux.HandleFunc("PATCH /api/admin/trabajos/{id}", a.MiddlewareAuth(a.handleAdminPatchTrabajo, true, true))
+
+	// F3: Solo Admin (Clientes y Estadísticas globales)
+	mux.HandleFunc("GET /api/admin/clientes", a.MiddlewareAuth(a.handleAdminGetClientes, true, true))
+	mux.HandleFunc("POST /api/admin/clientes", a.MiddlewareAuth(a.handleAdminPostCliente, true, true))
+	mux.HandleFunc("PATCH /api/admin/clientes/{id}", a.MiddlewareAuth(a.handleAdminPatchCliente, true, true))
+	mux.HandleFunc("GET /api/admin/estadisticas", a.MiddlewareAuth(a.handleAdminGetEstadisticas, true, true))
 
 	mux.HandleFunc("GET /api/admin/tareas", a.MiddlewareAuth(a.handleAdminGetTareas, true, true))
 	mux.HandleFunc("POST /api/admin/tareas", a.MiddlewareAuth(a.handleAdminPostTarea, true, true))
@@ -756,7 +766,8 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
 	var body struct {
-		Nota *string `json:"nota"`
+		Nota     *string `json:"nota"`
+		Cantidad *int    `json:"cantidad"`
 	}
 	// El cuerpo es opcional
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
@@ -784,6 +795,15 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if tarea.Tipo != nil && tarea.Tipo.Unidad == "minuto" {
+		if body.Cantidad == nil || *body.Cantidad < 1 || *body.Cantidad > 1440 {
+			ResponderError(w, http.StatusBadRequest, "cantidad_invalida", "Los minutos grabados son obligatorios y deben estar entre 1 y 1440.")
+			return
+		}
+	} else {
+		body.Cantidad = nil
+	}
+
 	var notaPtr *string
 	if body.Nota != nil {
 		trimmed := strings.TrimSpace(*body.Nota)
@@ -796,7 +816,7 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	actualizada, err := a.Store.MarcarTareaHecha(r.Context(), id, yo.ID, notaPtr)
+	actualizada, err := a.Store.MarcarTareaHecha(r.Context(), id, yo.ID, notaPtr, body.Cantidad)
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_marcar_hecha", "No se pudo marcar la tarea como hecha.")
 		return
@@ -820,8 +840,8 @@ func (a *API) handleGetFacturaMia(w http.ResponseWriter, r *http.Request) {
 
 	var abierta *store.Factura
 	var pagadas []*store.Factura
-	totalPagado := 0
-	totalPendiente := 0
+	var totalPagado int64 = 0
+	var totalPendiente int64 = 0
 
 	for _, f := range facturas {
 		if f.Estado == store.EstadoFacturaAbierta {
@@ -867,12 +887,13 @@ func (a *API) handleAdminGetTrabajos(w http.ResponseWriter, r *http.Request) {
 func (a *API) handleAdminPostTrabajo(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
 	var req struct {
-		Clave  string `json:"clave"`
-		Nombre string `json:"nombre"`
-		RolID  *int   `json:"rol_id"`
-		Precio *int   `json:"precio"`
-		Activo *bool  `json:"activo"`
-		Orden  *int   `json:"orden"`
+		Clave  string  `json:"clave"`
+		Nombre string  `json:"nombre"`
+		RolID  *int    `json:"rol_id"`
+		Precio *int    `json:"precio"`
+		Unidad *string `json:"unidad"`
+		Activo *bool   `json:"activo"`
+		Orden  *int    `json:"orden"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
@@ -884,6 +905,16 @@ func (a *API) handleAdminPostTrabajo(w http.ResponseWriter, r *http.Request) {
 	if clave == "" || nombre == "" {
 		ResponderError(w, http.StatusBadRequest, "campos_requeridos", "El nombre y la clave del tipo de trabajo son obligatorios.")
 		return
+	}
+
+	unidad := "trabajo"
+	if req.Unidad != nil {
+		u := strings.ToLower(strings.TrimSpace(*req.Unidad))
+		if u != "trabajo" && u != "minuto" {
+			ResponderError(w, http.StatusBadRequest, "unidad_invalida", "La unidad debe ser 'trabajo' o 'minuto'.")
+			return
+		}
+		unidad = u
 	}
 
 	precio := 0
@@ -910,6 +941,7 @@ func (a *API) handleAdminPostTrabajo(w http.ResponseWriter, r *http.Request) {
 		Nombre: nombre,
 		RolID:  req.RolID,
 		Precio: precio,
+		Unidad: unidad,
 		Activo: activo,
 		Orden:  orden,
 	}
@@ -920,7 +952,7 @@ func (a *API) handleAdminPostTrabajo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err == store.ErrValidation {
-		ResponderError(w, http.StatusBadRequest, "validacion_fallida", "Los datos enviados no son válidos (revisa el rol_id o el precio).")
+		ResponderError(w, http.StatusBadRequest, "validacion_fallida", "Los datos enviados no son válidos (revisa el rol_id, la unidad o el precio).")
 		return
 	}
 	if err != nil {
@@ -945,6 +977,20 @@ func (a *API) handleAdminPatchTrabajo(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&campos); err != nil {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
 		return
+	}
+
+	if uVal, exists := campos["unidad"]; exists {
+		if s, ok := uVal.(string); ok {
+			u := strings.ToLower(strings.TrimSpace(s))
+			if u != "trabajo" && u != "minuto" {
+				ResponderError(w, http.StatusBadRequest, "unidad_invalida", "La unidad debe ser 'trabajo' o 'minuto'.")
+				return
+			}
+			campos["unidad"] = u
+		} else {
+			ResponderError(w, http.StatusBadRequest, "unidad_invalida", "La unidad debe ser 'trabajo' o 'minuto'.")
+			return
+		}
 	}
 
 	if p, exists := campos["precio"]; exists {
@@ -1027,6 +1073,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*32)
 	var req struct {
 		TipoID      int     `json:"tipo_id"`
+		ClienteID   *int    `json:"cliente_id"`
 		AsignadoA   string  `json:"asignado_a"`
 		Titulo      string  `json:"titulo"`
 		Descripcion *string `json:"descripcion"`
@@ -1062,6 +1109,19 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_obtener_tipo", "Error al consultar el tipo de trabajo.")
 		return
+	}
+
+	// Cliente opcional: debe existir y estar activo
+	if req.ClienteID != nil {
+		cli, err := a.Store.ObtenerClientePorID(r.Context(), *req.ClienteID)
+		if err == store.ErrNotFound || (cli != nil && !cli.Activo) {
+			ResponderError(w, http.StatusBadRequest, "cliente_invalido", "El cliente especificado no existe o no está activo.")
+			return
+		}
+		if err != nil {
+			ResponderError(w, http.StatusInternalServerError, "error_obtener_cliente", "Error al consultar el cliente.")
+			return
+		}
 	}
 
 	asignadoID := strings.TrimSpace(req.AsignadoA)
@@ -1110,6 +1170,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 
 	tarea := &store.Tarea{
 		TipoID:      tipo.ID,
+		ClienteID:   req.ClienteID,
 		Titulo:      titulo,
 		Descripcion: req.Descripcion,
 		AsignadoA:   asignado.ID,
@@ -1141,6 +1202,20 @@ func (a *API) handleAdminPostTareaAceptar(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var body struct {
+		Cantidad *int `json:"cantidad"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	if body.Cantidad != nil && (*body.Cantidad < 1 || *body.Cantidad > 1440) {
+		ResponderError(w, http.StatusBadRequest, "cantidad_invalida", "Los minutos deben estar entre 1 y 1440.")
+		return
+	}
+
 	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
 	if err == store.ErrNotFound {
 		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
@@ -1156,8 +1231,12 @@ func (a *API) handleAdminPostTareaAceptar(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	aceptada, err := a.Store.AceptarTarea(r.Context(), id, admin.ID)
+	aceptada, err := a.Store.AceptarTarea(r.Context(), id, admin.ID, body.Cantidad)
 	if err != nil {
+		if strings.Contains(err.Error(), "minutos") {
+			ResponderError(w, http.StatusBadRequest, "cantidad_invalida", "Los minutos deben estar entre 1 y 1440.")
+			return
+		}
 		ResponderError(w, http.StatusInternalServerError, "error_aceptar_tarea", "No se pudo aceptar la tarea.")
 		return
 	}
@@ -1330,4 +1409,268 @@ func (a *API) handleAdminPostFacturaPagar(w http.ResponseWriter, r *http.Request
 	}
 
 	ResponderJSON(w, http.StatusOK, pagada)
+}
+
+// ==========================================
+// F3: Handlers Clientes y Estadísticas
+// ==========================================
+
+// GET /api/clientes (miembros aprobados: solo activos)
+func (a *API) handleGetClientes(w http.ResponseWriter, r *http.Request) {
+	clientes, err := a.Store.ListarClientes(r.Context(), true)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_listar_clientes", "No se pudieron obtener los clientes.")
+		return
+	}
+	if clientes == nil {
+		clientes = []*store.Cliente{}
+	}
+	ResponderJSON(w, http.StatusOK, clientes)
+}
+
+// GET /api/admin/clientes (admin: todos)
+func (a *API) handleAdminGetClientes(w http.ResponseWriter, r *http.Request) {
+	clientes, err := a.Store.ListarClientes(r.Context(), false)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_listar_clientes", "No se pudieron obtener los clientes.")
+		return
+	}
+	if clientes == nil {
+		clientes = []*store.Cliente{}
+	}
+	ResponderJSON(w, http.StatusOK, clientes)
+}
+
+// POST /api/admin/clientes
+func (a *API) handleAdminPostCliente(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var req struct {
+		Nombre string `json:"nombre"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	nombre := strings.TrimSpace(req.Nombre)
+	if len(nombre) < 1 || len(nombre) > 80 {
+		ResponderError(w, http.StatusBadRequest, "nombre_invalido", "El nombre del cliente debe tener entre 1 y 80 caracteres.")
+		return
+	}
+
+	creado, err := a.Store.CrearCliente(r.Context(), nombre)
+	if err == store.ErrConflict || (err != nil && strings.Contains(strings.ToLower(err.Error()), "ya existe")) {
+		ResponderError(w, http.StatusConflict, "cliente_duplicado", "Ya existe un cliente con ese nombre.")
+		return
+	}
+	if err == store.ErrValidation {
+		ResponderError(w, http.StatusBadRequest, "nombre_invalido", "El nombre del cliente debe tener entre 1 y 80 caracteres.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_crear_cliente", "No se pudo crear el cliente.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusCreated, creado)
+}
+
+// PATCH /api/admin/clientes/{id}
+func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de cliente inválido.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var campos map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&campos); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	if nVal, exists := campos["nombre"]; exists {
+		if s, ok := nVal.(string); ok {
+			sLimpio := strings.TrimSpace(s)
+			if len(sLimpio) < 1 || len(sLimpio) > 80 {
+				ResponderError(w, http.StatusBadRequest, "nombre_invalido", "El nombre del cliente debe tener entre 1 y 80 caracteres.")
+				return
+			}
+			campos["nombre"] = sLimpio
+		} else {
+			ResponderError(w, http.StatusBadRequest, "nombre_invalido", "El nombre del cliente debe ser un texto.")
+			return
+		}
+	}
+
+	if aVal, exists := campos["activo"]; exists {
+		if _, ok := aVal.(bool); !ok {
+			ResponderError(w, http.StatusBadRequest, "activo_invalido", "El campo activo debe ser un valor booleano.")
+			return
+		}
+	}
+
+	actualizado, err := a.Store.ActualizarCliente(r.Context(), id, campos)
+	if err == store.ErrNotFound {
+		ResponderError(w, http.StatusNotFound, "cliente_no_encontrado", "El cliente no existe.")
+		return
+	}
+	if err == store.ErrConflict || (err != nil && strings.Contains(strings.ToLower(err.Error()), "ya existe")) {
+		ResponderError(w, http.StatusConflict, "cliente_duplicado", "Ya existe un cliente con ese nombre.")
+		return
+	}
+	if err == store.ErrValidation {
+		ResponderError(w, http.StatusBadRequest, "nombre_invalido", "El nombre del cliente debe tener entre 1 y 80 caracteres.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_actualizar_cliente", "No se pudo actualizar el cliente.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, actualizado)
+}
+
+// GET /api/yo/estadisticas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+func (a *API) handleGetYoEstadisticas(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	if yo == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil autenticado.")
+		return
+	}
+
+	filtro := store.FiltroEstadisticasYo{}
+	desdeStr := strings.TrimSpace(r.URL.Query().Get("desde"))
+	hastaStr := strings.TrimSpace(r.URL.Query().Get("hasta"))
+
+	if desdeStr != "" || hastaStr != "" {
+		if desdeStr == "" || hastaStr == "" {
+			ResponderError(w, http.StatusBadRequest, "rango_invalido", "Debes especificar tanto 'desde' como 'hasta'.")
+			return
+		}
+		tDesde, errD := time.ParseInLocation("2006-01-02", desdeStr, store.LocBogota)
+		tHasta, errH := time.ParseInLocation("2006-01-02", hastaStr, store.LocBogota)
+		if errD != nil || errH != nil {
+			ResponderError(w, http.StatusBadRequest, "formato_fecha_invalido", "Las fechas deben tener el formato YYYY-MM-DD.")
+			return
+		}
+		if tDesde.After(tHasta) {
+			ResponderError(w, http.StatusBadRequest, "rango_invalido", "La fecha 'desde' no puede ser posterior a 'hasta'.")
+			return
+		}
+		if tHasta.Sub(tDesde) > 5*366*24*time.Hour {
+			ResponderError(w, http.StatusBadRequest, "rango_excedido", "El rango de fechas no puede superar los 5 años.")
+			return
+		}
+		dInicio := store.InicioDiaBogota(tDesde)
+		hFin := store.FinDiaBogota(tHasta)
+		filtro.Desde = &dInicio
+		filtro.Hasta = &hFin
+	}
+
+	stats, err := a.Store.ObtenerEstadisticasYo(r.Context(), yo.ID, filtro)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_estadisticas", "No se pudieron calcular tus estadísticas.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, stats)
+}
+
+// GET /api/admin/estadisticas?desde=&hasta=&agrupar=dia|semana|mes
+func (a *API) handleAdminGetEstadisticas(w http.ResponseWriter, r *http.Request) {
+	desdeStr := strings.TrimSpace(r.URL.Query().Get("desde"))
+	hastaStr := strings.TrimSpace(r.URL.Query().Get("hasta"))
+	agruparStr := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("agrupar")))
+
+	ahoraBog := time.Now().In(store.LocBogota)
+	var tDesde, tHasta time.Time
+
+	if desdeStr != "" && hastaStr != "" {
+		d, errD := time.ParseInLocation("2006-01-02", desdeStr, store.LocBogota)
+		h, errH := time.ParseInLocation("2006-01-02", hastaStr, store.LocBogota)
+		if errD != nil || errH != nil {
+			ResponderError(w, http.StatusBadRequest, "formato_fecha_invalido", "Las fechas deben tener el formato YYYY-MM-DD.")
+			return
+		}
+		tDesde = d
+		tHasta = h
+	} else if desdeStr != "" && hastaStr == "" {
+		d, errD := time.ParseInLocation("2006-01-02", desdeStr, store.LocBogota)
+		if errD != nil {
+			ResponderError(w, http.StatusBadRequest, "formato_fecha_invalido", "Las fechas deben tener el formato YYYY-MM-DD.")
+			return
+		}
+		tDesde = d
+		tHasta = ahoraBog
+	} else if desdeStr == "" && hastaStr != "" {
+		h, errH := time.ParseInLocation("2006-01-02", hastaStr, store.LocBogota)
+		if errH != nil {
+			ResponderError(w, http.StatusBadRequest, "formato_fecha_invalido", "Las fechas deben tener el formato YYYY-MM-DD.")
+			return
+		}
+		tDesde = h.AddDate(0, 0, -30)
+		tHasta = h
+	} else {
+		tDesde = ahoraBog.AddDate(0, 0, -30)
+		tHasta = ahoraBog
+	}
+
+	if tDesde.After(tHasta) {
+		ResponderError(w, http.StatusBadRequest, "rango_invalido", "La fecha 'desde' no puede ser posterior a 'hasta'.")
+		return
+	}
+
+	diasDiferencia := int(tHasta.Sub(tDesde).Hours() / 24)
+	if diasDiferencia > 5*366 {
+		ResponderError(w, http.StatusBadRequest, "rango_excedido", "El rango de fechas no puede superar los 5 años.")
+		return
+	}
+
+	if agruparStr != "" {
+		if agruparStr != "dia" && agruparStr != "semana" && agruparStr != "mes" {
+			ResponderError(w, http.StatusBadRequest, "agrupar_invalido", "El parámetro agrupar debe ser 'dia', 'semana' o 'mes'.")
+			return
+		}
+	} else {
+		if diasDiferencia <= 92 {
+			agruparStr = "dia"
+		} else if diasDiferencia < 365 {
+			agruparStr = "semana"
+		} else {
+			agruparStr = "mes"
+		}
+	}
+
+	filtro := store.FiltroEstadisticasAdmin{
+		Desde:   store.InicioDiaBogota(tDesde),
+		Hasta:   store.FinDiaBogota(tHasta),
+		Agrupar: agruparStr,
+	}
+
+	if pID := strings.TrimSpace(r.URL.Query().Get("persona_id")); pID != "" {
+		filtro.PersonaID = &pID
+	}
+	if cIDStr := strings.TrimSpace(r.URL.Query().Get("cliente_id")); cIDStr != "" {
+		if cIDStr == "sin_cliente" || cIDStr == "0" || cIDStr == "null" {
+			filtro.SinCliente = true
+		} else if cID, err := strconv.Atoi(cIDStr); err == nil && cID > 0 {
+			filtro.ClienteID = &cID
+		}
+	}
+	if tIDStr := strings.TrimSpace(r.URL.Query().Get("tipo_id")); tIDStr != "" {
+		if tID, err := strconv.Atoi(tIDStr); err == nil && tID > 0 {
+			filtro.TipoID = &tID
+		}
+	}
+
+	stats, err := a.Store.ObtenerEstadisticasAdmin(r.Context(), filtro)
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_estadisticas", "No se pudieron calcular las estadísticas de administración.")
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, stats)
 }
