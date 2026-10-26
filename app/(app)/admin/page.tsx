@@ -117,45 +117,8 @@ export default function AdminPage() {
   }, [mostrarAviso]);
 
   useEffect(() => {
-    let montado = true;
-    (async () => {
-      try {
-        const [mList, rList, tList, tareasRes, fList] = await Promise.all([
-          api.adminGetMiembros(),
-          api.adminGetRoles(),
-          api.adminGetTrabajos(),
-          api.adminGetTareas(),
-          api.adminGetFacturas(),
-        ]);
-        if (!montado) return;
-        setMiembros(mList);
-        setRoles(rList);
-        setTrabajos(tList);
-        setTareas(tareasRes?.tareas || []);
-        setPorRevisarCount(tareasRes?.por_revisar || 0);
-        setFacturas(fList);
-
-        const preciosMap: Record<number, number> = {};
-        tList.forEach((t) => {
-          preciosMap[t.id] = t.precio;
-        });
-        setPreciosEditados(preciosMap);
-      } catch {
-        if (!montado) return;
-        mostrarAviso({
-          tipo: "error",
-          titulo: "Error al cargar datos",
-          texto: "No se pudieron sincronizar los datos de administración.",
-        });
-      } finally {
-        if (montado) setCargando(false);
-      }
-    })();
-
-    return () => {
-      montado = false;
-    };
-  }, [mostrarAviso]);
+    cargarDatos();
+  }, [cargarDatos]);
 
   // ==========================================
   // Acciones: Pestaña Miembros

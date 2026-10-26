@@ -690,6 +690,9 @@ func (s *SupabaseStore) CrearTipoTrabajo(ctx context.Context, t *store.TipoTraba
 	q := url.Values{}
 	q.Set("select", "*,roles(*)")
 	if err := s.client.REST(ctx, "POST", "tipos_trabajo", q, payload, "return=representation", &rows); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "23505") || strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "conflict") {
+			return nil, store.ErrConflict
+		}
 		return nil, err
 	}
 	if len(rows) == 0 {
@@ -922,7 +925,7 @@ func (s *SupabaseStore) ObtenerFacturaAbierta(ctx context.Context, perfilID stri
 	q := url.Values{}
 	q.Set("perfil_id", fmt.Sprintf("eq.%s", perfilID))
 	q.Set("estado", "eq.abierta")
-	q.Set("select", "*,perfiles(*)")
+	q.Set("select", "*,perfiles:perfiles!facturas_perfil_id_fkey(*)")
 
 	var rows []dbFactura
 	if err := s.client.REST(ctx, "GET", "facturas", q, nil, "", &rows); err != nil {
@@ -951,7 +954,7 @@ func (s *SupabaseStore) ObtenerFacturaAbierta(ctx context.Context, perfilID stri
 func (s *SupabaseStore) ListarFacturasPerfil(ctx context.Context, perfilID string) ([]*store.Factura, error) {
 	q := url.Values{}
 	q.Set("perfil_id", fmt.Sprintf("eq.%s", perfilID))
-	q.Set("select", "*,perfiles(*)")
+	q.Set("select", "*,perfiles:perfiles!facturas_perfil_id_fkey(*)")
 	q.Set("order", "creada_en.desc")
 
 	var rows []dbFactura
@@ -979,7 +982,7 @@ func (s *SupabaseStore) ListarFacturasPerfil(ctx context.Context, perfilID strin
 func (s *SupabaseStore) ObtenerFacturaPorID(ctx context.Context, id int64) (*store.Factura, error) {
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,perfiles(*)")
+	q.Set("select", "*,perfiles:perfiles!facturas_perfil_id_fkey(*)")
 
 	var rows []dbFactura
 	if err := s.client.REST(ctx, "GET", "facturas", q, nil, "", &rows); err != nil {
@@ -1054,7 +1057,7 @@ func (s *SupabaseStore) MarcarFacturaPagada(ctx context.Context, id int64, admin
 	}
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,perfiles(*)")
+	q.Set("select", "*,perfiles:perfiles!facturas_perfil_id_fkey(*)")
 
 	var rows []dbFactura
 	if err := s.client.REST(ctx, "PATCH", "facturas", q, payload, "return=representation", &rows); err != nil {
