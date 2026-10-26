@@ -59,7 +59,15 @@ func main() {
 		log.Println("[backend] Conectando con cliente Supabase REST...")
 		sc := supa.New(supaURL, supaKey, supaAnon)
 		s = supa.NewSupabaseStore(sc)
-		auth = supa.NewSupabaseAuthVerifier(sc, s, adminEmails)
+		verificador := supa.NewSupabaseAuthVerifier(sc, s, adminEmails)
+		var trabajadores []string
+		for _, e := range strings.Split(os.Getenv("TRABAJADOR_EMAILS"), ",") {
+			if t := strings.TrimSpace(e); t != "" {
+				trabajadores = append(trabajadores, t)
+			}
+		}
+		verificador.HabilitarTrabajadores(trabajadores)
+		auth = verificador
 		modoDemoActivo = false
 	} else {
 		if !modoDemoEnv {
@@ -70,7 +78,7 @@ func main() {
 		}
 
 		memStore := store.NewMemoryStore()
-		
+
 		// Iniciar con usuarios semilla para desarrollo y pruebas
 		ahora := time.Now()
 		_ = memStore.CrearOActualizarPerfil(context.Background(), &store.Perfil{

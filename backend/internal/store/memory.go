@@ -10,14 +10,14 @@ import (
 )
 
 type MemoryStore struct {
-	mu           sync.RWMutex
-	perfiles     map[string]*Perfil
-	roles        map[int]*Rol
-	perfilRoles  map[string]map[int]bool // perfil_id -> set de rol_id
-	mensajes     []*ChatMensaje
-	nextRolID    int
-	nextMsgID    int64
-	avatares     map[string][]byte
+	mu          sync.RWMutex
+	perfiles    map[string]*Perfil
+	roles       map[int]*Rol
+	perfilRoles map[string]map[int]bool // perfil_id -> set de rol_id
+	mensajes    []*ChatMensaje
+	nextRolID   int
+	nextMsgID   int64
+	avatares    map[string][]byte
 
 	// F2: Tipos de trabajo, tareas, facturas
 	tiposTrabajo map[int]*TipoTrabajo
@@ -954,7 +954,7 @@ func (m *MemoryStore) ListarResumenFacturasAdmin(ctx context.Context) ([]*Resume
 	// Obtener todos los perfiles aprobados
 	var personas []*Perfil
 	for _, p := range m.perfiles {
-		if p.Estado == EstadoAprobado {
+		if p.Estado == EstadoAprobado && !p.EsAdmin {
 			personas = append(personas, m.clonarPerfilLocked(p))
 		}
 	}

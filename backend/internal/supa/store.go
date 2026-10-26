@@ -59,15 +59,15 @@ type dbChatMensaje struct {
 
 // Modelos DB PostgREST para F2
 type dbTipoTrabajo struct {
-	ID       int       `json:"id"`
-	Clave    string    `json:"clave"`
-	Nombre   string    `json:"nombre"`
-	RolID    *int      `json:"rol_id"`
-	Precio   int       `json:"precio"`
-	Activo   bool      `json:"activo"`
-	Orden    int       `json:"orden"`
-	CreadoEn string    `json:"creado_en"`
-	Rol      *dbRol    `json:"roles"`
+	ID       int    `json:"id"`
+	Clave    string `json:"clave"`
+	Nombre   string `json:"nombre"`
+	RolID    *int   `json:"rol_id"`
+	Precio   int    `json:"precio"`
+	Activo   bool   `json:"activo"`
+	Orden    int    `json:"orden"`
+	CreadoEn string `json:"creado_en"`
+	Rol      *dbRol `json:"roles"`
 }
 
 type dbTarea struct {
@@ -1015,7 +1015,7 @@ func (s *SupabaseStore) ListarResumenFacturasAdmin(ctx context.Context) ([]*stor
 
 	var res []*store.ResumenFacturasPersona
 	for _, m := range miembros {
-		if m.Estado != store.EstadoAprobado {
+		if m.Estado != store.EstadoAprobado || m.EsAdmin {
 			continue
 		}
 		facts, err := s.ListarFacturasPerfil(ctx, m.ID)
@@ -1084,11 +1084,12 @@ func (s *SupabaseStore) MarcarFacturaPagada(ctx context.Context, id int64, admin
 
 // SupabaseAuthVerifier valida JWTs contra Supabase Auth
 type SupabaseAuthVerifier struct {
-	client      *Client
-	store       store.Store
-	adminEmails []string
-	cacheMu     sync.RWMutex
-	tokenCache  map[string]*tokenCacheEntry
+	client           *Client
+	store            store.Store
+	adminEmails      []string
+	trabajadorEmails []string
+	cacheMu          sync.RWMutex
+	tokenCache       map[string]*tokenCacheEntry
 }
 
 type tokenCacheEntry struct {
@@ -1103,6 +1104,21 @@ func NewSupabaseAuthVerifier(c *Client, s store.Store, adminEmails []string) *Su
 		adminEmails: adminEmails,
 		tokenCache:  make(map[string]*tokenCacheEntry),
 	}
+}
+
+// HabilitarTrabajadores registra correos que quedan aprobados (sin ser admin) en cuanto se registran.
+func (v *SupabaseAuthVerifier) HabilitarTrabajadores(emails []string) {
+	v.trabajadorEmails = emails
+}
+
+func (v *SupabaseAuthVerifier) esTrabajadorEmail(email string) bool {
+	eNorm := strings.ToLower(strings.TrimSpace(email))
+	for _, t := range v.trabajadorEmails {
+		if strings.ToLower(strings.TrimSpace(t)) == eNorm {
+			return true
+		}
+	}
+	return false
 }
 
 func (v *SupabaseAuthVerifier) esAdminEmail(email string) bool {
@@ -1144,6 +1160,13 @@ func (v *SupabaseAuthVerifier) VerificarToken(ctx context.Context, token string)
 		p.EsAdmin = true
 		p.Estado = store.EstadoAprobado
 		_ = v.store.CrearOActualizarPerfil(ctx, p)
+	}
+
+	// Correo habilitado como trabajador: pasa de pendiente a aprobado (nunca reactiva a un suspendido)
+	if v.esTrabajadorEmail(p.Correo) && p.Estado == store.EstadoPendiente {
+		if aprobado, err := v.store.AprobarMiembro(ctx, p.ID); err == nil && aprobado != nil {
+			p = aprobado
+		}
 	}
 
 	// Refrescar para garantizar que el estado y roles sean los más actualizados
@@ -1189,7 +1212,7 @@ func (v *SupabaseAuthVerifier) Registro(ctx context.Context, email, password, no
 
 	esAdmin := v.esAdminEmail(eNorm)
 	estado := store.EstadoPendiente
-	if esAdmin {
+	if esAdmin || v.esTrabajadorEmail(eNorm) {
 		estado = store.EstadoAprobado
 	}
 

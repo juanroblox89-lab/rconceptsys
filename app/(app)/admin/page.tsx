@@ -417,7 +417,7 @@ export default function AdminPage() {
 
   // Opciones de personas agrupadas para el modal Nueva Tarea
   const tipoTrabajoSeleccionado = trabajos.find((t) => t.id === Number(nuevaTareaTipoId));
-  const miembrosAprobados = miembros.filter((m) => m.estado === "aprobado");
+  const miembrosAprobados = miembros.filter((m) => m.estado === "aprobado" && !m.es_admin);
   const miembrosConRol = tipoTrabajoSeleccionado?.rol_id
     ? miembrosAprobados.filter((m) => m.roles?.some((r) => r.id === tipoTrabajoSeleccionado.rol_id))
     : miembrosAprobados;

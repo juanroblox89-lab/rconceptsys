@@ -7,13 +7,13 @@ import (
 )
 
 var (
-	ErrNotFound       = errors.New("recurso no encontrado")
-	ErrConflict       = errors.New("conflicto con registro existente")
-	ErrUnauthorized   = errors.New("no autorizado")
-	ErrForbidden      = errors.New("acceso denegado")
-	ErrLastAdmin      = errors.New("no se puede degradar o remover al último administrador")
-	ErrValidation     = errors.New("error de validación")
-	ErrRateLimited    = errors.New("límite de velocidad excedido")
+	ErrNotFound     = errors.New("recurso no encontrado")
+	ErrConflict     = errors.New("conflicto con registro existente")
+	ErrUnauthorized = errors.New("no autorizado")
+	ErrForbidden    = errors.New("acceso denegado")
+	ErrLastAdmin    = errors.New("no se puede degradar o remover al último administrador")
+	ErrValidation   = errors.New("error de validación")
+	ErrRateLimited  = errors.New("límite de velocidad excedido")
 )
 
 type EstadoPerfil string
@@ -34,14 +34,14 @@ type Rol struct {
 }
 
 type Perfil struct {
-	ID        string       `json:"id"`
-	Correo    string       `json:"correo"`
-	Nombre    string       `json:"nombre"`
-	FotoPath  *string      `json:"foto_path"`
-	Estado    EstadoPerfil `json:"estado"`
-	EsAdmin   bool         `json:"es_admin"`
-	CreadoEn  time.Time    `json:"creado_en"`
-	Roles     []Rol        `json:"roles,omitempty"`
+	ID       string       `json:"id"`
+	Correo   string       `json:"correo"`
+	Nombre   string       `json:"nombre"`
+	FotoPath *string      `json:"foto_path"`
+	Estado   EstadoPerfil `json:"estado"`
+	EsAdmin  bool         `json:"es_admin"`
+	CreadoEn time.Time    `json:"creado_en"`
+	Roles    []Rol        `json:"roles,omitempty"`
 }
 
 type ChatMensaje struct {

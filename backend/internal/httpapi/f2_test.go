@@ -533,3 +533,32 @@ func TestF2CancelarTarea(t *testing.T) {
 		t.Fatalf("Esperado 400 al marcar hecha una cancelada, obtenido %d", resHecha.Code)
 	}
 }
+
+// Los administradores no hacen trabajos: no se les puede asignar tareas ni aparecen en las facturas.
+func TestF2AdminsNoSonTrabajadores(t *testing.T) {
+	routes, _, adminID, _, _, _ := setupF2TestEnvironment(t)
+
+	post := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"tipo_id":    2,
+		"asignado_a": adminID,
+		"titulo":     "Editar algo",
+		"forzar":     true,
+	})
+	if post.Code != http.StatusBadRequest {
+		t.Fatalf("Esperado 400 al asignar a un admin, obtenido %d: %s", post.Code, post.Body.String())
+	}
+
+	resumen := doRequest(routes, "GET", "/api/admin/facturas", adminID, nil)
+	if resumen.Code != http.StatusOK {
+		t.Fatalf("Esperado 200 en facturas, obtenido %d", resumen.Code)
+	}
+	var filas []struct {
+		PerfilID string `json:"perfil_id"`
+	}
+	_ = json.Unmarshal(resumen.Body.Bytes(), &filas)
+	for _, f := range filas {
+		if f.PerfilID == adminID {
+			t.Fatalf("El admin no debe aparecer en el resumen de facturas")
+		}
+	}
+}

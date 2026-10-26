@@ -26,7 +26,7 @@ func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
 	return &API{
 		Store:          s,
 		Auth:           auth,
-		ChatLimiter:    NewRateLimiter(20, time.Minute),    // 20 mensajes por minuto por usuario
+		ChatLimiter:    NewRateLimiter(20, time.Minute),   // 20 mensajes por minuto por usuario
 		AuthLimiter:    NewRateLimiter(25, 5*time.Minute), // 25 intentos por 5 minutos por IP o correo
 		ModoDemoActivo: modoDemoActivo,
 	}
@@ -1082,6 +1082,10 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 
 	if asignado.Estado != store.EstadoAprobado {
 		ResponderError(w, http.StatusBadRequest, "asignado_no_aprobado", "Solo puedes asignar tareas a miembros aprobados del equipo.")
+		return
+	}
+	if asignado.EsAdmin {
+		ResponderError(w, http.StatusBadRequest, "asignado_es_admin", "Los administradores no hacen trabajos: asigna la tarea a una persona del equipo.")
 		return
 	}
 
