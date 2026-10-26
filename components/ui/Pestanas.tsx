@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export interface ItemPestana {
   id: string;
@@ -33,6 +33,12 @@ export function Pestanas({
   const isControlled = activaIdProp !== undefined;
   const activa = isControlled ? activaIdProp : internalActiva;
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // La pestaña activa siempre queda a la vista cuando la barra se desplaza (muchas pestañas o pantalla angosta)
+  useEffect(() => {
+    const idx = pestanas.findIndex((p) => p.id === activa);
+    tabsRef.current[idx]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activa, pestanas]);
 
   const handleSelect = (id: string) => {
     if (!isControlled) {
