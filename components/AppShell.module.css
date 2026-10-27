@@ -85,7 +85,9 @@
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   background-color: var(--rc-superficie);
 }
 
@@ -224,8 +226,11 @@
     pointer-events: none;
   }
 
+  /* Con la barra colapsada la pastilla flota arriba a la izquierda y el riel a la izquierda:
+     el contenido reserva ese espacio para que ningun texto quede debajo (regla de diseno en DISENO.md) */
   .mainWithRail {
     padding-left: 64px;
+    padding-top: 52px;
   }
 }
 

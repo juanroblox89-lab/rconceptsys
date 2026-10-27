@@ -372,3 +372,16 @@ Avatares ilustrados vectoriales y sistema de iconos SVG escalables.
 <!-- Ejemplo: Icono Neutro SVG Reutilizable -->
 <svg class="rc-icono"><use href="#rc-ico-ajustes"/></svg>
 ```
+
+---
+
+## Reglas de diseño (obligatorias en TODAS las pantallas)
+
+Estas reglas salen de errores reales que ya ocurrieron; cualquier pantalla nueva debe cumplirlas y verificarse a 375 y 1280 px, con la barra lateral abierta y colapsada.
+
+1. **El texto se acomoda solo; nada queda debajo de la barra lateral.** Con la barra colapsada flotan la pastilla (arriba a la izquierda) y el riel de iconos (a la izquierda). El contenedor `main` reserva ese espacio con relleno (`.mainWithRail`: 64 px a la izquierda y 52 px arriba; en móvil, 52 px arriba). Las pantallas NUNCA colocan títulos, botones ni texto con posicionamiento propio en esa zona: usan el flujo normal del contenido.
+2. **Una sola zona con desplazamiento: `main`.** `main` tiene `overflow-y: auto`; las páginas no fijan `height: 100vh` ni `overflow: hidden` en su raíz. Solo el chat tiene su propio desplazamiento interno (la lista de mensajes) y su contenedor mide `height: 100%`. Toda pantalla larga debe poder desplazarse con rueda, táctil y teclado.
+3. **Las barras de pestañas no se parten en dos filas.** Una fila, ancho de cada pestaña según su contenido (`white-space: nowrap`); si no caben se desplazan en horizontal y la pestaña activa se trae a la vista. Nunca altura fija con elementos que puedan envolverse (se pierden pestañas).
+4. **Nada cortado ni desbordado:** a 375 px `scrollWidth` debe igualar `clientWidth`; las tablas pasan a tarjetas apiladas; los textos largos se parten o se recortan con puntos suspensivos, nunca se salen de su tarjeta.
+5. **Todo lo que esté fijo o flotante (pastilla, riel, avisos, menús) no tapa contenido en su posición inicial** y los menús se abren hacia donde haya espacio.
+6. **Antes de dar una pantalla por buena:** medir superposiciones por script (rectángulos de la pastilla y del riel contra los textos de la página), probar el desplazamiento con la rueda y revisar capturas recortadas, no solo mirar una captura completa.

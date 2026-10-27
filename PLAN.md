@@ -77,6 +77,7 @@ Métricas: piezas entregadas por semana, tareas vencidas, carga por empleado, co
 - **Panel con la estructura de Globe** (sidebar compacta, paneles sólidos, navegación persistente) **en blanco y negro como rohlfingconcept.com**. Tema claro.
 - Estilo compacto de Juan (`~/.claude/skills/compact-ui`): poco aire, 13–14 px, tarjetas parejas, primero celular 375 px.
 - Logo de `marca/`.
+- **Reglas de diseño obligatorias** (barra lateral, desplazamiento, pestañas, desbordes): `_estilo/kit/DISENO.md`, sección "Reglas de diseño". Todo brief de pantallas debe citarlas.
 
 ## 5. Fases de construcción
 
