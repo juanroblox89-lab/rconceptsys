@@ -1,0 +1,238 @@
+/* components/trabajos-hechos.module.css */
+/* Estilos del componente reutilizable TrabajosHechos con tokens RC-Kit */
+
+.cardTrabajosHechos {
+  background-color: var(--rc-superficie);
+  border-radius: var(--rc-radio-xl);
+  box-shadow: var(--rc-elev-relieve-md);
+  padding: var(--rc-esp-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-16);
+  width: 100%;
+}
+
+.seccionTitulo {
+  font-size: var(--rc-fs-titulo-seccion);
+  font-weight: var(--rc-fw-semibold);
+  color: var(--rc-texto);
+  margin: 0;
+}
+
+.enlaceAdminStats {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--rc-fs-etiqueta);
+  font-weight: var(--rc-fw-semibold);
+  color: var(--rc-azul-texto);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-azul-suave);
+  border: 1px solid rgba(90, 169, 255, 0.35);
+  transition: all 120ms ease;
+  white-space: nowrap;
+}
+
+.enlaceAdminStats:hover {
+  filter: brightness(0.96);
+  text-decoration: underline;
+}
+
+.resumenRapido {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--rc-esp-10);
+}
+
+.resumenCard {
+  background: var(--rc-superficie-clara);
+  border-radius: var(--rc-radio-md);
+  padding: var(--rc-esp-10) var(--rc-esp-12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid rgba(199, 205, 216, 0.45);
+}
+
+.resumenLabel {
+  font-size: var(--rc-fs-micro);
+  font-weight: 600;
+  color: var(--rc-texto-secundario);
+  text-transform: uppercase;
+  letter-spacing: var(--rc-ls-etiqueta);
+}
+
+.resumenValor {
+  font-size: 16px;
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-azul-texto);
+  font-variant-numeric: tabular-nums;
+}
+
+.resumenDetalle {
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-texto-secundario);
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: var(--rc-fs-etiqueta);
+  font-weight: 600;
+  color: var(--rc-texto-secundario);
+  text-transform: uppercase;
+  letter-spacing: var(--rc-ls-etiqueta);
+}
+
+.presetsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  padding: 3px;
+  border-radius: var(--rc-radio-md);
+}
+
+.btnPreset {
+  background: transparent;
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  padding: 4px 8px;
+  font-size: var(--rc-fs-etiqueta);
+  font-weight: 500;
+  color: var(--rc-texto-secundario);
+  cursor: pointer;
+  transition: all 120ms ease;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btnPreset:hover {
+  color: var(--rc-texto);
+}
+
+.btnPresetActivo {
+  background: var(--rc-luz);
+  color: var(--rc-azul-texto);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(31, 36, 48, 0.12);
+}
+
+.personalizadoRow {
+  display: flex;
+  gap: var(--rc-esp-8);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.metricasGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--rc-esp-8);
+}
+
+.metricaBox {
+  background: var(--rc-superficie-clara);
+  border-radius: var(--rc-radio-md);
+  padding: var(--rc-esp-10) var(--rc-esp-8);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+  border: 1px solid rgba(199, 205, 216, 0.45);
+}
+
+.metricaBoxValor {
+  font-size: 15px;
+  font-weight: var(--rc-fw-bold);
+  color: var(--rc-texto);
+  font-variant-numeric: tabular-nums;
+}
+
+.metricaBoxLabel {
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-texto-secundario);
+}
+
+.listaDesglose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  margin-top: 4px;
+}
+
+.itemDesglose {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--rc-esp-8);
+  background: var(--rc-superficie-clara);
+  border-radius: var(--rc-radio-sm);
+  border: 1px solid rgba(199, 205, 216, 0.35);
+}
+
+.itemDesgloseTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--rc-fs-secundario);
+}
+
+.itemDesgloseNombre {
+  font-weight: var(--rc-fw-semibold);
+  color: var(--rc-texto);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.itemDesgloseCifras {
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pistaProgreso {
+  width: 100%;
+  height: 6px;
+  background: var(--rc-superficie-hundida);
+  border-radius: var(--rc-radio-pildora);
+  overflow: hidden;
+}
+
+.rellenoProgreso {
+  height: 100%;
+  background: linear-gradient(90deg, #5AA9FF, #2F7FE0);
+  border-radius: var(--rc-radio-pildora);
+}
+
+.errorTexto {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-rojo-texto);
+  background: var(--rc-rojo-suave);
+  padding: var(--rc-esp-12);
+  border-radius: var(--rc-radio-md);
+  border: 1px solid rgba(229, 72, 77, 0.25);
+  text-align: center;
+}
+
+.vacioTexto {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto-secundario);
+  padding: 12px 0;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .resumenRapido {
+    grid-template-columns: 1fr;
+  }
+  .metricasGrid {
+    grid-template-columns: 1fr;
+  }
+}

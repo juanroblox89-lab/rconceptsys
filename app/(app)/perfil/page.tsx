@@ -1,56 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Camera, Check, Calendar, TrendingUp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Check } from "lucide-react";
 import { api } from "@/lib/api";
-import { Perfil, EstadisticasYoResponse } from "@/lib/types";
+import { Perfil } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Boton } from "@/components/ui/Boton";
 import { Chip } from "@/components/ui/Chip";
-import { Campo } from "@/components/ui/Campo";
-import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Aviso, useAviso } from "@/components/ui/Aviso";
+import { TrabajosHechos } from "@/components/TrabajosHechos";
 import styles from "./perfil.module.css";
-
-type PresetFecha = "hoy" | "7dias" | "este_mes" | "mes_pasado" | "este_ano" | "todo" | "personalizado";
-
-function obtenerFechasPreset(preset: PresetFecha): { desde?: string; hasta?: string } {
-  const ahora = new Date();
-  const formatYMD = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const dia = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${dia}`;
-  };
-
-  const hoyStr = formatYMD(ahora);
-
-  switch (preset) {
-    case "hoy":
-      return { desde: hoyStr, hasta: hoyStr };
-    case "7dias": {
-      const d = new Date(ahora);
-      d.setDate(d.getDate() - 6);
-      return { desde: formatYMD(d), hasta: hoyStr };
-    }
-    case "este_mes": {
-      const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-      return { desde: formatYMD(inicio), hasta: hoyStr };
-    }
-    case "mes_pasado": {
-      const inicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-      const fin = new Date(ahora.getFullYear(), ahora.getMonth(), 0);
-      return { desde: formatYMD(inicio), hasta: formatYMD(fin) };
-    }
-    case "este_ano": {
-      const inicio = new Date(ahora.getFullYear(), 0, 1);
-      return { desde: formatYMD(inicio), hasta: hoyStr };
-    }
-    case "todo":
-    default:
-      return {};
-  }
-}
 
 export default function MiPerfilPage() {
   const [yo, setYo] = useState<Perfil | null>(null);
@@ -59,34 +18,8 @@ export default function MiPerfilPage() {
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
-  // Estadísticas F3
-  const [stats, setStats] = useState<EstadisticasYoResponse | null>(null);
-  const [cargandoStats, setCargandoStats] = useState(true);
-  const [preset, setPreset] = useState<PresetFecha>("este_mes");
-  const [fechaDesde, setFechaDesde] = useState("");
-  const [fechaHasta, setFechaHasta] = useState("");
-
   const { mostrarAviso } = useAviso();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const cargarEstadisticas = useCallback(async (p: PresetFecha, d?: string, h?: string) => {
-    setCargandoStats(true);
-    try {
-      let desdeParam = d;
-      let hastaParam = h;
-      if (p !== "personalizado") {
-        const fechas = obtenerFechasPreset(p);
-        desdeParam = fechas.desde;
-        hastaParam = fechas.hasta;
-      }
-      const data = await api.getYoEstadisticas(desdeParam, hastaParam);
-      setStats(data);
-    } catch {
-      // Ignorar fallo de estadísticas si no está aprobado
-    } finally {
-      setCargandoStats(false);
-    }
-  }, []);
 
   useEffect(() => {
     let montado = true;
@@ -99,71 +32,36 @@ export default function MiPerfilPage() {
       })
       .catch(() => {});
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    cargarEstadisticas("este_mes");
-
     return () => {
       montado = false;
     };
-  }, [cargarEstadisticas]);
-
-  const handleCambiarPreset = (nuevoPreset: PresetFecha) => {
-    setPreset(nuevoPreset);
-    if (nuevoPreset !== "personalizado") {
-      cargarEstadisticas(nuevoPreset);
-    }
-  };
-
-  const handleAplicarPersonalizado = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fechaDesde || !fechaHasta) {
-      mostrarAviso({
-        tipo: "error",
-        titulo: "Rango incompleto",
-        texto: "Selecciona las fechas 'Desde' y 'Hasta'.",
-      });
-      return;
-    }
-    if (fechaDesde > fechaHasta) {
-      mostrarAviso({
-        tipo: "error",
-        titulo: "Rango inválido",
-        texto: "La fecha 'Desde' no puede ser posterior a 'Hasta'.",
-      });
-      return;
-    }
-    cargarEstadisticas("personalizado", fechaDesde, fechaHasta);
-  };
+  }, []);
 
   const handleGuardarNombre = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorLocal(null);
-
-    const limpio = nombre.trim();
-    if (limpio.length < 2) {
-      setErrorLocal("El nombre debe tener al menos 2 caracteres.");
+    const nombreLimpio = nombre.trim();
+    if (nombreLimpio.length < 2 || nombreLimpio.length > 60) {
+      setErrorLocal("El nombre debe tener entre 2 y 60 caracteres.");
       return;
     }
-
+    setErrorLocal(null);
     setGuardando(true);
-
     try {
-      const actualizado = await api.patchYo(limpio);
+      const actualizado = await api.patchYo(nombreLimpio);
       setYo(actualizado);
+      setNombre(actualizado.nombre);
       mostrarAviso({
         tipo: "exito",
-        titulo: "Cambios guardados",
-        texto: "Tu nombre de visualización se actualizó correctamente.",
+        titulo: "Nombre guardado",
+        texto: "Tu nombre de visualización se actualizó con éxito.",
       });
     } catch (err: unknown) {
       const e = err as { message?: string };
-      const mensajeHumano =
-        e.message || "No se pudo actualizar el nombre. Por favor, intenta nuevamente.";
-      setErrorLocal(mensajeHumano);
+      setErrorLocal(e?.message || "No se pudo actualizar el nombre.");
       mostrarAviso({
         tipo: "error",
         titulo: "Error al guardar",
-        texto: mensajeHumano,
+        texto: e?.message || "No se pudo actualizar el nombre.",
       });
     } finally {
       setGuardando(false);
@@ -174,68 +72,105 @@ export default function MiPerfilPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      mostrarAviso({
+        tipo: "error",
+        titulo: "Formato no permitido",
+        texto: "Solo se admiten imágenes en formato JPEG, PNG o WebP.",
+      });
+      return;
+    }
+
     if (file.size > 1024 * 1024) {
-      const msg = "La imagen supera el límite de 1 MB. Elige una imagen más liviana.";
-      setErrorLocal(msg);
-      mostrarAviso({ tipo: "error", titulo: "Imagen muy pesada", texto: msg });
+      mostrarAviso({
+        tipo: "error",
+        titulo: "Imagen muy pesada",
+        texto: "La foto no debe superar 1 MB.",
+      });
       return;
     }
 
     setSubiendoFoto(true);
-    setErrorLocal(null);
-
     const formData = new FormData();
     formData.append("foto", file);
-
     try {
       const actualizado = await api.subirFoto(formData);
       setYo(actualizado);
       mostrarAviso({
         tipo: "exito",
         titulo: "Foto actualizada",
-        texto: "Tu nueva foto de perfil ya está visible.",
+        texto: "Tu avatar se actualizó correctamente.",
       });
     } catch (err: unknown) {
       const e = err as { message?: string };
-      const mensajeHumano =
-        e.message || "No se pudo subir la fotografía. Intenta con formato JPEG o PNG.";
-      setErrorLocal(mensajeHumano);
-      mostrarAviso({ tipo: "error", titulo: "Error al subir", texto: mensajeHumano });
+      mostrarAviso({
+        tipo: "error",
+        titulo: "Error al subir foto",
+        texto: e?.message || "No se pudo actualizar tu foto.",
+      });
     } finally {
       setSubiendoFoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
-  const sinCambios = !nombre.trim() || nombre.trim() === yo?.nombre;
-  const maxTrabajosTipo = stats?.por_tipo && stats.por_tipo.length > 0
-    ? Math.max(...stats.por_tipo.map((t) => t.trabajos), 1)
-    : 1;
+  const sinCambios = nombre.trim() === (yo?.nombre || "").trim();
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Mi perfil</h1>
-        <p className={styles.subtitle}>Información personal, fotografía y resumen de trabajos hechos</p>
+        <p className={styles.subtitle}>
+          Administra tus datos personales y consulta el acumulado de tus trabajos.
+        </p>
       </div>
 
-      <div className={styles.card}>
-        {errorLocal && (
-          <Aviso
-            tipo="error"
-            titulo="No se pudo guardar"
-            texto={errorLocal}
-            onCerrar={() => setErrorLocal(null)}
-          />
-        )}
+      {errorLocal && (
+        <Aviso
+          tipo="error"
+          titulo="Atención"
+          texto={errorLocal}
+          onCerrar={() => setErrorLocal(null)}
+        />
+      )}
 
+      {/* Tarjeta de Información Personal */}
+      <div className={styles.card}>
         <div className={styles.avatarSection}>
-          <Avatar
-            tamano={40}
-            src={yo?.foto_path || undefined}
-            iniciales={yo?.nombre ? yo.nombre.charAt(0).toUpperCase() : "U"}
-            alt={yo?.nombre}
-            style={{ width: "64px", height: "64px", fontSize: "24px" }}
-          />
+          <div className={styles.avatarWrapper}>
+            <Avatar
+              tamano={40}
+              src={yo?.foto_path || undefined}
+              iniciales={yo?.nombre?.charAt(0).toUpperCase() || "U"}
+              alt={yo?.nombre || "Usuario"}
+              style={{ width: "80px", height: "80px", fontSize: "32px" }}
+            />
+            {yo?.es_admin ? (
+              <span className={styles.adminBadge}>Admin</span>
+            ) : null}
+          </div>
+
+          <div className={styles.infoCol}>
+            <div className={styles.userRoleRow}>
+              <span className={styles.userStateText}>
+                {yo?.estado === "aprobado" ? "Miembro activo" : "Pendiente de aprobación"}
+              </span>
+            </div>
+
+            <div className={styles.rolesRow}>
+              {yo?.roles && yo.roles.length > 0 ? (
+                yo.roles.map((r) => (
+                  <Chip key={r.id} punto="azul">
+                    {r.nombre}
+                  </Chip>
+                ))
+              ) : (
+                <span className={styles.sinRolesText}>Sin roles asignados</span>
+              )}
+            </div>
+          </div>
 
           <div className={styles.avatarActions}>
             <input
@@ -311,165 +246,8 @@ export default function MiPerfilPage() {
         </form>
       </div>
 
-      {/* Tarjeta de Trabajos Hechos (F3) */}
-      <div className={styles.cardTrabajosHechos}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
-          <h2 className={styles.seccionTitulo} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <TrendingUp size={16} strokeWidth={2} color="var(--rc-azul-texto)" />
-            Trabajos hechos
-          </h2>
-          <span style={{ fontSize: "var(--rc-fs-etiqueta)", color: "var(--rc-texto-secundario)" }}>
-            Tareas aprobadas y valor acumulado
-          </span>
-        </div>
-
-        {cargandoStats ? (
-          <Esqueleto filas={4} />
-        ) : (
-          <>
-            {/* Resumen Total y Este Mes */}
-            <div className={styles.resumenRapido}>
-              <div className={styles.resumenCard}>
-                <span className={styles.resumenLabel}>Este mes</span>
-                <span className={styles.resumenValor}>
-                  $ {(stats?.este_mes?.valor || 0).toLocaleString("es-CO")}
-                </span>
-                <span className={styles.resumenDetalle}>
-                  {stats?.este_mes?.trabajos || 0} trab. • {stats?.este_mes?.minutos || 0} min
-                </span>
-              </div>
-
-              <div className={styles.resumenCard}>
-                <span className={styles.resumenLabel}>Total acumulado</span>
-                <span className={styles.resumenValor}>
-                  $ {(stats?.total?.valor || 0).toLocaleString("es-CO")}
-                </span>
-                <span className={styles.resumenDetalle}>
-                  {stats?.total?.trabajos || 0} trab. • {stats?.total?.minutos || 0} min
-                </span>
-              </div>
-            </div>
-
-            {/* Selector de Presets de Rango */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <span className={styles.label}>Filtrar por período</span>
-              <div className={styles.presetsRow} role="tablist">
-                {(
-                  [
-                    { id: "hoy", label: "Hoy" },
-                    { id: "7dias", label: "7 días" },
-                    { id: "este_mes", label: "Este mes" },
-                    { id: "mes_pasado", label: "Mes pasado" },
-                    { id: "este_ano", label: "Este año" },
-                    { id: "todo", label: "Todo" },
-                    { id: "personalizado", label: "Personalizado" },
-                  ] as const
-                ).map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={preset === p.id}
-                    className={`${styles.btnPreset} ${preset === p.id ? styles.btnPresetActivo : ""}`}
-                    onClick={() => handleCambiarPreset(p.id)}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
-              {preset === "personalizado" && (
-                <form onSubmit={handleAplicarPersonalizado} className={styles.personalizadoRow} style={{ marginTop: "6px" }}>
-                  <div style={{ flex: 1, minWidth: "120px" }}>
-                    <Campo
-                      etiqueta="Desde"
-                      type="date"
-                      value={fechaDesde}
-                      onChange={(e) => setFechaDesde(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ flex: 1, minWidth: "120px" }}>
-                    <Campo
-                      etiqueta="Hasta"
-                      type="date"
-                      value={fechaHasta}
-                      onChange={(e) => setFechaHasta(e.target.value)}
-                    />
-                  </div>
-                  <Boton type="submit" variante="primario" tamano="sm" style={{ height: "36px" }}>
-                    <Calendar size={13} style={{ marginRight: 4 }} />
-                    Aplicar
-                  </Boton>
-                </form>
-              )}
-            </div>
-
-            {/* Métricas del rango seleccionado */}
-            <div className={styles.metricasGrid}>
-              <div className={styles.metricaBox}>
-                <span className={styles.metricaBoxValor}>
-                  {stats?.trabajos || 0}
-                </span>
-                <span className={styles.metricaBoxLabel}>Trabajos</span>
-              </div>
-              <div className={styles.metricaBox}>
-                <span className={styles.metricaBoxValor}>
-                  {stats?.minutos || 0} min
-                </span>
-                <span className={styles.metricaBoxLabel}>Grabación</span>
-              </div>
-              <div className={styles.metricaBox}>
-                <span className={styles.metricaBoxValor}>
-                  $ {(stats?.valor || 0).toLocaleString("es-CO")}
-                </span>
-                <span className={styles.metricaBoxLabel}>Total ganado</span>
-              </div>
-            </div>
-
-            {/* Desglose por Tipo de Trabajo */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
-              <span className={styles.label}>Desglose por tipo de trabajo</span>
-              {stats?.por_tipo && stats.por_tipo.length > 0 ? (
-                <div className={styles.listaDesglose}>
-                  {stats.por_tipo.map((tp) => {
-                    const pct = Math.min(100, Math.max(5, Math.round((tp.trabajos / maxTrabajosTipo) * 100)));
-                    return (
-                      <div key={tp.tipo_id} className={styles.itemDesglose}>
-                        <div className={styles.itemDesgloseTop}>
-                          <div className={styles.itemDesgloseNombre}>
-                            <span>{tp.nombre}</span>
-                            <Chip punto={tp.unidad === "minuto" ? "azul" : "gris"}>
-                              {tp.unidad === "minuto" ? "Por minuto" : "Por trabajo"}
-                            </Chip>
-                          </div>
-                          <div className={styles.itemDesgloseCifras}>
-                            <strong>{tp.trabajos} trab.</strong>
-                            {tp.unidad === "minuto" && (
-                              <span style={{ color: "var(--rc-azul-texto)", fontSize: "11px" }}>
-                                ({tp.minutos} min)
-                              </span>
-                            )}
-                            <span style={{ color: "var(--rc-texto-secundario)", fontWeight: 500 }}>
-                              $ {tp.valor.toLocaleString("es-CO")}
-                            </span>
-                          </div>
-                        </div>
-                        <div className={styles.pistaProgreso}>
-                          <div className={styles.rellenoProgreso} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)", padding: "12px 0", textAlign: "center" }}>
-                  No se registraron trabajos en este período.
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+      {/* Tarjeta de Trabajos Hechos (F3 / F3C) */}
+      <TrabajosHechos modo={{ tipo: "yo" }} />
     </div>
   );
 }
