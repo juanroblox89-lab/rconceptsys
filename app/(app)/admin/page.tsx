@@ -264,6 +264,12 @@ export default function AdminPage() {
       if (p) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setPestanaActiva(p);
+        // Atajo desde el perfil de una persona: abre "Nueva tarea" con esa persona ya elegida
+        if (p === "tareas" && sp.get("nueva") === "1") {
+          if (pers) setNuevaTareaAsignadoA(pers);
+          setNuevaTareaForzar(false);
+          setModalNuevaTarea(true);
+        }
         if (p === "estadisticas") {
           if (pers) {
             setFiltroPersonaStats(pers);

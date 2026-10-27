@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessagesSquare } from "lucide-react";
+import { ArrowLeft, ClipboardList, MessagesSquare } from "lucide-react";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
@@ -125,6 +125,17 @@ export default function MiembroDetallePage({ params }: PageProps) {
                   Enviar mensaje en el chat
                 </Boton>
               </Link>
+              {yo?.es_admin && !miembro.es_admin && (
+                <Link
+                  href={`/admin?pestana=tareas&nueva=1&persona=${encodeURIComponent(miembro.id)}`}
+                  style={{ display: "block", marginTop: "var(--rc-esp-8)" }}
+                >
+                  <Boton variante="primario" style={{ width: "100%", height: "34px" }}>
+                    <ClipboardList size={16} strokeWidth={1.75} style={{ marginRight: 6 }} />
+                    Enviar trabajo
+                  </Boton>
+                </Link>
+              )}
             </div>
           </div>
 
