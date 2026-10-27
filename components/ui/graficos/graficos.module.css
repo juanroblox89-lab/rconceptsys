@@ -165,6 +165,18 @@
   white-space: nowrap;
 }
 
+.enlaceBarra {
+  color: var(--rc-azul-texto);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color var(--rc-transicion);
+}
+
+.enlaceBarra:hover {
+  text-decoration: underline;
+  color: var(--rc-azul-oscuro);
+}
+
 .cifrasBarra {
   display: flex;
   align-items: center;

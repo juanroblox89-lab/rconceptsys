@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import styles from "./graficos.module.css";
 import { Avatar } from "@/components/ui/Avatar";
 
@@ -12,6 +13,7 @@ export interface ItemBarraGrafica {
   etiquetaPrincipal?: string;
   valorSecundario?: string;
   avatar?: string | null;
+  href?: string;
 }
 
 export interface GraficaBarrasProps {
@@ -88,7 +90,13 @@ export function GraficaBarras({
                         <strong style={{ fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
                           #{idx + 1}
                         </strong>{" "}
-                        {item.nombre}
+                        {item.href ? (
+                          <Link href={item.href} className={styles.enlaceBarra}>
+                            {item.nombre}
+                          </Link>
+                        ) : (
+                          item.nombre
+                        )}
                       </span>
                     </div>
                     <div className={styles.cifrasBarra}>

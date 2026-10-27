@@ -255,12 +255,33 @@ export default function AdminPage() {
     cargarDatos();
   }, [cargarDatos]);
 
+  // F3C: Leer parámetros de URL al montar (?pestana=estadisticas&persona=<id>)
   useEffect(() => {
-    if (pestanaActiva === "estadisticas" && !statsAdmin) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      cargarEstadisticasAdmin("este_mes");
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const p = sp.get("pestana");
+      const pers = sp.get("persona");
+      if (p) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPestanaActiva(p);
+        if (p === "estadisticas") {
+          if (pers) {
+            setFiltroPersonaStats(pers);
+            cargarEstadisticasAdmin("este_mes", undefined, undefined, undefined, pers);
+          } else {
+            cargarEstadisticasAdmin("este_mes");
+          }
+        }
+      }
     }
-  }, [pestanaActiva, statsAdmin, cargarEstadisticasAdmin]);
+  }, [cargarEstadisticasAdmin]);
+
+  useEffect(() => {
+    if (pestanaActiva === "estadisticas" && !statsAdmin && !cargandoStatsAdmin) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      cargarEstadisticasAdmin("este_mes", undefined, undefined, undefined, filtroPersonaStats || undefined);
+    }
+  }, [pestanaActiva, statsAdmin, cargandoStatsAdmin, cargarEstadisticasAdmin, filtroPersonaStats]);
 
   // ==========================================
   // Acciones: Pestaña Miembros
@@ -1579,6 +1600,7 @@ export default function AdminPage() {
                           id: p.perfil_id,
                           nombre: p.nombre,
                           avatar: p.foto,
+                          href: `/equipo/${p.perfil_id}`,
                           valorPrincipal: p.trabajos,
                           etiquetaPrincipal: `${p.trabajos} trab.`,
                           valorSecundario: `${p.minutos > 0 ? `${p.minutos} min • ` : ""}$ ${p.valor.toLocaleString("es-CO")}`,
