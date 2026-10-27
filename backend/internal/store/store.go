@@ -259,6 +259,8 @@ type EstadisticasAdminResponse struct {
 	PorCliente []*ItemClienteEstadistica `json:"por_cliente"`
 	PorTipo    []*ItemTipoEstadistica    `json:"por_tipo"`
 	HayMas     HayMasEstadisticas        `json:"hay_mas"`
+	EsteMes    *TotalesYo                `json:"este_mes,omitempty"`
+	Total      *TotalesYo                `json:"total,omitempty"`
 }
 
 // Store define las operaciones que necesita el backend para F0 y F2.

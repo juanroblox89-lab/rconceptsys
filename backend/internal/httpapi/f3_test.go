@@ -517,6 +517,53 @@ func TestF3EstadisticasAdmin(t *testing.T) {
 	if fSinCliData.Totales.Trabajos != 1 || fSinCliData.Totales.Valor != 75000 {
 		t.Fatalf("Filtro sin_cliente falló: %+v", fSinCliData.Totales)
 	}
+
+	// F3C: Filtro persona_id para estadísticas individuales visibles por admin
+	// 1) No-admin con persona_id recibe 403 Forbidden
+	noAdminPersRes := doRequest(routes, "GET", fmt.Sprintf("/api/admin/estadisticas?persona_id=%s", camID), editorID, nil)
+	if noAdminPersRes.Code != http.StatusForbidden {
+		t.Fatalf("Esperaba 403 Forbidden para no-admin consultando persona_id, obtuve %d", noAdminPersRes.Code)
+	}
+
+	// 2) Admin consultando camID
+	filtroCamRes := doRequest(routes, "GET", fmt.Sprintf("/api/admin/estadisticas?desde=%s&hasta=%s&persona_id=%s", hoy, hoy, camID), adminID, nil)
+	if filtroCamRes.Code != http.StatusOK {
+		t.Fatalf("Esperaba 200 OK para admin consultando persona_id, obtuve %d: %s", filtroCamRes.Code, filtroCamRes.Body.String())
+	}
+	var fCamData store.EstadisticasAdminResponse
+	_ = json.Unmarshal(filtroCamRes.Body.Bytes(), &fCamData)
+	if fCamData.Totales.Trabajos != 2 || fCamData.Totales.Minutos != 150 || fCamData.Totales.Valor != 225000 {
+		t.Fatalf("Totales incorrectos para camID: %+v", fCamData.Totales)
+	}
+	if fCamData.EsteMes == nil || fCamData.EsteMes.Trabajos != 2 || fCamData.EsteMes.Minutos != 150 || fCamData.EsteMes.Valor != 225000 {
+		t.Fatalf("EsteMes incorrecto para camID: %+v", fCamData.EsteMes)
+	}
+	if fCamData.Total == nil || fCamData.Total.Trabajos != 2 || fCamData.Total.Minutos != 150 || fCamData.Total.Valor != 225000 {
+		t.Fatalf("Total incorrecto para camID: %+v", fCamData.Total)
+	}
+	if len(fCamData.PorTipo) != 1 || fCamData.PorTipo[0].Trabajos != 2 || fCamData.PorTipo[0].Minutos != 150 || fCamData.PorTipo[0].Valor != 225000 {
+		t.Fatalf("PorTipo incorrecto para camID: %+v", fCamData.PorTipo)
+	}
+
+	// 3) Admin consultando editorID (cifras distintas a camID)
+	filtroEditorRes := doRequest(routes, "GET", fmt.Sprintf("/api/admin/estadisticas?desde=%s&hasta=%s&persona_id=%s", hoy, hoy, editorID), adminID, nil)
+	if filtroEditorRes.Code != http.StatusOK {
+		t.Fatalf("Esperaba 200 OK para editorID: %d", filtroEditorRes.Code)
+	}
+	var fEditorData store.EstadisticasAdminResponse
+	_ = json.Unmarshal(filtroEditorRes.Body.Bytes(), &fEditorData)
+	if fEditorData.Totales.Trabajos != 1 || fEditorData.Totales.Minutos != 0 || fEditorData.Totales.Valor != 50000 {
+		t.Fatalf("Totales incorrectos para editorID: %+v", fEditorData.Totales)
+	}
+	if fEditorData.EsteMes == nil || fEditorData.EsteMes.Trabajos != 1 || fEditorData.EsteMes.Valor != 50000 {
+		t.Fatalf("EsteMes incorrecto para editorID: %+v", fEditorData.EsteMes)
+	}
+	if fEditorData.Total == nil || fEditorData.Total.Trabajos != 1 || fEditorData.Total.Valor != 50000 {
+		t.Fatalf("Total incorrecto para editorID: %+v", fEditorData.Total)
+	}
+	if len(fEditorData.PorTipo) != 1 || fEditorData.PorTipo[0].Trabajos != 1 || fEditorData.PorTipo[0].Valor != 50000 {
+		t.Fatalf("PorTipo incorrecto para editorID: %+v", fEditorData.PorTipo)
+	}
 }
 
 // 8. Test borde de fecha y zona Bogotá: aceptación a las 23:30 hora de Bogotá

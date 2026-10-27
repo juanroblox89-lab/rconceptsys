@@ -359,6 +359,16 @@ Fórmula visible en factura: `"120 min × $ 1.500 = $ 180.000"`.
       "por_persona": false,
       "por_cliente": false,
       "por_tipo": false
+    },
+    "este_mes": {
+      "trabajos": 8,
+      "minutos": 350,
+      "valor": 800000
+    },
+    "total": {
+      "trabajos": 20,
+      "minutos": 750,
+      "valor": 2100000
     }
   }
   ```
@@ -367,3 +377,4 @@ Fórmula visible en factura: `"120 min × $ 1.500 = $ 180.000"`.
   - Listas `por_persona`, `por_cliente` y `por_tipo` ordenadas de mayor a menor por trabajos (empate por valor), limitadas a 20 filas cada una, con indicador en `hay_mas`.
   - Tareas sin cliente agrupadas bajo `cliente_id: null` y nombre `"Sin cliente"`.
   - Validación de rango: `desde <= hasta`, rango máximo 5 años (`400 Bad Request`).
+  - **F3C:** Cuando se provee `persona_id`, la respuesta incluye opcionalmente `este_mes` y `total` (`{ trabajos, minutos, valor }`) calculados sobre el histórico de dicha persona en hora de Bogotá, lo que permite alimentar directamente componentes de estadísticas individuales (`TrabajosHechos`) sin consultas adicionales. Si no se provee `persona_id`, estos campos se omiten.

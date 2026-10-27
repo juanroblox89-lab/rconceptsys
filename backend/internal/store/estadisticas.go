@@ -194,34 +194,19 @@ func CalcularEstadisticasAdmin(
 	var clienteSinCliente *ItemClienteEstadistica
 	porTipoMap := make(map[int]*ItemTipoEstadistica)
 
+	ahoraBog := time.Now().In(LocBogota)
+	inicioEsteMes := time.Date(ahoraBog.Year(), ahoraBog.Month(), 1, 0, 0, 0, 0, LocBogota)
+	finEsteMes := ahoraBog
+
+	var esteMesPersona TotalesYo
+	var totalPersona TotalesYo
+
 	for _, t := range todasTareas {
 		if t.Estado != EstadoTareaAceptada || t.ResueltaEn == nil {
 			continue
 		}
 
 		tRes := t.ResueltaEn.In(LocBogota)
-
-		// Filtro de rango de fechas
-		if tRes.Before(desdeBog) || tRes.After(hastaBog) {
-			continue
-		}
-
-		// Filtros combinables
-		if filtro.PersonaID != nil && t.AsignadoA != *filtro.PersonaID {
-			continue
-		}
-		if filtro.SinCliente {
-			if t.ClienteID != nil {
-				continue
-			}
-		} else if filtro.ClienteID != nil {
-			if t.ClienteID == nil || *t.ClienteID != *filtro.ClienteID {
-				continue
-			}
-		}
-		if filtro.TipoID != nil && t.TipoID != *filtro.TipoID {
-			continue
-		}
 
 		// Tipo de trabajo
 		tipo, tipoOk := tiposMap[t.TipoID]
@@ -243,6 +228,41 @@ func CalcularEstadisticasAdmin(
 		valor := int64(0)
 		if t.PrecioCongelado != nil {
 			valor = *t.PrecioCongelado
+		}
+
+		// Si se filtra por persona, acumulamos este_mes y total de esa persona
+		if filtro.PersonaID != nil && t.AsignadoA == *filtro.PersonaID {
+			totalPersona.Trabajos++
+			totalPersona.Minutos += minutos
+			totalPersona.Valor += valor
+
+			if !tRes.Before(inicioEsteMes) && !tRes.After(finEsteMes) {
+				esteMesPersona.Trabajos++
+				esteMesPersona.Minutos += minutos
+				esteMesPersona.Valor += valor
+			}
+		}
+
+		// Filtro de rango de fechas
+		if tRes.Before(desdeBog) || tRes.After(hastaBog) {
+			continue
+		}
+
+		// Filtros combinables
+		if filtro.PersonaID != nil && t.AsignadoA != *filtro.PersonaID {
+			continue
+		}
+		if filtro.SinCliente {
+			if t.ClienteID != nil {
+				continue
+			}
+		} else if filtro.ClienteID != nil {
+			if t.ClienteID == nil || *t.ClienteID != *filtro.ClienteID {
+				continue
+			}
+		}
+		if filtro.TipoID != nil && t.TipoID != *filtro.TipoID {
+			continue
 		}
 
 		// Totales
@@ -446,6 +466,11 @@ func CalcularEstadisticasAdmin(
 	if len(resp.PorTipo) > 20 {
 		resp.HayMas.PorTipo = true
 		resp.PorTipo = resp.PorTipo[:20]
+	}
+
+	if filtro.PersonaID != nil {
+		resp.EsteMes = &esteMesPersona
+		resp.Total = &totalPersona
 	}
 
 	return resp

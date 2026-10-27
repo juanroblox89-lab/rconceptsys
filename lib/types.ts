@@ -223,4 +223,6 @@ export interface EstadisticasAdminResponse {
   por_cliente: ItemClienteEstadistica[];
   por_tipo: ItemTipoEstadistica[];
   hay_mas: HayMasEstadisticas;
+  este_mes?: TotalesYo;
+  total?: TotalesYo;
 }

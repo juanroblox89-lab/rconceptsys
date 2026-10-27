@@ -1273,10 +1273,11 @@ func (s *SupabaseStore) ObtenerEstadisticasAdmin(ctx context.Context, filtro sto
 	for {
 		q := url.Values{}
 		q.Set("estado", "eq.aceptada")
-		q.Set("resuelta_en", fmt.Sprintf("gte.%s", desdeBog.Format(time.RFC3339)))
-		q.Set("resuelta_en", fmt.Sprintf("lte.%s", hastaBog.Format(time.RFC3339)))
 		if filtro.PersonaID != nil {
 			q.Set("asignado_a", fmt.Sprintf("eq.%s", *filtro.PersonaID))
+		} else {
+			q.Set("resuelta_en", fmt.Sprintf("gte.%s", desdeBog.Format(time.RFC3339)))
+			q.Set("resuelta_en", fmt.Sprintf("lte.%s", hastaBog.Format(time.RFC3339)))
 		}
 		if filtro.SinCliente {
 			q.Set("cliente_id", "is.null")
