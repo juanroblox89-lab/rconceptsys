@@ -23,7 +23,42 @@ export interface ApiError extends Error {
   status: number;
 }
 
-export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+// Renovación de sesión compartida: varias peticiones que fallan a la vez hacen un solo refresco.
+let refrescoEnCurso: Promise<boolean> | null = null;
+
+async function renovarSesion(): Promise<boolean> {
+  if (!refrescoEnCurso) {
+    refrescoEnCurso = fetch(`${API_BASE}/api/auth/refresh`, { method: 'POST', credentials: 'include' })
+      .then((r) => r.ok)
+      .catch(() => false)
+      .finally(() => {
+        refrescoEnCurso = null;
+      });
+  }
+  return refrescoEnCurso;
+}
+
+const RUTAS_SIN_SESION = ['/login', '/registro', '/estilo'];
+
+// Sesión perdida de verdad: se limpian las cookies y se manda al login recordando a dónde iba.
+async function irAlLogin(): Promise<never> {
+  if (typeof window !== 'undefined') {
+    const { pathname, search } = window.location;
+    if (!RUTAS_SIN_SESION.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
+      try {
+        await fetch(`${API_BASE}/api/auth/salir`, { method: 'POST', credentials: 'include' });
+      } catch {
+        // Sin red: igual se manda al login
+      }
+      const destino = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname + search)}`;
+      window.location.replace(`/login${destino}`);
+    }
+  }
+  // La página se está yendo: no se resuelve ni se rechaza para no mostrar un error por un instante.
+  return new Promise<never>(() => {});
+}
+
+export async function fetchApi<T>(endpoint: string, options: RequestInit = {}, yaReintentado = false): Promise<T> {
   const headers = new Headers(options.headers || {});
 
   // Soporte explícito de modo demo en headers solo si NEXT_PUBLIC_RC_DEMO=1 en el cliente
@@ -43,6 +78,14 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     headers,
     credentials: 'include', // Envía y recibe cookies httpOnly automáticamente
   });
+
+  // 401 en una ruta que no es de autenticación: se intenta renovar la sesión una vez y, si no se puede, al login.
+  if (res.status === 401 && !endpoint.startsWith('/api/auth/')) {
+    if (!yaReintentado && (await renovarSesion())) {
+      return fetchApi<T>(endpoint, options, true);
+    }
+    return irAlLogin();
+  }
 
   if (!res.ok) {
     let mensaje = 'Ha ocurrido un error inesperado.';

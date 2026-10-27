@@ -27,7 +27,9 @@ export default function LoginPage() {
       if (res.perfil.estado === "pendiente") {
         router.push("/pendiente");
       } else {
-        router.push("/");
+        // Vuelve a donde iba antes de que se pidiera iniciar sesión (solo rutas internas)
+        const siguiente = new URLSearchParams(window.location.search).get("next");
+        router.push(siguiente && siguiente.startsWith("/") && !siguiente.startsWith("//") ? siguiente : "/");
       }
     } catch (err: unknown) {
       const e = err as { message?: string };

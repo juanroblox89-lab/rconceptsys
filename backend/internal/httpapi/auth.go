@@ -184,6 +184,17 @@ func (a *API) MiddlewareAuth(next http.HandlerFunc, requiereAprobado bool, requi
 			}
 		}
 
+		// El navegador descarta la cookie de acceso al vencer (1 hora). Si todavía hay cookie de
+		// refresco, se renueva la sesión en silencio en lugar de pedir que inicien sesión otra vez.
+		if token == "" {
+			if rc, rerr := r.Cookie("rc_refresh_token"); rerr == nil && rc.Value != "" {
+				if tok, terr := a.Auth.RefrescarToken(r.Context(), rc.Value); terr == nil && tok != nil && tok.AccessToken != "" {
+					a.setAuthCookies(w, r, tok.AccessToken, tok.RefreshToken, tok.ExpiresIn)
+					token = tok.AccessToken
+				}
+			}
+		}
+
 		if token == "" {
 			ResponderError(w, http.StatusUnauthorized, "no_autenticado", "Por favor inicia sesión para continuar.")
 			return

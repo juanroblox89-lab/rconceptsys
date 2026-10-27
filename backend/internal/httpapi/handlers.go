@@ -153,7 +153,7 @@ func (a *API) setAuthCookies(w http.ResponseWriter, r *http.Request, accessToken
 			Name:     "rc_refresh_token",
 			Value:    refreshToken,
 			Path:     "/",
-			MaxAge:   30 * 24 * 3600, // 30 días
+			MaxAge:   180 * 24 * 3600, // 180 días: la sesión se recuerda y se renueva en cada refresco
 			HttpOnly: true,
 			Secure:   isSecure,
 			SameSite: http.SameSiteLaxMode,

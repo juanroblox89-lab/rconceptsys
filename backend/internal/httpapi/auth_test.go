@@ -344,3 +344,65 @@ func TestChatDespuesParam(t *testing.T) {
 		t.Errorf("orden o ids incorrectos en polling despues: %+v", res)
 	}
 }
+
+// Sin cookie de acceso (el navegador la descarta al vencer) pero con cookie de refresco, la sesión se renueva sola.
+func TestMiddlewareRenuevaSesionSoloConCookieDeRefresco(t *testing.T) {
+	perfil := &store.Perfil{ID: "u1", Correo: "a@b.co", Nombre: "A", Estado: store.EstadoAprobado}
+	api, _ := configurarTestAPI()
+	api.Auth = &verificadorRefresco{perfil: perfil}
+
+	llamado := false
+	h := api.MiddlewareAuth(func(w http.ResponseWriter, r *http.Request) {
+		llamado = true
+		w.WriteHeader(http.StatusOK)
+	}, true, false)
+
+	req := httptest.NewRequest("GET", "/api/yo", nil)
+	req.AddCookie(&http.Cookie{Name: "rc_refresh_token", Value: "viejo-refresh"})
+	rr := httptest.NewRecorder()
+	h(rr, req)
+
+	if rr.Code != http.StatusOK || !llamado {
+		t.Fatalf("esperaba 200 tras renovar la sesión, obtuve %d", rr.Code)
+	}
+	var cookieAcceso, cookieRefresco bool
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == "rc_access_token" && c.Value == "nuevo-token" {
+			cookieAcceso = true
+		}
+		if c.Name == "rc_refresh_token" && c.Value == "nuevo-refresh" && c.MaxAge >= 90*24*3600 {
+			cookieRefresco = true
+		}
+	}
+	if !cookieAcceso || !cookieRefresco {
+		t.Fatalf("faltan las cookies renovadas (acceso=%v, refresco=%v)", cookieAcceso, cookieRefresco)
+	}
+
+	// Sin ninguna cookie: 401
+	rr2 := httptest.NewRecorder()
+	h(rr2, httptest.NewRequest("GET", "/api/yo", nil))
+	if rr2.Code != http.StatusUnauthorized {
+		t.Fatalf("sin cookies esperaba 401, obtuve %d", rr2.Code)
+	}
+}
+
+type verificadorRefresco struct{ perfil *store.Perfil }
+
+func (v *verificadorRefresco) VerificarToken(ctx context.Context, token string) (*store.Perfil, error) {
+	if token == "nuevo-token" {
+		return v.perfil, nil
+	}
+	return nil, store.ErrUnauthorized
+}
+func (v *verificadorRefresco) RefrescarToken(ctx context.Context, refreshToken string) (*supa.TokenResponse, error) {
+	if refreshToken == "viejo-refresh" {
+		return &supa.TokenResponse{AccessToken: "nuevo-token", RefreshToken: "nuevo-refresh", ExpiresIn: 3600}, nil
+	}
+	return nil, store.ErrUnauthorized
+}
+func (v *verificadorRefresco) Login(ctx context.Context, email, password string) (*supa.TokenResponse, *store.Perfil, error) {
+	return nil, nil, store.ErrUnauthorized
+}
+func (v *verificadorRefresco) Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error) {
+	return nil, store.ErrUnauthorized
+}
