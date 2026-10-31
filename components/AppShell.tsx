@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Sidebar, navItems } from "@/components/Sidebar";
+import { api } from "@/lib/api";
+import { Perfil } from "@/lib/types";
 import styles from "./AppShell.module.css";
 
 const STORAGE_KEY = "rc-sidebar";
@@ -17,7 +19,20 @@ const STORAGE_KEY = "rc-sidebar";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [yo, setYo] = useState<Perfil | null>(null);
   const pathname = usePathname();
+
+  useEffect(() => {
+    let montado = true;
+    api.getYo()
+      .then((p) => {
+        if (montado) setYo(p);
+      })
+      .catch(() => {});
+    return () => {
+      montado = false;
+    };
+  }, []);
 
   useEffect(() => {
     const sync = () => {
@@ -95,18 +110,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Riel flotante (solo desktop con la sidebar colapsada). */}
       <nav className={`${styles.rail} ${collapsed ? styles.railVisible : ""}`} aria-label="Accesos">
         <div className={styles.railGroup}>
-          {navItems.map(({ title, href, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`${styles.railButton} ${pathname === href ? styles.railActive : ""}`}
-              aria-label={title}
-              title={title}
-              aria-current={pathname === href ? "page" : undefined}
-            >
-              <Icon size={18} strokeWidth={1.75} />
-            </Link>
-          ))}
+          {navItems
+            .filter((item) => {
+              if (item.adminOnly && !yo?.es_admin) return false;
+              if (item.workerOnly && yo?.es_admin) return false;
+              return true;
+            })
+            .map(({ title, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`${styles.railButton} ${pathname === href ? styles.railActive : ""}`}
+                aria-label={title}
+                title={title}
+                aria-current={pathname === href ? "page" : undefined}
+              >
+                <Icon size={18} strokeWidth={1.75} />
+              </Link>
+            ))}
         </div>
       </nav>
 

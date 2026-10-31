@@ -127,7 +127,7 @@ export default function MiembroDetallePage({ params }: PageProps) {
               </Link>
               {yo?.es_admin && !miembro.es_admin && (
                 <Link
-                  href={`/admin?pestana=tareas&nueva=1&persona=${encodeURIComponent(miembro.id)}`}
+                  href={`/tareas?nueva=1&persona=${encodeURIComponent(miembro.id)}`}
                   style={{ display: "block", marginTop: "var(--rc-esp-8)" }}
                 >
                   <Boton variante="primario" style={{ width: "100%", height: "34px" }}>

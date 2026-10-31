@@ -200,7 +200,7 @@ export default function MiPerfilPage() {
             <label className={styles.label} htmlFor="correo">
               Correo electrónico
             </label>
-            <span className="rc-input-contenedor" style={{ opacity: 0.85 }}>
+            <span className="rc-input-contenedor" style={{ width: "100%", opacity: 0.85 }}>
               <input
                 id="correo"
                 type="email"

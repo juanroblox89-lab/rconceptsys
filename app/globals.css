@@ -71,12 +71,12 @@
   }
 }
 
-/* Foco visible unificado para navegación por teclado */
+/* Foco visible unificado para navegación por teclado (los controles .rc-* usan su propia sombra de foco) */
 a:focus-visible,
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
+input:focus-visible:not(.rc-input),
+select:focus-visible:not(.rc-select),
+textarea:focus-visible:not(.rc-textarea),
 [tabindex]:focus-visible {
   outline: 2px solid var(--rc-azul);
   outline-offset: 2px;

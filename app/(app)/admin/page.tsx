@@ -6,7 +6,6 @@ import {
   Shield,
   Plus,
   Briefcase,
-  CheckSquare,
   Receipt,
   Users,
   AlertTriangle,
@@ -93,7 +92,6 @@ export default function AdminPage() {
   const [trabajos, setTrabajos] = useState<TipoTrabajo[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
-  const [porRevisarCount, setPorRevisarCount] = useState(0);
   const [facturas, setFacturas] = useState<ResumenFacturasPersona[]>([]);
 
   // Estados locales - Trabajos
@@ -192,7 +190,6 @@ export default function AdminPage() {
       setRoles(rList);
       setTrabajos(tList);
       setTareas(tareasRes?.tareas || []);
-      setPorRevisarCount(tareasRes?.por_revisar || 0);
       setFacturas(fList);
       setClientes(cList);
 
@@ -261,15 +258,20 @@ export default function AdminPage() {
       const sp = new URLSearchParams(window.location.search);
       const p = sp.get("pestana");
       const pers = sp.get("persona");
+
+      // Si viene a ?pestana=tareas, redirige a la sección propia de /tareas
+      if (p === "tareas") {
+        const params = new URLSearchParams();
+        if (sp.get("nueva")) params.set("nueva", sp.get("nueva")!);
+        if (pers) params.set("persona", pers);
+        const q = params.toString() ? `?${params.toString()}` : "";
+        window.location.replace(`/tareas${q}`);
+        return;
+      }
+
       if (p) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setPestanaActiva(p);
-        // Atajo desde el perfil de una persona: abre "Nueva tarea" con esa persona ya elegida
-        if (p === "tareas" && sp.get("nueva") === "1") {
-          if (pers) setNuevaTareaAsignadoA(pers);
-          setNuevaTareaForzar(false);
-          setModalNuevaTarea(true);
-        }
         if (p === "estadisticas") {
           if (pers) {
             setFiltroPersonaStats(pers);
@@ -735,29 +737,6 @@ export default function AdminPage() {
   const tabsItems = [
     { id: "trabajos", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Briefcase size={14} /> Trabajos</span> },
     { id: "clientes", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Users2 size={14} /> Clientes</span> },
-    {
-      id: "tareas",
-      etiqueta: (
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <CheckSquare size={14} /> Tareas
-          {porRevisarCount > 0 && (
-            <span
-              style={{
-                background: "var(--rc-azul)",
-                color: "#fff",
-                fontSize: 10,
-                fontWeight: "bold",
-                borderRadius: 99,
-                padding: "1px 5px",
-                lineHeight: 1,
-              }}
-            >
-              {porRevisarCount}
-            </span>
-          )}
-        </span>
-      ),
-    },
     { id: "estadisticas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><BarChart2 size={14} /> Estadísticas</span> },
     { id: "facturas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Receipt size={14} /> Facturas</span> },
     { id: "miembros", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Users size={14} /> Miembros</span> },

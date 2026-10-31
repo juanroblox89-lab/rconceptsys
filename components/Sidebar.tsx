@@ -24,12 +24,13 @@ interface NavItemDef {
   href: string;
   icon: LucideIcon;
   adminOnly?: boolean;
+  workerOnly?: boolean;
 }
 
 export const navItems: NavItemDef[] = [
   { id: "chat", title: "Chat del equipo", href: "/", icon: MessagesSquare },
   { id: "tareas", title: "Tareas", href: "/tareas", icon: CheckSquare },
-  { id: "factura", title: "Mi factura", href: "/factura", icon: Receipt },
+  { id: "factura", title: "Mi factura", href: "/factura", icon: Receipt, workerOnly: true },
   { id: "equipo", title: "Equipo", href: "/equipo", icon: Users },
   { id: "perfil", title: "Mi perfil", href: "/perfil", icon: User },
   { id: "admin", title: "Gestión", href: "/admin", icon: Shield, adminOnly: true },
@@ -108,6 +109,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
 
   const itemsVisibles = navItems.filter((item) => {
     if (item.adminOnly && !yo?.es_admin) return false;
+    if (item.workerOnly && yo?.es_admin) return false;
     return true;
   });
 
@@ -135,9 +137,9 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
 
           let badgeCount = 0;
           if (item.id === "tareas") {
-            badgeCount = pendientesCount;
-          } else if (item.id === "admin") {
-            badgeCount = porRevisarCount;
+            // Para admin: cantidad de tareas esperando revisión
+            // Para trabajador: cantidad de tareas pendientes por realizar
+            badgeCount = yo?.es_admin ? porRevisarCount : pendientesCount;
           }
 
           return (
