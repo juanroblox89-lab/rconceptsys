@@ -5,13 +5,11 @@ import {
   Check,
   Plus,
   Calendar,
-  AlertTriangle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
   Perfil,
   TipoTrabajo,
-  Cliente,
   Tarea,
 } from "@/lib/types";
 import { Tabla, TablaFila } from "@/components/ui/Tabla";
@@ -35,28 +33,17 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
 
   const [miembros, setMiembros] = useState<Perfil[]>([]);
   const [trabajos, setTrabajos] = useState<TipoTrabajo[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
 
   // Filtros
   const [filtroPersona, setFiltroPersona] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("");
 
-  // Modal Nueva Tarea
+  // Modal Nueva Tarea (solo aviso y persona)
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false);
-  const [nuevaTareaTipoId, setNuevaTareaTipoId] = useState<number | "">("");
-  const [nuevaTareaClienteId, setNuevaTareaClienteId] = useState<number | "">("");
   const [nuevaTareaAsignadoA, setNuevaTareaAsignadoA] = useState<string>("");
-  const [nuevaTareaTitulo, setNuevaTareaTitulo] = useState("");
-  const [nuevaTareaDescripcion, setNuevaTareaDescripcion] = useState("");
-  const [nuevaTareaFechaLimite, setNuevaTareaFechaLimite] = useState("");
-  const [nuevaTareaForzar, setNuevaTareaForzar] = useState(false);
+  const [aviso, setAviso] = useState("");
   const [creandoTarea, setCreandoTarea] = useState(false);
-
-  // Cliente al vuelo desde modal Nueva Tarea
-  const [modalCrearClienteAlVuelo, setModalCrearClienteAlVuelo] = useState(false);
-  const [clienteAlVueloNombre, setClienteAlVueloNombre] = useState("");
-  const [guardandoClienteAlVuelo, setGuardandoClienteAlVuelo] = useState(false);
 
   // Modal Aceptar Tarea con corrección opcional de minutos
   const [modalAceptarTarea, setModalAceptarTarea] = useState<Tarea | null>(null);
@@ -70,15 +57,13 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
 
   const cargarDatos = useCallback(async () => {
     try {
-      const [m, tr, cl, tRes] = await Promise.all([
+      const [m, tr, tRes] = await Promise.all([
         api.adminGetMiembros(),
         api.adminGetTrabajos(),
-        api.getClientes(),
         api.adminGetTareas(),
       ]);
       setMiembros(Array.isArray(m) ? m : []);
       setTrabajos(Array.isArray(tr) ? tr : []);
-      setClientes(Array.isArray(cl) ? cl : []);
       setTareas(tRes?.tareas || []);
     } catch {
       mostrarAviso({
@@ -104,7 +89,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
         const pers = sp.get("persona");
         // eslint-disable-next-line react-hooks/set-state-in-effect
         if (pers) setNuevaTareaAsignadoA(pers);
-        setNuevaTareaForzar(false);
         setModalNuevaTarea(true);
       }
     }
@@ -125,31 +109,34 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   };
 
   const handleCrearTareaSubmit = async () => {
-    if (!nuevaTareaTitulo.trim() || nuevaTareaTipoId === "" || !nuevaTareaAsignadoA) {
-      mostrarAviso({ tipo: "error", titulo: "Campos incompletos", texto: "Selecciona trabajo, persona y título." });
+    if (!nuevaTareaAsignadoA) {
+      mostrarAviso({ tipo: "error", titulo: "Persona requerida", texto: "Selecciona a quién asignar la tarea." });
+      return;
+    }
+
+    const textoAviso = aviso.trim();
+    if (!textoAviso) {
+      mostrarAviso({ tipo: "error", titulo: "Aviso requerido", texto: "Escribe el aviso de la tarea." });
       return;
     }
 
     setCreandoTarea(true);
     try {
+      const tipoDefaultId = trabajos[0]?.id || 1;
+      const titulo = textoAviso.length > 100 ? `${textoAviso.slice(0, 97)}...` : textoAviso;
+
       await api.adminPostTarea({
-        tipo_id: Number(nuevaTareaTipoId),
-        cliente_id: nuevaTareaClienteId === "" ? null : Number(nuevaTareaClienteId),
+        tipo_id: tipoDefaultId,
         asignado_a: nuevaTareaAsignadoA,
-        titulo: nuevaTareaTitulo.trim(),
-        descripcion: nuevaTareaDescripcion.trim() || undefined,
-        fecha_limite: nuevaTareaFechaLimite || undefined,
-        forzar: nuevaTareaForzar,
+        titulo,
+        descripcion: textoAviso,
+        forzar: true,
       });
+
       mostrarAviso({ tipo: "exito", titulo: "Tarea creada y enviada" });
       setModalNuevaTarea(false);
-      setNuevaTareaTitulo("");
-      setNuevaTareaDescripcion("");
-      setNuevaTareaTipoId("");
-      setNuevaTareaClienteId("");
+      setAviso("");
       setNuevaTareaAsignadoA("");
-      setNuevaTareaFechaLimite("");
-      setNuevaTareaForzar(false);
       await cargarDatos();
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -229,24 +216,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     }
   };
 
-  const handleCrearClienteAlVueloSubmit = async () => {
-    if (!clienteAlVueloNombre.trim()) return;
-    setGuardandoClienteAlVuelo(true);
-    try {
-      const nuevo = await api.adminPostCliente(clienteAlVueloNombre.trim());
-      mostrarAviso({ tipo: "exito", titulo: "Cliente creado", texto: `Se agregó "${nuevo.nombre}".` });
-      setClientes((prev) => [...prev, nuevo]);
-      setNuevaTareaClienteId(nuevo.id);
-      setModalCrearClienteAlVuelo(false);
-      setClienteAlVueloNombre("");
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "No se pudo crear cliente", texto: e.message || "Error al crear cliente." });
-    } finally {
-      setGuardandoClienteAlVuelo(false);
-    }
-  };
-
   const tareasPorRevisar = tareas.filter((t) => t.estado === "hecha");
   const tareasFiltradas = tareas.filter((t) => {
     if (filtroPersona && t.asignado_a !== filtroPersona) return false;
@@ -254,18 +223,8 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     return true;
   });
 
-  const tipoTrabajoSeleccionado = trabajos.find((t) => t.id === Number(nuevaTareaTipoId));
   const miembrosAprobados = miembros.filter((m) => m.estado === "aprobado" && !m.es_admin);
-  const miembrosConRol = tipoTrabajoSeleccionado?.rol_id
-    ? miembrosAprobados.filter((m) => m.roles?.some((r) => r.id === tipoTrabajoSeleccionado.rol_id))
-    : miembrosAprobados;
-  const miembrosSinRol = tipoTrabajoSeleccionado?.rol_id
-    ? miembrosAprobados.filter((m) => !m.roles?.some((r) => r.id === tipoTrabajoSeleccionado.rol_id))
-    : [];
-
-  const personaSeleccionadaTieneRol =
-    !tipoTrabajoSeleccionado?.rol_id ||
-    miembrosConRol.some((m) => m.id === nuevaTareaAsignadoA);
+  const personaSeleccionada = miembrosAprobados.find((m) => m.id === nuevaTareaAsignadoA);
 
   return (
     <div className={embedded ? "" : styles.container}>
@@ -282,7 +241,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               variante="primario"
               onClick={() => {
                 setModalNuevaTarea(true);
-                setNuevaTareaForzar(false);
               }}
             >
               <Plus size={15} style={{ marginRight: 6 }} />
@@ -298,7 +256,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
             variante="primario"
             onClick={() => {
               setModalNuevaTarea(true);
-              setNuevaTareaForzar(false);
             }}
           >
             <Plus size={15} style={{ marginRight: 6 }} />
@@ -348,7 +305,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                     </div>
 
                     <div className={styles.reviewTitulo}>{t.titulo}</div>
-                    {t.descripcion && (
+                    {t.descripcion && t.descripcion !== t.titulo && (
                       <div style={{ fontSize: 12, color: "var(--rc-texto-secundario)", whiteSpace: "pre-wrap" }}>
                         {t.descripcion}
                       </div>
@@ -446,10 +403,8 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                   <Tabla>
                     <thead>
                       <tr>
-                        <th>Título</th>
+                        <th>Título / Aviso</th>
                         <th>Persona</th>
-                        <th>Trabajo</th>
-                        <th>Cliente</th>
                         <th>Estado</th>
                         <th>Valor</th>
                         <th style={{ textAlign: "right" }}>Acción</th>
@@ -467,18 +422,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                             )}
                           </td>
                           <td>{t.asignado?.nombre || "—"}</td>
-                          <td>
-                            <Chip punto="azul">
-                              {t.tipo?.rol?.nombre || t.tipo?.nombre || "—"}
-                            </Chip>
-                          </td>
-                          <td>
-                            {t.cliente ? (
-                              <Chip punto="verde">{t.cliente.nombre}</Chip>
-                            ) : (
-                              <span style={{ color: "var(--rc-texto-tenue)", fontSize: 11 }}>—</span>
-                            )}
-                          </td>
                           <td>
                             <Estado
                               variante={
@@ -575,18 +518,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                         </Estado>
                       </div>
 
-                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                        <Chip punto="azul">
-                          {t.tipo?.rol?.nombre || t.tipo?.nombre || "—"}
-                        </Chip>
-                        {t.cliente && <Chip punto="verde">{t.cliente.nombre}</Chip>}
-                        {t.fecha_limite && (
-                          <span style={{ fontSize: 11, color: "var(--rc-texto-secundario)", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                            <Calendar size={11} /> {formatearFechaHora(t.fecha_limite)}
-                          </span>
-                        )}
-                      </div>
-
                       {t.estado === "aceptada" && t.precio_congelado != null && (
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--rc-verde-texto)" }}>
                           Valor congelado: $ {t.precio_congelado.toLocaleString("es-CO")}
@@ -641,13 +572,13 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL: NUEVA TAREA                                        */}
+      {/* MODAL: NUEVA TAREA (SIMPLIFICADO: SOLO AVISO Y PERSONA)    */}
       {/* ========================================================= */}
       {modalNuevaTarea && (
         <Modal
           abierto={true}
           titulo="Nueva tarea"
-          descripcion="Asigna una tarea a un miembro del equipo según su rol."
+          descripcion={personaSeleccionada ? `Asigna un aviso o tarea para ${personaSeleccionada.nombre}.` : "Asigna un aviso o tarea a un miembro del equipo."}
           onCerrar={() => setModalNuevaTarea(false)}
           accionPrimaria={
             <Boton
@@ -671,180 +602,27 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
           <div className={styles.modalForm}>
             <Campo
               como="select"
-              etiqueta="Tipo de trabajo *"
-              value={nuevaTareaTipoId}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-                const val = e.target.value === "" ? "" : Number(e.target.value);
-                setNuevaTareaTipoId(val);
-                setNuevaTareaForzar(false);
-              }}
-            >
-              <option value="">Selecciona un tipo de trabajo</option>
-              {trabajos
-                .filter((t) => t.activo)
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre} — {t.unidad === "minuto" ? `$ ${t.precio.toLocaleString("es-CO")} / min` : `$ ${t.precio.toLocaleString("es-CO")} / trabajo`}
-                  </option>
-                ))}
-            </Campo>
-
-            {/* Selector de Cliente con botón "Nuevo cliente" */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label className="rc-subtitulo">Cliente (opcional)</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClienteAlVueloNombre("");
-                    setModalCrearClienteAlVuelo(true);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--rc-azul-texto)",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 3,
-                  }}
-                >
-                  <Plus size={12} /> Nuevo cliente
-                </button>
-              </div>
-              <Campo
-                como="select"
-                value={nuevaTareaClienteId}
-                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-                  const val = e.target.value === "" ? "" : Number(e.target.value);
-                  setNuevaTareaClienteId(val);
-                }}
-              >
-                <option value="">Sin cliente (general)</option>
-                {clientes
-                  .filter((c) => c.activo)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-              </Campo>
-            </div>
-
-            <Campo
-              como="select"
               etiqueta="Asignar a *"
               value={nuevaTareaAsignadoA}
               onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
                 setNuevaTareaAsignadoA(e.target.value);
-                setNuevaTareaForzar(false);
               }}
             >
               <option value="">Selecciona un miembro del equipo</option>
-              {miembrosConRol.length > 0 && (
-                <optgroup label="Recomendados (tienen el rol de este trabajo)">
-                  {miembrosConRol.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nombre} ({m.correo})
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {miembrosSinRol.length > 0 && (
-                <optgroup label="Otros miembros (sin el rol asociado)">
-                  {miembrosSinRol.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nombre} (sin rol)
-                    </option>
-                  ))}
-                </optgroup>
-              )}
+              {miembrosAprobados.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nombre} ({m.correo})
+                </option>
+              ))}
             </Campo>
 
-            {nuevaTareaAsignadoA && !personaSeleccionadaTieneRol && (
-              <div className={styles.advertenciaRol}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, marginBottom: 4 }}>
-                  <AlertTriangle size={14} /> Esta persona no tiene el rol asignado
-                </div>
-                <div>
-                  El trabajo requiere el rol <strong>{tipoTrabajoSeleccionado?.rol?.nombre || "asociado"}</strong>.
-                  Para continuar de todos modos, marca la casilla abajo.
-                </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={nuevaTareaForzar}
-                    onChange={(e) => setNuevaTareaForzar(e.target.checked)}
-                  />
-                  <span>Asignar de todos modos</span>
-                </label>
-              </div>
-            )}
-
             <Campo
-              etiqueta="Título de la tarea *"
-              type="text"
-              placeholder="Ej. Grabar recorrido predio campestre Chía"
-              value={nuevaTareaTitulo}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setNuevaTareaTitulo(e.target.value)}
-            />
-
-            <Campo
-              etiqueta="Descripción (opcional)"
+              etiqueta="Aviso *"
               como="textarea"
-              filas={3}
-              placeholder="Detalles sobre el formato, entregables, instrucciones específicas..."
-              value={nuevaTareaDescripcion}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setNuevaTareaDescripcion(e.target.value)}
-            />
-
-            <Campo
-              etiqueta="Fecha límite (opcional)"
-              type="date"
-              value={nuevaTareaFechaLimite}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setNuevaTareaFechaLimite(e.target.value)}
-            />
-          </div>
-        </Modal>
-      )}
-
-      {/* ========================================================= */}
-      {/* MODAL: CREAR CLIENTE AL VUELO                             */}
-      {/* ========================================================= */}
-      {modalCrearClienteAlVuelo && (
-        <Modal
-          abierto={true}
-          titulo="Nuevo cliente"
-          descripcion="Agrega un cliente al vuelo para etiquetar esta tarea."
-          onCerrar={() => setModalCrearClienteAlVuelo(false)}
-          accionPrimaria={
-            <Boton
-              variante="primario"
-              cargando={guardandoClienteAlVuelo}
-              onClick={handleCrearClienteAlVueloSubmit}
-            >
-              Crear y seleccionar
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setModalCrearClienteAlVuelo(false)}
-              disabled={guardandoClienteAlVuelo}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <Campo
-              etiqueta="Nombre del cliente *"
-              type="text"
-              placeholder="Ej. Inmobiliaria RB Raíces"
-              value={clienteAlVueloNombre}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setClienteAlVueloNombre(e.target.value)}
+              filas={4}
+              placeholder="Escribe el aviso o detalles de la tarea a realizar..."
+              value={aviso}
+              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setAviso(e.target.value)}
             />
           </div>
         </Modal>
@@ -885,11 +663,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
             <div style={{ fontSize: 13, color: "var(--rc-texto)" }}>
               <strong>Trabajador:</strong> {modalAceptarTarea.asignado?.nombre || "—"}
             </div>
-            {modalAceptarTarea.cliente && (
-              <div style={{ fontSize: 13, color: "var(--rc-texto)" }}>
-                <strong>Cliente:</strong> {modalAceptarTarea.cliente.nombre}
-              </div>
-            )}
             {modalAceptarTarea.nota_persona && (
               <div className={styles.reviewNota}>
                 <strong>Nota de la persona:</strong> {modalAceptarTarea.nota_persona}

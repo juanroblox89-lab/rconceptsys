@@ -32,6 +32,7 @@ textarea {
   color: inherit;
   background: none;
   border: none;
+  outline: none;
 }
 
 button {

@@ -71,15 +71,26 @@
   }
 }
 
-/* Foco visible unificado para navegación por teclado (los controles .rc-* usan su propia sombra de foco) */
+/* Foco visible unificado para navegación por teclado (solo enlaces y botones; los campos de formulario usan su propia elevación neumórfica) */
 a:focus-visible,
 button:focus-visible,
-input:focus-visible:not(.rc-input),
-select:focus-visible:not(.rc-select),
-textarea:focus-visible:not(.rc-textarea),
 [tabindex]:focus-visible {
   outline: 2px solid var(--rc-azul);
   outline-offset: 2px;
+}
+
+/* Eliminar outline nativo y forzado en todos los inputs, selects y textareas */
+input,
+select,
+textarea,
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
 }
 
 /* Interacciones táctiles móviles */
