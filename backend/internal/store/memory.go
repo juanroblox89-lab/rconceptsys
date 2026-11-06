@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 type MemoryStore struct {
@@ -59,9 +60,9 @@ func NewMemoryStore() *MemoryStore {
 	rolEd := 2
 	rolSub := 3
 	ahora := time.Now()
-	m.tiposTrabajo[1] = &TipoTrabajo{ID: 1, Clave: "grabacion_video", Nombre: "Grabación de video", RolID: &rolCam, Precio: 0, Unidad: "minuto", Activo: true, Orden: 1, CreadoEn: ahora}
-	m.tiposTrabajo[2] = &TipoTrabajo{ID: 2, Clave: "edicion_video", Nombre: "Edición de video", RolID: &rolEd, Precio: 0, Unidad: "trabajo", Activo: true, Orden: 2, CreadoEn: ahora}
-	m.tiposTrabajo[3] = &TipoTrabajo{ID: 3, Clave: "subida_video", Nombre: "Subir video", RolID: &rolSub, Precio: 0, Unidad: "trabajo", Activo: true, Orden: 3, CreadoEn: ahora}
+	m.tiposTrabajo[1] = &TipoTrabajo{ID: 1, Clave: "grabacion_video", Nombre: "Grabación de video", RolID: &rolCam, Precio: 1500, Unidad: "minuto", Activo: true, Orden: 1, CreadoEn: ahora}
+	m.tiposTrabajo[2] = &TipoTrabajo{ID: 2, Clave: "edicion_video", Nombre: "Edición de video", RolID: &rolEd, Precio: 75000, Unidad: "trabajo", Activo: true, Orden: 2, CreadoEn: ahora}
+	m.tiposTrabajo[3] = &TipoTrabajo{ID: 3, Clave: "subida_video", Nombre: "Subir video", RolID: &rolSub, Precio: 25000, Unidad: "trabajo", Activo: true, Orden: 3, CreadoEn: ahora}
 
 	return m
 }
@@ -778,12 +779,26 @@ func (m *MemoryStore) clonarTareaLocked(t *Tarea) *Tarea {
 	return &cp
 }
 
+// ContarLetrasDigitos cuenta letras y dígitos (unicode) de un texto.
+func ContarLetrasDigitos(s string) int {
+	n := 0
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			n++
+		}
+	}
+	return n
+}
+
 func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if t == nil || strings.TrimSpace(t.Titulo) == "" || len(t.Titulo) > 120 {
 		return nil, ErrValidation
+	}
+	if ContarLetrasDigitos(t.Titulo) < 3 {
+		return nil, fmt.Errorf("%w: el aviso debe tener al menos 3 letras o números", ErrValidation)
 	}
 	if t.Descripcion != nil && len(*t.Descripcion) > 1000 {
 		return nil, ErrValidation
@@ -886,7 +901,7 @@ func (m *MemoryStore) ContarTareasPorRevisar(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int) (*Tarea, error) {
+func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int, enlaceMedios *string) (*Tarea, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -916,6 +931,15 @@ func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID
 			return nil, ErrValidation
 		}
 		t.NotaPersona = nota
+	}
+
+	if enlaceMedios != nil {
+		limpio := strings.TrimSpace(*enlaceMedios)
+		if limpio == "" {
+			t.EnlaceMedios = nil
+		} else {
+			t.EnlaceMedios = &limpio
+		}
 	}
 
 	ahora := time.Now()

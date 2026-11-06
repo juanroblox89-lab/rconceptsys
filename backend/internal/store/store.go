@@ -105,6 +105,7 @@ type Tarea struct {
 	Estado                  EstadoTarea  `json:"estado"`
 	FechaLimite             *string      `json:"fecha_limite,omitempty"` // YYYY-MM-DD
 	NotaPersona             *string      `json:"nota_persona,omitempty"`
+	EnlaceMedios            *string      `json:"enlace_medios,omitempty"`
 	MotivoRechazo           *string      `json:"motivo_rechazo,omitempty"`
 	Cantidad                *int         `json:"cantidad,omitempty"`
 	CantidadAceptada        *int         `json:"cantidad_aceptada,omitempty"`
@@ -313,7 +314,7 @@ type Store interface {
 	ObtenerTareaPorID(ctx context.Context, id int64) (*Tarea, error)
 	ListarTareas(ctx context.Context, filtro FiltroTareas) ([]*Tarea, error)
 	ContarTareasPorRevisar(ctx context.Context) (int, error)
-	MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int) (*Tarea, error)
+	MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int, enlaceMedios *string) (*Tarea, error)
 	AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*Tarea, error)
 	RechazarTarea(ctx context.Context, id int64, adminID string, motivo string) (*Tarea, error)
 	CancelarTarea(ctx context.Context, id int64, adminID string) (*Tarea, error)

@@ -348,7 +348,7 @@ func TestF3EstadisticasYo(t *testing.T) {
 	// Crear y aceptar 2 tareas para editor y 1 para camarografo
 	// Tarea 1 Editor: Edicion (50.000)
 	t1 := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 2, "asignado_a": editorID, "titulo": "T1",
+		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea editor uno",
 	})
 	var tr1 store.Tarea
 	_ = json.Unmarshal(t1.Body.Bytes(), &tr1)
@@ -357,7 +357,7 @@ func TestF3EstadisticasYo(t *testing.T) {
 
 	// Tarea 2 Editor: Edicion (50.000)
 	t2 := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 2, "asignado_a": editorID, "titulo": "T2",
+		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea editor dos",
 	})
 	var tr2 store.Tarea
 	_ = json.Unmarshal(t2.Body.Bytes(), &tr2)
@@ -366,7 +366,7 @@ func TestF3EstadisticasYo(t *testing.T) {
 
 	// Tarea Camarógrafo: Grabacion 60 min (1500 * 60 = 90.000)
 	tc := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 1, "asignado_a": camID, "titulo": "TC",
+		"tipo_id": 1, "asignado_a": camID, "titulo": "Tarea camara uno",
 	})
 	var trc store.Tarea
 	_ = json.Unmarshal(tc.Body.Bytes(), &trc)
@@ -421,25 +421,25 @@ func TestF3EstadisticasAdmin(t *testing.T) {
 	// Crear y aceptar tareas:
 	// Tarea 1: Cam, Grabación 100 min (150.000 COP), con Cliente Alfa
 	t1, _ := s.CrearTarea(context.Background(), &store.Tarea{
-		TipoID: 1, AsignadoA: camID, ClienteID: &cliA.ID, Titulo: "T1", CreadoPor: adminID,
+		TipoID: 1, AsignadoA: camID, ClienteID: &cliA.ID, Titulo: "Tarea numero uno", CreadoPor: adminID,
 	})
 	cant1 := 100
-	_, _ = s.MarcarTareaHecha(context.Background(), t1.ID, camID, nil, &cant1)
+	_, _ = s.MarcarTareaHecha(context.Background(), t1.ID, camID, nil, &cant1, nil)
 	_, _ = s.AceptarTarea(context.Background(), t1.ID, adminID, nil)
 
 	// Tarea 2: Editor, Edición (50.000 COP), con Cliente Beta
 	t2, _ := s.CrearTarea(context.Background(), &store.Tarea{
-		TipoID: 2, AsignadoA: editorID, ClienteID: &cliB.ID, Titulo: "T2", CreadoPor: adminID,
+		TipoID: 2, AsignadoA: editorID, ClienteID: &cliB.ID, Titulo: "Tarea numero dos", CreadoPor: adminID,
 	})
-	_, _ = s.MarcarTareaHecha(context.Background(), t2.ID, editorID, nil, nil)
+	_, _ = s.MarcarTareaHecha(context.Background(), t2.ID, editorID, nil, nil, nil)
 	_, _ = s.AceptarTarea(context.Background(), t2.ID, adminID, nil)
 
 	// Tarea 3: Cam, Grabación 50 min (75.000 COP), SIN cliente
 	t3, _ := s.CrearTarea(context.Background(), &store.Tarea{
-		TipoID: 1, AsignadoA: camID, ClienteID: nil, Titulo: "T3", CreadoPor: adminID,
+		TipoID: 1, AsignadoA: camID, ClienteID: nil, Titulo: "Tarea numero tres", CreadoPor: adminID,
 	})
 	cant3 := 50
-	_, _ = s.MarcarTareaHecha(context.Background(), t3.ID, camID, nil, &cant3)
+	_, _ = s.MarcarTareaHecha(context.Background(), t3.ID, camID, nil, &cant3, nil)
 	_, _ = s.AceptarTarea(context.Background(), t3.ID, adminID, nil)
 
 	// Consultar estadísticas de admin para hoy
@@ -585,7 +585,7 @@ func TestF3ZonaBogotaBordeFecha(t *testing.T) {
 		t.Fatalf("Error al crear tarea: %v", err)
 	}
 
-	_, err = s.MarcarTareaHecha(context.Background(), t1.ID, editorID, nil, nil)
+	_, err = s.MarcarTareaHecha(context.Background(), t1.ID, editorID, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Error al marcar hecha: %v", err)
 	}

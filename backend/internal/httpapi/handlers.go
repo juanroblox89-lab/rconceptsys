@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -734,7 +735,7 @@ func (a *API) handleGetTareas(w http.ResponseWriter, r *http.Request) {
 	}
 	estadoQuery := strings.TrimSpace(r.URL.Query().Get("estado"))
 	if estadoQuery != "" {
-		st := store.EstadoTarea(estadoQuery)
+		st := store.EstadoTarea(normalizarEstadoTarea(estadoQuery))
 		filtro.Estado = &st
 	}
 
@@ -747,6 +748,40 @@ func (a *API) handleGetTareas(w http.ResponseWriter, r *http.Request) {
 		tareas = []*store.Tarea{}
 	}
 	ResponderJSON(w, http.StatusOK, tareas)
+}
+
+// validarEnlaceDrive normaliza y valida un enlace de Google Drive. Devuelve
+// (normalizado, ok). Vacío => (nil, true) permitido.
+func validarEnlaceDrive(enlace *string) (*string, bool) {
+	if enlace == nil {
+		return nil, true
+	}
+	limpio := strings.TrimSpace(*enlace)
+	if limpio == "" {
+		return nil, true
+	}
+	if len(limpio) > 500 {
+		return nil, false
+	}
+	u, err := url.Parse(limpio)
+	if err != nil || u.Scheme != "https" {
+		return nil, false
+	}
+	host := strings.ToLower(u.Hostname())
+	switch host {
+	case "drive.google.com", "docs.google.com", "drive.usercontent.google.com":
+	default:
+		return nil, false
+	}
+	return &limpio, true
+}
+
+// normalizarEstadoTarea mapea alias de estado de la URL al estado real.
+func normalizarEstadoTarea(estado string) string {
+	if estado == "por_revisar" {
+		return "hecha"
+	}
+	return estado
 }
 
 // POST /api/tareas/{id}/hecha
@@ -766,12 +801,19 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
 	var body struct {
-		Nota     *string `json:"nota"`
-		Cantidad *int    `json:"cantidad"`
+		Nota         *string `json:"nota"`
+		Cantidad     *int    `json:"cantidad"`
+		EnlaceMedios *string `json:"enlace_medios"`
 	}
 	// El cuerpo es opcional
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+		return
+	}
+
+	enlacePtr, okEnlace := validarEnlaceDrive(body.EnlaceMedios)
+	if !okEnlace {
+		ResponderError(w, http.StatusBadRequest, "enlace_invalido", "El enlace debe ser una URL https de Google Drive (drive.google.com, docs.google.com o drive.usercontent.google.com) y tener máximo 500 caracteres.")
 		return
 	}
 
@@ -816,7 +858,7 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	actualizada, err := a.Store.MarcarTareaHecha(r.Context(), id, yo.ID, notaPtr, body.Cantidad)
+	actualizada, err := a.Store.MarcarTareaHecha(r.Context(), id, yo.ID, notaPtr, body.Cantidad, enlacePtr)
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_marcar_hecha", "No se pudo marcar la tarea como hecha.")
 		return
@@ -1033,7 +1075,7 @@ func (a *API) handleAdminGetTareas(w http.ResponseWriter, r *http.Request) {
 	filtro := store.FiltroTareas{}
 	estadoQuery := strings.TrimSpace(r.URL.Query().Get("estado"))
 	if estadoQuery != "" {
-		st := store.EstadoTarea(estadoQuery)
+		st := store.EstadoTarea(normalizarEstadoTarea(estadoQuery))
 		filtro.Estado = &st
 	}
 	personaQuery := strings.TrimSpace(r.URL.Query().Get("persona"))
@@ -1088,6 +1130,10 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 	titulo := strings.TrimSpace(req.Titulo)
 	if titulo == "" || len(titulo) > 120 {
 		ResponderError(w, http.StatusBadRequest, "titulo_invalido", "El título es obligatorio y debe tener entre 1 y 120 caracteres.")
+		return
+	}
+	if store.ContarLetrasDigitos(titulo) < 3 {
+		ResponderError(w, http.StatusBadRequest, "aviso_invalido", "El aviso debe tener al menos 3 letras o números. Escribe un aviso más completo.")
 		return
 	}
 

@@ -89,6 +89,7 @@ type dbTarea struct {
 	Estado                  string         `json:"estado"`
 	FechaLimite             *string        `json:"fecha_limite"`
 	NotaPersona             *string        `json:"nota_persona"`
+	EnlaceMedios            *string        `json:"enlace_medios"`
 	MotivoRechazo           *string        `json:"motivo_rechazo"`
 	Cantidad                *int           `json:"cantidad"`
 	CantidadAceptada        *int           `json:"cantidad_aceptada"`
@@ -657,6 +658,7 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 		Estado:                  store.EstadoTarea(dt.Estado),
 		FechaLimite:             dt.FechaLimite,
 		NotaPersona:             dt.NotaPersona,
+		EnlaceMedios:            dt.EnlaceMedios,
 		MotivoRechazo:           dt.MotivoRechazo,
 		Cantidad:                dt.Cantidad,
 		CantidadAceptada:        dt.CantidadAceptada,
@@ -835,7 +837,7 @@ func (s *SupabaseStore) ContarTareasPorRevisar(ctx context.Context) (int, error)
 	return len(rows), nil
 }
 
-func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int) (*store.Tarea, error) {
+func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int, enlaceMedios *string) (*store.Tarea, error) {
 	tarea, err := s.ObtenerTareaPorID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -852,6 +854,12 @@ func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignado
 		"hecha_en":       time.Now().Format(time.RFC3339),
 		"nota_persona":   nota,
 		"motivo_rechazo": nil,
+	}
+	if enlaceMedios != nil {
+		limpio := strings.TrimSpace(*enlaceMedios)
+		if limpio != "" {
+			payload["enlace_medios"] = limpio
+		}
 	}
 
 	if tarea.Tipo != nil && tarea.Tipo.Unidad == "minuto" {
