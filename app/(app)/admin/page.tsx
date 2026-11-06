@@ -37,6 +37,7 @@ import { Interruptor } from "@/components/ui/Interruptor";
 import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
+import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useAviso } from "@/components/ui/Aviso";
 import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
 import styles from "./admin.module.css";
@@ -1164,6 +1165,12 @@ export default function AdminPage() {
                           </div>
                         )}
 
+                        {t.enlace_medios && (
+                          <div style={{ marginTop: "var(--rc-esp-8)" }}>
+                            <EnlaceDrive enlace={t.enlace_medios} />
+                          </div>
+                        )}
+
                         <div className={styles.reviewValor}>
                           <span>Valor estimado a congelar:</span>
                           <span className={styles.reviewValorMonto}>
@@ -1258,6 +1265,11 @@ export default function AdminPage() {
                             <TablaFila key={t.id}>
                               <td>
                                 <strong>{t.titulo}</strong>
+                                {t.enlace_medios && (
+                                  <div style={{ marginTop: 4 }}>
+                                    <EnlaceDrive enlace={t.enlace_medios} />
+                                  </div>
+                                )}
                                 {t.fecha_limite && (
                                   <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)" }}>
                                     Límite: {t.fecha_limite}
@@ -1331,6 +1343,11 @@ export default function AdminPage() {
                             <span>Asignado a: <strong>{t.asignado?.nombre || "—"}</strong> ({t.tipo?.nombre})</span>
                             {t.cliente && <Chip punto="verde">{t.cliente.nombre}</Chip>}
                           </div>
+                          {t.enlace_medios && (
+                            <div>
+                              <EnlaceDrive enlace={t.enlace_medios} />
+                            </div>
+                          )}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <span className={styles.montoVerde}>
                               {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
