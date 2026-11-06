@@ -60,6 +60,7 @@
   line-height: var(--rc-lh-titulo-seccion);
   font-weight: var(--rc-fw-semibold);
   color: var(--rc-gris-900);
+  overflow-wrap: anywhere;
 }
 
 .roles {

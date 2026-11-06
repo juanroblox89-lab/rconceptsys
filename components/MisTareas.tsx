@@ -10,6 +10,7 @@ import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
+import { EnlaceDrive, errorEnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useAviso } from "@/components/ui/Aviso";
 import styles from "@/app/(app)/tareas/tareas.module.css";
 
@@ -18,6 +19,7 @@ export function MisTareas() {
   const [cargando, setCargando] = useState(true);
   const [modalTarea, setModalTarea] = useState<Tarea | null>(null);
   const [nota, setNota] = useState("");
+  const [enlace, setEnlace] = useState("");
   const [minutos, setMinutos] = useState<string>("");
   const [enviando, setEnviando] = useState(false);
   const { mostrarAviso } = useAviso();
@@ -64,17 +66,26 @@ export function MisTareas() {
   const abrirModalHecha = (t: Tarea) => {
     setModalTarea(t);
     setNota(t.nota_persona || "");
+    setEnlace(t.enlace_medios || "");
     setMinutos(t.cantidad ? String(t.cantidad) : "");
   };
 
   const cerrarModal = () => {
     setModalTarea(null);
     setNota("");
+    setEnlace("");
     setMinutos("");
   };
 
+  const errorEnlace = enlace.trim() ? errorEnlaceDrive(enlace) : null;
+
   const handleMarcarHecha = async () => {
     if (!modalTarea) return;
+    const errEnlace = errorEnlaceDrive(enlace);
+    if (errEnlace) {
+      mostrarAviso({ tipo: "error", titulo: "Enlace no válido", texto: errEnlace });
+      return;
+    }
     const esMinuto = modalTarea.tipo?.unidad === "minuto";
     let cantNum: number | undefined = undefined;
 
@@ -93,7 +104,7 @@ export function MisTareas() {
 
     setEnviando(true);
     try {
-      await api.postTareaHecha(modalTarea.id, nota.trim() || undefined, cantNum);
+      await api.postTareaHecha(modalTarea.id, nota.trim() || undefined, cantNum, enlace.trim() || undefined);
       mostrarAviso({
         tipo: "exito",
         titulo: "Tarea completada",
@@ -271,12 +282,25 @@ export function MisTareas() {
               etiqueta="Nota opcional (hasta 500 caracteres)"
               como="textarea"
               filas={3}
-              placeholder="Ej. Enlace de Drive, detalles de la entrega o anotaciones..."
+              placeholder="Ej. Detalles de la entrega o anotaciones..."
               value={nota}
               onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setNota(e.target.value.slice(0, 500))}
               disabled={enviando}
             />
             <div className={styles.charCounter}>{nota.length} / 500</div>
+            <Campo
+              etiqueta="Enlace de Drive (opcional)"
+              type="url"
+              inputMode="url"
+              placeholder="https://drive.google.com/..."
+              value={enlace}
+              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setEnlace(e.target.value.slice(0, 500))}
+              error={errorEnlace ?? undefined}
+              disabled={enviando}
+            />
+            <div style={{ fontSize: "var(--rc-fs-etiqueta)", color: "var(--rc-texto-secundario)", marginTop: "-6px" }}>
+              Comparte la carpeta con permiso de lector y pega aquí el enlace.
+            </div>
           </div>
         </Modal>
       )}
@@ -332,6 +356,12 @@ function renderTarjeta(
       {t.nota_persona && t.estado !== "pendiente" && (
         <div className={styles.notaPersonaBox}>
           <strong>Tu nota:</strong> {t.nota_persona}
+        </div>
+      )}
+
+      {t.enlace_medios && (
+        <div style={{ marginTop: "var(--rc-esp-8)" }}>
+          <EnlaceDrive enlace={t.enlace_medios} />
         </div>
       )}
 

@@ -217,10 +217,10 @@ export const api = {
     if (estado) q.set('estado', estado);
     return fetchApi<Tarea[]>(`/api/tareas?${q.toString()}`);
   },
-  postTareaHecha: (id: number, nota?: string, cantidad?: number) =>
+  postTareaHecha: (id: number, nota?: string, cantidad?: number, enlaceMedios?: string) =>
     fetchApi<Tarea>(`/api/tareas/${id}/hecha`, {
       method: 'POST',
-      body: JSON.stringify({ nota, cantidad }),
+      body: JSON.stringify({ nota, cantidad, enlace_medios: enlaceMedios }),
     }),
   getFacturaMia: () => fetchApi<FacturaMiaRespuesta>('/api/facturas/mia'),
 

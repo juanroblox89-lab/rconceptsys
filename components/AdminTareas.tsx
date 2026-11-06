@@ -20,11 +20,16 @@ import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
+import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useAviso } from "@/components/ui/Aviso";
 import styles from "@/app/(app)/admin/admin.module.css";
 
 export interface AdminTareasProps {
   embedded?: boolean;
+}
+
+function contarLetrasDigitos(texto: string): number {
+  return (texto.match(/[\p{L}\p{N}]/gu) || []).length;
 }
 
 export function AdminTareas({ embedded = false }: AdminTareasProps) {
@@ -117,6 +122,10 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     const textoAviso = aviso.trim();
     if (!textoAviso) {
       mostrarAviso({ tipo: "error", titulo: "Aviso requerido", texto: "Escribe el aviso de la tarea." });
+      return;
+    }
+    if (contarLetrasDigitos(textoAviso) < 3) {
+      mostrarAviso({ tipo: "error", titulo: "Aviso demasiado corto", texto: "El aviso debe tener al menos 3 letras o números. Escribe un aviso más completo." });
       return;
     }
 
@@ -225,6 +234,9 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
 
   const miembrosAprobados = miembros.filter((m) => m.estado === "aprobado" && !m.es_admin);
   const personaSeleccionada = miembrosAprobados.find((m) => m.id === nuevaTareaAsignadoA);
+  const avisoError = aviso.trim() && contarLetrasDigitos(aviso) < 3
+    ? "El aviso debe tener al menos 3 letras o números."
+    : undefined;
 
   return (
     <div className={embedded ? "" : styles.container}>
@@ -323,6 +335,12 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                       </div>
                     )}
 
+                    {t.enlace_medios && (
+                      <div style={{ marginTop: "var(--rc-esp-8)" }}>
+                        <EnlaceDrive enlace={t.enlace_medios} />
+                      </div>
+                    )}
+
                     <div className={styles.reviewValor}>
                       <span>Valor estimado a congelar:</span>
                       <span className={styles.reviewValorMonto}>
@@ -415,6 +433,11 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                         <TablaFila key={t.id}>
                           <td>
                             <div style={{ fontWeight: 600 }}>{t.titulo}</div>
+                            {t.enlace_medios && (
+                              <div style={{ marginTop: 4 }}>
+                                <EnlaceDrive enlace={t.enlace_medios} />
+                              </div>
+                            )}
                             {t.fecha_limite && (
                               <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)", display: "flex", alignItems: "center", gap: 4 }}>
                                 <Calendar size={11} /> Entrega: {formatearFechaHora(t.fecha_limite)}
@@ -517,6 +540,12 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                           {t.estado === "hecha" ? "por revisar" : t.estado}
                         </Estado>
                       </div>
+
+                      {t.enlace_medios && (
+                        <div>
+                          <EnlaceDrive enlace={t.enlace_medios} />
+                        </div>
+                      )}
 
                       {t.estado === "aceptada" && t.precio_congelado != null && (
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--rc-verde-texto)" }}>
@@ -622,8 +651,12 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               filas={4}
               placeholder="Escribe el aviso o detalles de la tarea a realizar..."
               value={aviso}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setAviso(e.target.value)}
+              error={avisoError}
+              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setAviso(e.target.value.slice(0, 1000))}
             />
+            <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)", textAlign: "right" }}>
+              {aviso.length} / 1000
+            </div>
           </div>
         </Modal>
       )}

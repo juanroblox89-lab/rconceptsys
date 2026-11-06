@@ -271,6 +271,12 @@
 }
 
 @media (max-width: 480px) {
+  .avatarSection {
+    flex-wrap: wrap;
+  }
+  .avatarActions {
+    width: 100%;
+  }
   .nameRow {
     flex-direction: column;
     align-items: stretch;

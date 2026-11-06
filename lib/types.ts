@@ -84,6 +84,7 @@ export interface Tarea {
   estado: EstadoTarea;
   fecha_limite?: string | null;
   nota_persona?: string | null;
+  enlace_medios?: string | null;
   motivo_rechazo?: string | null;
   cantidad?: number | null;
   cantidad_aceptada?: number | null;
