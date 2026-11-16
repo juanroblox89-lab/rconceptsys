@@ -1,0 +1,85 @@
+/* Bloque de avisos push en Mi perfil. */
+
+.caja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  padding: var(--rc-esp-12);
+  border-radius: var(--rc-radio-md);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
+}
+
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--rc-esp-8);
+}
+
+.icono {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-gris-50);
+  color: var(--rc-icono);
+}
+
+.textos {
+  min-width: 0;
+}
+
+.titulo {
+  font-size: var(--rc-fs-cuerpo);
+  font-weight: var(--rc-fw-semibold);
+  color: var(--rc-gris-900);
+}
+
+.descripcion {
+  font-size: var(--rc-fs-secundario);
+  line-height: var(--rc-lh-secundario);
+  color: var(--rc-texto-secundario);
+}
+
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-8);
+  flex-wrap: wrap;
+}
+
+.estadoActivo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rc-esp-4);
+  padding: 2px var(--rc-esp-8);
+  border-radius: var(--rc-radio-pildora);
+  background: var(--rc-verde-suave);
+  color: var(--rc-verde-texto);
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-semibold);
+}
+
+.nota {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto-secundario);
+}
+
+.nota code {
+  font-size: var(--rc-fs-micro);
+  background: var(--rc-gris-50);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.exito {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-verde-texto);
+}
+
+.error {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-rojo-texto);
+}

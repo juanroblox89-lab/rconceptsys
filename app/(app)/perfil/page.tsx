@@ -9,6 +9,7 @@ import { Boton } from "@/components/ui/Boton";
 import { Chip } from "@/components/ui/Chip";
 import { Aviso, useAviso } from "@/components/ui/Aviso";
 import { TrabajosHechos } from "@/components/TrabajosHechos";
+import { AvisosPush } from "@/components/AvisosPush";
 import styles from "./perfil.module.css";
 
 export default function MiPerfilPage() {
@@ -245,6 +246,9 @@ export default function MiPerfilPage() {
           </div>
         </form>
       </div>
+
+      {/* Avisos push (F5) */}
+      <AvisosPush />
 
       {/* Tarjeta de Trabajos Hechos (F3 / F3C) */}
       <TrabajosHechos modo={{ tipo: "yo" }} />
