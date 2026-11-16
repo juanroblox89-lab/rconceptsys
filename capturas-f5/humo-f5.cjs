@@ -1,4 +1,3 @@
-/* eslint-disable */
 const API = 'http://127.0.0.1:8311';
 const A = { 'X-Demo-User': 'admin-1', 'Content-Type': 'application/json' };
 const C = { 'X-Demo-User': 'cam-1', 'Content-Type': 'application/json' };
