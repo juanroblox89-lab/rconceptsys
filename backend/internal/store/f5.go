@@ -195,6 +195,7 @@ type StoreF5 interface {
 
 	// Chat con adjuntos
 	GuardarAdjuntoChat(ctx context.Context, autorID, tipo, nombre, mime string, tamano int64, duracionSeg *int, datos []byte) (*ChatAdjunto, error)
+	GuardarAdjuntoDrive(ctx context.Context, autorID, nombre, url string) (*ChatAdjunto, error)
 	ObtenerAdjuntoChat(ctx context.Context, id int64) (*ChatAdjunto, error)
 	LeerArchivoAdjunto(ctx context.Context, id int64) ([]byte, error)
 	EnlazarAdjuntosMensaje(ctx context.Context, mensajeID int64, autorID string, ids []int64) ([]*ChatAdjunto, error)

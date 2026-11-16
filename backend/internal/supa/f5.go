@@ -483,6 +483,36 @@ func (s *SupabaseStore) GuardarAdjuntoChat(ctx context.Context, autorID, tipo, n
 	return convertirAdjunto(&rows[0]), nil
 }
 
+// GuardarAdjuntoDrive registra una carpeta de Drive compartida en el chat.
+func (s *SupabaseStore) GuardarAdjuntoDrive(ctx context.Context, autorID, nombre, enlaceDrive string) (*store.ChatAdjunto, error) {
+	limpio := strings.TrimSpace(nombre)
+	if len([]rune(limpio)) < 1 || len([]rune(limpio)) > 200 {
+		return nil, fmt.Errorf("%w: el nombre de la carpeta debe tener entre 1 y 200 caracteres", store.ErrValidation)
+	}
+	enlace := strings.TrimSpace(enlaceDrive)
+	if len(enlace) < 10 || len(enlace) > 800 {
+		return nil, fmt.Errorf("%w: el enlace de Drive no es válido", store.ErrValidation)
+	}
+	payload := map[string]any{
+		"autor_id":    autorID,
+		"tipo":        store.AdjuntoDrive,
+		"nombre":      limpio,
+		"mime":        "application/vnd.google-apps.folder",
+		"tamano":      0,
+		"url_externa": enlace,
+	}
+	q := url.Values{}
+	q.Set("select", "*")
+	var rows []dbAdjunto
+	if err := s.client.REST(ctx, "POST", "chat_adjuntos", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrValidation
+	}
+	return convertirAdjunto(&rows[0]), nil
+}
+
 // sanitizarNombre deja solo caracteres seguros para una ruta de Storage.
 func sanitizarNombre(nombre string) string {
 	limpio := strings.Map(func(r rune) rune {

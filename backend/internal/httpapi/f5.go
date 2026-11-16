@@ -122,6 +122,15 @@ func (a *API) handleAdminDeleteEnlaceEquipo(w http.ResponseWriter, r *http.Reque
 
 // ---------- Chat con adjuntos ----------
 
+// enlaceDriveValido normaliza un enlace de Drive con las mismas reglas de F4.
+func enlaceDriveValido(enlace string) (string, bool) {
+	limpio, ok := validarEnlaceDrive(&enlace)
+	if !ok || limpio == nil {
+		return "", false
+	}
+	return *limpio, true
+}
+
 const maxAdjuntoChat = 20 * 1024 * 1024 // 20 MB por archivo
 
 // tipoDeMime decide el tipo de adjunto a partir del MIME real del archivo.
@@ -149,6 +158,7 @@ func tipoDeMime(mime string) (string, bool) {
 }
 
 // POST /api/chat/adjuntos (multipart: archivo, duracion_seg)
+// o JSON {nombre, url} para compartir una carpeta de Drive.
 func (a *API) handlePostChatAdjunto(w http.ResponseWriter, r *http.Request) {
 	yo := a.usuarioActual(r)
 	if yo == nil {
@@ -157,6 +167,30 @@ func (a *API) handlePostChatAdjunto(w http.ResponseWriter, r *http.Request) {
 	}
 	if !a.ChatLimiter.Permitir("adjunto:" + yo.ID) {
 		ResponderError(w, http.StatusTooManyRequests, "limite_archivos", "Has subido muchos archivos seguidos. Espera un momento.")
+		return
+	}
+
+	// Carpeta de Drive: no se sube nada, solo se guarda el enlace.
+	if strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
+		var req struct {
+			Nombre string `json:"nombre"`
+			URL    string `json:"url"`
+		}
+		if err := leerJSONCuerpo(r, 1024*8, &req); err != nil {
+			ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
+			return
+		}
+		enlace, ok := enlaceDriveValido(req.URL)
+		if !ok {
+			ResponderError(w, http.StatusBadRequest, "enlace_invalido", "El enlace debe ser https de Google Drive (drive.google.com o docs.google.com).")
+			return
+		}
+		adjunto, err := a.Store.GuardarAdjuntoDrive(r.Context(), yo.ID, req.Nombre, enlace)
+		if err != nil {
+			ResponderError(w, http.StatusBadRequest, "adjunto_invalido", err.Error())
+			return
+		}
+		ResponderJSON(w, http.StatusCreated, adjunto)
 		return
 	}
 

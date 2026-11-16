@@ -213,6 +213,39 @@ func (m *MemoryStore) GuardarAdjuntoChat(ctx context.Context, autorID, tipo, nom
 	return &copia, nil
 }
 
+// GuardarAdjuntoDrive registra una carpeta de Drive compartida en el chat.
+func (m *MemoryStore) GuardarAdjuntoDrive(ctx context.Context, autorID, nombre, url string) (*ChatAdjunto, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.perfiles[autorID]; !ok {
+		return nil, ErrNotFound
+	}
+	limpio := strings.TrimSpace(nombre)
+	if len([]rune(limpio)) < 1 || len([]rune(limpio)) > 200 {
+		return nil, fmt.Errorf("%w: el nombre de la carpeta debe tener entre 1 y 200 caracteres", ErrValidation)
+	}
+	enlace := strings.TrimSpace(url)
+	if len(enlace) < 10 || len(enlace) > 800 {
+		return nil, fmt.Errorf("%w: el enlace de Drive no es válido", ErrValidation)
+	}
+
+	id := m.nextAdjuntoID
+	m.nextAdjuntoID++
+	a := &ChatAdjunto{
+		ID:         id,
+		AutorID:    autorID,
+		Tipo:       AdjuntoDrive,
+		Nombre:     limpio,
+		Mime:       "application/vnd.google-apps.folder",
+		URLExterna: &enlace,
+		CreadoEn:   time.Now(),
+	}
+	m.adjuntos[id] = a
+	copia := *a
+	return &copia, nil
+}
+
 func (m *MemoryStore) ObtenerAdjuntoChat(ctx context.Context, id int64) (*ChatAdjunto, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
