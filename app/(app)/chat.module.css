@@ -1,10 +1,48 @@
+.contenedor {
+  display: flex;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .container {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
   height: 100%;
   max-height: 100%;
   position: relative;
   background-color: var(--rc-superficie);
+}
+
+.headerTexto {
+  min-width: 0;
+}
+
+.infoBoton {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--rc-gris-100);
+  border-radius: var(--rc-radio-pildora);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
+  color: var(--rc-icono);
+  cursor: pointer;
+}
+
+.infoBoton:hover {
+  color: var(--rc-gris-900);
+}
+
+@media (min-width: 1280px) {
+  .infoBoton {
+    display: none;
+  }
 }
 
 .header {
@@ -171,6 +209,55 @@
   font-size: var(--rc-fs-micro);
   margin-top: var(--rc-esp-4);
   color: var(--rc-rojo-texto);
+}
+
+/* Mensajes con adjuntos: la burbuja se ajusta al contenido */
+.bubbleConAdjuntos {
+  padding: var(--rc-esp-6);
+  white-space: normal;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-6);
+  max-width: 100%;
+}
+
+.bubbleTexto {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 0 var(--rc-esp-2);
+}
+
+.adjuntosLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-6);
+}
+
+.errorAdjunto {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-esp-8);
+  margin-bottom: var(--rc-esp-6);
+  padding: var(--rc-esp-4) var(--rc-esp-8);
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-rojo-suave);
+  color: var(--rc-rojo-texto);
+  font-size: var(--rc-fs-secundario);
+}
+
+.errorCerrar {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--rc-rojo-texto);
+  cursor: pointer;
 }
 
 .retryBtn {

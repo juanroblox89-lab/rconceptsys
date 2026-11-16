@@ -29,10 +29,129 @@ export interface ChatMensaje {
   editado_en?: string | null;
   borrado_en?: string | null;
   autor?: Perfil;
+  adjuntos?: ChatAdjunto[];
   // UI states
   enviando?: boolean;
   error?: boolean;
 }
+
+// ==========================================
+// F5: equipo, adjuntos, asignaciones, Drive, piezas, cortes y push
+// ==========================================
+
+export interface EnlaceEquipo {
+  id: number;
+  nombre: string;
+  url: string;
+  orden: number;
+  creado_en: string;
+}
+
+export interface ActividadEquipo {
+  mensajes: number;
+  tareas: number;
+  miembros: number;
+  archivos: number;
+}
+
+export interface ConfigEquipo {
+  nombre: string;
+  descripcion: string;
+  enlaces: EnlaceEquipo[];
+  actividad: ActividadEquipo;
+  actualizado_en?: string | null;
+}
+
+export type TipoAdjunto = 'imagen' | 'video' | 'audio' | 'archivo' | 'drive';
+
+export interface ChatAdjunto {
+  id: number;
+  mensaje_id?: number | null;
+  autor_id: string;
+  tipo: TipoAdjunto;
+  nombre: string;
+  mime: string;
+  tamano: number;
+  duracion_seg?: number | null;
+  storage_path?: string | null;
+  url_externa?: string | null;
+  creado_en: string;
+}
+
+export interface AsignacionResumen {
+  tarea: Tarea;
+  novedad: boolean;
+}
+
+export interface RecientesRespuesta {
+  asignaciones: AsignacionResumen[];
+  nuevas: number;
+}
+
+export type EtapaPieza = 'guion' | 'grabacion' | 'edicion' | 'revision' | 'aprobada' | 'publicada';
+
+export interface Pieza {
+  id: number;
+  cliente_id?: number | null;
+  cliente?: Cliente | null;
+  nombre: string;
+  formato: string;
+  etapa: EtapaPieza;
+  fecha_publicacion?: string | null;
+  notas?: string | null;
+  drive_carpeta_url?: string | null;
+  tareas?: Tarea[];
+  creado_por: string;
+  creado_en: string;
+  actualizado_en: string;
+}
+
+export interface LineaCorte {
+  perfil_id: string;
+  perfil?: Perfil;
+  total: number;
+  tareas: number;
+  pagada_en?: string | null;
+  pagada_por?: string | null;
+}
+
+export interface Corte {
+  id: number;
+  periodo: 'quincena' | 'mes' | 'personalizado';
+  desde: string;
+  hasta: string;
+  estado: string;
+  lineas: LineaCorte[];
+  total: number;
+  creado_en: string;
+  creado_por?: string | null;
+}
+
+export interface DriveEstado {
+  configurado: boolean;
+  conectado: boolean;
+  correo: string;
+  carpeta_raiz_id: string;
+  conectado_en?: string | null;
+}
+
+export interface DriveArchivo {
+  id: string;
+  nombre: string;
+  mime: string;
+  icono?: string;
+  miniatura?: string;
+  enlace?: string;
+  tamano?: number;
+  modificado_en?: string;
+  es_carpeta: boolean;
+}
+
+export interface PushEstado {
+  configurado: boolean;
+  suscrito: boolean;
+}
+
 
 export interface ErrorApi {
   error: {
@@ -49,6 +168,9 @@ export interface Cliente {
   id: number;
   nombre: string;
   activo: boolean;
+  paquete?: string | null;
+  drive_url?: string | null;
+  notas?: string | null;
   creado_en: string;
 }
 
@@ -75,6 +197,8 @@ export interface Tarea {
   tipo?: TipoTrabajo;
   cliente_id?: number | null;
   cliente?: Cliente | null;
+  pieza_id?: number | null;
+  pieza?: { id: number; nombre: string; etapa: EtapaPieza } | null;
   titulo: string;
   descripcion?: string | null;
   asignado_a: string;
@@ -85,6 +209,8 @@ export interface Tarea {
   fecha_limite?: string | null;
   nota_persona?: string | null;
   enlace_medios?: string | null;
+  drive_carpeta_id?: string | null;
+  drive_carpeta_url?: string | null;
   motivo_rechazo?: string | null;
   cantidad?: number | null;
   cantidad_aceptada?: number | null;

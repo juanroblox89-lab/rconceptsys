@@ -285,3 +285,7 @@
   box-shadow: var(--rc-elev-hundido-sm);
   color: var(--rc-azul-texto);
 }
+
+.railPerfil {
+  padding: var(--rc-esp-4);
+}

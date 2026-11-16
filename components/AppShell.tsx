@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { Avatar } from "@/components/ui/Avatar";
 import { Sidebar, navItems } from "@/components/Sidebar";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
@@ -128,6 +129,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Icon size={18} strokeWidth={1.75} />
               </Link>
             ))}
+        </div>
+        {/* Mi perfil al pie también en el riel (F5). */}
+        <div className={`${styles.railGroup} ${styles.railPerfil}`}>
+          <Link
+            href="/perfil"
+            className={`${styles.railButton} ${pathname.startsWith("/perfil") ? styles.railActive : ""}`}
+            aria-label="Mi perfil"
+            title="Mi perfil"
+          >
+            <Avatar
+              tamano={24}
+              src={yo?.foto_path || undefined}
+              iniciales={(yo?.nombre || "?").charAt(0).toUpperCase()}
+              alt={yo?.nombre || "Mi perfil"}
+            />
+          </Link>
         </div>
       </nav>
 

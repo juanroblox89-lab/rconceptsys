@@ -1,5 +1,5 @@
 // lib/chat-utils.ts
-import type { ChatMensaje } from './types';
+import type { ChatAdjunto, ChatMensaje } from './types';
 
 export interface MensajeAgrupado {
   id: number;
@@ -9,7 +9,14 @@ export interface MensajeAgrupado {
   autor_roles: { id: number; nombre: string; color: string }[];
   fecha_hora: string;
   fecha_separador?: string;
-  lineas: { id: number; cuerpo: string; hora: string; enviando?: boolean; error?: boolean }[];
+  lineas: {
+    id: number;
+    cuerpo: string;
+    hora: string;
+    adjuntos?: ChatAdjunto[];
+    enviando?: boolean;
+    error?: boolean;
+  }[];
   es_mio: boolean;
 }
 
@@ -87,6 +94,7 @@ export function agruparMensajes(mensajes: ChatMensaje[], miID: string): MensajeA
         id: msg.id,
         cuerpo: msg.cuerpo,
         hora: formatearHora(msg.creado_en),
+        adjuntos: msg.adjuntos,
         enviando: msg.enviando,
         error: msg.error,
       });
@@ -105,6 +113,7 @@ export function agruparMensajes(mensajes: ChatMensaje[], miID: string): MensajeA
             id: msg.id,
             cuerpo: msg.cuerpo,
             hora: formatearHora(msg.creado_en),
+            adjuntos: msg.adjuntos,
             enviando: msg.enviando,
             error: msg.error,
           },

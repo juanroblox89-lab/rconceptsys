@@ -156,3 +156,226 @@
     animation: none;
   }
 }
+
+/* --- Recientes (solo admins) --- */
+.recientes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--rc-esp-6);
+}
+
+.recientesCabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-6);
+  height: 26px;
+  padding: 0 var(--rc-esp-10);
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  background: none;
+  color: var(--rc-texto-tenue);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.recientesCabecera:hover {
+  color: var(--rc-gris-900);
+}
+
+.recientesTitulo {
+  flex: 1 1 auto;
+  text-align: left;
+  font-size: var(--rc-fs-xs);
+  font-weight: var(--rc-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.recientesPunto {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rc-azul);
+}
+
+.recientesLista {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: var(--rc-esp-6);
+}
+
+.recientesVacio {
+  padding: 0 var(--rc-esp-10);
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-texto-tenue);
+}
+
+.recienteItem {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-6);
+  min-height: 26px;
+  padding: 0 var(--rc-esp-8);
+  border-radius: var(--rc-radio-sm);
+  color: var(--rc-texto-secundario);
+  font-size: var(--rc-fs-micro);
+  text-decoration: none;
+  transition: background var(--rc-transicion-rapida), color var(--rc-transicion-rapida);
+}
+
+.recienteItem:hover {
+  background: var(--rc-gris-50);
+  color: var(--rc-gris-900);
+}
+
+.recienteIcono {
+  display: inline-flex;
+  flex: none;
+  color: var(--rc-icono);
+}
+
+.recienteTexto {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recientePunto {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rc-azul);
+}
+
+.recienteVerTodas {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0 var(--rc-esp-8);
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-semibold);
+  color: var(--rc-azul-texto);
+  text-decoration: none;
+}
+
+.recienteVerTodas:hover {
+  text-decoration: underline;
+}
+
+/* --- Pie del perfil --- */
+.perfil {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-4);
+  flex: none;
+  padding: var(--rc-esp-8);
+  padding-bottom: calc(var(--rc-esp-8) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--rc-gris-100);
+}
+
+.perfilBoton {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-8);
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  padding: 0 var(--rc-esp-6);
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background var(--rc-transicion-rapida);
+}
+
+.perfilBoton:hover {
+  background: var(--rc-gris-50);
+}
+
+.perfilTexto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.perfilNombre {
+  font-size: var(--rc-fs-secundario);
+  font-weight: var(--rc-fw-semibold);
+  color: var(--rc-gris-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perfilRol {
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-texto-tenue);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perfilFlecha {
+  flex: none;
+  color: var(--rc-texto-tenue);
+}
+
+.perfilEngranaje {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--rc-radio-sm);
+  color: var(--rc-icono);
+  transition: color var(--rc-transicion-rapida), box-shadow var(--rc-transicion-rapida);
+}
+
+.perfilEngranaje:hover {
+  color: var(--rc-gris-900);
+  box-shadow: var(--rc-elev-relieve-sm);
+}
+
+.perfilMenu {
+  position: absolute;
+  left: var(--rc-esp-8);
+  right: var(--rc-esp-8);
+  bottom: calc(100% - 2px);
+  z-index: var(--rc-z-pill);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--rc-esp-4);
+  border-radius: var(--rc-radio-md);
+  border: 1px solid var(--rc-gris-100);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-lg);
+}
+
+.perfilMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-8);
+  height: 30px;
+  padding: 0 var(--rc-esp-8);
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  background: none;
+  color: var(--rc-gris-900);
+  font-family: inherit;
+  font-size: var(--rc-fs-secundario);
+  cursor: pointer;
+  text-align: left;
+}
+
+.perfilMenuItem:hover {
+  background: var(--rc-gris-50);
+}

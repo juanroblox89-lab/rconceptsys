@@ -13,6 +13,16 @@ import {
   EstadisticasYoResponse,
   EstadisticasAdminResponse,
   UnidadTrabajo,
+  ConfigEquipo,
+  EnlaceEquipo,
+  ChatAdjunto,
+  AsignacionResumen,
+  RecientesRespuesta,
+  Pieza,
+  Corte,
+  DriveEstado,
+  DriveArchivo,
+  PushEstado,
 } from './types';
 
 // En el navegador usamos rutas relativas con cookies httpOnly
@@ -162,10 +172,131 @@ export const api = {
     if (limite && limite > 0) q.set('limite', limite.toString());
     return fetchApi<ChatMensaje[]>(`/api/chat?${q.toString()}`);
   },
-  postChat: (cuerpo: string) =>
+  postChat: (cuerpo: string, adjuntos?: number[]) =>
     fetchApi<ChatMensaje>('/api/chat', {
       method: 'POST',
-      body: JSON.stringify({ cuerpo }),
+      body: JSON.stringify({ cuerpo, adjuntos: adjuntos ?? [] }),
+    }),
+  postChatAdjunto: (archivo: File, duracionSeg?: number) => {
+    const fd = new FormData();
+    fd.append('archivo', archivo);
+    if (duracionSeg && duracionSeg > 0) fd.append('duracion_seg', String(Math.round(duracionSeg)));
+    return fetchApi<ChatAdjunto>('/api/chat/adjuntos', { method: 'POST', body: fd });
+  },
+  postChatAdjuntoDrive: (nombre: string, url: string) =>
+    fetchApi<ChatAdjunto>('/api/chat/adjuntos', {
+      method: 'POST',
+      body: JSON.stringify({ nombre, url }),
+    }),
+  urlAdjunto: (id: number) => `/api/chat/adjuntos/${id}/archivo`,
+
+  // F5: barra derecha "Equipo"
+  getEquipoResumen: () => fetchApi<ConfigEquipo>('/api/equipo/resumen'),
+  adminPatchEquipo: (campos: { nombre?: string; descripcion?: string }) =>
+    fetchApi<ConfigEquipo>('/api/admin/equipo', {
+      method: 'PATCH',
+      body: JSON.stringify(campos),
+    }),
+  adminPostEnlaceEquipo: (nombre: string, url: string) =>
+    fetchApi<EnlaceEquipo>('/api/admin/equipo/enlaces', {
+      method: 'POST',
+      body: JSON.stringify({ nombre, url }),
+    }),
+  adminPatchEnlaceEquipo: (id: number, campos: { nombre?: string; url?: string; orden?: number }) =>
+    fetchApi<EnlaceEquipo>(`/api/admin/equipo/enlaces/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(campos),
+    }),
+  adminDeleteEnlaceEquipo: (id: number) =>
+    fetchApi<{ mensaje: string }>(`/api/admin/equipo/enlaces/${id}`, { method: 'DELETE' }),
+
+  // F5: Recientes y Asignaciones (admin)
+  adminGetRecientes: () => fetchApi<RecientesRespuesta>('/api/admin/asignaciones/recientes'),
+  adminGetAsignaciones: (filtros?: { persona?: string; estado?: string; desde?: string; hasta?: string }) => {
+    const q = new URLSearchParams();
+    if (filtros?.persona) q.set('persona', filtros.persona);
+    if (filtros?.estado) q.set('estado', filtros.estado);
+    if (filtros?.desde) q.set('desde', filtros.desde);
+    if (filtros?.hasta) q.set('hasta', filtros.hasta);
+    return fetchApi<{ asignaciones: AsignacionResumen[] }>(`/api/admin/asignaciones?${q.toString()}`);
+  },
+  adminPostAsignacionesVistas: (ids: number[]) =>
+    fetchApi<{ mensaje: string }>('/api/admin/asignaciones/vistas', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
+
+  // F5: piezas
+  adminGetPiezas: (filtros?: { cliente?: number; etapa?: string }) => {
+    const q = new URLSearchParams();
+    if (filtros?.cliente) q.set('cliente', String(filtros.cliente));
+    if (filtros?.etapa) q.set('etapa', filtros.etapa);
+    return fetchApi<Pieza[]>(`/api/admin/piezas?${q.toString()}`);
+  },
+  adminPostPieza: (pieza: { nombre: string; cliente_id?: number | null; formato?: string; etapa?: string }) =>
+    fetchApi<Pieza>('/api/admin/piezas', {
+      method: 'POST',
+      body: JSON.stringify(pieza),
+    }),
+  adminPatchPieza: (
+    id: number,
+    campos: Partial<{
+      nombre: string;
+      etapa: string;
+      formato: string;
+      fecha_publicacion: string | null;
+      notas: string | null;
+      cliente_id: number | null;
+      drive_carpeta_url: string | null;
+    }>,
+  ) =>
+    fetchApi<Pieza>(`/api/admin/piezas/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(campos),
+    }),
+
+  // F5: cortes de pago
+  adminGetCortes: () => fetchApi<Corte[]>('/api/admin/cortes'),
+  adminPostCorte: (datos: { periodo?: 'quincena' | 'mes'; desde?: string; hasta?: string }) =>
+    fetchApi<Corte>('/api/admin/cortes', {
+      method: 'POST',
+      body: JSON.stringify(datos),
+    }),
+  adminGetCorte: (id: number) => fetchApi<Corte>(`/api/admin/cortes/${id}`),
+  adminPagarCorteLinea: (corteId: number, perfilId: string) =>
+    fetchApi<Corte>(`/api/admin/cortes/${corteId}/lineas/${perfilId}/pagar`, { method: 'POST' }),
+  urlCorteCSV: (id: number) => `/api/admin/cortes/${id}/csv`,
+  urlCortePDF: (id: number) => `/api/admin/cortes/${id}/pdf`,
+
+  // F5: conector de Google Drive
+  adminGetDrive: () => fetchApi<DriveEstado>('/api/admin/drive'),
+  adminConectarDrive: () => fetchApi<{ url: string }>('/api/admin/drive/conectar', { method: 'POST' }),
+  adminDesconectarDrive: () =>
+    fetchApi<{ mensaje: string }>('/api/admin/drive/desconectar', { method: 'POST' }),
+  adminGetDriveArchivos: (filtros?: { carpeta?: string; buscar?: string }) => {
+    const q = new URLSearchParams();
+    if (filtros?.carpeta) q.set('carpeta', filtros.carpeta);
+    if (filtros?.buscar) q.set('buscar', filtros.buscar);
+    return fetchApi<DriveArchivo[]>(`/api/admin/drive/archivos?${q.toString()}`);
+  },
+  adminPostTareaDriveCarpeta: (tareaId: number, datos: { crear?: boolean; carpeta_id?: string; enlace?: string }) =>
+    fetchApi<Tarea>(`/api/admin/tareas/${tareaId}/drive-carpeta`, {
+      method: 'POST',
+      body: JSON.stringify(datos),
+    }),
+
+  // F5: avisos push
+  getPushClave: () => fetchApi<{ configurado: boolean; clave: string }>('/api/push/clave'),
+  getPushEstado: () => fetchApi<PushEstado>('/api/push/estado'),
+  postPushSuscribir: (s: { endpoint: string; p256dh: string; auth: string }) =>
+    fetchApi<{ id: number }>('/api/push/suscribir', {
+      method: 'POST',
+      body: JSON.stringify(s),
+    }),
+  deletePushSuscribir: (endpoint: string) =>
+    fetchApi<{ mensaje: string }>('/api/push/suscribir', {
+      method: 'DELETE',
+      body: JSON.stringify({ endpoint }),
     }),
 
   // Admin
@@ -266,6 +397,7 @@ export const api = {
   adminPostTarea: (tarea: {
     tipo_id: number;
     cliente_id?: number | null;
+    pieza_id?: number | null;
     asignado_a: string;
     titulo: string;
     descripcion?: string;
