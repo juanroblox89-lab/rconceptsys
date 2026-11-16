@@ -748,6 +748,9 @@ func (m *MemoryStore) CrearCorte(ctx context.Context, periodo, desde, hasta, cre
 	// Fin del día de cierre incluido
 	finDia := time.Date(h.Year(), h.Month(), h.Day(), 23, 59, 59, 999999999, time.Local)
 	lineas := m.lineasCorteLocked(d, finDia)
+	if len(lineas) == 0 {
+		return nil, fmt.Errorf("%w: no hay tareas aprobadas en ese periodo", ErrValidation)
+	}
 
 	id := m.nextCorteID
 	m.nextCorteID++

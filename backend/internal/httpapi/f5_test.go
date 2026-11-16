@@ -398,6 +398,14 @@ func TestF5CorteDePagos(t *testing.T) {
 	if r := doRequest(routes, "GET", "/api/admin/cortes", editorID, nil); r.Code != http.StatusForbidden {
 		t.Fatalf("cortes para trabajador: esperado 403, obtenido %d", r.Code)
 	}
+
+	// Un rango sin tareas aprobadas no genera un corte vacío
+	vacio := doRequest(routes, "POST", "/api/admin/cortes", adminID, map[string]any{
+		"desde": "2020-01-01", "hasta": "2020-01-15",
+	})
+	if vacio.Code != http.StatusBadRequest {
+		t.Fatalf("corte sin tareas: esperado 400, obtenido %d: %s", vacio.Code, vacio.Body.String())
+	}
 }
 
 // --- Bloque 8: avisos push ---
