@@ -21,6 +21,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
 import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
+import { CarpetaDriveTarea } from "@/components/ui/CarpetaDriveTarea";
 import { useAviso } from "@/components/ui/Aviso";
 import styles from "@/app/(app)/admin/admin.module.css";
 
@@ -340,6 +341,10 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                         <EnlaceDrive enlace={t.enlace_medios} />
                       </div>
                     )}
+
+                    <div style={{ marginTop: "var(--rc-esp-6)" }}>
+                      <CarpetaDriveTarea tarea={t} />
+                    </div>
 
                     <div className={styles.reviewValor}>
                       <span>Valor estimado a congelar:</span>

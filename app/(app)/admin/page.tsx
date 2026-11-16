@@ -15,6 +15,10 @@ import {
   Users2,
   Calendar,
   Edit2,
+  Layers,
+  Wallet,
+  Building2,
+  FolderOpen,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
@@ -26,6 +30,7 @@ import {
   ResumenFacturasPersona,
   EstadisticasAdminResponse,
   UnidadTrabajo,
+  Pieza,
 } from "@/lib/types";
 import { Tabla, TablaFila } from "@/components/ui/Tabla";
 import { Boton } from "@/components/ui/Boton";
@@ -40,6 +45,9 @@ import { Campo } from "@/components/ui/Campo";
 import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useAviso } from "@/components/ui/Aviso";
 import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
+import { AdminEquipo } from "@/components/admin/AdminEquipo";
+import { AdminPiezas } from "@/components/admin/AdminPiezas";
+import { AdminCortes } from "@/components/admin/AdminCortes";
 import styles from "./admin.module.css";
 
 type PresetFechaAdmin = "hoy" | "7dias" | "este_mes" | "mes_pasado" | "este_ano" | "todo" | "personalizado";
@@ -113,6 +121,17 @@ export default function AdminPage() {
   const [nombreEditado, setNombreEditado] = useState("");
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
+  // F5: ficha del cliente (paquete, carpeta de Drive y notas)
+  const [clienteFicha, setClienteFicha] = useState<Cliente | null>(null);
+  const [fichaPaquete, setFichaPaquete] = useState("");
+  const [fichaDrive, setFichaDrive] = useState("");
+  const [fichaNotas, setFichaNotas] = useState("");
+  const [guardandoFicha, setGuardandoFicha] = useState(false);
+
+  // F5: pieza a la que se cuelga la tarea nueva
+  const [nuevaTareaPiezaId, setNuevaTareaPiezaId] = useState<number | "">("");
+  const [piezas, setPiezas] = useState<Pieza[]>([]);
+
   // Estados locales - Tareas
   const [filtroPersona, setFiltroPersona] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("");
@@ -179,13 +198,14 @@ export default function AdminPage() {
 
   const cargarDatos = useCallback(async () => {
     try {
-      const [mList, rList, tList, tareasRes, fList, cList] = await Promise.all([
+      const [mList, rList, tList, tareasRes, fList, cList, pList] = await Promise.all([
         api.adminGetMiembros(),
         api.adminGetRoles(),
         api.adminGetTrabajos(),
         api.adminGetTareas(),
         api.adminGetFacturas(),
         api.adminGetClientes(),
+        api.adminGetPiezas().catch(() => [] as Pieza[]),
       ]);
       setMiembros(mList);
       setRoles(rList);
@@ -193,6 +213,7 @@ export default function AdminPage() {
       setTareas(tareasRes?.tareas || []);
       setFacturas(fList);
       setClientes(cList);
+      setPiezas(Array.isArray(pList) ? pList : []);
 
       const preciosMap: Record<number, number> = {};
       tList.forEach((t) => {
@@ -535,6 +556,34 @@ export default function AdminPage() {
     }
   };
 
+  // F5: ficha del cliente (paquete, carpeta de Drive y notas)
+  const abrirFichaCliente = (c: Cliente) => {
+    setClienteFicha(c);
+    setFichaPaquete(c.paquete ?? "");
+    setFichaDrive(c.drive_url ?? "");
+    setFichaNotas(c.notas ?? "");
+  };
+
+  const guardarFichaCliente = async () => {
+    if (!clienteFicha) return;
+    setGuardandoFicha(true);
+    try {
+      const actualizado = await api.adminPatchCliente(clienteFicha.id, {
+        paquete: fichaPaquete.trim(),
+        drive_url: fichaDrive.trim(),
+        notas: fichaNotas.trim(),
+      });
+      setClientes((prev) => prev.map((c) => (c.id === actualizado.id ? actualizado : c)));
+      setClienteFicha(null);
+      mostrarAviso({ tipo: "exito", titulo: "Ficha guardada", texto: actualizado.nombre });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      mostrarAviso({ tipo: "error", titulo: "No se pudo guardar", texto: e.message || "Revisa la carpeta de Drive." });
+    } finally {
+      setGuardandoFicha(false);
+    }
+  };
+
   const handleCrearClienteAlVuelo = async (e: React.FormEvent) => {
     e.preventDefault();
     const limpio = clienteAlVueloNombre.trim();
@@ -652,6 +701,7 @@ export default function AdminPage() {
       await api.adminPostTarea({
         tipo_id: Number(nuevaTareaTipoId),
         cliente_id: nuevaTareaClienteId === "" ? null : Number(nuevaTareaClienteId),
+        pieza_id: nuevaTareaPiezaId === "" ? null : Number(nuevaTareaPiezaId),
         asignado_a: nuevaTareaAsignadoA,
         titulo: nuevaTareaTitulo.trim(),
         descripcion: nuevaTareaDescripcion.trim() || undefined,
@@ -662,6 +712,7 @@ export default function AdminPage() {
       setModalNuevaTarea(false);
       setNuevaTareaTipoId("");
       setNuevaTareaClienteId("");
+      setNuevaTareaPiezaId("");
       setNuevaTareaAsignadoA("");
       setNuevaTareaTitulo("");
       setNuevaTareaDescripcion("");
@@ -738,8 +789,11 @@ export default function AdminPage() {
   const tabsItems = [
     { id: "trabajos", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Briefcase size={14} /> Trabajos</span> },
     { id: "clientes", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Users2 size={14} /> Clientes</span> },
+    { id: "piezas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Layers size={14} /> Piezas</span> },
     { id: "estadisticas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><BarChart2 size={14} /> Estadísticas</span> },
     { id: "facturas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Receipt size={14} /> Facturas</span> },
+    { id: "cortes", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Wallet size={14} /> Cortes</span> },
+    { id: "equipo", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Building2 size={14} /> Equipo</span> },
     { id: "miembros", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Users size={14} /> Miembros</span> },
   ];
 
@@ -1040,17 +1094,23 @@ export default function AdminPage() {
                                 {formatearFechaHora(c.creado_en)}
                               </td>
                               <td style={{ textAlign: "right" }}>
-                                <Boton
-                                  variante="secundario"
-                                  tamano="sm"
-                                  onClick={() => {
-                                    setClienteAEditar(c);
-                                    setNombreEditado(c.nombre);
-                                  }}
-                                >
-                                  <Edit2 size={13} style={{ marginRight: 4 }} />
-                                  Renombrar
-                                </Boton>
+                                <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                  <Boton variante="secundario" tamano="sm" onClick={() => abrirFichaCliente(c)}>
+                                    <FolderOpen size={13} style={{ marginRight: 4 }} />
+                                    Ficha
+                                  </Boton>
+                                  <Boton
+                                    variante="secundario"
+                                    tamano="sm"
+                                    onClick={() => {
+                                      setClienteAEditar(c);
+                                      setNombreEditado(c.nombre);
+                                    }}
+                                  >
+                                    <Edit2 size={13} style={{ marginRight: 4 }} />
+                                    Renombrar
+                                  </Boton>
+                                </div>
                               </td>
                             </TablaFila>
                           ))}
@@ -1073,7 +1133,11 @@ export default function AdminPage() {
                               onCheckedChange={() => handleToggleClienteActivo(c)}
                             />
                           </div>
-                          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, flexWrap: "wrap" }}>
+                            <Boton variante="secundario" tamano="sm" onClick={() => abrirFichaCliente(c)}>
+                              <FolderOpen size={13} style={{ marginRight: 4 }} />
+                              Ficha
+                            </Boton>
                             <Boton
                               variante="secundario"
                               tamano="sm"
@@ -1758,6 +1822,21 @@ export default function AdminPage() {
           )}
 
           {/* ========================================================= */}
+          {/* PESTAÑA F5: PIEZAS                                        */}
+          {/* ========================================================= */}
+          {pestanaActiva === "piezas" && <AdminPiezas />}
+
+          {/* ========================================================= */}
+          {/* PESTAÑA F5: CORTES DE PAGO                                */}
+          {/* ========================================================= */}
+          {pestanaActiva === "cortes" && <AdminCortes />}
+
+          {/* ========================================================= */}
+          {/* PESTAÑA F5: EQUIPO (barra derecha)                        */}
+          {/* ========================================================= */}
+          {pestanaActiva === "equipo" && <AdminEquipo />}
+
+          {/* ========================================================= */}
           {/* PESTAÑA 4: MIEMBROS                                       */}
           {/* ========================================================= */}
           {pestanaActiva === "miembros" && (
@@ -2263,6 +2342,31 @@ export default function AdminPage() {
 
             <div>
               <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
+                Pieza (opcional)
+              </label>
+              <select
+                className={styles.selectCompacto}
+                style={{ width: "100%", height: 36 }}
+                value={nuevaTareaPiezaId}
+                onChange={(e) => setNuevaTareaPiezaId(e.target.value === "" ? "" : Number(e.target.value))}
+                disabled={creandoTarea}
+              >
+                <option value="">Sin pieza</option>
+                {piezas
+                  .filter((p) => (nuevaTareaClienteId === "" ? true : p.cliente_id === Number(nuevaTareaClienteId)))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre} · {p.etapa}
+                    </option>
+                  ))}
+              </select>
+              <p style={{ fontSize: 11, color: "var(--rc-texto-tenue)", marginTop: 2 }}>
+                Agrupa la tarea dentro de una pieza del flujo.
+              </p>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
                 Persona asignada
               </label>
               <select
@@ -2457,6 +2561,66 @@ export default function AdminPage() {
               disabled={guardandoEdicion}
               autoFocus
             />
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Ficha del cliente (F5) */}
+      {clienteFicha && (
+        <Modal
+          abierto={true}
+          titulo="Ficha del cliente"
+          descripcion={`Datos de trabajo de "${clienteFicha.nombre}".`}
+          onCerrar={() => setClienteFicha(null)}
+          accionPrimaria={
+            <Boton variante="primario" cargando={guardandoFicha} onClick={guardarFichaCliente}>
+              Guardar ficha
+            </Boton>
+          }
+          accionSecundaria={
+            <Boton variante="secundario" onClick={() => setClienteFicha(null)} disabled={guardandoFicha}>
+              Cancelar
+            </Boton>
+          }
+        >
+          <div className={styles.modalForm}>
+            <Campo
+              etiqueta="Paquete contratado"
+              placeholder="TV, Digital o Mixtos"
+              value={fichaPaquete}
+              onChange={(e) => setFichaPaquete(e.target.value.slice(0, 80))}
+              disabled={guardandoFicha}
+            />
+            <Campo
+              etiqueta="Carpeta de Drive (enlace https)"
+              placeholder="https://drive.google.com/drive/folders/…"
+              value={fichaDrive}
+              onChange={(e) => setFichaDrive(e.target.value.slice(0, 500))}
+              disabled={guardandoFicha}
+            />
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)" }}>Notas</span>
+              <textarea
+                value={fichaNotas}
+                onChange={(e) => setFichaNotas(e.target.value.slice(0, 1000))}
+                rows={3}
+                disabled={guardandoFicha}
+                placeholder="Trato, colores, teléfono, frases permitidas…"
+                style={{
+                  border: "1px solid var(--rc-gris-100)",
+                  borderRadius: "var(--rc-radio-sm)",
+                  padding: "8px",
+                  fontFamily: "inherit",
+                  fontSize: "var(--rc-fs-cuerpo)",
+                  resize: "vertical",
+                  background: "var(--rc-superficie)",
+                  color: "var(--rc-gris-900)",
+                }}
+              />
+              <span style={{ fontSize: 11, color: "var(--rc-texto-tenue)", alignSelf: "flex-end" }}>
+                {fichaNotas.length}/1000
+              </span>
+            </label>
           </div>
         </Modal>
       )}
