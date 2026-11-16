@@ -241,8 +241,30 @@ func (c *Client) UploadStorage(ctx context.Context, bucket, objectPath string, d
 	return nil
 }
 
-func (c *Client) do(ctx context.Context, method, u string, body any, prefer string, out any) error {
-	var rdr io.Reader
+// DownloadStorage lee un objeto del bucket indicado con la service_role key.
+func (c *Client) DownloadStorage(ctx context.Context, bucket, objectPath string) ([]byte, error) {
+	u := fmt.Sprintf("%s/storage/v1/object/%s/%s", c.baseURL, bucket, objectPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.serviceKey)
+	req.Header.Set("apikey", c.serviceKey)
+
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(res.Body)
+		return nil, &Error{Status: res.StatusCode, Body: string(b)}
+	}
+	return io.ReadAll(res.Body)
+}
+
+func (c *Client) do(ctx context.Context, method, u string, body any, prefer string, out any) error {	var rdr io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {

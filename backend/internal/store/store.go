@@ -45,13 +45,14 @@ type Perfil struct {
 }
 
 type ChatMensaje struct {
-	ID        int64      `json:"id"`
-	AutorID   string     `json:"autor_id"`
-	Autor     *Perfil    `json:"autor,omitempty"`
-	Cuerpo    string     `json:"cuerpo"`
-	CreadoEn  time.Time  `json:"creado_en"`
-	EditadoEn *time.Time `json:"editado_en,omitempty"`
-	BorradoEn *time.Time `json:"borrado_en,omitempty"`
+	ID        int64          `json:"id"`
+	AutorID   string         `json:"autor_id"`
+	Autor     *Perfil        `json:"autor,omitempty"`
+	Cuerpo    string         `json:"cuerpo"`
+	CreadoEn  time.Time      `json:"creado_en"`
+	EditadoEn *time.Time     `json:"editado_en,omitempty"`
+	BorradoEn *time.Time     `json:"borrado_en,omitempty"`
+	Adjuntos  []*ChatAdjunto `json:"adjuntos,omitempty"`
 }
 
 type FiltroMiembros struct {
@@ -77,6 +78,9 @@ type Cliente struct {
 	ID       int       `json:"id"`
 	Nombre   string    `json:"nombre"`
 	Activo   bool      `json:"activo"`
+	Paquete  *string   `json:"paquete,omitempty"`
+	DriveURL *string   `json:"drive_url,omitempty"`
+	Notas    *string   `json:"notas,omitempty"`
 	CreadoEn time.Time `json:"creado_en"`
 }
 
@@ -96,6 +100,8 @@ type Tarea struct {
 	Tipo                    *TipoTrabajo `json:"tipo,omitempty"`
 	ClienteID               *int         `json:"cliente_id,omitempty"`
 	Cliente                 *Cliente     `json:"cliente,omitempty"`
+	PiezaID                 *int         `json:"pieza_id,omitempty"`
+	Pieza                   *PiezaCorta  `json:"pieza,omitempty"`
 	Titulo                  string       `json:"titulo"`
 	Descripcion             *string      `json:"descripcion,omitempty"`
 	AsignadoA               string       `json:"asignado_a"`
@@ -106,6 +112,8 @@ type Tarea struct {
 	FechaLimite             *string      `json:"fecha_limite,omitempty"` // YYYY-MM-DD
 	NotaPersona             *string      `json:"nota_persona,omitempty"`
 	EnlaceMedios            *string      `json:"enlace_medios,omitempty"`
+	DriveCarpetaID          *string      `json:"drive_carpeta_id,omitempty"`
+	DriveCarpetaURL         *string      `json:"drive_carpeta_url,omitempty"`
 	MotivoRechazo           *string      `json:"motivo_rechazo,omitempty"`
 	Cantidad                *int         `json:"cantidad,omitempty"`
 	CantidadAceptada        *int         `json:"cantidad_aceptada,omitempty"`
@@ -116,6 +124,13 @@ type Tarea struct {
 	HechaEn                 *time.Time   `json:"hecha_en,omitempty"`
 	ResueltaEn              *time.Time   `json:"resuelta_en,omitempty"`
 	ResueltaPor             *string      `json:"resuelta_por,omitempty"`
+}
+
+// PiezaCorta acompaña a la tarea para mostrar a qué pieza pertenece.
+type PiezaCorta struct {
+	ID     int    `json:"id"`
+	Nombre string `json:"nombre"`
+	Etapa  string `json:"etapa"`
 }
 
 type EstadoFactura string
@@ -265,7 +280,11 @@ type EstadisticasAdminResponse struct {
 }
 
 // Store define las operaciones que necesita el backend para F0 y F2.
+// StoreF5 (equipo, adjuntos, asignaciones, Drive, piezas, cortes y push) se
+// incrusta para que un solo tipo cubra todo lo que usan los handlers.
 type Store interface {
+	StoreF5
+
 	// Perfiles & Auth
 	ObtenerPerfilPorID(ctx context.Context, id string) (*Perfil, error)
 	ObtenerPerfilPorCorreo(ctx context.Context, correo string) (*Perfil, error)

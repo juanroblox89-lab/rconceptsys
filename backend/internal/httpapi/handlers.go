@@ -21,6 +21,7 @@ type API struct {
 	ChatLimiter    *RateLimiter
 	AuthLimiter    *RateLimiter
 	ModoDemoActivo bool
+	F5             *EstadoF5
 }
 
 func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
@@ -30,6 +31,7 @@ func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
 		ChatLimiter:    NewRateLimiter(20, time.Minute),   // 20 mensajes por minuto por usuario
 		AuthLimiter:    NewRateLimiter(25, 5*time.Minute), // 25 intentos por 5 minutos por IP o correo
 		ModoDemoActivo: modoDemoActivo,
+		F5:             NuevoEstadoF5(),
 	}
 }
 
@@ -100,6 +102,49 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /api/admin/facturas", a.MiddlewareAuth(a.handleAdminGetFacturas, true, true))
 	mux.HandleFunc("GET /api/admin/facturas/{id}", a.MiddlewareAuth(a.handleAdminGetFacturaDetalle, true, true))
 	mux.HandleFunc("POST /api/admin/facturas/{id}/pagar", a.MiddlewareAuth(a.handleAdminPostFacturaPagar, true, true))
+
+	// F5: barra derecha "Equipo" y su edición en Gestión
+	mux.HandleFunc("GET /api/equipo/resumen", a.MiddlewareAuth(a.handleGetEquipoResumen, true, false))
+	mux.HandleFunc("PATCH /api/admin/equipo", a.MiddlewareAuth(a.handleAdminPatchEquipo, true, true))
+	mux.HandleFunc("POST /api/admin/equipo/enlaces", a.MiddlewareAuth(a.handleAdminPostEnlaceEquipo, true, true))
+	mux.HandleFunc("PATCH /api/admin/equipo/enlaces/{id}", a.MiddlewareAuth(a.handleAdminPatchEnlaceEquipo, true, true))
+	mux.HandleFunc("DELETE /api/admin/equipo/enlaces/{id}", a.MiddlewareAuth(a.handleAdminDeleteEnlaceEquipo, true, true))
+
+	// F5: adjuntos del chat (imágenes, video, archivos y audios)
+	mux.HandleFunc("POST /api/chat/adjuntos", a.MiddlewareAuth(a.handlePostChatAdjunto, true, false))
+	mux.HandleFunc("GET /api/chat/adjuntos/{id}/archivo", a.MiddlewareAuth(a.handleGetChatAdjuntoArchivo, true, false))
+
+	// F5: Recientes y página de Asignaciones (solo admin)
+	mux.HandleFunc("GET /api/admin/asignaciones", a.MiddlewareAuth(a.handleAdminGetAsignaciones, true, true))
+	mux.HandleFunc("GET /api/admin/asignaciones/recientes", a.MiddlewareAuth(a.handleAdminGetAsignacionesRecientes, true, true))
+	mux.HandleFunc("POST /api/admin/asignaciones/vistas", a.MiddlewareAuth(a.handleAdminPostAsignacionesVistas, true, true))
+
+	// F5: conector de Google Drive (el callback llega de Google sin sesión: valida el state)
+	mux.HandleFunc("GET /api/admin/drive", a.MiddlewareAuth(a.handleAdminGetDrive, true, true))
+	mux.HandleFunc("POST /api/admin/drive/conectar", a.MiddlewareAuth(a.handleAdminPostDriveConectar, true, true))
+	mux.HandleFunc("GET /api/drive/callback", a.handleDriveCallback)
+	mux.HandleFunc("POST /api/admin/drive/desconectar", a.MiddlewareAuth(a.handleAdminPostDriveDesconectar, true, true))
+	mux.HandleFunc("GET /api/admin/drive/archivos", a.MiddlewareAuth(a.handleAdminGetDriveArchivos, true, true))
+	mux.HandleFunc("POST /api/admin/tareas/{id}/drive-carpeta", a.MiddlewareAuth(a.handleAdminPostTareaDriveCarpeta, true, true))
+
+	// F5: piezas que agrupan tareas por etapa
+	mux.HandleFunc("GET /api/admin/piezas", a.MiddlewareAuth(a.handleAdminGetPiezas, true, true))
+	mux.HandleFunc("POST /api/admin/piezas", a.MiddlewareAuth(a.handleAdminPostPieza, true, true))
+	mux.HandleFunc("PATCH /api/admin/piezas/{id}", a.MiddlewareAuth(a.handleAdminPatchPieza, true, true))
+
+	// F5: corte de pagos (quincena o mes) con exportación
+	mux.HandleFunc("GET /api/admin/cortes", a.MiddlewareAuth(a.handleAdminGetCortes, true, true))
+	mux.HandleFunc("POST /api/admin/cortes", a.MiddlewareAuth(a.handleAdminPostCorte, true, true))
+	mux.HandleFunc("GET /api/admin/cortes/{id}", a.MiddlewareAuth(a.handleAdminGetCorte, true, true))
+	mux.HandleFunc("POST /api/admin/cortes/{id}/lineas/{perfil}/pagar", a.MiddlewareAuth(a.handleAdminPostCortePagar, true, true))
+	mux.HandleFunc("GET /api/admin/cortes/{id}/csv", a.MiddlewareAuth(a.handleAdminGetCorteCSV, true, true))
+	mux.HandleFunc("GET /api/admin/cortes/{id}/pdf", a.MiddlewareAuth(a.handleAdminGetCortePDF, true, true))
+
+	// F5: avisos push
+	mux.HandleFunc("GET /api/push/clave", a.MiddlewareAuth(a.handleGetPushClave, true, false))
+	mux.HandleFunc("GET /api/push/estado", a.MiddlewareAuth(a.handleGetPushEstado, true, false))
+	mux.HandleFunc("POST /api/push/suscribir", a.MiddlewareAuth(a.handlePostPushSuscribir, true, false))
+	mux.HandleFunc("DELETE /api/push/suscribir", a.MiddlewareAuth(a.handleDeletePushSuscribir, true, false))
 
 	return a.corsMiddleware(mux)
 }
@@ -532,7 +577,8 @@ func (a *API) handlePostChat(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*32) // 32KB
 	var req struct {
-		Cuerpo string `json:"cuerpo"`
+		Cuerpo   string  `json:"cuerpo"`
+		Adjuntos []int64 `json:"adjuntos"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "El formato del mensaje no es válido.")
@@ -541,8 +587,16 @@ func (a *API) handlePostChat(w http.ResponseWriter, r *http.Request) {
 
 	c := strings.TrimSpace(req.Cuerpo)
 	long := len([]rune(c))
-	if long < 1 || long > 2000 {
+	if long > 2000 {
 		ResponderError(w, http.StatusBadRequest, "mensaje_invalido", "El mensaje debe tener entre 1 y 2000 caracteres.")
+		return
+	}
+	if long == 0 && len(req.Adjuntos) == 0 {
+		ResponderError(w, http.StatusBadRequest, "mensaje_invalido", "Escribe un mensaje o adjunta un archivo.")
+		return
+	}
+	if len(req.Adjuntos) > 10 {
+		ResponderError(w, http.StatusBadRequest, "mensaje_invalido", "Puedes adjuntar máximo 10 archivos por mensaje.")
 		return
 	}
 
@@ -550,6 +604,13 @@ func (a *API) handlePostChat(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_crear_mensaje", "No se pudo enviar el mensaje al chat.")
 		return
+	}
+
+	if len(req.Adjuntos) > 0 {
+		adjuntos, errAdj := a.Store.EnlazarAdjuntosMensaje(r.Context(), msg.ID, yo.ID, req.Adjuntos)
+		if errAdj == nil {
+			msg.Adjuntos = adjuntos
+		}
 	}
 
 	ResponderJSON(w, http.StatusCreated, msg)
@@ -863,6 +924,10 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, http.StatusInternalServerError, "error_marcar_hecha", "No se pudo marcar la tarea como hecha.")
 		return
 	}
+
+	// F5: si la tarea tiene subcarpeta en el Drive del equipo, la entrega se copia ahí.
+	a.SincronizarEntregaConDrive(r.Context(), actualizada)
+
 	ResponderJSON(w, http.StatusOK, actualizada)
 }
 
@@ -1116,6 +1181,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		TipoID      int     `json:"tipo_id"`
 		ClienteID   *int    `json:"cliente_id"`
+		PiezaID     *int    `json:"pieza_id"`
 		AsignadoA   string  `json:"asignado_a"`
 		Titulo      string  `json:"titulo"`
 		Descripcion *string `json:"descripcion"`
@@ -1170,6 +1236,17 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Pieza opcional: debe existir
+	if req.PiezaID != nil {
+		if _, err := a.Store.ObtenerPieza(r.Context(), *req.PiezaID); err == store.ErrNotFound {
+			ResponderError(w, http.StatusBadRequest, "pieza_invalida", "La pieza especificada no existe.")
+			return
+		} else if err != nil {
+			ResponderError(w, http.StatusInternalServerError, "error_obtener_pieza", "Error al consultar la pieza.")
+			return
+		}
+	}
+
 	asignadoID := strings.TrimSpace(req.AsignadoA)
 	if asignadoID == "" {
 		ResponderError(w, http.StatusBadRequest, "asignado_requerido", "Debes asignar la tarea a una persona.")
@@ -1217,6 +1294,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 	tarea := &store.Tarea{
 		TipoID:      tipo.ID,
 		ClienteID:   req.ClienteID,
+		PiezaID:     req.PiezaID,
 		Titulo:      titulo,
 		Descripcion: req.Descripcion,
 		AsignadoA:   asignado.ID,
@@ -1229,6 +1307,9 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, http.StatusInternalServerError, "error_crear_tarea", "No se pudo crear la tarea.")
 		return
 	}
+
+	// Aviso push: tarea nueva.
+	a.AvisarTareaNueva(r.Context(), creada)
 
 	ResponderJSON(w, http.StatusCreated, creada)
 }
@@ -1286,6 +1367,9 @@ func (a *API) handleAdminPostTareaAceptar(w http.ResponseWriter, r *http.Request
 		ResponderError(w, http.StatusInternalServerError, "error_aceptar_tarea", "No se pudo aceptar la tarea.")
 		return
 	}
+
+	// Aviso push: entrega aprobada.
+	a.AvisarEntregaAprobada(r.Context(), aceptada)
 
 	ResponderJSON(w, http.StatusOK, aceptada)
 }
@@ -1555,6 +1639,37 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 		if _, ok := aVal.(bool); !ok {
 			ResponderError(w, http.StatusBadRequest, "activo_invalido", "El campo activo debe ser un valor booleano.")
 			return
+		}
+	}
+
+	// F5: ficha del cliente (paquete, carpeta de Drive y notas)
+	for _, clave := range []string{"paquete", "drive_url", "notas"} {
+		if v, exists := campos[clave]; exists {
+			if v == nil {
+				continue
+			}
+			s, ok := v.(string)
+			if !ok {
+				ResponderError(w, http.StatusBadRequest, "campo_invalido", "El campo "+clave+" debe ser un texto.")
+				return
+			}
+			s = strings.TrimSpace(s)
+			limite := 80
+			if clave == "drive_url" {
+				limite = 500
+				if s != "" && !strings.HasPrefix(s, "https://") {
+					ResponderError(w, http.StatusBadRequest, "enlace_invalido", "La carpeta de Drive debe ser un enlace https.")
+					return
+				}
+			}
+			if clave == "notas" {
+				limite = 1000
+			}
+			if len([]rune(s)) > limite {
+				ResponderError(w, http.StatusBadRequest, "campo_largo", "El campo "+clave+" supera el máximo de caracteres.")
+				return
+			}
+			campos[clave] = s
 		}
 	}
 

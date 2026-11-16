@@ -59,10 +59,13 @@ type dbChatMensaje struct {
 
 // Modelos DB PostgREST para F2 y F3
 type dbCliente struct {
-	ID       int    `json:"id"`
-	Nombre   string `json:"nombre"`
-	Activo   bool   `json:"activo"`
-	CreadoEn string `json:"creado_en"`
+	ID       int     `json:"id"`
+	Nombre   string  `json:"nombre"`
+	Activo   bool    `json:"activo"`
+	Paquete  *string `json:"paquete"`
+	DriveURL *string `json:"drive_url"`
+	Notas    *string `json:"notas"`
+	CreadoEn string  `json:"creado_en"`
 }
 
 type dbTipoTrabajo struct {
@@ -82,6 +85,7 @@ type dbTarea struct {
 	ID                      int64          `json:"id"`
 	TipoID                  int            `json:"tipo_id"`
 	ClienteID               *int           `json:"cliente_id"`
+	PiezaID                 *int           `json:"pieza_id"`
 	Titulo                  string         `json:"titulo"`
 	Descripcion             *string        `json:"descripcion"`
 	AsignadoA               string         `json:"asignado_a"`
@@ -90,6 +94,8 @@ type dbTarea struct {
 	FechaLimite             *string        `json:"fecha_limite"`
 	NotaPersona             *string        `json:"nota_persona"`
 	EnlaceMedios            *string        `json:"enlace_medios"`
+	DriveCarpetaID          *string        `json:"drive_carpeta_id"`
+	DriveCarpetaURL         *string        `json:"drive_carpeta_url"`
 	MotivoRechazo           *string        `json:"motivo_rechazo"`
 	Cantidad                *int           `json:"cantidad"`
 	CantidadAceptada        *int           `json:"cantidad_aceptada"`
@@ -102,6 +108,7 @@ type dbTarea struct {
 	ResueltaPor             *string        `json:"resuelta_por"`
 	Tipo                    *dbTipoTrabajo `json:"tipos_trabajo"`
 	Cliente                 *dbCliente     `json:"clientes"`
+	Pieza                   *dbPiezaCorta  `json:"piezas"`
 	Asignado                *dbPerfil      `json:"asignado"`
 	Creador                 *dbPerfil      `json:"creador"`
 }
@@ -340,6 +347,7 @@ func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, d
 			EditadoEn: editT,
 		})
 	}
+	s.adjuntosPorMensajes(ctx, res)
 	return res, nil
 }
 
@@ -627,6 +635,9 @@ func convertirCliente(dc *dbCliente) *store.Cliente {
 		ID:       dc.ID,
 		Nombre:   dc.Nombre,
 		Activo:   dc.Activo,
+		Paquete:  dc.Paquete,
+		DriveURL: dc.DriveURL,
+		Notas:    dc.Notas,
 		CreadoEn: t,
 	}
 }
@@ -671,6 +682,12 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 		ResueltaPor:             dt.ResueltaPor,
 		Tipo:                    convertirTipoTrabajo(dt.Tipo),
 		Cliente:                 convertirCliente(dt.Cliente),
+		PiezaID:                 dt.PiezaID,
+		DriveCarpetaID:          dt.DriveCarpetaID,
+		DriveCarpetaURL:         dt.DriveCarpetaURL,
+	}
+	if dt.Pieza != nil {
+		res.Pieza = &store.PiezaCorta{ID: dt.Pieza.ID, Nombre: dt.Pieza.Nombre, Etapa: dt.Pieza.Etapa}
 	}
 	if dt.Asignado != nil {
 		res.Asignado = convertirPerfil(dt.Asignado, nil)
@@ -763,6 +780,7 @@ func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.
 	payload := map[string]any{
 		"tipo_id":      t.TipoID,
 		"cliente_id":   t.ClienteID,
+		"pieza_id":     t.PiezaID,
 		"titulo":       strings.TrimSpace(t.Titulo),
 		"descripcion":  t.Descripcion,
 		"asignado_a":   t.AsignadoA,
@@ -773,7 +791,7 @@ func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.
 	}
 	var rows []dbTarea
 	q := url.Values{}
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 	if err := s.client.REST(ctx, "POST", "tareas", q, payload, "return=representation", &rows); err != nil {
 		return nil, err
 	}
@@ -786,7 +804,7 @@ func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.
 func (s *SupabaseStore) ObtenerTareaPorID(ctx context.Context, id int64) (*store.Tarea, error) {
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
@@ -800,7 +818,7 @@ func (s *SupabaseStore) ObtenerTareaPorID(ctx context.Context, id int64) (*store
 
 func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTareas) ([]*store.Tarea, error) {
 	q := url.Values{}
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 	if filtro.Estado != nil {
 		q.Set("estado", fmt.Sprintf("eq.%s", *filtro.Estado))
 	}
@@ -873,7 +891,7 @@ func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignado
 
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
@@ -917,7 +935,7 @@ func (s *SupabaseStore) RechazarTarea(ctx context.Context, id int64, adminID str
 	}
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
@@ -945,7 +963,7 @@ func (s *SupabaseStore) CancelarTarea(ctx context.Context, id int64, adminID str
 	}
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
@@ -961,7 +979,7 @@ func (s *SupabaseStore) cargarLineasFactura(ctx context.Context, f *store.Factur
 	q := url.Values{}
 	q.Set("factura_id", fmt.Sprintf("eq.%d", f.ID))
 	q.Set("estado", "eq.aceptada")
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
 	q.Set("order", "id.asc")
 
 	var rows []dbTarea

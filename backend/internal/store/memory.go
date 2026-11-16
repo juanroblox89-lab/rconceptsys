@@ -21,33 +21,68 @@ type MemoryStore struct {
 	avatares    map[string][]byte
 
 	// F2 y F3: Clientes, tipos de trabajo, tareas, facturas
-	clientes     map[int]*Cliente
+	clientes      map[int]*Cliente
 	nextClienteID int
-	tiposTrabajo map[int]*TipoTrabajo
-	nextTipoID   int
-	tareas       map[int64]*Tarea
-	nextTareaID  int64
-	facturas     map[int64]*Factura
-	nextFactID   int64
+	tiposTrabajo  map[int]*TipoTrabajo
+	nextTipoID    int
+	tareas        map[int64]*Tarea
+	nextTareaID   int64
+	facturas      map[int64]*Factura
+	nextFactID    int64
+
+	// F5: equipo, adjuntos del chat, asignaciones, Drive, piezas, cortes y push
+	equipo             ConfigEquipo
+	enlaces            map[int]*EnlaceEquipo
+	nextEnlaceID       int
+	adjuntos           map[int64]*ChatAdjunto
+	archivosAdjuntos   map[int64][]byte
+	nextAdjuntoID      int64
+	asignacionesVistas map[string]map[int64]time.Time
+	conexionDrive      *ConexionDrive
+	piezas             map[int]*Pieza
+	nextPiezaID        int
+	cortes             map[int64]*Corte
+	nextCorteID        int64
+	suscripcionesPush  map[int64]*SuscripcionPush
+	nextPushID         int64
+	avisosEnviados     map[string]bool
 }
 
 func NewMemoryStore() *MemoryStore {
 	m := &MemoryStore{
-		perfiles:     make(map[string]*Perfil),
-		roles:        make(map[int]*Rol),
-		perfilRoles:  make(map[string]map[int]bool),
-		mensajes:     make([]*ChatMensaje, 0),
-		nextRolID:    4,
-		nextMsgID:    1,
-		avatares:     make(map[string][]byte),
-		clientes:     make(map[int]*Cliente),
+		perfiles:      make(map[string]*Perfil),
+		roles:         make(map[int]*Rol),
+		perfilRoles:   make(map[string]map[int]bool),
+		mensajes:      make([]*ChatMensaje, 0),
+		nextRolID:     4,
+		nextMsgID:     1,
+		avatares:      make(map[string][]byte),
+		clientes:      make(map[int]*Cliente),
 		nextClienteID: 1,
-		tiposTrabajo: make(map[int]*TipoTrabajo),
-		nextTipoID:   4,
-		tareas:       make(map[int64]*Tarea),
-		nextTareaID:  1,
-		facturas:     make(map[int64]*Factura),
-		nextFactID:   1,
+		tiposTrabajo:  make(map[int]*TipoTrabajo),
+		nextTipoID:    4,
+		tareas:        make(map[int64]*Tarea),
+		nextTareaID:   1,
+		facturas:      make(map[int64]*Factura),
+		nextFactID:    1,
+		equipo: ConfigEquipo{
+			Nombre:      "RConcept Systems",
+			Descripcion: "Producción de contenido para clientes: grabación, edición y publicación.",
+			Enlaces:     []*EnlaceEquipo{},
+		},
+		enlaces:            make(map[int]*EnlaceEquipo),
+		nextEnlaceID:       1,
+		adjuntos:           make(map[int64]*ChatAdjunto),
+		archivosAdjuntos:   make(map[int64][]byte),
+		nextAdjuntoID:      1,
+		asignacionesVistas: make(map[string]map[int64]time.Time),
+		piezas:             make(map[int]*Pieza),
+		nextPiezaID:        1,
+		cortes:             make(map[int64]*Corte),
+		nextCorteID:        1,
+		suscripcionesPush:  make(map[int64]*SuscripcionPush),
+		nextPushID:         1,
+		avisosEnviados:     make(map[string]bool),
 	}
 
 	// Semilla de roles iniciales
@@ -213,6 +248,7 @@ func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, des
 			if msg.ID > despuesID {
 				autor := m.perfiles[msg.AutorID]
 				cpMsg := *msg
+				cpMsg.Adjuntos = m.adjuntosDeMensajeLocked(msg.ID)
 				if autor != nil {
 					cpMsg.Autor = m.clonarPerfilLocked(autor)
 				}
@@ -237,6 +273,7 @@ func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, des
 		}
 		autor := m.perfiles[msg.AutorID]
 		cpMsg := *msg
+		cpMsg.Adjuntos = m.adjuntosDeMensajeLocked(msg.ID)
 		if autor != nil {
 			cpMsg.Autor = m.clonarPerfilLocked(autor)
 		}
@@ -262,7 +299,7 @@ func (m *MemoryStore) CrearMensajeChat(ctx context.Context, autorID string, cuer
 	}
 
 	c := strings.TrimSpace(cuerpo)
-	if len(c) < 1 || len([]rune(c)) > 2000 {
+	if len([]rune(c)) > 2000 {
 		return nil, ErrValidation
 	}
 
@@ -750,6 +787,60 @@ func (m *MemoryStore) ActualizarCliente(ctx context.Context, id int, campos map[
 		}
 	}
 
+	if v, exists := campos["paquete"]; exists {
+		if s, ok := v.(string); ok {
+			sLimpio := strings.TrimSpace(s)
+			if len(sLimpio) > 80 {
+				return nil, ErrValidation
+			}
+			if sLimpio == "" {
+				c.Paquete = nil
+			} else {
+				c.Paquete = &sLimpio
+			}
+		} else if v == nil {
+			c.Paquete = nil
+		} else {
+			return nil, ErrValidation
+		}
+	}
+
+	if v, exists := campos["drive_url"]; exists {
+		if s, ok := v.(string); ok {
+			sLimpio := strings.TrimSpace(s)
+			if len(sLimpio) > 500 {
+				return nil, ErrValidation
+			}
+			if sLimpio == "" {
+				c.DriveURL = nil
+			} else {
+				c.DriveURL = &sLimpio
+			}
+		} else if v == nil {
+			c.DriveURL = nil
+		} else {
+			return nil, ErrValidation
+		}
+	}
+
+	if v, exists := campos["notas"]; exists {
+		if s, ok := v.(string); ok {
+			sLimpio := strings.TrimSpace(s)
+			if len([]rune(sLimpio)) > 1000 {
+				return nil, ErrValidation
+			}
+			if sLimpio == "" {
+				c.Notas = nil
+			} else {
+				c.Notas = &sLimpio
+			}
+		} else if v == nil {
+			c.Notas = nil
+		} else {
+			return nil, ErrValidation
+		}
+	}
+
 	return m.clonarClienteLocked(c), nil
 }
 
@@ -768,6 +859,11 @@ func (m *MemoryStore) clonarTareaLocked(t *Tarea) *Tarea {
 	if t.ClienteID != nil {
 		if cli, ok := m.clientes[*t.ClienteID]; ok {
 			cp.Cliente = m.clonarClienteLocked(cli)
+		}
+	}
+	if t.PiezaID != nil {
+		if p, ok := m.piezas[*t.PiezaID]; ok {
+			cp.Pieza = &PiezaCorta{ID: p.ID, Nombre: p.Nombre, Etapa: p.Etapa}
 		}
 	}
 	if asig, ok := m.perfiles[t.AsignadoA]; ok {
@@ -817,6 +913,13 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 		}
 	}
 
+	// Pieza opcional: debe existir
+	if t.PiezaID != nil {
+		if _, ok := m.piezas[*t.PiezaID]; !ok {
+			return nil, fmt.Errorf("%w: la pieza especificada no existe", ErrValidation)
+		}
+	}
+
 	// Asignado y Creador deben existir
 	if _, ok := m.perfiles[t.AsignadoA]; !ok {
 		return nil, ErrValidation
@@ -837,6 +940,7 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 		ID:          id,
 		TipoID:      t.TipoID,
 		ClienteID:   t.ClienteID,
+		PiezaID:     t.PiezaID,
 		Titulo:      strings.TrimSpace(t.Titulo),
 		Descripcion: t.Descripcion,
 		AsignadoA:   t.AsignadoA,
