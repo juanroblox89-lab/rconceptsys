@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CalendarDays, CircleAlert, Filter } from "lucide-react";
+import { CalendarDays, CircleAlert, Filter, Plus } from "lucide-react";
+import { Boton } from "@/components/ui/Boton";
+import { FormularioAsignacion } from "@/components/FormularioAsignacion";
 import { api } from "@/lib/api";
 import { AsignacionResumen, EstadoTarea, Perfil } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
@@ -45,6 +47,18 @@ export default function AsignacionesPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const [formulario, setFormulario] = useState<AsignacionResumen["tarea"] | "nueva" | null>(null);
+  const [destino, setDestino] = useState("");
+
+  useEffect(() => {
+    const sincronizar = () => setDestino(new URLSearchParams(window.location.search).get("trabajo") ?? "");
+    sincronizar();
+    window.addEventListener("hashchange", sincronizar);
+    return () => window.removeEventListener("hashchange", sincronizar);
+  }, []);
+  useEffect(() => {
+    if (!cargando && destino) document.getElementById(`trabajo-${destino}`)?.scrollIntoView({ block: "nearest" });
+  }, [cargando, destino]);
 
   const [persona, setPersona] = useState("");
   const [estado, setEstado] = useState("");
@@ -121,12 +135,13 @@ export default function AsignacionesPage() {
     <div className={styles.pagina}>
       <header className={styles.cabecera}>
         <div>
-          <h1 className={styles.titulo}>Asignaciones</h1>
+          <h1 className={styles.titulo}>Trabajos</h1>
           <p className={styles.subtitulo}>
             {cargando ? "Cargando…" : `${visibles.length} ${visibles.length === 1 ? "asignación" : "asignaciones"}`}
             {conteo.vencida > 0 ? ` · ${conteo.vencida} vencida${conteo.vencida === 1 ? "" : "s"}` : ""}
           </p>
         </div>
+        <Boton onClick={() => setFormulario("nueva")} disabled={!yo}><Plus size={16} aria-hidden="true" /> Asignar trabajo</Boton>
         <button
           type="button"
           className={styles.botonFiltros}
@@ -211,10 +226,10 @@ export default function AsignacionesPage() {
           {visibles.map(({ tarea, novedad }) => {
             const vencida = estaVencida({ tarea, novedad });
             return (
-              <li key={tarea.id} className={styles.item}>
-                <Link href="/admin?pestana=tareas" className={styles.itemEnlace}>
+              <li key={tarea.id} id={`trabajo-${tarea.id}`} className={`${styles.item} ${destino === String(tarea.id) ? styles.resaltado : ""}`}>
+                <div className={styles.itemEnlace}>
                   <div className={styles.itemFila}>
-                    <span className={styles.itemTitulo}>{tarea.titulo}</span>
+                    <span className={styles.itemTitulo}>{tarea.cliente ? `${tarea.cliente.nombre} · ` : ""}{tarea.descripcion || tarea.titulo}</span>
                     {novedad && <span className={styles.itemNuevo} aria-label="Nueva" />}
                   </div>
                   <div className={styles.itemMeta}>
@@ -234,7 +249,9 @@ export default function AsignacionesPage() {
                       {tarea.fecha_limite ? `Límite ${fmtFecha(tarea.fecha_limite)}` : "Sin fecha límite"}
                     </span>
                   </div>
-                </Link>
+                </div>
+                {(tarea.estado === "pendiente" || tarea.estado === "rechazada") && <Boton variante="secundario" onClick={() => setFormulario(tarea)}>Editar</Boton>}
+                {tarea.estado === "hecha" && <Link href={`/tareas?tarea=${tarea.id}#tarea-${tarea.id}`}>Revisar entrega</Link>}
                 <span
                   className={`${styles.estado} ${
                     vencida ? styles.estadoVencida : tarea.estado === "aceptada" ? styles.estadoAprobada : ""
@@ -247,6 +264,8 @@ export default function AsignacionesPage() {
           })}
         </ul>
       )}
+      {formulario && <FormularioAsignacion tarea={formulario === "nueva" ? undefined : formulario}
+        onCerrar={() => setFormulario(null)} onGuardar={() => { setFormulario(null); void cargar(); }} />}
     </div>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Check, Calendar } from "lucide-react";
+import { Check, Calendar, FolderOpen } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
+import { diaBogota, fechaEntrega } from "@/lib/fecha-entrega";
 import { api } from "@/lib/api";
 import { Tarea } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
@@ -124,23 +126,17 @@ export function MisTareas() {
     }
   };
 
-  const formatearFecha = (fechaStr?: string | null) => {
-    if (!fechaStr) return null;
-    const partes = fechaStr.split("-");
-    if (partes.length === 3) {
-      return `${partes[2]}/${partes[1]}/${partes[0]}`;
-    }
-    return fechaStr;
-  };
-
-  const [hoy] = useState(() => Date.now());
-
-  const esFechaVencida = (fechaStr?: string | null) => {
-    if (!fechaStr) return false;
-    const [y, m, d] = fechaStr.split("-").map(Number);
-    const limite = new Date(y, m - 1, d, 23, 59, 59);
-    return limite.getTime() < hoy;
-  };
+  const [hoy] = useState(() => diaBogota());
+  const [destino, setDestino] = useState("");
+  useEffect(() => {
+    const sincronizar = () => setDestino(new URLSearchParams(window.location.search).get("tarea") ?? "");
+    sincronizar();
+    window.addEventListener("hashchange", sincronizar);
+    return () => window.removeEventListener("hashchange", sincronizar);
+  }, []);
+  useEffect(() => {
+    if (!cargando && destino) document.getElementById(`tarea-${destino}`)?.scrollIntoView({ block: "nearest" });
+  }, [destino, cargando]);
 
   const pendientes = tareas.filter((t) => t.estado === "pendiente");
   const porRevisar = tareas.filter((t) => t.estado === "hecha");
@@ -181,7 +177,7 @@ export function MisTareas() {
               />
             ) : (
               <div className={styles.grid}>
-                {pendientes.map((t) => renderTarjeta(t, abrirModalHecha, formatearFecha, esFechaVencida))}
+                {pendientes.map((t) => renderTarjeta(t, abrirModalHecha, hoy, destino))}
               </div>
             )}
           </section>
@@ -195,7 +191,7 @@ export function MisTareas() {
                 </h2>
               </div>
               <div className={styles.grid}>
-                {rechazadas.map((t) => renderTarjeta(t, abrirModalHecha, formatearFecha, esFechaVencida))}
+                {rechazadas.map((t) => renderTarjeta(t, abrirModalHecha, hoy, destino))}
               </div>
             </section>
           )}
@@ -213,7 +209,7 @@ export function MisTareas() {
               />
             ) : (
               <div className={styles.grid}>
-                {porRevisar.map((t) => renderTarjeta(t, abrirModalHecha, formatearFecha, esFechaVencida))}
+                {porRevisar.map((t) => renderTarjeta(t, abrirModalHecha, hoy, destino))}
               </div>
             )}
           </section>
@@ -231,7 +227,7 @@ export function MisTareas() {
               />
             ) : (
               <div className={styles.grid}>
-                {aceptadas.map((t) => renderTarjeta(t, abrirModalHecha, formatearFecha, esFechaVencida))}
+                {aceptadas.map((t) => renderTarjeta(t, abrirModalHecha, hoy, destino))}
               </div>
             )}
           </section>
@@ -311,32 +307,23 @@ export function MisTareas() {
 function renderTarjeta(
   t: Tarea,
   onAbrirModal: (t: Tarea) => void,
-  formatearFecha: (f?: string | null) => string | null,
-  esFechaVencida: (f?: string | null) => boolean
+  hoy: string,
+  destino: string,
 ) {
-  const vencida = t.estado === "pendiente" && esFechaVencida(t.fecha_limite);
-  const chipRol = t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo";
-
+  const fecha = fechaEntrega(t.fecha_limite, hoy);
+  const cliente = t.cliente?.nombre ?? "Sin cliente";
+  const activa = t.estado === "pendiente" || t.estado === "rechazada";
   return (
-    <article key={t.id} className={styles.tareaCard}>
+    <article key={t.id} id={`tarea-${t.id}`} className={`${styles.tareaCard} ${destino === String(t.id) ? styles.tareaResaltada : ""}`}>
       <div className={styles.tareaCardTop}>
-        <h3 className={styles.tareaTitulo}>{t.titulo}</h3>
-        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Chip punto="azul">{chipRol}</Chip>
-          {t.cliente && <Chip punto="verde">{t.cliente.nombre}</Chip>}
-        </div>
+        <h3 className={styles.tareaIdentidad}><Avatar src={t.cliente?.foto_url ?? undefined} iniciales={cliente.slice(0, 2).toUpperCase()} alt="" tamano={40} /><span>{cliente}</span></h3>
+        {fecha && <time dateTime={t.fecha_limite ?? undefined} className={`${styles.entregaFecha} ${activa && fecha.urgente ? styles.fechaVencida : ""}`}>
+          <span><Calendar size={15} aria-hidden="true" /> {fecha.relativa}</span><small>{fecha.absoluta}</small>
+        </time>}
       </div>
-
-      {t.descripcion && <p className={styles.tareaDescripcion}>{t.descripcion}</p>}
-
+      <div><Chip punto="azul">{t.tipo?.nombre ?? "Trabajo"}</Chip></div>
+      <p className={styles.tareaDescripcion}>{t.descripcion || t.titulo}</p>
       <div className={styles.tareaMeta}>
-        {t.fecha_limite && (
-          <span className={`${styles.fechaLimite} ${vencida ? styles.fechaVencida : ""}`}>
-            <Calendar size={13} strokeWidth={1.75} />
-            {vencida ? "Venció:" : "Entrega:"} {formatearFecha(t.fecha_limite)}
-          </span>
-        )}
-
         {t.estado === "aceptada" && t.precio_congelado != null && (
           <span className={styles.precioCongelado}>
             {t.tipo?.unidad === "minuto" && t.cantidad_aceptada
@@ -365,16 +352,17 @@ function renderTarjeta(
         </div>
       )}
 
-      {(t.estado === "pendiente" || t.estado === "rechazada") && (
+      {(activa || t.drive_carpeta_url) && (
         <div className={styles.tareaFooter}>
-          <Boton
+          {t.drive_carpeta_url && /^https:\/\/drive\.google\.com\//i.test(t.drive_carpeta_url) && <a className={styles.carpetaTrabajo} href={t.drive_carpeta_url} target="_blank" rel="noreferrer"><FolderOpen size={16} aria-hidden="true" /> Carpeta de Drive</a>}
+          {activa && <Boton
             variante="primario"
             tamano="sm"
             onClick={() => onAbrirModal(t)}
           >
             <Check size={14} strokeWidth={1.75} style={{ marginRight: 4 }} />
-            {t.estado === "rechazada" ? "Reenviar como hecha" : "Marcar como hecha"}
-          </Boton>
+            {t.estado === "rechazada" ? "Volver a entregar" : "Entregar"}
+          </Boton>}
         </div>
       )}
     </article>

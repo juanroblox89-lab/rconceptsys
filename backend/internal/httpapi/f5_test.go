@@ -301,7 +301,9 @@ func TestF5ClientesYPiezas(t *testing.T) {
 
 	// La tarea se puede colgar de la pieza y lo devuelve en la respuesta
 	tarea := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 2, "asignado_a": editorID, "titulo": "Editar reel día del padre", "pieza_id": pieza.ID,
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   cliente.ID,
+		"tipo_id":      2, "asignado_a": editorID, "titulo": "Editar reel día del padre", "pieza_id": pieza.ID,
 	})
 	if tarea.Code != http.StatusCreated {
 		t.Fatalf("tarea con pieza: esperado 201, obtenido %d: %s", tarea.Code, tarea.Body.String())
@@ -332,7 +334,9 @@ func TestF5ClientesYPiezas(t *testing.T) {
 
 	// Las tareas de siempre siguen funcionando sin pieza
 	sinPieza := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea sin pieza",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      2, "asignado_a": editorID, "titulo": "Tarea sin pieza",
 	})
 	if sinPieza.Code != http.StatusCreated {
 		t.Fatalf("tarea sin pieza: esperado 201, obtenido %d", sinPieza.Code)

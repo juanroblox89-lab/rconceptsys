@@ -36,9 +36,11 @@ func TestF3CobroPorMinuto(t *testing.T) {
 
 	// Crear tarea de grabación (por minuto)
 	crearRes := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id":   1, // grabacion_video
-		"asignado_a": camID,
-		"titulo":    "Grabación comercial restaurante",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      1, // grabacion_video
+		"asignado_a":   camID,
+		"titulo":       "Grabación comercial restaurante",
 	})
 	if crearRes.Code != http.StatusCreated {
 		t.Fatalf("Error al crear tarea: %d %s", crearRes.Code, crearRes.Body.String())
@@ -116,9 +118,11 @@ func TestF3CorreccionMinutosAdmin(t *testing.T) {
 
 	// Crear tarea y marcar hecha con 100 minutos
 	crearRes := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id":   1,
-		"asignado_a": camID,
-		"titulo":    "Grabación entrevista",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      1,
+		"asignado_a":   camID,
+		"titulo":       "Grabación entrevista",
 	})
 	var tarea store.Tarea
 	_ = json.Unmarshal(crearRes.Body.Bytes(), &tarea)
@@ -158,9 +162,11 @@ func TestF3TipoPorTrabajoIgnoraCantidad(t *testing.T) {
 	routes, _, adminID, editorID, _ := setupF3TestEnvironment(t)
 
 	crearRes := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id":   2, // edicion_video (por trabajo, 50.000)
-		"asignado_a": editorID,
-		"titulo":    "Editar video reels",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      2, // edicion_video (por trabajo, 50.000)
+		"asignado_a":   editorID,
+		"titulo":       "Editar video reels",
 	})
 	var tarea store.Tarea
 	_ = json.Unmarshal(crearRes.Body.Bytes(), &tarea)
@@ -202,9 +208,11 @@ func TestF3PrecioCongeladoInmutable(t *testing.T) {
 	routes, _, adminID, _, camID := setupF3TestEnvironment(t)
 
 	crearRes := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id":   1, // grabacion 1500
-		"asignado_a": camID,
-		"titulo":    "Grabación institucional",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      1, // grabacion 1500
+		"asignado_a":   camID,
+		"titulo":       "Grabación institucional",
 	})
 	var tarea store.Tarea
 	_ = json.Unmarshal(crearRes.Body.Bytes(), &tarea)
@@ -282,8 +290,8 @@ func TestF3ClientesCRUDYValidaciones(t *testing.T) {
 	}
 	var clientesMiembro []*store.Cliente
 	_ = json.Unmarshal(listMiembro.Body.Bytes(), &clientesMiembro)
-	if len(clientesMiembro) != 1 {
-		t.Fatalf("Esperaba 1 cliente activo, obtuve %d", len(clientesMiembro))
+	if len(clientesMiembro) != 2 || !clientesMiembro[0].Activo || !clientesMiembro[1].Activo {
+		t.Fatalf("Esperaba 2 clientes activos, obtuve %d", len(clientesMiembro))
 	}
 
 	// Desactivar cliente
@@ -298,24 +306,25 @@ func TestF3ClientesCRUDYValidaciones(t *testing.T) {
 	listMiembro2 := doRequest(routes, "GET", "/api/clientes", editorID, nil)
 	var clientesMiembro2 []*store.Cliente
 	_ = json.Unmarshal(listMiembro2.Body.Bytes(), &clientesMiembro2)
-	if len(clientesMiembro2) != 0 {
-		t.Fatalf("Esperaba 0 clientes activos, obtuve %d", len(clientesMiembro2))
+	if len(clientesMiembro2) != 1 || clientesMiembro2[0].ID == cli.ID {
+		t.Fatalf("Esperaba solo el otro cliente activo, obtuve %d", len(clientesMiembro2))
 	}
 
 	// Admin sí lo ve
 	listAdmin := doRequest(routes, "GET", "/api/admin/clientes", adminID, nil)
 	var clientesAdmin []*store.Cliente
 	_ = json.Unmarshal(listAdmin.Body.Bytes(), &clientesAdmin)
-	if len(clientesAdmin) != 1 {
+	if len(clientesAdmin) != 2 {
 		t.Fatalf("Admin debe ver clientes inactivos, obtuve %d", len(clientesAdmin))
 	}
 
 	// Asignar tarea con cliente inactivo -> 400
 	tareaInactiva := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id":    2,
-		"cliente_id": cli.ID,
-		"asignado_a":  editorID,
-		"titulo":     "Tarea con cliente inactivo",
+		"fecha_limite": "2026-12-05",
+		"tipo_id":      2,
+		"cliente_id":   cli.ID,
+		"asignado_a":   editorID,
+		"titulo":       "Tarea con cliente inactivo",
 	})
 	if tareaInactiva.Code != http.StatusBadRequest {
 		t.Fatalf("Esperaba 400 al asignar con cliente inactivo, obtuve %d", tareaInactiva.Code)
@@ -326,10 +335,11 @@ func TestF3ClientesCRUDYValidaciones(t *testing.T) {
 		"activo": true,
 	})
 	tareaOk := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id":    2,
-		"cliente_id": cli.ID,
-		"asignado_a":  editorID,
-		"titulo":     "Tarea con cliente activo",
+		"fecha_limite": "2026-12-05",
+		"tipo_id":      2,
+		"cliente_id":   cli.ID,
+		"asignado_a":   editorID,
+		"titulo":       "Tarea con cliente activo",
 	})
 	if tareaOk.Code != http.StatusCreated {
 		t.Fatalf("Error al crear tarea con cliente activo: %d", tareaOk.Code)
@@ -348,7 +358,9 @@ func TestF3EstadisticasYo(t *testing.T) {
 	// Crear y aceptar 2 tareas para editor y 1 para camarografo
 	// Tarea 1 Editor: Edicion (50.000)
 	t1 := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea editor uno",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      2, "asignado_a": editorID, "titulo": "Tarea editor uno",
 	})
 	var tr1 store.Tarea
 	_ = json.Unmarshal(t1.Body.Bytes(), &tr1)
@@ -357,7 +369,9 @@ func TestF3EstadisticasYo(t *testing.T) {
 
 	// Tarea 2 Editor: Edicion (50.000)
 	t2 := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea editor dos",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      2, "asignado_a": editorID, "titulo": "Tarea editor dos",
 	})
 	var tr2 store.Tarea
 	_ = json.Unmarshal(t2.Body.Bytes(), &tr2)
@@ -366,7 +380,9 @@ func TestF3EstadisticasYo(t *testing.T) {
 
 	// Tarea Camarógrafo: Grabacion 60 min (1500 * 60 = 90.000)
 	tc := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 1, "asignado_a": camID, "titulo": "Tarea camara uno",
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      1, "asignado_a": camID, "titulo": "Tarea camara uno",
 	})
 	var trc store.Tarea
 	_ = json.Unmarshal(tc.Body.Bytes(), &trc)

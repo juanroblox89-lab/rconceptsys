@@ -75,13 +75,17 @@ type TipoTrabajo struct {
 }
 
 type Cliente struct {
-	ID       int       `json:"id"`
-	Nombre   string    `json:"nombre"`
-	Activo   bool      `json:"activo"`
-	Paquete  *string   `json:"paquete,omitempty"`
-	DriveURL *string   `json:"drive_url,omitempty"`
-	Notas    *string   `json:"notas,omitempty"`
-	CreadoEn time.Time `json:"creado_en"`
+	FotoURL           *string   `json:"foto_url,omitempty"`
+	DriveCarpetaID    *string   `json:"drive_carpeta_id,omitempty"`
+	MaterialCarpetaID *string   `json:"material_carpeta_id,omitempty"`
+	ProductoCarpetaID *string   `json:"producto_carpeta_id,omitempty"`
+	ID                int       `json:"id"`
+	Nombre            string    `json:"nombre"`
+	Activo            bool      `json:"activo"`
+	Paquete           *string   `json:"paquete,omitempty"`
+	DriveURL          *string   `json:"drive_url,omitempty"`
+	Notas             *string   `json:"notas,omitempty"`
+	CreadoEn          time.Time `json:"creado_en"`
 }
 
 type EstadoTarea string
@@ -284,6 +288,7 @@ type EstadisticasAdminResponse struct {
 // incrusta para que un solo tipo cubra todo lo que usan los handlers.
 type Store interface {
 	StoreF5
+	ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error)
 
 	// Perfiles & Auth
 	ObtenerPerfilPorID(ctx context.Context, id string) (*Perfil, error)

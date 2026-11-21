@@ -12,7 +12,7 @@ import {
   PanelLeftClose,
   ChevronDown,
   ChevronUp,
-  Clock,
+  Briefcase, Contact,
   Settings,
   LogOut,
   User,
@@ -43,7 +43,8 @@ export const navItems: NavItemDef[] = [
   { id: "tareas", title: "Tareas", href: "/tareas", icon: CheckSquare },
   { id: "factura", title: "Mi factura", href: "/factura", icon: Receipt, workerOnly: true },
   { id: "equipo", title: "Equipo", href: "/equipo", icon: Users },
-  { id: "asignaciones", title: "Asignaciones", href: "/asignaciones", icon: Clock, adminOnly: true, soloRiel: true },
+  { id: "asignaciones", title: "Trabajos", href: "/asignaciones", icon: Briefcase, adminOnly: true },
+  { id: "clientes", title: "Clientes", href: "/clientes", icon: Contact, adminOnly: true },
   { id: "admin", title: "Gestión", href: "/admin", icon: Shield, adminOnly: true },
 ];
 

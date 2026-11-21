@@ -841,6 +841,17 @@ func (m *MemoryStore) ActualizarCliente(ctx context.Context, id int, campos map[
 		}
 	}
 
+	for clave, destino := range map[string]**string{"foto_url": &c.FotoURL, "drive_carpeta_id": &c.DriveCarpetaID, "material_carpeta_id": &c.MaterialCarpetaID, "producto_carpeta_id": &c.ProductoCarpetaID} {
+		if v, ok := campos[clave]; ok {
+			if v == nil {
+				*destino = nil
+			} else if texto, ok := v.(string); ok {
+				*destino = &texto
+			} else {
+				return nil, ErrValidation
+			}
+		}
+	}
 	return m.clonarClienteLocked(c), nil
 }
 

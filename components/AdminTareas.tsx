@@ -7,9 +7,10 @@ import {
   Calendar,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import estilosTarea from "@/app/(app)/tareas/tareas.module.css";
+import { FormularioAsignacion } from "@/components/FormularioAsignacion";
 import {
   Perfil,
-  TipoTrabajo,
   Tarea,
 } from "@/lib/types";
 import { Tabla, TablaFila } from "@/components/ui/Tabla";
@@ -29,27 +30,19 @@ export interface AdminTareasProps {
   embedded?: boolean;
 }
 
-function contarLetrasDigitos(texto: string): number {
-  return (texto.match(/[\p{L}\p{N}]/gu) || []).length;
-}
-
 export function AdminTareas({ embedded = false }: AdminTareasProps) {
   const [cargando, setCargando] = useState(true);
   const { mostrarAviso } = useAviso();
 
   const [miembros, setMiembros] = useState<Perfil[]>([]);
-  const [trabajos, setTrabajos] = useState<TipoTrabajo[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
 
   // Filtros
   const [filtroPersona, setFiltroPersona] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("");
 
-  // Modal Nueva Tarea (solo aviso y persona)
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false);
-  const [nuevaTareaAsignadoA, setNuevaTareaAsignadoA] = useState<string>("");
-  const [aviso, setAviso] = useState("");
-  const [creandoTarea, setCreandoTarea] = useState(false);
+  const [nuevaTareaAsignadoA, setNuevaTareaAsignadoA] = useState("");
 
   // Modal Aceptar Tarea con corrección opcional de minutos
   const [modalAceptarTarea, setModalAceptarTarea] = useState<Tarea | null>(null);
@@ -63,13 +56,11 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
 
   const cargarDatos = useCallback(async () => {
     try {
-      const [m, tr, tRes] = await Promise.all([
+      const [m, tRes] = await Promise.all([
         api.adminGetMiembros(),
-        api.adminGetTrabajos(),
         api.adminGetTareas(),
       ]);
       setMiembros(Array.isArray(m) ? m : []);
-      setTrabajos(Array.isArray(tr) ? tr : []);
       setTareas(tRes?.tareas || []);
     } catch {
       mostrarAviso({
@@ -114,47 +105,16 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     }
   };
 
-  const handleCrearTareaSubmit = async () => {
-    if (!nuevaTareaAsignadoA) {
-      mostrarAviso({ tipo: "error", titulo: "Persona requerida", texto: "Selecciona a quién asignar la tarea." });
-      return;
-    }
-
-    const textoAviso = aviso.trim();
-    if (!textoAviso) {
-      mostrarAviso({ tipo: "error", titulo: "Aviso requerido", texto: "Escribe el aviso de la tarea." });
-      return;
-    }
-    if (contarLetrasDigitos(textoAviso) < 3) {
-      mostrarAviso({ tipo: "error", titulo: "Aviso demasiado corto", texto: "El aviso debe tener al menos 3 letras o números. Escribe un aviso más completo." });
-      return;
-    }
-
-    setCreandoTarea(true);
-    try {
-      const tipoDefaultId = trabajos[0]?.id || 1;
-      const titulo = textoAviso.length > 100 ? `${textoAviso.slice(0, 97)}...` : textoAviso;
-
-      await api.adminPostTarea({
-        tipo_id: tipoDefaultId,
-        asignado_a: nuevaTareaAsignadoA,
-        titulo,
-        descripcion: textoAviso,
-        forzar: true,
-      });
-
-      mostrarAviso({ tipo: "exito", titulo: "Tarea creada y enviada" });
-      setModalNuevaTarea(false);
-      setAviso("");
-      setNuevaTareaAsignadoA("");
-      await cargarDatos();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "No se pudo crear la tarea", texto: e.message || "Error al crear tarea." });
-    } finally {
-      setCreandoTarea(false);
-    }
-  };
+  const [destino, setDestino] = useState("");
+  useEffect(() => {
+    const sincronizar = () => setDestino(new URLSearchParams(window.location.search).get("tarea") ?? "");
+    sincronizar();
+    window.addEventListener("hashchange", sincronizar);
+    return () => window.removeEventListener("hashchange", sincronizar);
+  }, []);
+  useEffect(() => {
+    if (!cargando && destino) document.getElementById(`tarea-${destino}`)?.scrollIntoView({ block: "nearest" });
+  }, [cargando, destino]);
 
   const handleAbrirAceptarTarea = (t: Tarea) => {
     setModalAceptarTarea(t);
@@ -234,11 +194,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   });
 
   const miembrosAprobados = miembros.filter((m) => m.estado === "aprobado" && !m.es_admin);
-  const personaSeleccionada = miembrosAprobados.find((m) => m.id === nuevaTareaAsignadoA);
-  const avisoError = aviso.trim() && contarLetrasDigitos(aviso) < 3
-    ? "El aviso debe tener al menos 3 letras o números."
-    : undefined;
-
   return (
     <div className={embedded ? "" : styles.container}>
       {!embedded && (
@@ -257,7 +212,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               }}
             >
               <Plus size={15} style={{ marginRight: 6 }} />
-              Nueva tarea
+              Asignar trabajo
             </Boton>
           </div>
         </div>
@@ -272,7 +227,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
             }}
           >
             <Plus size={15} style={{ marginRight: 6 }} />
-            Nueva tarea
+            Asignar trabajo
           </Boton>
         </div>
       )}
@@ -300,7 +255,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
             ) : (
               <div className={styles.bandejaReviewGrid}>
                 {tareasPorRevisar.map((t) => (
-                  <article key={t.id} className={styles.reviewCard}>
+                  <article key={t.id} id={`tarea-${t.id}`} className={`${styles.reviewCard} ${destino === String(t.id) ? estilosTarea.tareaResaltada : ""}`}>
                     <div className={styles.reviewHeader}>
                       <span className={styles.reviewPersona}>
                         {t.asignado?.nombre || "Miembro"}
@@ -608,63 +563,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       {/* ========================================================= */}
       {/* MODAL: NUEVA TAREA (SIMPLIFICADO: SOLO AVISO Y PERSONA)    */}
       {/* ========================================================= */}
-      {modalNuevaTarea && (
-        <Modal
-          abierto={true}
-          titulo="Nueva tarea"
-          descripcion={personaSeleccionada ? `Asigna un aviso o tarea para ${personaSeleccionada.nombre}.` : "Asigna un aviso o tarea a un miembro del equipo."}
-          onCerrar={() => setModalNuevaTarea(false)}
-          accionPrimaria={
-            <Boton
-              variante="primario"
-              cargando={creandoTarea}
-              onClick={handleCrearTareaSubmit}
-            >
-              Crear tarea
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setModalNuevaTarea(false)}
-              disabled={creandoTarea}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <Campo
-              como="select"
-              etiqueta="Asignar a *"
-              value={nuevaTareaAsignadoA}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-                setNuevaTareaAsignadoA(e.target.value);
-              }}
-            >
-              <option value="">Selecciona un miembro del equipo</option>
-              {miembrosAprobados.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nombre} ({m.correo})
-                </option>
-              ))}
-            </Campo>
-
-            <Campo
-              etiqueta="Aviso *"
-              como="textarea"
-              filas={4}
-              placeholder="Escribe el aviso o detalles de la tarea a realizar..."
-              value={aviso}
-              error={avisoError}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setAviso(e.target.value.slice(0, 1000))}
-            />
-            <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)", textAlign: "right" }}>
-              {aviso.length} / 1000
-            </div>
-          </div>
-        </Modal>
-      )}
+      {modalNuevaTarea && <FormularioAsignacion personaInicial={nuevaTareaAsignadoA} onCerrar={() => setModalNuevaTarea(false)} onGuardar={() => { setModalNuevaTarea(false); setNuevaTareaAsignadoA(""); void cargarDatos(); }} />}
 
       {/* ========================================================= */}
       {/* MODAL: ACEPTAR TAREA (con ajuste de minutos si aplica)    */}

@@ -165,6 +165,10 @@ export interface ErrorApi {
 // ==========================================
 
 export interface Cliente {
+ foto_url?: string | null;
+ drive_carpeta_id?: string | null;
+ material_carpeta_id?: string | null;
+ producto_carpeta_id?: string | null;
   id: number;
   nombre: string;
   activo: boolean;

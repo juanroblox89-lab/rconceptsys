@@ -264,7 +264,16 @@ func (a *API) handleAdminPostTareaDriveCarpeta(w http.ResponseWriter, r *http.Re
 			return
 		}
 		nombre := fmt.Sprintf("T-%d %s", tarea.ID, recortar(tarea.Titulo, 60))
-		archivo, err := a.crearCarpetaDrive(r.Context(), token, nombre, strings.TrimSpace(a.F5.Drive.CarpetaRaiz))
+		if tarea.ClienteID == nil {
+			ResponderError(w, 400, "cliente_requerido", "El trabajo necesita un cliente para crear su carpeta.")
+			return
+		}
+		cliente, e := a.Store.ObtenerClientePorID(r.Context(), *tarea.ClienteID)
+		if e != nil || cliente.DriveCarpetaID == nil {
+			ResponderError(w, 400, "carpeta_cliente_requerida", "Configura primero la carpeta de Drive del cliente.")
+			return
+		}
+		archivo, err := a.asegurarSubcarpeta(r.Context(), token, nombre, *cliente.DriveCarpetaID)
 		if err != nil {
 			ResponderError(w, http.StatusBadGateway, "drive_error", "No se pudo crear la carpeta en Drive.")
 			return

@@ -63,6 +63,13 @@
   transition: transform var(--rc-transicion), box-shadow var(--rc-transicion);
 }
 
+.tareaResaltada { outline: 2px solid var(--rc-azul-texto); outline-offset: -2px; }
+.tareaIdentidad { display: flex; min-width: 0; align-items: center; gap: var(--rc-esp-8); font-size: var(--rc-fs-titulo-seccion); }
+.tareaIdentidad span, .tareaDescripcion { overflow-wrap: anywhere; }
+.entregaFecha { text-align: right; font-weight: 650; flex-shrink: 0; }
+.entregaFecha span { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.entregaFecha small { display: block; font-size: var(--rc-fs-secundario); }
+.carpetaTrabajo { display: inline-flex; align-items: center; gap: 4px; color: var(--rc-azul-texto); min-height: 40px; }
 .tareaCardTop {
   display: flex;
   align-items: flex-start;

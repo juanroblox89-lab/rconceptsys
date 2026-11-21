@@ -13,7 +13,9 @@ import (
 func crearTareaF4(t *testing.T, routes http.Handler, adminID, editorID string, titulo string) store.Tarea {
 	t.Helper()
 	res := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-		"tipo_id": 2, "asignado_a": editorID, "titulo": titulo, "descripcion": titulo,
+		"fecha_limite": "2026-12-05",
+		"cliente_id":   1,
+		"tipo_id":      2, "asignado_a": editorID, "titulo": titulo, "descripcion": titulo,
 	})
 	if res.Code != http.StatusCreated {
 		t.Fatalf("crear tarea %q: esperado 201, obtenido %d: %s", titulo, res.Code, res.Body.String())
@@ -115,7 +117,9 @@ func TestF4AvisoInvalido(t *testing.T) {
 	routes, _, adminID, editorID, _, _ := setupF2TestEnvironment(t)
 	for _, titulo := range []string{",", "  ,  ", "a", "!!"} {
 		res := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
-			"tipo_id": 2, "asignado_a": editorID, "titulo": titulo, "descripcion": titulo,
+			"fecha_limite": "2026-12-05",
+			"cliente_id":   1,
+			"tipo_id":      2, "asignado_a": editorID, "titulo": titulo, "descripcion": titulo,
 		})
 		if res.Code != http.StatusBadRequest {
 			t.Fatalf("titulo %q: esperado 400, obtenido %d: %s", titulo, res.Code, res.Body.String())

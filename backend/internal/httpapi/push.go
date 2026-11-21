@@ -242,9 +242,9 @@ func (a *API) AvisarTareaNueva(ctx context.Context, tarea *store.Tarea) {
 		return
 	}
 	a.enviarAvisoA(ctx, tarea.AsignadoA, AvisoPush{
-		Titulo:   "Tarea nueva",
-		Cuerpo:   recortar(tarea.Titulo, 90),
-		URL:      "/tareas",
+		Titulo:   "Tarea nueva " + FechaEntrega(tarea.FechaLimite, time.Now()),
+		Cuerpo:   datosAvisoTarea(tarea),
+		URL:      fmt.Sprintf("/tareas?tarea=%d#tarea-%d", tarea.ID, tarea.ID),
 		Etiqueta: "tarea-nueva",
 	})
 }

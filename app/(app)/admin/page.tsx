@@ -8,17 +8,14 @@ import {
   Briefcase,
   Receipt,
   Users,
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
   BarChart2,
   Users2,
   Calendar,
-  Edit2,
   Layers,
   Wallet,
   Building2,
-  FolderOpen,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
@@ -30,7 +27,6 @@ import {
   ResumenFacturasPersona,
   EstadisticasAdminResponse,
   UnidadTrabajo,
-  Pieza,
 } from "@/lib/types";
 import { Tabla, TablaFila } from "@/components/ui/Tabla";
 import { Boton } from "@/components/ui/Boton";
@@ -42,6 +38,8 @@ import { Interruptor } from "@/components/ui/Interruptor";
 import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
+import { ClientesPanel } from "@/components/ClientesPanel";
+import { FormularioAsignacion } from "@/components/FormularioAsignacion";
 import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useAviso } from "@/components/ui/Aviso";
 import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
@@ -113,42 +111,10 @@ export default function AdminPage() {
   const [nuevoTrabUnidad, setNuevoTrabUnidad] = useState<UnidadTrabajo>("trabajo");
   const [guardandoTrabajo, setGuardandoTrabajo] = useState(false);
 
-  // Estados locales - Clientes
-  const [modalNuevoCliente, setModalNuevoCliente] = useState(false);
-  const [nuevoClienteNombre, setNuevoClienteNombre] = useState("");
-  const [guardandoCliente, setGuardandoCliente] = useState(false);
-  const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
-  const [nombreEditado, setNombreEditado] = useState("");
-  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
-
-  // F5: ficha del cliente (paquete, carpeta de Drive y notas)
-  const [clienteFicha, setClienteFicha] = useState<Cliente | null>(null);
-  const [fichaPaquete, setFichaPaquete] = useState("");
-  const [fichaDrive, setFichaDrive] = useState("");
-  const [fichaNotas, setFichaNotas] = useState("");
-  const [guardandoFicha, setGuardandoFicha] = useState(false);
-
-  // F5: pieza a la que se cuelga la tarea nueva
-  const [nuevaTareaPiezaId, setNuevaTareaPiezaId] = useState<number | "">("");
-  const [piezas, setPiezas] = useState<Pieza[]>([]);
-
   // Estados locales - Tareas
   const [filtroPersona, setFiltroPersona] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("");
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false);
-  const [nuevaTareaTipoId, setNuevaTareaTipoId] = useState<number | "">("");
-  const [nuevaTareaClienteId, setNuevaTareaClienteId] = useState<number | "">("");
-  const [nuevaTareaAsignadoA, setNuevaTareaAsignadoA] = useState<string>("");
-  const [nuevaTareaTitulo, setNuevaTareaTitulo] = useState("");
-  const [nuevaTareaDescripcion, setNuevaTareaDescripcion] = useState("");
-  const [nuevaTareaFechaLimite, setNuevaTareaFechaLimite] = useState("");
-  const [nuevaTareaForzar, setNuevaTareaForzar] = useState(false);
-  const [creandoTarea, setCreandoTarea] = useState(false);
-
-  // Cliente al vuelo desde modal Nueva Tarea
-  const [modalCrearClienteAlVuelo, setModalCrearClienteAlVuelo] = useState(false);
-  const [clienteAlVueloNombre, setClienteAlVueloNombre] = useState("");
-  const [guardandoClienteAlVuelo, setGuardandoClienteAlVuelo] = useState(false);
 
   // Modal Aceptar Tarea con corrección opcional de minutos
   const [modalAceptarTarea, setModalAceptarTarea] = useState<Tarea | null>(null);
@@ -182,30 +148,15 @@ export default function AdminPage() {
   const [nuevoColor, setNuevoColor] = useState("#2F7FE0");
   const [rolesPendientes, setRolesPendientes] = useState<Record<string, number[]>>({});
 
-  const formatearFechaHora = (iso?: string | null) => {
-    if (!iso) return "—";
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString("es-CO", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return iso;
-    }
-  };
-
   const cargarDatos = useCallback(async () => {
     try {
-      const [mList, rList, tList, tareasRes, fList, cList, pList] = await Promise.all([
+      const [mList, rList, tList, tareasRes, fList, cList] = await Promise.all([
         api.adminGetMiembros(),
         api.adminGetRoles(),
         api.adminGetTrabajos(),
         api.adminGetTareas(),
         api.adminGetFacturas(),
         api.adminGetClientes(),
-        api.adminGetPiezas().catch(() => [] as Pieza[]),
       ]);
       setMiembros(mList);
       setRoles(rList);
@@ -213,7 +164,6 @@ export default function AdminPage() {
       setTareas(tareasRes?.tareas || []);
       setFacturas(fList);
       setClientes(cList);
-      setPiezas(Array.isArray(pList) ? pList : []);
 
       const preciosMap: Record<number, number> = {};
       tList.forEach((t) => {
@@ -493,122 +443,6 @@ export default function AdminPage() {
   };
 
   // ==========================================
-  // Acciones: Pestaña Clientes
-  // ==========================================
-  const handleCrearCliente = async () => {
-    const limpio = nuevoClienteNombre.trim();
-    if (limpio.length < 1 || limpio.length > 80) {
-      mostrarAviso({ tipo: "error", titulo: "Nombre inválido", texto: "El nombre debe tener entre 1 y 80 caracteres." });
-      return;
-    }
-    setGuardandoCliente(true);
-    try {
-      await api.adminPostCliente(limpio);
-      mostrarAviso({ tipo: "exito", titulo: "Cliente creado", texto: `El cliente "${limpio}" fue creado con éxito.` });
-      setModalNuevoCliente(false);
-      setNuevoClienteNombre("");
-      const clis = await api.adminGetClientes();
-      setClientes(clis);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "Error al crear cliente", texto: e.message || "Verifica los datos." });
-    } finally {
-      setGuardandoCliente(false);
-    }
-  };
-
-  const handleRenombrarCliente = async () => {
-    if (!clienteAEditar) return;
-    const limpio = nombreEditado.trim();
-    if (limpio.length < 1 || limpio.length > 80) {
-      mostrarAviso({ tipo: "error", titulo: "Nombre inválido", texto: "El nombre debe tener entre 1 y 80 caracteres." });
-      return;
-    }
-    setGuardandoEdicion(true);
-    try {
-      await api.adminPatchCliente(clienteAEditar.id, { nombre: limpio });
-      mostrarAviso({ tipo: "exito", titulo: "Cliente actualizado", texto: "El nombre fue modificado con éxito." });
-      setClienteAEditar(null);
-      setNombreEditado("");
-      const clis = await api.adminGetClientes();
-      setClientes(clis);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "Error al renombrar", texto: e.message || "Error al actualizar." });
-    } finally {
-      setGuardandoEdicion(false);
-    }
-  };
-
-  const handleToggleClienteActivo = async (c: Cliente) => {
-    try {
-      await api.adminPatchCliente(c.id, { activo: !c.activo });
-      mostrarAviso({
-        tipo: "info",
-        titulo: "Estado actualizado",
-        texto: `El cliente "${c.nombre}" ahora está ${!c.activo ? "activo" : "inactivo"}.`,
-      });
-      const clis = await api.adminGetClientes();
-      setClientes(clis);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "Error", texto: e.message || "No se pudo cambiar el estado." });
-    }
-  };
-
-  // F5: ficha del cliente (paquete, carpeta de Drive y notas)
-  const abrirFichaCliente = (c: Cliente) => {
-    setClienteFicha(c);
-    setFichaPaquete(c.paquete ?? "");
-    setFichaDrive(c.drive_url ?? "");
-    setFichaNotas(c.notas ?? "");
-  };
-
-  const guardarFichaCliente = async () => {
-    if (!clienteFicha) return;
-    setGuardandoFicha(true);
-    try {
-      const actualizado = await api.adminPatchCliente(clienteFicha.id, {
-        paquete: fichaPaquete.trim(),
-        drive_url: fichaDrive.trim(),
-        notas: fichaNotas.trim(),
-      });
-      setClientes((prev) => prev.map((c) => (c.id === actualizado.id ? actualizado : c)));
-      setClienteFicha(null);
-      mostrarAviso({ tipo: "exito", titulo: "Ficha guardada", texto: actualizado.nombre });
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "No se pudo guardar", texto: e.message || "Revisa la carpeta de Drive." });
-    } finally {
-      setGuardandoFicha(false);
-    }
-  };
-
-  const handleCrearClienteAlVuelo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const limpio = clienteAlVueloNombre.trim();
-    if (limpio.length < 1 || limpio.length > 80) {
-      mostrarAviso({ tipo: "error", titulo: "Nombre inválido", texto: "El nombre debe tener entre 1 y 80 caracteres." });
-      return;
-    }
-    setGuardandoClienteAlVuelo(true);
-    try {
-      const nuevo = await api.adminPostCliente(limpio);
-      mostrarAviso({ tipo: "exito", titulo: "Cliente creado", texto: `El cliente "${limpio}" fue creado y seleccionado.` });
-      const clis = await api.adminGetClientes();
-      setClientes(clis);
-      setNuevaTareaClienteId(nuevo.id);
-      setModalCrearClienteAlVuelo(false);
-      setClienteAlVueloNombre("");
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "Error", texto: e.message || "No se pudo crear el cliente." });
-    } finally {
-      setGuardandoClienteAlVuelo(false);
-    }
-  };
-
-  // ==========================================
   // Acciones: Pestaña Tareas
   // ==========================================
   const handleAbrirAceptarTarea = (tarea: Tarea) => {
@@ -690,52 +524,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleCrearTareaSubmit = async () => {
-    if (!nuevaTareaTitulo.trim() || nuevaTareaTipoId === "" || !nuevaTareaAsignadoA) {
-      mostrarAviso({ tipo: "error", titulo: "Campos incompletos", texto: "Selecciona trabajo, persona y título." });
-      return;
-    }
-
-    setCreandoTarea(true);
-    try {
-      await api.adminPostTarea({
-        tipo_id: Number(nuevaTareaTipoId),
-        cliente_id: nuevaTareaClienteId === "" ? null : Number(nuevaTareaClienteId),
-        pieza_id: nuevaTareaPiezaId === "" ? null : Number(nuevaTareaPiezaId),
-        asignado_a: nuevaTareaAsignadoA,
-        titulo: nuevaTareaTitulo.trim(),
-        descripcion: nuevaTareaDescripcion.trim() || undefined,
-        fecha_limite: nuevaTareaFechaLimite || undefined,
-        forzar: nuevaTareaForzar,
-      });
-      mostrarAviso({ tipo: "exito", titulo: "Tarea creada y asignada" });
-      setModalNuevaTarea(false);
-      setNuevaTareaTipoId("");
-      setNuevaTareaClienteId("");
-      setNuevaTareaPiezaId("");
-      setNuevaTareaAsignadoA("");
-      setNuevaTareaTitulo("");
-      setNuevaTareaDescripcion("");
-      setNuevaTareaFechaLimite("");
-      setNuevaTareaForzar(false);
-      await cargarDatos();
-    } catch (err: unknown) {
-      const e = err as { codigo?: string; message?: string };
-      if (e.codigo === "rol_no_coincide" || e.message?.includes("rol")) {
-        setNuevaTareaForzar(true);
-        mostrarAviso({
-          tipo: "advertencia",
-          titulo: "Rol no coincide",
-          texto: e.message || "La persona no tiene el rol asignado. Marca 'Asignar de todos modos' para forzar.",
-        });
-      } else {
-        mostrarAviso({ tipo: "error", titulo: "Error al crear tarea", texto: e.message || "Verifica los datos." });
-      }
-    } finally {
-      setCreandoTarea(false);
-    }
-  };
-
   // ==========================================
   // Acciones: Pestaña Facturas
   // ==========================================
@@ -772,19 +560,7 @@ export default function AdminPage() {
   const pendientesMiembros = miembros.filter((m) => m.estado === "pendiente");
   const aprobadosYSuspendidos = miembros.filter((m) => m.estado !== "pendiente");
 
-  // Opciones de personas agrupadas para el modal Nueva Tarea
-  const tipoTrabajoSeleccionado = trabajos.find((t) => t.id === Number(nuevaTareaTipoId));
   const miembrosAprobados = miembros.filter((m) => m.estado === "aprobado" && !m.es_admin);
-  const miembrosConRol = tipoTrabajoSeleccionado?.rol_id
-    ? miembrosAprobados.filter((m) => m.roles?.some((r) => r.id === tipoTrabajoSeleccionado.rol_id))
-    : miembrosAprobados;
-  const miembrosSinRol = tipoTrabajoSeleccionado?.rol_id
-    ? miembrosAprobados.filter((m) => !m.roles?.some((r) => r.id === tipoTrabajoSeleccionado.rol_id))
-    : [];
-
-  const personaSeleccionadaTieneRol =
-    !tipoTrabajoSeleccionado?.rol_id ||
-    miembrosConRol.some((m) => m.id === nuevaTareaAsignadoA);
 
   const tabsItems = [
     { id: "trabajos", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Briefcase size={14} /> Trabajos</span> },
@@ -1033,133 +809,8 @@ export default function AdminPage() {
           {/* ========================================================= */}
           {/* PESTAÑA: CLIENTES                                         */}
           {/* ========================================================= */}
-          {pestanaActiva === "clientes" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--rc-esp-20)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                <div>
-                  <h2 className={styles.sectionTitle}>Clientes</h2>
-                  <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)" }}>
-                    Gestiona los clientes para vincularlos a tareas y reportes de facturación
-                  </div>
-                </div>
-                <Boton
-                  variante="primario"
-                  onClick={() => {
-                    setNuevoClienteNombre("");
-                    setModalNuevoCliente(true);
-                  }}
-                >
-                  <Plus size={14} style={{ marginRight: 6 }} />
-                  Nuevo cliente
-                </Boton>
-              </div>
+          {pestanaActiva === "clientes" && <ClientesPanel integrado />}
 
-              <section className={styles.section}>
-                {clientes.length === 0 ? (
-                  <Tarjeta
-                    variante="vacia"
-                    tituloVacio="Sin clientes registrados"
-                    textoVacio="Crea clientes para asociar a los trabajos y filtrar estadísticas."
-                  />
-                ) : (
-                  <>
-                    <div className={styles.desktopTable}>
-                      <Tabla>
-                        <thead>
-                          <tr>
-                            <th>Nombre del cliente</th>
-                            <th>Estado</th>
-                            <th>Fecha de creación</th>
-                            <th style={{ textAlign: "right" }}>Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {clientes.map((c) => (
-                            <TablaFila key={c.id}>
-                              <td>
-                                <strong>{c.nombre}</strong>
-                              </td>
-                              <td>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <Interruptor
-                                    checked={c.activo}
-                                    onCheckedChange={() => handleToggleClienteActivo(c)}
-                                  />
-                                  <span style={{ fontSize: 12, color: c.activo ? "var(--rc-verde-texto)" : "var(--rc-texto-secundario)" }}>
-                                    {c.activo ? "Activo" : "Inactivo"}
-                                  </span>
-                                </div>
-                              </td>
-                              <td style={{ fontSize: "12px", color: "var(--rc-texto-secundario)" }}>
-                                {formatearFechaHora(c.creado_en)}
-                              </td>
-                              <td style={{ textAlign: "right" }}>
-                                <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                                  <Boton variante="secundario" tamano="sm" onClick={() => abrirFichaCliente(c)}>
-                                    <FolderOpen size={13} style={{ marginRight: 4 }} />
-                                    Ficha
-                                  </Boton>
-                                  <Boton
-                                    variante="secundario"
-                                    tamano="sm"
-                                    onClick={() => {
-                                      setClienteAEditar(c);
-                                      setNombreEditado(c.nombre);
-                                    }}
-                                  >
-                                    <Edit2 size={13} style={{ marginRight: 4 }} />
-                                    Renombrar
-                                  </Boton>
-                                </div>
-                              </td>
-                            </TablaFila>
-                          ))}
-                        </tbody>
-                      </Tabla>
-                    </div>
-
-                    <div className={styles.mobileCards}>
-                      {clientes.map((c) => (
-                        <article key={c.id} className={styles.mobileCard}>
-                          <div className={styles.mobileCardHeader}>
-                            <div>
-                              <div className={styles.mobileCardName}>{c.nombre}</div>
-                              <div className={styles.mobileCardEmail}>
-                                Creado el {formatearFechaHora(c.creado_en)}
-                              </div>
-                            </div>
-                            <Interruptor
-                              checked={c.activo}
-                              onCheckedChange={() => handleToggleClienteActivo(c)}
-                            />
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, flexWrap: "wrap" }}>
-                            <Boton variante="secundario" tamano="sm" onClick={() => abrirFichaCliente(c)}>
-                              <FolderOpen size={13} style={{ marginRight: 4 }} />
-                              Ficha
-                            </Boton>
-                            <Boton
-                              variante="secundario"
-                              tamano="sm"
-                              onClick={() => {
-                                setClienteAEditar(c);
-                                setNombreEditado(c.nombre);
-                              }}
-                            >
-                              <Edit2 size={13} style={{ marginRight: 4 }} />
-                              Renombrar
-                            </Boton>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </section>
-            </div>
-          )}
-
-          {/* ========================================================= */}
           {/* PESTAÑA 2: TAREAS                                         */}
           {/* ========================================================= */}
           {pestanaActiva === "tareas" && (
@@ -1170,7 +821,6 @@ export default function AdminPage() {
                   variante="primario"
                   onClick={() => {
                     setModalNuevaTarea(true);
-                    setNuevaTareaForzar(false);
                   }}
                 >
                   <Plus size={14} style={{ marginRight: 6 }} />
@@ -2251,379 +1901,7 @@ export default function AdminPage() {
       )}
 
       {/* Modal Nueva Tarea */}
-      {modalNuevaTarea && (
-        <Modal
-          abierto={true}
-          titulo="Nueva tarea"
-          descripcion="Asigna una tarea a un miembro del equipo según su rol."
-          onCerrar={() => setModalNuevaTarea(false)}
-          accionPrimaria={
-            <Boton
-              variante="primario"
-              cargando={creandoTarea}
-              onClick={handleCrearTareaSubmit}
-            >
-              Crear tarea
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setModalNuevaTarea(false)}
-              disabled={creandoTarea}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
-                Tipo de trabajo
-              </label>
-              <select
-                className={styles.selectCompacto}
-                style={{ width: "100%", height: 36 }}
-                value={nuevaTareaTipoId}
-                onChange={(e) => setNuevaTareaTipoId(e.target.value === "" ? "" : Number(e.target.value))}
-                disabled={creandoTarea}
-              >
-                <option value="">Selecciona un tipo de trabajo...</option>
-                {trabajos.filter((t) => t.activo).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre} {t.rol ? `(${t.rol.nombre})` : ""} — $ {t.precio.toLocaleString("es-CO")}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)" }}>
-                  Cliente (opcional)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClienteAlVueloNombre("");
-                    setModalCrearClienteAlVuelo(true);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--rc-azul-texto)",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  <Plus size={12} />
-                  Nuevo cliente al vuelo
-                </button>
-              </div>
-              <select
-                className={styles.selectCompacto}
-                style={{ width: "100%", height: 36 }}
-                value={nuevaTareaClienteId}
-                onChange={(e) => setNuevaTareaClienteId(e.target.value === "" ? "" : Number(e.target.value))}
-                disabled={creandoTarea}
-              >
-                <option value="">Sin cliente asociado</option>
-                {clientes.filter((c) => c.activo).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
-                Pieza (opcional)
-              </label>
-              <select
-                className={styles.selectCompacto}
-                style={{ width: "100%", height: 36 }}
-                value={nuevaTareaPiezaId}
-                onChange={(e) => setNuevaTareaPiezaId(e.target.value === "" ? "" : Number(e.target.value))}
-                disabled={creandoTarea}
-              >
-                <option value="">Sin pieza</option>
-                {piezas
-                  .filter((p) => (nuevaTareaClienteId === "" ? true : p.cliente_id === Number(nuevaTareaClienteId)))
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} · {p.etapa}
-                    </option>
-                  ))}
-              </select>
-              <p style={{ fontSize: 11, color: "var(--rc-texto-tenue)", marginTop: 2 }}>
-                Agrupa la tarea dentro de una pieza del flujo.
-              </p>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
-                Persona asignada
-              </label>
-              <select
-                className={styles.selectCompacto}
-                style={{ width: "100%", height: 36 }}
-                value={nuevaTareaAsignadoA}
-                onChange={(e) => setNuevaTareaAsignadoA(e.target.value)}
-                disabled={creandoTarea}
-              >
-                <option value="">Selecciona una persona...</option>
-                {miembrosConRol.length > 0 && (
-                  <optgroup label="Personas con el rol requerido">
-                    {miembrosConRol.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {miembrosSinRol.length > 0 && (
-                  <optgroup label="Otras personas (sin el rol)">
-                    {miembrosSinRol.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre} (sin rol para este trabajo)
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-            </div>
-
-            {!personaSeleccionadaTieneRol && nuevaTareaAsignadoA && (
-              <div className={styles.advertenciaRol}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: "bold" }}>
-                  <AlertTriangle size={14} />
-                  Atención
-                </div>
-                Esta persona no tiene el rol de este trabajo. Se requerirá forzar la asignación para continuar.
-                <div style={{ marginTop: 6 }}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={nuevaTareaForzar}
-                      onChange={(e) => setNuevaTareaForzar(e.target.checked)}
-                    />
-                    Asignar de todos modos (forzar)
-                  </label>
-                </div>
-              </div>
-            )}
-
-            <Campo
-              etiqueta="Título de la tarea"
-              placeholder="Ej. Grabar toma en exteriores"
-              value={nuevaTareaTitulo}
-              onChange={(e) => setNuevaTareaTitulo(e.target.value.slice(0, 120))}
-              disabled={creandoTarea}
-            />
-
-            <Campo
-              etiqueta="Descripción (opcional)"
-              como="textarea"
-              filas={3}
-              placeholder="Indicaciones, requisitos o especificaciones..."
-              value={nuevaTareaDescripcion}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-                setNuevaTareaDescripcion(e.target.value.slice(0, 1000))
-              }
-              disabled={creandoTarea}
-            />
-
-            <Campo
-              etiqueta="Fecha límite (opcional)"
-              type="date"
-              value={nuevaTareaFechaLimite}
-              onChange={(e) => setNuevaTareaFechaLimite(e.target.value)}
-              disabled={creandoTarea}
-            />
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal Crear Cliente al Vuelo */}
-      {modalCrearClienteAlVuelo && (
-        <Modal
-          abierto={true}
-          titulo="Nuevo cliente"
-          descripcion="Crea un cliente rápidamente para asociarlo a esta tarea."
-          onCerrar={() => setModalCrearClienteAlVuelo(false)}
-          accionPrimaria={
-            <Boton
-              variante="primario"
-              cargando={guardandoClienteAlVuelo}
-              onClick={handleCrearClienteAlVuelo}
-            >
-              Crear y seleccionar
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setModalCrearClienteAlVuelo(false)}
-              disabled={guardandoClienteAlVuelo}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <form onSubmit={handleCrearClienteAlVuelo} className={styles.modalForm}>
-            <Campo
-              etiqueta="Nombre del cliente (1 a 80 caracteres) *"
-              placeholder="Ej. Alcaldía de Bucaramanga"
-              value={clienteAlVueloNombre}
-              onChange={(e) => setClienteAlVueloNombre(e.target.value.slice(0, 80))}
-              disabled={guardandoClienteAlVuelo}
-              autoFocus
-            />
-          </form>
-        </Modal>
-      )}
-
-      {/* Modal Crear Cliente (desde pestaña Clientes) */}
-      {modalNuevoCliente && (
-        <Modal
-          abierto={true}
-          titulo="Nuevo cliente"
-          descripcion="Registra un nuevo cliente para asociarlo a tareas y reportes."
-          onCerrar={() => setModalNuevoCliente(false)}
-          accionPrimaria={
-            <Boton
-              variante="primario"
-              cargando={guardandoCliente}
-              onClick={handleCrearCliente}
-            >
-              Guardar cliente
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setModalNuevoCliente(false)}
-              disabled={guardandoCliente}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <Campo
-              etiqueta="Nombre del cliente *"
-              placeholder="Ej. Empresa ABC"
-              value={nuevoClienteNombre}
-              onChange={(e) => setNuevoClienteNombre(e.target.value.slice(0, 80))}
-              disabled={guardandoCliente}
-              autoFocus
-            />
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal Renombrar Cliente */}
-      {clienteAEditar && (
-        <Modal
-          abierto={true}
-          titulo="Renombrar cliente"
-          descripcion={`Modifica el nombre registrado para "${clienteAEditar.nombre}".`}
-          onCerrar={() => setClienteAEditar(null)}
-          accionPrimaria={
-            <Boton
-              variante="primario"
-              cargando={guardandoEdicion}
-              onClick={handleRenombrarCliente}
-            >
-              Actualizar nombre
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setClienteAEditar(null)}
-              disabled={guardandoEdicion}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <Campo
-              etiqueta="Nombre del cliente *"
-              value={nombreEditado}
-              onChange={(e) => setNombreEditado(e.target.value.slice(0, 80))}
-              disabled={guardandoEdicion}
-              autoFocus
-            />
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal Ficha del cliente (F5) */}
-      {clienteFicha && (
-        <Modal
-          abierto={true}
-          titulo="Ficha del cliente"
-          descripcion={`Datos de trabajo de "${clienteFicha.nombre}".`}
-          onCerrar={() => setClienteFicha(null)}
-          accionPrimaria={
-            <Boton variante="primario" cargando={guardandoFicha} onClick={guardarFichaCliente}>
-              Guardar ficha
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton variante="secundario" onClick={() => setClienteFicha(null)} disabled={guardandoFicha}>
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <Campo
-              etiqueta="Paquete contratado"
-              placeholder="TV, Digital o Mixtos"
-              value={fichaPaquete}
-              onChange={(e) => setFichaPaquete(e.target.value.slice(0, 80))}
-              disabled={guardandoFicha}
-            />
-            <Campo
-              etiqueta="Carpeta de Drive (enlace https)"
-              placeholder="https://drive.google.com/drive/folders/…"
-              value={fichaDrive}
-              onChange={(e) => setFichaDrive(e.target.value.slice(0, 500))}
-              disabled={guardandoFicha}
-            />
-            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)" }}>Notas</span>
-              <textarea
-                value={fichaNotas}
-                onChange={(e) => setFichaNotas(e.target.value.slice(0, 1000))}
-                rows={3}
-                disabled={guardandoFicha}
-                placeholder="Trato, colores, teléfono, frases permitidas…"
-                style={{
-                  border: "1px solid var(--rc-gris-100)",
-                  borderRadius: "var(--rc-radio-sm)",
-                  padding: "8px",
-                  fontFamily: "inherit",
-                  fontSize: "var(--rc-fs-cuerpo)",
-                  resize: "vertical",
-                  background: "var(--rc-superficie)",
-                  color: "var(--rc-gris-900)",
-                }}
-              />
-              <span style={{ fontSize: 11, color: "var(--rc-texto-tenue)", alignSelf: "flex-end" }}>
-                {fichaNotas.length}/1000
-              </span>
-            </label>
-          </div>
-        </Modal>
-      )}
+      {modalNuevaTarea && <FormularioAsignacion onCerrar={() => setModalNuevaTarea(false)} onGuardar={() => { setModalNuevaTarea(false); void cargarDatos(); }} />}
 
       {/* Modal Aceptar Tarea con corrección opcional de minutos */}
       {modalAceptarTarea && (

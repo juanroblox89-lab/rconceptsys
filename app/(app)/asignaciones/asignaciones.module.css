@@ -119,6 +119,13 @@
   box-shadow: var(--rc-elev-relieve-sm);
 }
 
+.resaltado { outline: 2px solid var(--rc-azul-texto); outline-offset: -2px; }
+.item a { color: var(--rc-azul-texto); }
+@media (max-width: 600px) {
+  .cabecera, .item { flex-wrap: wrap; }
+  .itemEnlace { flex-basis: 100%; }
+}
+
 .itemEnlace {
   flex: 1 1 auto;
   min-width: 0;

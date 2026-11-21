@@ -86,6 +86,9 @@ func setupF2TestEnvironment(t *testing.T) (http.Handler, *store.MemoryStore, str
 		EsAdmin: false,
 	})
 
+	if _, err := s.CrearCliente(ctx, "Cliente de prueba"); err != nil {
+		t.Fatal(err)
+	}
 	return routes, s, adminID, editorID, camID, suspID
 }
 
@@ -103,6 +106,7 @@ func TestF2CicloCompletoTareaYFactura(t *testing.T) {
 
 	// Admin crea tarea para el editor
 	postTarea := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id":     2,
 		"asignado_a":  editorID,
 		"titulo":      "Editar video para TikTok",
@@ -203,6 +207,7 @@ func TestF2RechazoYReenvio(t *testing.T) {
 
 	// Admin crea tarea
 	resCrear := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id":    2,
 		"asignado_a": editorID,
 		"titulo":     "Reel con audio desfasado",
@@ -265,6 +270,7 @@ func TestF2PrecioCongeladoInmutable(t *testing.T) {
 
 	// Crear tarea, marcar hecha y aceptar
 	resCrear := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id":    2,
 		"asignado_a": editorID,
 		"titulo":     "Tarea con precio congelado",
@@ -303,6 +309,7 @@ func TestF2PagarFacturaYAbrirNueva(t *testing.T) {
 
 	// Tarea 1 -> aceptada
 	res1 := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea Primera Factura",
 	})
 	var t1 store.Tarea
@@ -327,6 +334,7 @@ func TestF2PagarFacturaYAbrirNueva(t *testing.T) {
 
 	// Tarea 2 para el mismo editor -> aceptada
 	res2 := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea Segunda Factura",
 	})
 	var t2 store.Tarea
@@ -367,6 +375,7 @@ func TestF2PermisosYPrivacidad(t *testing.T) {
 
 	// Admin crea tarea para el editor
 	resCrear := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea Secreta Editor",
 	})
 	var t1 store.Tarea
@@ -424,6 +433,7 @@ func TestF2ValidacionRolesYForzar(t *testing.T) {
 
 	// Intento de asignar trabajo de edición (rol_id 2) al camarógrafo (solo tiene rol_id 1)
 	resSinForzar := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id":    2,
 		"asignado_a": camID,
 		"titulo":     "Asignar edición a camarógrafo",
@@ -435,6 +445,7 @@ func TestF2ValidacionRolesYForzar(t *testing.T) {
 
 	// Mismo intento con forzar: true -> debe responder 201 Created
 	resConForzar := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id":    2,
 		"asignado_a": camID,
 		"titulo":     "Asignar edición forzada",
@@ -446,6 +457,7 @@ func TestF2ValidacionRolesYForzar(t *testing.T) {
 
 	// Asignar al editor (que sí tiene el rol 2) sin forzar -> 201
 	resEditor := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id":    2,
 		"asignado_a": editorID,
 		"titulo":     "Edición para editor",
@@ -464,6 +476,7 @@ func TestF2AceptarConcurrenteGoroutines(t *testing.T) {
 
 	// Crear tarea y marcarla hecha
 	resCrear := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea Concurrencia",
 	})
 	var t1 store.Tarea
@@ -511,6 +524,7 @@ func TestF2CancelarTarea(t *testing.T) {
 	routes, _, adminID, editorID, _, _ := setupF2TestEnvironment(t)
 
 	resCrear := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id": 2, "asignado_a": editorID, "titulo": "Tarea que se cancelará",
 	})
 	var t1 store.Tarea
@@ -539,6 +553,7 @@ func TestF2AdminsNoSonTrabajadores(t *testing.T) {
 	routes, _, adminID, _, _, _ := setupF2TestEnvironment(t)
 
 	post := doRequest(routes, "POST", "/api/admin/tareas", adminID, map[string]any{
+		"cliente_id": 1, "fecha_limite": "2026-12-05",
 		"tipo_id":    2,
 		"asignado_a": adminID,
 		"titulo":     "Editar algo",

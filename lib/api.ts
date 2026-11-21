@@ -403,12 +403,16 @@ export const api = {
     descripcion?: string;
     fecha_limite?: string;
     forzar?: boolean;
+ drive_carpeta_id?: string;
+ drive_crear?: string;
   }) =>
     fetchApi<Tarea>('/api/admin/tareas', {
       method: 'POST',
       body: JSON.stringify(tarea),
     }),
-  adminAceptarTarea: (id: number, cantidad?: number) =>
+  adminPatchTarea: (id: number, campos: Partial<{ tipo_id: number; asignado_a: string; descripcion: string; fecha_limite: string; drive_carpeta_id: string }>) => fetchApi<Tarea>(`/api/admin/tareas/${id}`, { method: 'PATCH', body: JSON.stringify(campos) }),
+ adminClienteDrive: (id: number, datos: {crear?: boolean; carpeta_id?: string}) => fetchApi<Cliente>(`/api/admin/clientes/${id}/drive`, {method: 'POST',body:JSON.stringify(datos)}),
+ adminAceptarTarea: (id: number, cantidad?: number) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/aceptar`, {
       method: 'POST',
       body: JSON.stringify({ cantidad }),

@@ -59,13 +59,17 @@ type dbChatMensaje struct {
 
 // Modelos DB PostgREST para F2 y F3
 type dbCliente struct {
-	ID       int     `json:"id"`
-	Nombre   string  `json:"nombre"`
-	Activo   bool    `json:"activo"`
-	Paquete  *string `json:"paquete"`
-	DriveURL *string `json:"drive_url"`
-	Notas    *string `json:"notas"`
-	CreadoEn string  `json:"creado_en"`
+	FotoURL           *string `json:"foto_url"`
+	DriveCarpetaID    *string `json:"drive_carpeta_id"`
+	MaterialCarpetaID *string `json:"material_carpeta_id"`
+	ProductoCarpetaID *string `json:"producto_carpeta_id"`
+	ID                int     `json:"id"`
+	Nombre            string  `json:"nombre"`
+	Activo            bool    `json:"activo"`
+	Paquete           *string `json:"paquete"`
+	DriveURL          *string `json:"drive_url"`
+	Notas             *string `json:"notas"`
+	CreadoEn          string  `json:"creado_en"`
 }
 
 type dbTipoTrabajo struct {
@@ -632,7 +636,8 @@ func convertirCliente(dc *dbCliente) *store.Cliente {
 	}
 	t, _ := time.Parse(time.RFC3339, dc.CreadoEn)
 	return &store.Cliente{
-		ID:       dc.ID,
+		ID:      dc.ID,
+		FotoURL: dc.FotoURL, DriveCarpetaID: dc.DriveCarpetaID, MaterialCarpetaID: dc.MaterialCarpetaID, ProductoCarpetaID: dc.ProductoCarpetaID,
 		Nombre:   dc.Nombre,
 		Activo:   dc.Activo,
 		Paquete:  dc.Paquete,
@@ -778,16 +783,17 @@ func (s *SupabaseStore) ActualizarTipoTrabajo(ctx context.Context, id int, campo
 
 func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.Tarea, error) {
 	payload := map[string]any{
-		"tipo_id":      t.TipoID,
-		"cliente_id":   t.ClienteID,
-		"pieza_id":     t.PiezaID,
-		"titulo":       strings.TrimSpace(t.Titulo),
-		"descripcion":  t.Descripcion,
-		"asignado_a":   t.AsignadoA,
-		"creado_por":   t.CreadoPor,
-		"estado":       store.EstadoTareaPendiente,
-		"fecha_limite": t.FechaLimite,
-		"cantidad":     t.Cantidad,
+		"tipo_id":          t.TipoID,
+		"cliente_id":       t.ClienteID,
+		"pieza_id":         t.PiezaID,
+		"titulo":           strings.TrimSpace(t.Titulo),
+		"descripcion":      t.Descripcion,
+		"asignado_a":       t.AsignadoA,
+		"creado_por":       t.CreadoPor,
+		"estado":           store.EstadoTareaPendiente,
+		"fecha_limite":     t.FechaLimite,
+		"cantidad":         t.Cantidad,
+		"drive_carpeta_id": t.DriveCarpetaID, "drive_carpeta_url": t.DriveCarpetaURL,
 	}
 	var rows []dbTarea
 	q := url.Values{}
