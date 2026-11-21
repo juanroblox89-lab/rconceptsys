@@ -10,7 +10,7 @@
     flex-direction: column;
     gap: var(--rc-esp-12);
     flex: none;
-    width: 268px;
+    width: var(--rc-equipo-ancho);
     height: 100%;
     overflow-y: auto;
     padding: var(--rc-esp-12);

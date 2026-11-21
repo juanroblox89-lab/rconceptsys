@@ -115,6 +115,8 @@
   }
 }
 
+.pantalla { min-height: 100%; height: 100%; }
+
 /* Desktop: barra lateral */
 .sidebarWrap {
   display: contents;
@@ -136,7 +138,7 @@
   .sidebarWrap {
     display: block;
     flex: none;
-    width: 232px;
+    width: var(--rc-sidebar-ancho);
     overflow: hidden;
     background: var(--rc-superficie);
     border-right: 1px solid var(--rc-gris-100);
@@ -150,7 +152,7 @@
   }
 
   .sidebarPanel {
-    width: 232px;
+    width: var(--rc-sidebar-ancho);
     height: 100%;
     transition: transform 280ms var(--rc-curva);
   }
@@ -162,7 +164,7 @@
   .sidebarInner {
     height: 100%;
     opacity: 1;
-    transition: opacity var(--rc-transicion) var(--rc-curva) 120ms;
+    transition: opacity var(--rc-transicion) 120ms;
   }
 
   .sidebarHidden .sidebarInner {

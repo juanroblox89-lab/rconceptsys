@@ -91,13 +91,13 @@
   display: flex;
   align-items: center;
   gap: var(--rc-esp-8);
-  height: 32px;
+  height: 40px;
   padding: 0 var(--rc-esp-10);
   border: none;
   border-radius: var(--rc-radio-sm);
   background: var(--rc-superficie);
   color: var(--rc-texto-secundario);
-  font-size: var(--rc-fs-etiqueta);
+  font-size: var(--rc-fs-interfaz);
   font-weight: var(--rc-fw-medio);
   text-align: left;
   cursor: pointer;

@@ -226,7 +226,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
               aria-current={active ? "page" : undefined}
             >
               <span className={styles.navIcon}>
-                <Icon size={16} strokeWidth={1.75} />
+                <Icon size={20} strokeWidth={1.75} />
               </span>
               <span className={styles.navLabel}>{item.title}</span>
               {badgeCount > 0 && (
@@ -321,7 +321,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
               <div key={href} role="none">
                 {i === 3 && <hr role="separator" className={styles.perfilSeparador} />}
                 <Link href={href} role="menuitem" className={styles.perfilMenuItem} onClick={() => { setMenuPerfil(false); onNavigate?.(); }}>
-                  <Icon size={16} strokeWidth={1.75} aria-hidden="true" />{nombre}
+                  <Icon size={20} strokeWidth={1.75} aria-hidden="true" />{nombre}
                 </Link>
               </div>
             ))}

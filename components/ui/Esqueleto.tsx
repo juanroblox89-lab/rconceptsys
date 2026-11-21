@@ -43,6 +43,8 @@ export function Esqueleto({
   return (
     <div
       className={`rc-skeleton-card ${className}`.trim()}
+      aria-busy="true"
+      data-rc-esqueleto
       aria-hidden="true"
       style={style}
       {...props}

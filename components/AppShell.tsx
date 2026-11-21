@@ -172,7 +172,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <main className={`${styles.main} ${collapsed ? styles.mainWithRail : ""}`}>{children}</main>
+      <main className={`${styles.main} ${collapsed ? styles.mainWithRail : ""}`}>
+        <div key={pathname} data-rc-entrada className={styles.pantalla}>{children}</div>
+      </main>
     </div>
   );
 }

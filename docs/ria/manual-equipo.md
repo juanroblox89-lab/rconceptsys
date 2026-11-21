@@ -27,3 +27,6 @@
 
 ## Celular
 - El registro y la primera entrada requieren un celular. Elige el país; Colombia (+57) aparece inicialmente. Puedes editarlo en Perfil o Configuración. El dato no se muestra en el directorio ni en el chat.
+
+## Lectura y movimiento
+- El chat tiene texto más grande y una caja de escritura más alta. La barra Equipo queda a la derecha en escritorio; en móvil se abre con el botón de información. Puedes reducir el movimiento en Personalización.

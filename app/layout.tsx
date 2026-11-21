@@ -5,6 +5,7 @@ import "./estilo/base.css";
 import "./estilo/componentes.css";
 import "./globals.css";
 import "./estilo/apariencia.css";
+import "./estilo/escala-movimiento.css";
 import { scriptApariencia } from "@/lib/apariencia";
 import { Definiciones } from "@/components/Definiciones";
 import { ProveedorAvisos } from "@/components/ui/Aviso";

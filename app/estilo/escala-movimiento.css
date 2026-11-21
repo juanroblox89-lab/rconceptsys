@@ -1,0 +1,16 @@
+/* Escala F6: legibilidad en todo el shell sin agrandar el viewport. */
+:root { --rc-fs-cuerpo: var(--rc-personal-contenido, 16px); --rc-fs-interfaz: var(--rc-personal-interfaz, 15px); --rc-fs-secundario: 14px; --rc-fs-etiqueta: 13px; --rc-fs-micro: 12px; --rc-lh-secundario: 21px; --rc-lh-etiqueta: 19px; --rc-lh-micro: 16px; --rc-fs-titulo-seccion: 19px; --rc-lh-titulo-seccion: 25px; --rc-alto-sm: 32px; --rc-alto-md: 37px; --rc-alto-lg: 40px; --rc-alto-max: 44px; --rc-sidebar-ancho: clamp(218px,15.3vw,290px); --rc-equipo-ancho: clamp(255px,17.5vw,330px); }
+@media (max-width: 767px) { html { --rc-fs-secundario: 13px; --rc-fs-etiqueta: 12px; } }
+@keyframes rc-entrada { from { opacity: .74; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rc-panel { from { opacity: .7; transform: translateY(5px) scale(.985); } 76% { opacity: 1; transform: translateY(-1px) scale(1.003); } to { transform: none; } }
+@keyframes rc-espera { from { opacity: .56; } to { opacity: 1; } }
+[data-rc-entrada], [data-rc-lista] > *, [data-rc-panel], [role='alert'], [role='status'] { animation: rc-entrada 200ms var(--rc-curva) both; }
+[data-rc-lista] > :nth-child(2) { animation-delay: 24ms; }
+[data-rc-lista] > :nth-child(3) { animation-delay: 48ms; }
+[data-rc-lista] > :nth-child(4) { animation-delay: 72ms; }
+[data-rc-lista] > :nth-child(5) { animation-delay: 96ms; }
+[role='dialog'], [role='menu'] { animation: rc-panel 220ms var(--rc-curva) both; }
+button:not([disabled]), [role='button'] { transition: scale 120ms var(--rc-curva), color var(--rc-transicion), background-color var(--rc-transicion); }
+button:not([disabled]):active, [role='button']:active { scale: .97; }
+[aria-busy='true'][data-rc-esqueleto] { animation: rc-espera 280ms var(--rc-curva) infinite alternate; }
+:where(button,a,input,select,textarea):focus-visible { outline: 2px solid var(--rc-azul-texto); outline-offset: 2px; }

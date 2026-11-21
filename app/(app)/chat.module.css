@@ -178,7 +178,8 @@
 
 /* Burbuja ajena: en relieve */
 .bubble {
-  padding: var(--rc-esp-8) var(--rc-esp-12);
+  animation: rc-entrada 180ms var(--rc-curva) both;
+  padding: var(--rc-esp-10) var(--rc-esp-16);
   border-radius: var(--rc-radio-md);
   font-size: var(--rc-fs-cuerpo);
   line-height: var(--rc-lh-cuerpo);
@@ -326,7 +327,7 @@
 
 .textarea {
   flex: 1;
-  min-height: 24px;
+  min-height: 32px;
   max-height: 120px;
   padding: 0;
   border: none;
