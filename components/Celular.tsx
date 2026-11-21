@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
+import { Logo } from "@/components/Logo";
 import styles from "./Celular.module.css";
 
 export const paisesCelular=[['+57','Colombia',10],['+1','EE. UU. y Canadá',10],['+52','México',10],['+34','España',9],['+54','Argentina',11],['+56','Chile',9],['+51','Perú',9],['+593','Ecuador',9],['+58','Venezuela',10],['+55','Brasil',11],['+507','Panamá',8],['+506','Costa Rica',8]] as const;
@@ -9,8 +10,14 @@ export const inicialCelular:DatosCelular={indicativo:'+57',numero:''};
 export function CampoCelular({valor,cambiar}:{valor:DatosCelular;cambiar:(v:DatosCelular)=>void}){
  const id=useId();const largo=paisesCelular.find(p=>p[0]===valor.indicativo)?.[2];
  return <div className={styles.campos}>
-   <label htmlFor={`${id}-pais`}>País e indicativo<select id={`${id}-pais`} value={valor.indicativo} onChange={e=>cambiar({...valor,indicativo:e.currentTarget.value})}>{paisesCelular.map(([c,n])=><option key={c} value={c}>{n} ({c})</option>)}</select></label>
-   <label htmlFor={`${id}-numero`}>Número de celular<input id={`${id}-numero`} required type="tel" autoComplete="tel-national" inputMode="tel" maxLength={20} placeholder={largo?`${largo} dígitos`:undefined} value={valor.numero} onChange={e=>cambiar({...valor,numero:e.currentTarget.value})}/></label>
+   <div className={styles.campo}>
+     <label className={styles.etiqueta} htmlFor={`${id}-pais`}>País</label>
+     <span className="rc-select-contenedor"><select id={`${id}-pais`} value={valor.indicativo} onChange={e=>cambiar({...valor,indicativo:e.currentTarget.value})}>{paisesCelular.map(([c,n])=><option key={c} value={c}>{n} ({c})</option>)}</select></span>
+   </div>
+   <div className={styles.campo}>
+     <label className={styles.etiqueta} htmlFor={`${id}-numero`}>Número de celular</label>
+     <span className="rc-input-contenedor"><input id={`${id}-numero`} required type="tel" autoComplete="tel-national" inputMode="tel" maxLength={20} placeholder={largo?`${largo} dígitos`:undefined} value={valor.numero} onChange={e=>cambiar({...valor,numero:e.currentTarget.value})}/></span>
+   </div>
  </div>;
 }
 export async function celularPropio(datos?:DatosCelular):Promise<string>{
@@ -22,10 +29,12 @@ export function FormularioCelular({obligatorio=false,alGuardar,celularInicial}:{
  const [valor,setValor]=useState(()=>separar(celularInicial??''));const [listo,setListo]=useState(celularInicial!==undefined);const [ocupado,setOcupado]=useState(false);const [estado,setEstado]=useState('');const [error,setError]=useState('');
  useEffect(()=>{if(celularInicial!==undefined)return;let activo=true;celularPropio().then(c=>{if(activo){setValor(separar(c));setListo(true);}}).catch(e=>{if(activo)setError(e.message);});return()=>{activo=false;};},[celularInicial]);
  async function guardar(e:FormEvent){e.preventDefault();setOcupado(true);setEstado('');setError('');try{const c=await celularPropio(valor);setValor(separar(c));setEstado('Celular guardado.');alGuardar?.();}catch(e){setError(e instanceof Error?e.message:'No se pudo guardar.');}finally{setOcupado(false);}}
- return <form className={styles.form} onSubmit={guardar}><h2>{obligatorio?'Completa tu perfil':'Celular'}</h2>
-   <p>{obligatorio?'Añade tu número de celular para continuar.':'Tu número de celular solo está visible en tu cuenta.'}</p>
+ return <form className={obligatorio?styles.tarjeta:styles.form} onSubmit={guardar}>
+   {obligatorio?<div className={styles.encabezado}><Logo size={20}/><h1 className={styles.titulo}>Completa tu perfil</h1><p className={styles.subtitulo}>Solo falta tu número de celular para entrar.</p></div>
+     :<><h2>Celular</h2><p>Tu número de celular solo está visible en tu cuenta.</p></>}
+   {error&&<div role="alert" className={styles.error}>{error}</div>}
    <fieldset disabled={!listo||ocupado}><CampoCelular valor={valor} cambiar={setValor}/></fieldset>
-   <Boton type="submit" disabled={!listo} cargando={ocupado}>{obligatorio?'Guardar y continuar':'Guardar celular'}</Boton>
-   {estado&&<p role="status">{estado}</p>}{error&&<p role="alert" className={styles.error}>{error}</p>}
+   <Boton type="submit" disabled={!listo} cargando={ocupado} envoltorioClassName={obligatorio?styles.botonAncho:undefined}>{obligatorio?'Guardar y continuar':'Guardar celular'}</Boton>
+   {estado&&<p role="status" className={styles.ok}>{estado}</p>}
  </form>;
 }
