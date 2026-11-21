@@ -557,6 +557,14 @@ export default function AdminPage() {
     return true;
   });
 
+  useEffect(() => {
+    if (cargando || pestanaActiva !== "miembros") return;
+    const id = new URLSearchParams(location.search).get("solicitud");
+    if (!id) return;
+    for (const el of [document.getElementById(`solicitud-${id}`), document.getElementById(`solicitud-movil-${id}`)]) {
+      if (el && el.getClientRects().length) { el.scrollIntoView({ block: "center" }); el.style.outline = "2px solid var(--rc-azul-texto)"; }
+    }
+  }, [cargando, pestanaActiva]);
   const pendientesMiembros = miembros.filter((m) => m.estado === "pendiente");
   const aprobadosYSuspendidos = miembros.filter((m) => m.estado !== "pendiente");
 

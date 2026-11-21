@@ -24,5 +24,5 @@ export function proxy(request: NextRequest) {
 // Solo las pantallas privadas (las públicas /login, /registro y /estilo no pasan por aquí).
 // Si se agrega una pantalla privada nueva, agrégala a esta lista.
 export const config = {
-  matcher: ["/", "/perfil", "/admin", "/tareas", "/factura", "/pendiente", "/equipo", "/equipo/:path*"],
+  matcher: ["/", "/perfil", "/admin", "/tareas", "/factura", "/pendiente", "/equipo", "/equipo/:path*", "/asignaciones", "/clientes", "/configuracion", "/drive-cambio"],
 };

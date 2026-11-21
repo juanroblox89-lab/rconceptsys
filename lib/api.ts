@@ -23,6 +23,9 @@ import {
   DriveEstado,
   DriveArchivo,
   PushEstado,
+  BandejaNotificaciones,
+  CortePropioDatos,
+  PreferenciasNotificaciones,
 } from './types';
 
 // En el navegador usamos rutas relativas con cookies httpOnly
@@ -284,6 +287,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(datos),
     }),
+
+  getCortePropio: (id: number) => fetchApi<CortePropioDatos>(`/api/cortes/${id}/mio`),
+  getNotificaciones: () => fetchApi<BandejaNotificaciones>('/api/notificaciones'),
+  leerNotificaciones: (id?: number) => fetchApi<{ mensaje: string }>(id ? `/api/notificaciones/${id}/leida` : '/api/notificaciones/leidas', { method: 'POST' }),
+  getPreferenciasNotificaciones: () => fetchApi<PreferenciasNotificaciones>('/api/notificaciones/preferencias'),
+  guardarPreferenciasNotificaciones: (datos: PreferenciasNotificaciones) => fetchApi<PreferenciasNotificaciones>('/api/notificaciones/preferencias', { method: 'PUT', body: JSON.stringify(datos) }),
 
   // F5: avisos push
   getPushClave: () => fetchApi<{ configurado: boolean; clave: string }>('/api/push/clave'),

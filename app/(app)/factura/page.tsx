@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Receipt, ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "@/lib/api";
+import { CortePropio } from "@/components/CortePropio";
 import { FacturaMiaRespuesta } from "@/lib/types";
 import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Chip } from "@/components/ui/Chip";
@@ -73,6 +74,7 @@ export default function MiFacturaPage() {
         </p>
       </div>
 
+      <CortePropio />
       {cargando ? (
         <div style={{ maxWidth: 640, margin: "2rem auto", width: "100%" }}>
           <Esqueleto filas={4} />

@@ -18,6 +18,9 @@
       "framework": "go"
     }
   },
+  "crons": [
+    { "path": "/api/cron/notificaciones", "schedule": "* * * * *" }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

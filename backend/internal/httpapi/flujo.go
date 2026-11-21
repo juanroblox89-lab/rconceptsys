@@ -206,7 +206,7 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 500, "error_guardar", "No pudimos guardar los cambios.")
 		return
 	}
-	a.enviarAvisoA(r.Context(), actualizado.AsignadoA, AvisoPush{Titulo: "Trabajo actualizado · " + FechaEntrega(actualizado.FechaLimite, time.Now()), Cuerpo: datosAvisoTarea(actualizado), URL: fmt.Sprintf("/tareas?tarea=%d#tarea-%d", id, id), Etiqueta: "tarea-editada"})
+	a.avisar(r.Context(), actualizado.AsignadoA, AvisoPush{Titulo: "Trabajo actualizado · " + FechaEntrega(actualizado.FechaLimite, time.Now()), Cuerpo: datosAvisoTarea(actualizado), URL: fmt.Sprintf("/tareas?tarea=%d#tarea-%d", id, id), Etiqueta: "tarea-editada"}, "")
 	ResponderJSON(w, 200, actualizado)
 }
 

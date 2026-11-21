@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { CampanaNotificaciones } from "@/components/CampanaNotificaciones";
 import { Avatar } from "@/components/ui/Avatar";
 import { api } from "@/lib/api";
 import { AsignacionResumen, Perfil } from "@/lib/types";
@@ -192,6 +193,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
         <Link href="/" className={styles.brand} aria-label="Ir al inicio" onClick={() => onNavigate?.()}>
           <Logo size={16} />
         </Link>
+        {yo?.estado === "aprobado" && <CampanaNotificaciones barra />}
         <button
           type="button"
           className={styles.collapseButton}

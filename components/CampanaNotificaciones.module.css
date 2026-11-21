@@ -1,0 +1,19 @@
+.raiz { position: fixed; right: max(12px, env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: calc(var(--rc-z-pill) + 2); }
+.boton { width: 40px; height: 40px; display: grid; place-items: center; position: relative; border: 1px solid var(--rc-gris-100); border-radius: var(--rc-radio-pildora); color: var(--rc-icono); background: var(--rc-superficie); cursor: pointer; box-shadow: var(--rc-elev-relieve-sm); }
+.punto { position: absolute; right: 7px; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--rc-azul-texto); }
+.panel { position: absolute; top: calc(100% + 8px); right: 0; width: min(360px, calc(100vw - 24px)); border: 1px solid var(--rc-gris-100); border-radius: var(--rc-radio-lg); background: var(--rc-superficie-clara); color: var(--rc-texto); box-shadow: var(--rc-elev-relieve-md); overflow: hidden; animation: entrada 180ms var(--rc-curva); }
+.panel header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 12px; }
+.panel button { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: var(--rc-azul-texto); cursor: pointer; min-height: 40px; }
+.panel button:disabled { color: var(--rc-texto-tenue); cursor: default; }
+.panel p { margin: 8px 12px 12px; }
+.panel ul { list-style: none; margin: 0; padding: 0; max-height: min(56dvh, 460px); overflow-y: auto; overscroll-behavior: contain; }
+.panel li a { display: grid; gap: 3px; border-top: 1px solid var(--rc-gris-100); padding: 9px 12px; text-decoration: none; color: var(--rc-texto); overflow-wrap: anywhere; }
+.panel li a:hover, .panel li a:focus-visible { background: var(--rc-superficie-hundida); }
+.panel li .noLeida { box-shadow: inset 3px 0 var(--rc-azul-texto); background: var(--rc-azul-tinte); }
+.panel li span, .panel time { color: var(--rc-texto-secundario); }
+.panel time { font-size: var(--rc-fs-etiqueta); }
+.ajustes { display: block; border-top: 1px solid var(--rc-gris-100); padding: 10px 12px; color: var(--rc-azul-texto); }
+@keyframes entrada { from { opacity: .45; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
+@media (max-width: 767px) { .raiz.barra { display: none; } }
+@media (min-width: 768px) { .raiz { position: relative; top: auto; right: auto; } .boton { width: 36px; height: 36px; box-shadow: none; } .panel { position: fixed; top: 52px; left: 12px; right: auto; } }

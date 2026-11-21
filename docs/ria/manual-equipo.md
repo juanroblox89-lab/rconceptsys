@@ -4,3 +4,11 @@
 
 - `/tareas`: los avisos de asignación o cambios resaltan la tarea exacta. La tarjeta muestra el cliente, la fecha de entrega relativa y absoluta, el tipo y la descripción. El texto de fecha aparece en rojo si el trabajo vence hoy o ya venció.
 - Abre la carpeta de Drive del trabajo desde la tarjeta cuando exista. Usa **Entregar** para enviar el trabajo a revisión. Si el tipo se cobra por minuto, indica los minutos reales. Si te piden cambios, corrige lo indicado y usa **Volver a entregar**.
+
+## Avisos
+
+- La campana muestra avisos sin leer. Abre un aviso para ir a su mensaje, tarea, corte o cambio de Drive, o usa **Marcar todo leído**.
+- `/configuracion`: controla cada tipo de aviso, silencia el chat o programa un horario de silencio en hora de Bogotá. Las menciones siempre llegan y el horario de silencio aplaza la entrega al dispositivo, no la bandeja.
+- `/`: chat del equipo. Una mención como `@Nombre` dirige el aviso a esa persona. Los mensajes seguidos se agrupan; un aviso de mención abre su mensaje exacto.
+- `/factura`: un aviso de corte abre tu línea del corte, con rango, monto y estado de pago. No muestra montos de otras personas.
+- `/drive-cambio`: abre el archivo del aviso en Google Drive, donde se aplican tus permisos de Google. Los cambios de una misma carpeta se agrupan durante dos minutos.

@@ -25,6 +25,7 @@ interface Pendiente {
 export default function ChatPage() {
   const router = useRouter();
   const [mensajes, setMensajes] = useState<ChatMensaje[]>([]);
+  const [destinoMensaje, setDestinoMensaje] = useState(0);
   const [cuerpo, setCuerpo] = useState("");
   const [yo, setYo] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -35,6 +36,24 @@ export default function ChatPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+
+  useEffect(() => {
+    const destino = () => setDestinoMensaje(Number(new URLSearchParams(location.search).get("mensaje")) || 0);
+    destino(); window.addEventListener("hashchange", destino);
+    return () => window.removeEventListener("hashchange", destino);
+  }, []);
+  useEffect(() => {
+    if (!destinoMensaje || !yo) return;
+    let activo = true;
+    api.getChat(undefined, destinoMensaje - 1, 2).then((datos) => {
+      const exacto = datos.find((m) => m.id === destinoMensaje);
+      if (activo && exacto) setMensajes((prev) => prev.some((m) => m.id === exacto.id) ? prev : [...prev, exacto].sort((a,b) => a.id-b.id));
+    }).catch(() => {});
+    return () => { activo = false; };
+  }, [destinoMensaje, yo]);
+  useEffect(() => {
+    if (destinoMensaje) document.getElementById(`mensaje-${destinoMensaje}`)?.scrollIntoView({ block: "center" });
+  }, [destinoMensaje, mensajes]);
 
   // Cargar usuario autenticado
   useEffect(() => {
@@ -80,7 +99,7 @@ export default function ChatPage() {
         const datos = await api.getChat(undefined, undefined, 40);
         if (montado) {
           const ordenados = [...datos].reverse();
-          setMensajes(ordenados);
+          setMensajes((prev) => { const exacto = prev.find((m) => m.id === destinoMensaje); return exacto && !ordenados.some((m) => m.id === exacto.id) ? [exacto,...ordenados] : ordenados; });
           setCargando(false);
         }
       } catch {
@@ -98,6 +117,8 @@ export default function ChatPage() {
         if (montado && datos && Array.isArray(datos)) {
           const ordenados = [...datos].reverse();
           setMensajes((prev) => {
+            const exacto = prev.find((m) => m.id === destinoMensaje);
+            if (exacto && !ordenados.some((m) => m.id === exacto.id)) ordenados.unshift(exacto);
             if (ordenados.length > prev.length) {
               const diff = ordenados.length - prev.length;
               if (!isNearBottomRef.current) {
@@ -140,13 +161,13 @@ export default function ChatPage() {
         document.removeEventListener("visibilitychange", onVisibilityChange);
       }
     };
-  }, [yo]);
+  }, [yo, destinoMensaje]);
 
   useEffect(() => {
-    if (isNearBottomRef.current && scrollRef.current) {
+    if (!destinoMensaje && isNearBottomRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [mensajes]);
+  }, [mensajes, destinoMensaje]);
 
   // Con la hoja del equipo abierta en móvil el fondo no scrollea.
   useEffect(() => {
@@ -341,6 +362,8 @@ export default function ChatPage() {
                       return (
                         <div
                           key={`l-${linea.id}`}
+                          id={`mensaje-${linea.id}`}
+                          style={linea.id === destinoMensaje ? { outline: "2px solid var(--rc-azul-texto)" } : undefined}
                           className={`${styles.bubble} ${grupo.es_mio ? styles.bubbleMine : ""} ${
                             tieneAdjuntos ? styles.bubbleConAdjuntos : ""
                           } ${linea.enviando ? styles.bubbleSending : ""} ${linea.error ? styles.bubbleError : ""}`}

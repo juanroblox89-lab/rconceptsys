@@ -10,6 +10,13 @@ Rama `desde-cero`. **Entrega en curso.** No se aplicaron migraciones, no se modi
 - Verificación visual local: 18 capturas en `capturas-f6/f1-*-claro.png` a 375 y 1280 px. El recorrido de Playwright comprobó 0 px de desborde horizontal, ausencia de errores de página, borrador intacto tras crear cliente y resaltado al abrir el aviso. Datos sintéticos solo en el entorno demo en memoria. Variante oscura pendiente de la Fase 4; validación real de Drive y push pendiente.
 - Salida real de los comandos: `capturas-f6/verificacion-f1.log`.
 
+## Fase 2 · Notificaciones
+
+- Bandeja privada con contador, enlaces a mensajes/tareas/solicitudes/cortes/archivos y «Marcar todo leído». Configuración por tipo, silencio de chat y horario de Bogotá. Las menciones no se silencian.
+- Cola persistente en Supabase con reclamación concurrente, deduplicación, registro por dispositivo y reintentos. El cron de cada minuto sustituye los envíos tras responder; también encola vencimientos y conserva el cursor de `changes.list`. Web Push usa el título, cuerpo y enlace de la bandeja.
+- El aviso «Respuesta de RIA» está previsto en preferencias; su emisión se integra en la Fase 3. Pendiente verificar Web Push, Google Drive y cron de Vercel con servicios reales. [Vercel exige Pro o Enterprise para el intervalo por minuto](https://vercel.com/docs/cron-jobs/usage-and-pricing); el cron automático no corre en preview. Variable adicional: `CRON_SECRET`. Web Push usa las tres variables VAPID de F5.
+- `tsc`, lint, build, `go vet` y `go test`: salida de [`verificacion-f2.log`](capturas-f6/verificacion-f2.log). Playwright comprobó campana, mención con destino directo, preferencias y enlace de Drive en 375 y 1280, sin desbordes ni errores de página. Ocho capturas en claro; oscuro se vuelve a capturar cuando exista en la Fase 4.
+
 ## Migraciones · sin aplicar
 
 1. `supabase/migrations/012_clientes_flujo.sql`: logo y carpetas de Drive del cliente. Conserva las columnas y políticas de lectura previas; revoca escritura cliente.

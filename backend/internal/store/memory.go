@@ -46,6 +46,7 @@ type MemoryStore struct {
 	suscripcionesPush  map[int64]*SuscripcionPush
 	nextPushID         int64
 	avisosEnviados     map[string]bool
+	notificaciones     *memoriaNotificaciones
 }
 
 func NewMemoryStore() *MemoryStore {

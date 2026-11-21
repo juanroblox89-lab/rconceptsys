@@ -7,6 +7,7 @@ import { PanelLeftOpen } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Sidebar, navItems } from "@/components/Sidebar";
+import { CampanaNotificaciones } from "@/components/CampanaNotificaciones";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
 import styles from "./AppShell.module.css";
@@ -106,6 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Link href="/" aria-label="Ir al inicio">
           <Logo size={16} className={styles.mobileTitle} />
         </Link>
+        {yo?.estado === "aprobado" && <CampanaNotificaciones />}
       </div>
 
       {/* Riel flotante (solo desktop con la sidebar colapsada). */}

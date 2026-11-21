@@ -288,6 +288,7 @@ type EstadisticasAdminResponse struct {
 // incrusta para que un solo tipo cubra todo lo que usan los handlers.
 type Store interface {
 	StoreF5
+	StoreNotificaciones
 	ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error)
 
 	// Perfiles & Auth

@@ -334,6 +334,24 @@ export interface ItemTipoEstadistica {
   valor: number;
 }
 
+export interface AvisoNotificacion {
+  id: number;
+  tipo: string;
+  titulo: string;
+  cuerpo: string;
+  url: string;
+  leida_en: string | null;
+  creada_en: string;
+}
+export interface CortePropioDatos { id: number; desde: string; hasta: string; total: number; tareas: number; pagada_en: string | null }
+export interface BandejaNotificaciones { notificaciones: AvisoNotificacion[]; no_leidas: number }
+export interface PreferenciasNotificaciones {
+  tipos_silenciados: string[];
+  silenciar_chat: boolean;
+  silencio_desde: string;
+  silencio_hasta: string;
+}
+
 export interface HayMasEstadisticas {
   por_persona: boolean;
   por_cliente: boolean;

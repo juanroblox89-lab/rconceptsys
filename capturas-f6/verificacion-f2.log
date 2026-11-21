@@ -1,0 +1,68 @@
+--- npm run typecheck ---
+
+> rconcept-systems@0.1.0 typecheck
+> tsc --noEmit
+
+exit=0
+--- npm run lint ---
+
+> rconcept-systems@0.1.0 lint
+> eslint
+
+exit=0
+--- npm run build ---
+
+> rconcept-systems@0.1.0 build
+> next build
+
+▲ Next.js 16.3.5 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 121ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 7.1s
+  Running TypeScript ...
+  Finished TypeScript in 13.2s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/16) ...
+  Generating static pages using 7 workers (4/16)
+  Generating static pages using 7 workers (8/16)
+  Generating static pages using 7 workers (12/16)
+✓ Generating static pages using 7 workers (16/16) in 1365ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin
+├ ƒ /api/[...path]
+├ ○ /asignaciones
+├ ○ /clientes
+├ ○ /configuracion
+├ ƒ /drive-cambio
+├ ○ /equipo
+├ ƒ /equipo/[id]
+├ ○ /estilo
+├ ○ /factura
+├ ○ /login
+├ ○ /pendiente
+├ ○ /perfil
+├ ○ /registro
+└ ○ /tareas
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+exit=0
+--- go vet -C backend ./... ---
+exit=0
+--- go test -C backend ./... -count=1 ---
+?   	rconceptsys/backend/cmd/e2e_server	[no test files]
+?   	rconceptsys/backend/cmd/server	[no test files]
+ok  	rconceptsys/backend/internal/httpapi	2.552s
+ok  	rconceptsys/backend/internal/store	0.733s
+?   	rconceptsys/backend/internal/supa	[no test files]
+exit=0

@@ -31,16 +31,20 @@ self.addEventListener("push", (evento) => {
 
 self.addEventListener("notificationclick", (evento) => {
   evento.notification.close();
-  const destino = (evento.notification.data && evento.notification.data.url) || "/";
-  evento.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((lista) => {
-      for (const cliente of lista) {
-        if ("focus" in cliente) {
-          cliente.navigate(destino);
-          return cliente.focus();
-        }
-      }
-      return self.clients.openWindow(destino);
-    }),
-  );
+  let destino = new URL("/", self.location.origin);
+  try {
+    const url = new URL(evento.notification.data?.url || "/", self.location.origin);
+    if (url.origin === self.location.origin) destino = url;
+  } catch { /* Un aviso inválido abre el inicio. */ }
+  const id = /^aviso-(\d+)$/.exec(evento.notification.tag)?.[1];
+  evento.waitUntil((async () => {
+    if (id) await fetch(`/api/notificaciones/${id}/leida`, { method: "POST", credentials: "same-origin" }).catch(() => {});
+    const lista = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const actual = lista.find((c) => new URL(c.url).origin === self.location.origin);
+    if (actual) {
+      const ventana = await actual.navigate(destino.href).catch(() => null);
+      if (ventana) return ventana.focus();
+    }
+    return self.clients.openWindow(destino.href);
+  })());
 });

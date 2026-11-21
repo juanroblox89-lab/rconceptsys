@@ -172,8 +172,22 @@ func cabeceraVAPID(endpoint, clavePublica, clavePrivada, asunto string) (string,
 	return "vapid t=" + sinFirma + "." + base64.RawURLEncoding.EncodeToString(firma) + ", k=" + strings.TrimSpace(clavePublica), nil
 }
 
+func endpointPushValido(endpoint string) bool {
+	u, err := url.Parse(endpoint)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" || len(endpoint) > 800 {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	return h == "fcm.googleapis.com" || h == "updates.push.services.mozilla.com" ||
+		h == "web.push.apple.com" || strings.HasSuffix(h, ".push.apple.com") ||
+		h == "notify.windows.com" || strings.HasSuffix(h, ".notify.windows.com")
+}
+
 // enviarPush entrega un aviso a una suscripción.
 func (a *API) enviarPush(ctx context.Context, suscripcion *store.SuscripcionPush, aviso AvisoPush) error {
+	if !endpointPushValido(suscripcion.Endpoint) {
+		return errPushVencido
+	}
 	if !a.F5.Push.Configurado() {
 		return fmt.Errorf("push sin configurar")
 	}
@@ -200,7 +214,9 @@ func (a *API) enviarPush(ctx context.Context, suscripcion *store.SuscripcionPush
 	req.Header.Set("TTL", fmt.Sprintf("%d", ttlPush))
 	req.Header.Set("Urgency", "normal")
 
-	res, err := a.F5.HTTP.Do(req)
+	cliente := *a.F5.HTTP
+	cliente.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	res, err := cliente.Do(req)
 	if err != nil {
 		return err
 	}
@@ -210,7 +226,7 @@ func (a *API) enviarPush(ctx context.Context, suscripcion *store.SuscripcionPush
 	if res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusGone {
 		// La suscripción murió: se borra para no reintentar.
 		_ = a.Store.EliminarSuscripcionPush(ctx, suscripcion.Endpoint)
-		return fmt.Errorf("suscripción vencida")
+		return errPushVencido
 	}
 	if res.StatusCode >= 300 {
 		return fmt.Errorf("push HTTP %d", res.StatusCode)
@@ -218,35 +234,17 @@ func (a *API) enviarPush(ctx context.Context, suscripcion *store.SuscripcionPush
 	return nil
 }
 
-// enviarAvisoA manda el aviso a todas las suscripciones de una persona.
-func (a *API) enviarAvisoA(ctx context.Context, perfilID string, aviso AvisoPush) {
-	if !a.F5.Push.Configurado() || strings.TrimSpace(perfilID) == "" {
-		return
-	}
-	suscripciones, err := a.Store.ListarSuscripcionesPush(ctx, perfilID)
-	if err != nil {
-		return
-	}
-	for _, s := range suscripciones {
-		go func(sub *store.SuscripcionPush) {
-			ctxEnvio, cancelar := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancelar()
-			_ = a.enviarPush(ctxEnvio, sub, aviso)
-		}(s)
-	}
-}
-
 // AvisarTareaNueva avisa a la persona asignada que recibió una tarea.
 func (a *API) AvisarTareaNueva(ctx context.Context, tarea *store.Tarea) {
 	if tarea == nil {
 		return
 	}
-	a.enviarAvisoA(ctx, tarea.AsignadoA, AvisoPush{
+	a.avisar(ctx, tarea.AsignadoA, AvisoPush{
 		Titulo:   "Tarea nueva " + FechaEntrega(tarea.FechaLimite, time.Now()),
 		Cuerpo:   datosAvisoTarea(tarea),
 		URL:      fmt.Sprintf("/tareas?tarea=%d#tarea-%d", tarea.ID, tarea.ID),
 		Etiqueta: "tarea-nueva",
-	})
+	}, fmt.Sprintf("tarea:%d", tarea.ID))
 }
 
 // AvisarEntregaAprobada avisa a la persona que su entrega quedó aprobada.
@@ -254,37 +252,12 @@ func (a *API) AvisarEntregaAprobada(ctx context.Context, tarea *store.Tarea) {
 	if tarea == nil {
 		return
 	}
-	a.enviarAvisoA(ctx, tarea.AsignadoA, AvisoPush{
+	a.avisar(ctx, tarea.AsignadoA, AvisoPush{
 		Titulo:   "Entrega aprobada",
 		Cuerpo:   recortar(tarea.Titulo, 90),
-		URL:      "/factura",
+		URL:      urlTarea(tarea.ID),
 		Etiqueta: "entrega-aprobada",
-	})
-}
-
-// RevisarVencimientos avisa de las tareas que vencen mañana (una sola vez por día).
-func (a *API) RevisarVencimientos(ctx context.Context) {
-	if !a.F5.Push.Configurado() {
-		return
-	}
-	manana := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
-	tareas, err := a.Store.TareasPorVencer(ctx, manana)
-	if err != nil {
-		return
-	}
-	for _, t := range tareas {
-		clave := fmt.Sprintf("vence:%s:%d", manana, t.ID)
-		nuevo, err := a.Store.RegistrarAvisoEnviado(ctx, clave)
-		if err != nil || !nuevo {
-			continue
-		}
-		a.enviarAvisoA(ctx, t.AsignadoA, AvisoPush{
-			Titulo:   "Vence mañana",
-			Cuerpo:   recortar(t.Titulo, 90),
-			URL:      "/tareas",
-			Etiqueta: "vence-manana",
-		})
-	}
+	}, fmt.Sprintf("aprobada:%d", tarea.ID))
 }
 
 // ---------- Endpoints ----------
@@ -325,7 +298,7 @@ func (a *API) handlePostPushSuscribir(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
 		return
 	}
-	if !strings.HasPrefix(req.Endpoint, "https://") || len(req.Endpoint) > 800 {
+	if !endpointPushValido(strings.TrimSpace(req.Endpoint)) {
 		ResponderError(w, http.StatusBadRequest, "endpoint_invalido", "La suscripción del navegador no es válida.")
 		return
 	}

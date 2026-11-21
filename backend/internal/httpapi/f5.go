@@ -500,6 +500,9 @@ func (a *API) handleAdminPostCorte(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, http.StatusBadRequest, "corte_invalido", err.Error())
 		return
 	}
+	for _, linea := range corte.Lineas {
+		a.avisarCorte(r.Context(), corte.ID, linea.PerfilID, false, corte.Desde+" a "+corte.Hasta)
+	}
 	ResponderJSON(w, http.StatusCreated, corte)
 }
 
@@ -544,6 +547,7 @@ func (a *API) handleAdminPostCortePagar(w http.ResponseWriter, r *http.Request) 
 		ResponderError(w, http.StatusInternalServerError, "error_pagar", "No se pudo marcar como pagado.")
 		return
 	}
+	a.avisarCorte(r.Context(), corte.ID, perfilID, true, corte.Desde+" a "+corte.Hasta)
 	ResponderJSON(w, http.StatusOK, corte)
 }
 

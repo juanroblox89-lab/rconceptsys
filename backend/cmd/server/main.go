@@ -121,19 +121,6 @@ func main() {
 	api := httpapi.NewAPI(s, auth, modoDemoActivo)
 	handler := api.Routes()
 
-	// F5: revisión diaria de tareas que vencen mañana (aviso push).
-	// Sin claves VAPID no hace nada; con ellas envía una sola vez por tarea y día.
-	go func() {
-		ticker := time.NewTicker(30 * time.Minute)
-		defer ticker.Stop()
-		for {
-			ctxAviso, cancelar := context.WithTimeout(context.Background(), 2*time.Minute)
-			api.RevisarVencimientos(ctxAviso)
-			cancelar()
-			<-ticker.C
-		}
-	}()
-
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      handler,

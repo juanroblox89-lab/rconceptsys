@@ -149,6 +149,14 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/push/suscribir", a.MiddlewareAuth(a.handlePostPushSuscribir, true, false))
 	mux.HandleFunc("DELETE /api/push/suscribir", a.MiddlewareAuth(a.handleDeletePushSuscribir, true, false))
 
+	mux.HandleFunc("GET /api/cortes/{id}/mio", a.MiddlewareAuth(a.handleCortePropio, true, false))
+	mux.HandleFunc("GET /api/notificaciones", a.MiddlewareAuth(a.handleNotificaciones, true, false))
+	mux.HandleFunc("POST /api/notificaciones/leidas", a.MiddlewareAuth(a.handleLeerNotificaciones, true, false))
+	mux.HandleFunc("POST /api/notificaciones/{id}/leida", a.MiddlewareAuth(a.handleLeerNotificaciones, true, false))
+	mux.HandleFunc("GET /api/notificaciones/preferencias", a.MiddlewareAuth(a.handlePreferenciasNotificaciones, true, false))
+	mux.HandleFunc("PUT /api/notificaciones/preferencias", a.MiddlewareAuth(a.handlePreferenciasNotificaciones, true, false))
+	mux.HandleFunc("GET /api/cron/notificaciones", a.handleCronNotificaciones)
+
 	return a.corsMiddleware(mux)
 }
 
@@ -292,6 +300,7 @@ func (a *API) handleAuthRegistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.avisarSolicitud(r.Context(), perfil)
 	ResponderJSON(w, http.StatusCreated, perfil)
 }
 
@@ -616,6 +625,7 @@ func (a *API) handlePostChat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	a.avisarChat(r.Context(), yo, msg)
 	ResponderJSON(w, http.StatusCreated, msg)
 }
 
@@ -929,6 +939,7 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// F5: si la tarea tiene subcarpeta en el Drive del equipo, la entrega se copia ahí.
+	a.avisarEntregaAdmins(r.Context(), actualizada, yo.Nombre)
 	a.SincronizarEntregaConDrive(r.Context(), actualizada)
 
 	ResponderJSON(w, http.StatusOK, actualizada)
@@ -1484,6 +1495,7 @@ func (a *API) handleAdminPostTareaRechazar(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	a.avisar(r.Context(), rechazada.AsignadoA, AvisoPush{Titulo: "Te pidieron cambios", Cuerpo: recortar(motivo, 160), URL: urlTarea(id), Etiqueta: "entrega-devuelta"}, "")
 	ResponderJSON(w, http.StatusOK, rechazada)
 }
 
