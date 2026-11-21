@@ -307,7 +307,7 @@
 }
 
 .perfilNombre {
-  font-size: var(--rc-fs-secundario);
+  font-size: var(--rc-personal-interfaz, var(--rc-fs-secundario));
   font-weight: var(--rc-fw-semibold);
   color: var(--rc-gris-900);
   overflow: hidden;
@@ -360,7 +360,11 @@
   box-shadow: var(--rc-elev-relieve-lg);
 }
 
+.perfilSeparador { border: 0; border-top: 1px solid var(--rc-gris-300); margin: 4px 6px; }
+
 .perfilMenuItem {
+  width: 100%;
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: var(--rc-esp-8);
@@ -371,7 +375,7 @@
   background: none;
   color: var(--rc-gris-900);
   font-family: inherit;
-  font-size: var(--rc-fs-secundario);
+  font-size: var(--rc-personal-interfaz, var(--rc-fs-secundario));
   cursor: pointer;
   text-align: left;
 }

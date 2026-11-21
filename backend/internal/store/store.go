@@ -291,6 +291,7 @@ type Store interface {
 	StoreF5
 	StoreNotificaciones
 	StoreRIA
+	StoreApariencia
 	ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error)
 
 	// Perfiles & Auth

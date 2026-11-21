@@ -50,7 +50,7 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
   destino.search = new URL(req.url).search;
 
   const cabeceras = new Headers();
-  for (const nombre of ["content-type", "authorization", "cookie", "accept", "x-demo-user"]) {
+  for (const nombre of ["content-type", "authorization", "cookie", "accept", "x-demo-user", "range", "if-range"]) {
     const v = req.headers.get(nombre);
     if (v !== null) cabeceras.set(nombre, v);
   }
@@ -72,6 +72,12 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
     const salida = sinCache();
     const tipo = res.headers.get("content-type");
     if (tipo !== null) salida.set("Content-Type", tipo);
+    if (path[0] === "yo" && path[1] === "apariencia" && path[2] === "fondo") {
+      for (const nombre of ["accept-ranges", "content-range", "x-content-type-options"]) {
+        const v = res.headers.get(nombre);
+        if (v !== null) salida.set(nombre, v);
+      }
+    }
     // Cada cookie de sesion del backend debe llegar al navegador como cabecera Set-Cookie propia.
     for (const c of res.headers.getSetCookie()) salida.append("Set-Cookie", c);
 

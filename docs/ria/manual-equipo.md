@@ -20,3 +20,7 @@
 - `/login`: inicia sesión; `/registro`: solicita acceso; `/pendiente`: consulta el estado de la solicitud.
 - `/estilo`: catálogo de referencia de la interfaz.
 - `/api/[...path]`: conexión interna entre la interfaz y la API; no es una pantalla.
+
+## Personalización
+- Abre el menú con tu avatar. Ofrece, en orden: **Personalización**, **Perfil**, **Configuración**, **Ayuda**, **Cerrar sesión**. Ayuda abre `/ria` y envía «Tengo una duda sobre cómo usar rconceptsys».
+- `/personalizacion`: cambia modo, tema, colores y opciones avanzadas. Los ajustes se ven en directo; **Guardar apariencia** conserva los cambios en tu cuenta y **Restablecer** recupera los valores iniciales. Glass permite subir una imagen o un video (hasta 2,5 MB). El celular solo carga el primer fotograma del video.

@@ -4,6 +4,8 @@ import "./estilo/tokens.css";
 import "./estilo/base.css";
 import "./estilo/componentes.css";
 import "./globals.css";
+import "./estilo/apariencia.css";
+import { scriptApariencia } from "@/lib/apariencia";
 import { Definiciones } from "@/components/Definiciones";
 import { ProveedorAvisos } from "@/components/ui/Aviso";
 
@@ -28,9 +30,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={inter.variable}>
+    <html lang="es" className={inter.variable} suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#ECEEF3" />
+        <script dangerouslySetInnerHTML={{ __html: scriptApariencia }} />
       </head>
       <body>
         <Definiciones />

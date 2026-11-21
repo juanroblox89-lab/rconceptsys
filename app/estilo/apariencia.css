@@ -1,0 +1,64 @@
+/* Las superficies conservan el vocabulario del RC-Kit. */
+html[data-rc-modo="oscuro"], html[data-rc-modo="sistema"][data-rc-tema="rconcept-dark"] { color-scheme: dark; --rc-es-oscuro: 1; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-rc-modo]), html[data-rc-modo="sistema"] { color-scheme: dark; --rc-es-oscuro: 1; }
+}
+/* El valor de color-scheme alimenta light-dark() sin duplicar la paleta. */
+html {
+  color-scheme: light;
+  --rc-superficie: var(--rc-personal-fondo, light-dark(#eceef3,#171c25));
+  --rc-superficie-clara: color-mix(in srgb, var(--rc-superficie), white 5%);
+  --rc-superficie-hundida: color-mix(in srgb, var(--rc-superficie), black 5%);
+  --rc-texto: var(--rc-personal-texto,light-dark(#1f2430,#eef1f8));
+  --rc-gris-900: var(--rc-texto);
+  --rc-gris-700: light-dark(#4a5262,#c3cada);
+  --rc-gris-500: light-dark(#8a93a5,#9aa7bc);
+  --rc-gris-300: light-dark(#c7cdd8,#4a566c);
+  --rc-gris-100: light-dark(#e3e7ee,#303a4c);
+  --rc-gris-50: light-dark(#f4f5f8,#242b38);
+  --rc-texto-secundario: light-dark(#6b7385,#b0bbcf);
+  --rc-texto-tenue: light-dark(#667185,#a7b5c9);
+  --rc-sombra: light-dark(#a3acbe,#090e17);
+  --rc-luz: light-dark(#fff,#323d51);
+  --rc-luz-suave: light-dark(#ffffffe0,#36405255);
+  --rc-luz-fuerte: light-dark(#fffffff4,#44536d60);
+  --rc-sombra-suave: light-dark(#a3acbe6b,#090c147d);
+  --rc-sombra-fuerte: light-dark(#a3acbe9e,#090c14ac);
+  --rc-azul: var(--rc-personal-acento,#5aa9ff);
+  --rc-azul-texto: var(--rc-personal-acento,light-dark(#2166ba,#89bfff));
+  --rc-azul-oscuro: var(--rc-azul-texto);
+  --rc-azul-suave: color-mix(in srgb,var(--rc-azul),var(--rc-superficie) 83%);
+  --rc-azul-tinte: color-mix(in srgb,var(--rc-azul),transparent 86%);
+  --rc-rojo-texto: light-dark(#c2383d,#ff9298);
+  --rc-rojo-suave: light-dark(#fdecec,#45262d);
+  --rc-verde-texto: light-dark(#238252,#83d8ad);
+  --rc-verde-suave: light-dark(#e7f6ee,#1e3e35);
+  --rc-ambar-texto: light-dark(#a76410,#f6c784);
+  --rc-ambar-suave: light-dark(#fdf3e4,#453729);
+  --rc-elev-hundido-sm: inset 2px 2px 5px var(--rc-sombra-suave), inset -2px -2px 5px var(--rc-luz-suave);
+  --rc-elev-hundido-md: inset 3px 3px 7px var(--rc-sombra-fuerte), inset -3px -3px 7px var(--rc-luz-fuerte);
+  --rc-fs-interfaz: var(--rc-personal-interfaz, 13px);
+  --rc-fs-cuerpo: var(--rc-personal-contenido, 13px);
+  --rc-lh-cuerpo: calc(var(--rc-fs-cuerpo) * 1.5);
+}
+html[data-rc-contraste="true"] { --rc-texto-secundario: var(--rc-texto); --rc-texto-tenue: var(--rc-texto); --rc-gris-300: var(--rc-gris-700); }
+html[data-rc-tema="glass"] {
+  --rc-glass-base: var(--rc-personal-fondo, light-dark(#e1e9fb,#182639));
+  --rc-superficie: color-mix(in srgb, var(--rc-glass-base) 89%, transparent);
+  --rc-superficie-clara: color-mix(in srgb, var(--rc-glass-base) 94%, white);
+}
+html[data-rc-tema="glass"] body::before, html[data-rc-tema="glass"] body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -2;
+}
+html[data-rc-tema="glass"] body::before {
+  background: var(--rc-personal-imagen, radial-gradient(ellipse at 70% 15%, #7cc4ff 0, transparent 42%), radial-gradient(ellipse at 13% 75%, #7495e8, transparent 63%), #2a3f6a) center / cover no-repeat;
+}
+html[data-rc-tema="glass"] body::after { z-index: -1; background: rgb(0 0 0 / var(--rc-personal-oscurecido,32%)); }
+.rc-fondo-video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
+html[data-rc-tema="glass"] body { isolation: isolate; background: none; }
+html[data-rc-tema="glass"] [data-rc-shell] { background: transparent; }
+html[data-rc-tema="glass"] [data-rc-panel] { background: var(--rc-superficie); backdrop-filter: blur(16px) saturate(1.2); }
+html[data-rc-movimiento="activado"] *, html[data-rc-movimiento="activado"] *::before, html[data-rc-movimiento="activado"] *::after { animation: none !important; transition-duration: 0ms !important; scroll-behavior: auto !important; }
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-rc-movimiento="desactivado"]) *, html:not([data-rc-movimiento="desactivado"]) *::before, html:not([data-rc-movimiento="desactivado"]) *::after { animation: none !important; transition-duration: 0ms !important; scroll-behavior: auto !important; }
+}

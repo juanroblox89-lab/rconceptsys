@@ -8,6 +8,7 @@ import { Logo } from "@/components/Logo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Sidebar, navItems } from "@/components/Sidebar";
 import { CampanaNotificaciones } from "@/components/CampanaNotificaciones";
+import { FondoApariencia } from "@/components/FondoApariencia";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
 import styles from "./AppShell.module.css";
@@ -92,7 +93,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-rc-shell>
+      <FondoApariencia />
       {/* Pastilla: solo móvil, o desktop con la sidebar colapsada. */}
       <div className={`${styles.pill} ${collapsed ? styles.pillDesktop : ""}`}>
         <button

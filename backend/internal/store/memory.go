@@ -11,15 +11,17 @@ import (
 )
 
 type MemoryStore struct {
-	ria         *memoriaRIA
-	mu          sync.RWMutex
-	perfiles    map[string]*Perfil
-	roles       map[int]*Rol
-	perfilRoles map[string]map[int]bool // perfil_id -> set de rol_id
-	mensajes    []*ChatMensaje
-	nextRolID   int
-	nextMsgID   int64
-	avatares    map[string][]byte
+	apariencias      map[string]Apariencia
+	mediosApariencia map[string][]byte
+	ria              *memoriaRIA
+	mu               sync.RWMutex
+	perfiles         map[string]*Perfil
+	roles            map[int]*Rol
+	perfilRoles      map[string]map[int]bool // perfil_id -> set de rol_id
+	mensajes         []*ChatMensaje
+	nextRolID        int
+	nextMsgID        int64
+	avatares         map[string][]byte
 
 	// F2 y F3: Clientes, tipos de trabajo, tareas, facturas
 	clientes      map[int]*Cliente

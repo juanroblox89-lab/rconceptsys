@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MessagesSquare,
@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Briefcase, Contact,
-  Settings, Sparkles, CircleHelp,
+  Settings, Sparkles, CircleHelp, SlidersHorizontal,
   LogOut,
   User,
   ChevronsUpDown,
@@ -75,7 +75,6 @@ function iconoReciente(clave: string): LucideIcon {
 
 export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [yo, setYo] = useState<Perfil | null>(null);
   const [pendientesCount, setPendientesCount] = useState<number>(0);
   const [porRevisarCount, setPorRevisarCount] = useState<number>(0);
@@ -311,33 +310,22 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
           <ChevronsUpDown size={13} strokeWidth={2} className={styles.perfilFlecha} aria-hidden="true" />
         </button>
 
-        <Link
-          href="/perfil"
-          className={styles.perfilEngranaje}
-          aria-label="Ajustes de mi perfil"
-          title="Ajustes"
-          onClick={() => onNavigate?.()}
-        >
-          <Settings size={15} strokeWidth={1.75} />
-        </Link>
-
         {menuPerfil && (
           <div className={styles.perfilMenu} role="menu" aria-label="Opciones de mi perfil">
+            {[
+              { href: "/personalizacion", nombre: "Personalización", Icon: SlidersHorizontal },
+              { href: "/perfil", nombre: "Perfil", Icon: User },
+              { href: "/configuracion", nombre: "Configuración", Icon: Settings },
+              { href: "/ria?ayuda=1", nombre: "Ayuda", Icon: CircleHelp },
+            ].map(({ href, nombre, Icon }, i) => (
+              <div key={href} role="none">
+                {i === 3 && <hr role="separator" className={styles.perfilSeparador} />}
+                <Link href={href} role="menuitem" className={styles.perfilMenuItem} onClick={() => { setMenuPerfil(false); onNavigate?.(); }}>
+                  <Icon size={16} strokeWidth={1.75} aria-hidden="true" />{nombre}
+                </Link>
+              </div>
+            ))}
             <button
-              type="button"
-              role="menuitem"
-              className={styles.perfilMenuItem}
-              onClick={() => {
-                setMenuPerfil(false);
-                onNavigate?.();
-                router.push("/perfil");
-              }}
-            >
-              <User size={14} strokeWidth={1.75} aria-hidden="true" />
-              Ver perfil
-            </button>
-            <Link href="/ria?ayuda=1" onClick={() => { setMenuPerfil(false); onNavigate?.(); }}><CircleHelp size={16} /> Ayuda</Link>
-                 <button
               type="button"
               role="menuitem"
               className={styles.perfilMenuItem}
