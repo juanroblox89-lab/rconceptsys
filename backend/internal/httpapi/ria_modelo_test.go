@@ -43,12 +43,14 @@ func TestRIARespaldoDirecto(t *testing.T) {
 				fmt.Fprint(w, "data: [DONE]\n\n")
 			}))
 			defer respaldo.Close()
+			t.Setenv("NVIDIA_API_KEYS", "")
+			t.Setenv("NVIDIA_API_KEY", t.Name())
+			t.Setenv("RIA_MODELO_RESPALDO", "")
 			m := modeloRIADesdeEntorno()
 			m.principal.base = primario.URL
 			m.principal.clave = t.Name()
 			m.principal.espera = 70 * time.Millisecond
 			m.respaldo.base = respaldo.URL
-			m.respaldo.clave = t.Name()
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 			var fragmentos []string

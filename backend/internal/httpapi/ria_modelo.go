@@ -66,9 +66,6 @@ func (m riaModelo) responder(ctx context.Context, mensajes []riaMensajeModelo, e
 		return err
 	}
 	claves := m.clavesNVIDIA
-	if len(claves) == 0 && m.respaldo.clave != "" {
-		claves = []string{m.respaldo.clave}
-	}
 	if len(claves) == 0 {
 		return errors.New("respaldo no configurado")
 	}
@@ -76,6 +73,13 @@ func (m riaModelo) responder(ctx context.Context, mensajes []riaMensajeModelo, e
 	for i := range claves {
 		p := m.respaldo
 		p.clave = claves[(inicio+i)%len(claves)]
+		// Reparte el tiempo restante para que un timeout no deje sin turno a las demás claves.
+		if limite, ok := ctx.Deadline(); ok {
+			cuota := time.Until(limite) / time.Duration(len(claves)-i)
+			if cuota > 0 && cuota < p.espera {
+				p.espera = cuota
+			}
+		}
 		emitio, _, err = m.leer(ctx, p, mensajes, emitir)
 		if err == nil || emitio || ctx.Err() != nil {
 			return err
@@ -113,14 +117,17 @@ func (m riaModelo) leer(ctx context.Context, p riaProveedor, mensajes []riaMensa
 	}
 	req, err := http.NewRequestWithContext(vida, http.MethodPost, base+"/chat/completions", bytes.NewReader(raw))
 	if err != nil {
-		return false, true, err
+		return false, true, errors.New("URL del proveedor inválida")
 	}
 	req.Header.Set("Authorization", "Bearer "+p.clave)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
 	res, err := m.cliente.Do(req)
 	if err != nil {
-		return false, true, err
+		if errors.Is(vida.Err(), context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return false, true, errors.New("se agotó o canceló la espera del proveedor")
+		}
+		return false, true, errors.New("no se pudo conectar con el proveedor")
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
@@ -180,8 +187,8 @@ func (m riaModelo) leer(ctx context.Context, p riaProveedor, mensajes []riaMensa
 			return true, false, nil
 		}
 	}
-	if err := s.Err(); err != nil {
-		return emitio, !emitio, err
+	if s.Err() != nil {
+		return emitio, !emitio, errors.New("no se pudo leer la respuesta del proveedor")
 	}
 	return emitio, !emitio, errors.New("la respuesta se interrumpió")
 }
