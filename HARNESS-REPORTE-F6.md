@@ -1,36 +1,36 @@
 # Reporte F6 · rconceptsys
 
-Rama `desde-cero`. **Entrega en curso.** No se aplicaron migraciones, no se modificaron archivos de entorno y no se publicó en producción.
+Rama `desde-cero`. Verificación local con Next y API Go en modo demo, sin datos reales. No se aplicaron migraciones ni se modificó producción.
 
-## Fase 1 · Asignar, recibir y entregar
+| Fase | Cambios y evidencia |
+|---|---|
+| 1 · Trabajos y Clientes | Formulario compartido, cliente y fecha obligatorios, alta de cliente sin perder borrador, edición de trabajos abiertos, carpeta bajo el cliente, ficha y entrega destacada. Pruebas visuales a 375 y 1280 px, en claro y oscuro. [Salida](capturas-f6/verificacion-f1.log). |
+| 2 · Notificaciones | Bandeja privada, contador, lectura, enlaces directos, preferencias, agrupación, silencio en hora de Bogotá y excepción de menciones. Cola de push con reintentos y registro por dispositivo. El cron encola vencimientos y consulta el cursor de Drive. Playwright verificó bandeja, mención, preferencias y destino Drive. [Salida](capturas-f6/verificacion-f2.log). |
+| 3 · RIA | Chat de equipo con `@RIA` y chat privado con historial, Ayuda con pregunta inicial, contexto filtrado en el servidor y manuales por rol. SSE real con proveedor simulado: dos estados intermedios en cada chat a 375 y 1280 px, en claro y oscuro. Pruebas de permisos, timeout, 503, 530 y rotación por 429/5xx. La documentación se verifica en el build y en Go. [Salida](capturas-f6/verificacion-f3.log). |
+| 4 · Apariencia | Menú ordenado, modo y tema por cuenta, vista previa, colores, tamaño, contraste y movimiento. Glass con fondo propio: reproducción de MP4 en escritorio y solo primer fotograma en móvil, verificados localmente. [Salida](capturas-f6/verificacion-f4.log). |
+| 5 · Celular | Campo obligatorio en el registro y puerta de primera entrada para cuentas sin número. +57 inicial, validación según indicativo y edición en Perfil y Configuración. Playwright comprobó formatos y que el número no aparece en el directorio. [Salida](capturas-f6/verificacion-f5.log). |
+| 6 · Escala y movimiento | A 1920 px: barra izquierda 290 px, Equipo 330 px. Burbujas de 16 px, caja de escritura más alta e iconos laterales de 20 px. Se verificaron barra abierta/colapsada, movimiento reducido, y 0 px de desborde a 375 y 1280 px. [Salida](capturas-f6/verificacion-f6.log). |
+| 7 · Equipo y retorno Drive | PostgREST devuelve UUID para los perfiles; el contador ya no los decodifica como enteros. El retorno da prioridad a `GOOGLE_REDIRECT_URI`; en su ausencia, usa el host público transmitido por Next, no el host interno. El estado OAuth es de un solo uso, se guarda en el almacén y conserva el retorno entre instancias. Pruebas locales de conteo y URL pública. [Salida final](capturas-f6/verificacion-f7.log). |
 
-- Trabajos (`/asignaciones`) lista asignaciones, permite asignar y editar trabajos abiertos, y enlaza a la entrega exacta. La ficha de Equipo y las pantallas de gestión comparten el formulario. Crear un cliente desde el formulario conserva el borrador y lo deja seleccionado. Se conserva el vínculo opcional con Piezas.
-- Clientes (`/clientes`) muestra logo, ficha, paquete, notas, enlace y trabajos asociados. El backend prepara **Material del lugar** y **Producto** dentro de la carpeta del cliente al vincularla. Los trabajos nuevos seleccionan o crean su carpeta bajo la del cliente.
-- Tareas (`/tareas`) destaca el cliente y la fecha relativa y absoluta, con urgencia en rojo. Los enlaces a avisos resaltan la tarjeta exacta. La persona puede abrir su carpeta y enviar la entrega a revisión.
-- Verificación visual local: 18 capturas en `capturas-f6/f1-*-claro.png` a 375 y 1280 px. El recorrido de Playwright comprobó 0 px de desborde horizontal, ausencia de errores de página, borrador intacto tras crear cliente y resaltado al abrir el aviso. Datos sintéticos solo en el entorno demo en memoria. Variante oscura pendiente de la Fase 4; validación real de Drive y push pendiente.
-- Salida real de los comandos: `capturas-f6/verificacion-f1.log`.
+## RIA y configuración de Vercel
 
-## Fase 2 · Notificaciones
+- Principal: Claude Sonnet 5.5 con esfuerzo `low` por 9router. Respaldo directo e independiente: `https://integrate.api.nvidia.com/v1`, modelo `nvidia/nemotron-3.5-super-vl-120b-a12b`, confirmado en la [referencia oficial de NVIDIA](https://build.nvidia.com/nvidia/nemotron-3.5-super-vl-120b-a12b/apireference). La elección conserva el modelo solicitado y usa el identificador de la API directa, sin el prefijo adicional de 9router.
+- Variables de RIA: `NINEROUTER_BASE_URL`, `NINEROUTER_API_KEY`, `NVIDIA_API_KEY`, `NVIDIA_API_KEYS`, `RIA_MODELO_RESPALDO`, `ASISTENTE_TOPE_DIA`. Las claves NVIDIA de la lista se combinan con la singular sin duplicados y se rotan.
+- Cron: `CRON_SECRET`. Push: `VAPID_CLAVE_PUBLICA`, `VAPID_CLAVE_PRIVADA`, `VAPID_ASUNTO`. Drive: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_DRIVE_CARPETA_RAIZ`.
+- El cron nativo no se ejecuta en preview y [el intervalo de un minuto requiere Vercel Pro o Enterprise](https://vercel.com/docs/cron-jobs/usage-and-pricing). En preview se comprueba invocando manualmente `/api/cron/notificaciones` con el secreto configurado.
 
-- Bandeja privada con contador, enlaces a mensajes/tareas/solicitudes/cortes/archivos y «Marcar todo leído». Configuración por tipo, silencio de chat y horario de Bogotá. Las menciones no se silencian.
-- Cola persistente en Supabase con reclamación concurrente, deduplicación, registro por dispositivo y reintentos. El cron de cada minuto sustituye los envíos tras responder; también encola vencimientos y conserva el cursor de `changes.list`. Web Push usa el título, cuerpo y enlace de la bandeja.
-- El aviso «Respuesta de RIA» está previsto en preferencias; su emisión se integra en la Fase 3. Pendiente verificar Web Push, Google Drive y cron de Vercel con servicios reales. [Vercel exige Pro o Enterprise para el intervalo por minuto](https://vercel.com/docs/cron-jobs/usage-and-pricing); el cron automático no corre en preview. Variable adicional: `CRON_SECRET`. Web Push usa las tres variables VAPID de F5.
-- `tsc`, lint, build, `go vet` y `go test`: salida de [`verificacion-f2.log`](capturas-f6/verificacion-f2.log). Playwright comprobó campana, mención con destino directo, preferencias y enlace de Drive en 375 y 1280, sin desbordes ni errores de página. Ocho capturas en claro; oscuro se vuelve a capturar cuando exista en la Fase 4.
+## Migraciones · no aplicadas
 
-## Fase 3 · RIA
+Aplicar en este orden sobre una base con las migraciones 001–011. Primero en una base de prueba separada.
 
-- Chat privado con historial de la persona, chat de equipo con `@RIA`, Ayuda con pregunta inicial y eventos SSE sin simular texto en el navegador. El servidor filtra manuales y datos; la respuesta pública no recibe el historial ni los datos privados del solicitante.
-- Principal: Claude Sonnet 5.5 con esfuerzo `low` por 9router. Respaldo directo: `https://integrate.api.nvidia.com/v1`, modelo `nvidia/nemotron-3.5-super-vl-120b-a12b`, confirmado en la [referencia oficial de NVIDIA](https://build.nvidia.com/nvidia/nemotron-3.5-super-vl-120b-a12b/apireference). Falta confirmar `GET /v1/models` con la cuenta de despliegue y ejecutar ambos proveedores contra credenciales reales. Pruebas simuladas de respaldo para timeout, 503 y 530.
-- Variables: `NINEROUTER_BASE_URL`, `NINEROUTER_API_KEY`, `NVIDIA_API_KEY`, `RIA_MODELO_RESPALDO`, `ASISTENTE_TOPE_DIA`.
-- Streaming verificado visualmente con el proveedor simulado: dos estados intermedios en cada chat a 375 y 1280 px, indicador visible antes de finalizar y sin desborde, ocho capturas `capturas-f6/f3-ria-*.png`. Salida local en [`verificacion-f3.log`](capturas-f6/verificacion-f3.log).
-- Actualizar `docs/ria/` con cada cambio visible y regenerar el contexto con `node scripts/verificar-ria.mjs --generar`. El script del build y el test de Go verifican la cobertura.
+1. [012_clientes_flujo.sql](supabase/migrations/012_clientes_flujo.sql): logo y carpetas del cliente.
+2. [013_notificaciones.sql](supabase/migrations/013_notificaciones.sql): bandeja, cola, preferencias y cursor.
+3. [014_ria.sql](supabase/migrations/014_ria.sql): historial privado, cupo y autoría de RIA.
+4. [015_apariencia.sql](supabase/migrations/015_apariencia.sql): apariencia y bucket privado.
+5. [016_celular.sql](supabase/migrations/016_celular.sql): celular privado y validación de almacenamiento.
+6. [017_drive_oauth.sql](supabase/migrations/017_drive_oauth.sql): estado de retorno de un solo uso.
 
-## Migraciones · sin aplicar
+## Evidencia y pendientes
 
-1. [`012_clientes_flujo.sql`](supabase/migrations/012_clientes_flujo.sql): logo y carpetas de Drive del cliente.
-2. [`013_notificaciones.sql`](supabase/migrations/013_notificaciones.sql): bandeja, cola, preferencias y cursor.
-3. [`014_ria.sql`](supabase/migrations/014_ria.sql): historial privado, cupo diario y autoría de RIA.
-
-## Estado para retomar
-
-Fases 4–7 y QA final aún pendientes. Las variantes oscuras de las fases anteriores se capturan después de agregar el modo oscuro. No se deben aplicar migraciones desde el agente.
+- Los `.log` enlazados conservan la salida real de `tsc`, lint, `next build`, `go vet` y `go test`. La última ronda los pasó todos. Los PNG y recorridos reproducibles están en `capturas-f6/`.
+- Pendientes con servicios reales: aplicar y probar SQL en una base de prueba, push en dispositivos reales (incluidos TWA e iPhone instalado), cambios de Drive y autorización real de Google, cron de Vercel, túnel 9router y confirmación autenticada de NVIDIA con `GET /v1/models`. Los resultados locales no acreditan esos servicios.

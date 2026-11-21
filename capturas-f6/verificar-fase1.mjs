@@ -3,7 +3,8 @@ import { access } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 // Usa exclusivamente el servidor demo local, sin escribir en servicios reales.
-const web = 'http://localhost:3312';
+const web = process.env.QA_WEB ?? 'http://localhost:3312';
+const tema = process.env.QA_TEMA ?? 'claro';
 const base = 'http://127.0.0.1:8311';
 async function api(ruta, body, usuario = 'admin-1', method = body ? 'POST' : 'GET') {
   const r = await fetch(base + '/api' + ruta, { method, headers: { 'Content-Type': 'application/json', 'X-Demo-User': usuario }, body: body ? JSON.stringify(body) : undefined });
@@ -11,6 +12,8 @@ async function api(ruta, body, usuario = 'admin-1', method = body ? 'POST' : 'GE
   assert.ok(r.ok, `${method} ${ruta} ${r.status} ${JSON.stringify(j)}`);
   return j;
 }
+await api('/yo/celular', { indicativo: '+57', numero: '3005550100' }, 'admin-1', 'PUT');
+await api('/yo/celular', { indicativo: '+57', numero: '3005550100' }, 'cam-1', 'PUT');
 const cliente = await api('/admin/clientes', { nombre: 'Cliente de prueba F6' });
 await api(`/admin/clientes/${cliente.id}`, { paquete: 'Paquete de prueba', notas: 'Datos de verificación local' }, 'admin-1', 'PATCH');
 const fecha = new Date().toISOString().slice(0, 10);
@@ -22,7 +25,7 @@ const browser = await chromium.launch({ executablePath: await existe(navegador) 
 let errores = 0;
 try {
   for (const width of [375, 1280]) {
-    const ctx = await browser.newContext({ viewport: { width, height: width === 375 ? 812 : 800 }, colorScheme: 'light' });
+    const ctx = await browser.newContext({ viewport: { width, height: width === 375 ? 812 : 800 }, colorScheme: tema === 'oscuro' ? 'dark' : 'light' });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => { errores++; console.error(e.message); });
     const login = async (correo) => {
@@ -35,7 +38,7 @@ try {
         return [document.documentElement.scrollWidth - document.documentElement.clientWidth, main ? main.scrollWidth - main.clientWidth : 0];
       });
       assert.deepEqual(dimensiones, [0, 0]);
-      await page.screenshot({ path: `capturas-f6/f1-${nombre}-${width}-claro.png`, animations: 'disabled' });
+      await page.screenshot({ path: `capturas-f6/f1-${nombre}-${width}-${tema}.png`, animations: 'disabled' });
       console.log(`${nombre} ${width}: sin desbordes`);
     };
     await login('admin@rconcept.com');
