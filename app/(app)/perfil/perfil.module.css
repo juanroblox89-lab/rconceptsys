@@ -44,6 +44,56 @@
   border-bottom: 1px solid var(--rc-gris-100);
 }
 
+.avatarWrapper {
+  flex-shrink: 0;
+}
+
+/* Inicial grande dentro del avatar de 80 px */
+.avatarWrapper :global(.rc-avatar__interior) {
+  font-size: 30px;
+  font-weight: var(--rc-fw-bold);
+}
+
+.infoCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--rc-esp-4);
+}
+
+.userRoleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--rc-esp-8);
+}
+
+.userStateText {
+  font-size: var(--rc-fs-cuerpo);
+  font-weight: var(--rc-fw-semibold, 600);
+  color: var(--rc-gris-900);
+}
+
+.adminBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--rc-radio-pildora);
+  background: var(--rc-gris-900);
+  color: var(--rc-superficie);
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-semibold, 600);
+  letter-spacing: 0.02em;
+}
+
+.rolesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rc-esp-6, 6px);
+}
+
 .avatarActions {
   display: flex;
   flex-direction: column;

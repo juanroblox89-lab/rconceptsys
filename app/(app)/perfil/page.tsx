@@ -146,11 +146,8 @@ export default function MiPerfilPage() {
               src={yo?.foto_path || undefined}
               iniciales={yo?.nombre?.charAt(0).toUpperCase() || "U"}
               alt={yo?.nombre || "Usuario"}
-              style={{ width: "80px", height: "80px", fontSize: "32px" }}
+              style={{ width: "80px", height: "80px" }}
             />
-            {yo?.es_admin ? (
-              <span className={styles.adminBadge}>Admin</span>
-            ) : null}
           </div>
 
           <div className={styles.infoCol}>
@@ -158,6 +155,9 @@ export default function MiPerfilPage() {
               <span className={styles.userStateText}>
                 {yo?.estado === "aprobado" ? "Miembro activo" : "Pendiente de aprobación"}
               </span>
+              {yo?.es_admin ? (
+                <span className={styles.adminBadge}>Admin</span>
+              ) : null}
             </div>
 
             <div className={styles.rolesRow}>
