@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { BarreraCelular } from "@/components/BarreraCelular";
 import { ProveedorAvisos } from "@/components/ui/Aviso";
 
 // Layout persistente: el AppShell se monta una sola vez para todas las rutas
@@ -6,7 +7,7 @@ import { ProveedorAvisos } from "@/components/ui/Aviso";
 export default function AppGroupLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProveedorAvisos>
-      <AppShell>{children}</AppShell>
+      <BarreraCelular><AppShell>{children}</AppShell></BarreraCelular>
     </ProveedorAvisos>
   );
 }

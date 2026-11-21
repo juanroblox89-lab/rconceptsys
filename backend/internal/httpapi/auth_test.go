@@ -159,7 +159,7 @@ func TestAuthRegistroYLogin(t *testing.T) {
 
 	// 2. Registro válido
 	{
-		body := `{"nombre":"Carlos Perez","correo":"carlos@rconcept.com","contrasena":"password12345","confirmar":"password12345"}`
+		body := `{"nombre":"Carlos Perez","correo":"carlos@rconcept.com","contrasena":"password12345","confirmar":"password12345","indicativo":"+57","numero":"3005550100"}`
 		req := httptest.NewRequest("POST", "/api/auth/registro", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func TestAuthRegistroYLogin(t *testing.T) {
 
 	// 3. Registro duplicado devuelve respuesta neutra 200 sin error
 	{
-		body := `{"nombre":"Carlos Perez","correo":"carlos@rconcept.com","contrasena":"password12345","confirmar":"password12345"}`
+		body := `{"nombre":"Carlos Perez","correo":"carlos@rconcept.com","contrasena":"password12345","confirmar":"password12345","indicativo":"+57","numero":"3005550100"}`
 		req := httptest.NewRequest("POST", "/api/auth/registro", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -188,7 +188,7 @@ func TestAuthRegistroYLogin(t *testing.T) {
 
 	// 4. Registro de correo en ADMIN_EMAILS queda admin y aprobado inmediatamente
 	{
-		body := `{"nombre":"Super Admin","correo":"admin@rconcept.com","contrasena":"password12345","confirmar":"password12345"}`
+		body := `{"nombre":"Super Admin","correo":"admin@rconcept.com","contrasena":"password12345","confirmar":"password12345","indicativo":"+57","numero":"3005550100"}`
 		req := httptest.NewRequest("POST", "/api/auth/registro", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -403,6 +403,6 @@ func (v *verificadorRefresco) RefrescarToken(ctx context.Context, refreshToken s
 func (v *verificadorRefresco) Login(ctx context.Context, email, password string) (*supa.TokenResponse, *store.Perfil, error) {
 	return nil, nil, store.ErrUnauthorized
 }
-func (v *verificadorRefresco) Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error) {
+func (v *verificadorRefresco) Registro(ctx context.Context, email, password, nombre string, celulares ...string) (*store.Perfil, error) {
 	return nil, store.ErrUnauthorized
 }

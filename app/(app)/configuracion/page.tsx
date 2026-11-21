@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
 import type { PreferenciasNotificaciones } from "@/lib/types";
+import { FormularioCelular } from "@/components/Celular";
 import { AvisosPush } from "@/components/AvisosPush";
 import { Campo } from "@/components/ui/Campo";
 import { Boton } from "@/components/ui/Boton";
@@ -55,6 +56,7 @@ export default function ConfiguracionPage() {
         <div><Boton type="submit" cargando={ocupado}>Guardar preferencias</Boton></div>
         {estado.texto && <p role={estado.error ? "alert" : "status"}>{estado.texto}</p>}
       </form>}
-    <AvisosPush />
+    <FormularioCelular />
+      <AvisosPush />
   </div>;
 }

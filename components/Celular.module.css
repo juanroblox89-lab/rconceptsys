@@ -1,0 +1,10 @@
+.campos { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.campos label { display: grid; gap: 4px; min-width: 0; font-weight: 500; }
+.campos input,.campos select { width: 100%; min-width: 0; min-height: 36px; padding: 6px 8px; background: var(--rc-superficie-hundida); border: 1px solid var(--rc-gris-300); border-radius: var(--rc-radio-sm); color: var(--rc-texto); font: inherit; }
+.form { padding: 14px; display: grid; gap: 8px; align-items: start; border: 1px solid var(--rc-gris-300); border-radius: var(--rc-radio-md); background: var(--rc-superficie); max-width: 540px; }
+.form h2,.form p { margin: 0; }
+.form button { justify-self: start; }
+.form fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.error { color: var(--rc-rojo-texto); }
+.barrera { width: min(100%, 570px); margin: 40px auto; padding: 12px; }
+@media(max-width:420px) { .campos { grid-template-columns: 1fr; } .campos input,.campos select { min-height: 42px; font-size: 16px; } }

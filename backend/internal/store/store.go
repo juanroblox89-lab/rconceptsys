@@ -34,6 +34,7 @@ type Rol struct {
 }
 
 type Perfil struct {
+	Celular  string       `json:"-"`
 	ID       string       `json:"id"`
 	Correo   string       `json:"correo"`
 	Nombre   string       `json:"nombre"`
@@ -292,6 +293,7 @@ type Store interface {
 	StoreNotificaciones
 	StoreRIA
 	StoreApariencia
+	StoreCelular
 	ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error)
 
 	// Perfiles & Auth

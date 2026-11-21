@@ -131,10 +131,10 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}, y
 // Endpoints
 export const api = {
   // Auth Real
-  registro: (nombre: string, correo: string, contrasena: string, confirmar: string) =>
+  registro: (nombre: string, correo: string, contrasena: string, confirmar: string, celular: { indicativo: string; numero: string }) =>
     fetchApi<Perfil>('/api/auth/registro', {
       method: 'POST',
-      body: JSON.stringify({ nombre, correo, contrasena, confirmar }),
+      body: JSON.stringify({ nombre, correo, contrasena, confirmar, ...celular }),
     }),
   login: (correo: string, contrasena: string) =>
     fetchApi<{ perfil: Perfil; access_token: string }>('/api/auth/login', {

@@ -48,6 +48,8 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/auth/salir", a.handleAuthSalir)
 
 	// Yo (perfil propio, incluso si está pendiente)
+	mux.HandleFunc("GET /api/yo/celular", a.MiddlewareAuth(a.handleCelular, false, false))
+	mux.HandleFunc("PUT /api/yo/celular", a.MiddlewareAuth(a.handleCelular, false, false))
 	mux.HandleFunc("GET /api/yo", a.MiddlewareAuth(a.handleGetYo, false, false))
 	mux.HandleFunc("PATCH /api/yo", a.MiddlewareAuth(a.handlePatchYo, false, false))
 	mux.HandleFunc("POST /api/yo/foto", a.MiddlewareAuth(a.handlePostYoFoto, false, false))
@@ -258,6 +260,8 @@ func (a *API) handleAuthRegistro(w http.ResponseWriter, r *http.Request) {
 		Nombre     string `json:"nombre"`
 		Correo     string `json:"correo"`
 		Contrasena string `json:"contrasena"`
+		Indicativo string `json:"indicativo"`
+		Numero     string `json:"numero"`
 		Confirmar  string `json:"confirmar"`
 	}
 
@@ -293,7 +297,12 @@ func (a *API) handleAuthRegistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	perfil, err := a.Auth.Registro(r.Context(), correo, req.Contrasena, nombre)
+	celular := normalizarCelular(req.Indicativo, req.Numero)
+	if celular == "" {
+		ResponderError(w, 400, "celular_invalido", "Escribe un celular válido para el país seleccionado.")
+		return
+	}
+	perfil, err := a.Auth.Registro(r.Context(), correo, req.Contrasena, nombre, celular)
 	if err == store.ErrConflict {
 		// Respuesta neutra si el correo ya existe
 		ResponderJSON(w, http.StatusOK, map[string]string{

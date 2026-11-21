@@ -19,7 +19,7 @@ type AuthVerifier interface {
 	VerificarToken(ctx context.Context, token string) (*store.Perfil, error)
 	RefrescarToken(ctx context.Context, refreshToken string) (*supa.TokenResponse, error)
 	Login(ctx context.Context, email, password string) (*supa.TokenResponse, *store.Perfil, error)
-	Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error)
+	Registro(ctx context.Context, email, password, nombre string, celulares ...string) (*store.Perfil, error)
 }
 
 type DemoAuthVerifier struct {
@@ -122,7 +122,7 @@ func (v *DemoAuthVerifier) Login(ctx context.Context, email, password string) (*
 	return tok, p, nil
 }
 
-func (v *DemoAuthVerifier) Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error) {
+func (v *DemoAuthVerifier) Registro(ctx context.Context, email, password, nombre string, celulares ...string) (*store.Perfil, error) {
 	eNorm := strings.ToLower(strings.TrimSpace(email))
 	// Si ya existe devolvemos ErrConflict
 	if _, err := v.Store.ObtenerPerfilPorCorreo(ctx, eNorm); err == nil {
@@ -147,6 +147,9 @@ func (v *DemoAuthVerifier) Registro(ctx context.Context, email, password, nombre
 		CreadoEn: time.Now(),
 	}
 
+	if len(celulares) > 0 {
+		perfil.Celular = celulares[0]
+	}
 	if err := v.Store.CrearOActualizarPerfil(ctx, perfil); err != nil {
 		return nil, err
 	}

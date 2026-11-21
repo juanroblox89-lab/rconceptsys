@@ -24,3 +24,6 @@
 ## Personalización
 - Abre el menú con tu avatar. Ofrece, en orden: **Personalización**, **Perfil**, **Configuración**, **Ayuda**, **Cerrar sesión**. Ayuda abre `/ria` y envía «Tengo una duda sobre cómo usar rconceptsys».
 - `/personalizacion`: cambia modo, tema, colores y opciones avanzadas. Los ajustes se ven en directo; **Guardar apariencia** conserva los cambios en tu cuenta y **Restablecer** recupera los valores iniciales. Glass permite subir una imagen o un video (hasta 2,5 MB). El celular solo carga el primer fotograma del video.
+
+## Celular
+- El registro y la primera entrada requieren un celular. Elige el país; Colombia (+57) aparece inicialmente. Puedes editarlo en Perfil o Configuración. El dato no se muestra en el directorio ni en el chat.

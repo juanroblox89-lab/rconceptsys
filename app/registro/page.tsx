@@ -7,12 +7,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Boton } from "@/components/ui/Boton";
 import { api } from "@/lib/api";
+import { CampoCelular, inicialCelular } from "@/components/Celular";
 import styles from "../login/login.module.css";
 
 export default function RegistroPage() {
   const router = useRouter();
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
+  const [celular, setCelular] = useState(inicialCelular);
   const [password, setPassword] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [mostrarPassword, setMostrarPassword] = useState(false);
@@ -35,7 +37,7 @@ export default function RegistroPage() {
     setCargando(true);
 
     try {
-      await api.registro(nombre.trim(), correo.trim(), password, confirmar);
+      await api.registro(nombre.trim(), correo.trim(), password, confirmar, celular);
       // Tras registrarse correctamente, iniciamos sesión para obtener la cookie httpOnly
       const loginRes = await api.login(correo.trim(), password);
       if (loginRes.perfil.estado === "pendiente") {
@@ -98,6 +100,7 @@ export default function RegistroPage() {
             </span>
           </div>
 
+          <CampoCelular valor={celular} cambiar={setCelular} />
           <div className={styles.field}>
             <label className={styles.label} htmlFor="password">
               Contraseña (10+ caracteres)

@@ -224,6 +224,9 @@ func (s *SupabaseStore) CrearOActualizarPerfil(ctx context.Context, perfil *stor
 	if perfil.FotoPath != nil {
 		payload["foto_path"] = *perfil.FotoPath
 	}
+	if perfil.Celular != "" {
+		payload["celular"] = perfil.Celular
+	}
 
 	q := url.Values{}
 	q.Set("on_conflict", "id")
@@ -1480,7 +1483,7 @@ func (v *SupabaseAuthVerifier) Login(ctx context.Context, email, password string
 	return tok, p, nil
 }
 
-func (v *SupabaseAuthVerifier) Registro(ctx context.Context, email, password, nombre string) (*store.Perfil, error) {
+func (v *SupabaseAuthVerifier) Registro(ctx context.Context, email, password, nombre string, celulares ...string) (*store.Perfil, error) {
 	// Verificar si ya existe en la base
 	eNorm := strings.ToLower(strings.TrimSpace(email))
 	if _, err := v.store.ObtenerPerfilPorCorreo(ctx, eNorm); err == nil {
@@ -1511,6 +1514,9 @@ func (v *SupabaseAuthVerifier) Registro(ctx context.Context, email, password, no
 		CreadoEn: time.Now(),
 	}
 
+	if len(celulares) > 0 {
+		perfil.Celular = celulares[0]
+	}
 	if err := v.store.CrearOActualizarPerfil(ctx, perfil); err != nil {
 		return nil, err
 	}
