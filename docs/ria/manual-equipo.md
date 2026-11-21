@@ -12,3 +12,11 @@
 - `/`: chat del equipo. Una mención como `@Nombre` dirige el aviso a esa persona. Los mensajes seguidos se agrupan; un aviso de mención abre su mensaje exacto.
 - `/factura`: un aviso de corte abre tu línea del corte, con rango, monto y estado de pago. No muestra montos de otras personas.
 - `/drive-cambio`: abre el archivo del aviso en Google Drive, donde se aplican tus permisos de Google. Los cambios de una misma carpeta se agrupan durante dos minutos.
+
+## Otras secciones
+- `/equipo`: directorio de miembros aprobados; `/equipo/[id]`: perfil de un miembro.
+- `/perfil`: consulta y edita tu nombre y tu foto; administra los avisos del dispositivo.
+- `/ria`: conversación privada con RIA. El historial pertenece a tu cuenta.
+- `/login`: inicia sesión; `/registro`: solicita acceso; `/pendiente`: consulta el estado de la solicitud.
+- `/estilo`: catálogo de referencia de la interfaz.
+- `/api/[...path]`: conexión interna entre la interfaz y la API; no es una pantalla.

@@ -18,3 +18,19 @@
 - `POST /api/admin/tareas`: asigna un trabajo con cliente y fecha obligatorios.
 - `PATCH /api/admin/tareas/{id}`: cambia persona, tipo, fecha, descripción o carpeta de un trabajo abierto.
 - `GET /api/admin/asignaciones`: lista Trabajos con filtros.
+
+## Miembros, catálogo y finanzas
+- `GET /api/admin/miembros`: lista miembros y solicitudes; `POST /api/admin/miembros/{id}/aprobar`: permite acceso; `POST /api/admin/miembros/{id}/suspender` y `POST /api/admin/miembros/{id}/reactivar`: controlan acceso.
+- `PUT /api/admin/miembros/{id}/roles`: asigna roles; `PUT /api/admin/miembros/{id}/admin`: cambia privilegio de administrador.
+- `GET /api/admin/roles`, `POST /api/admin/roles`, `PATCH /api/admin/roles/{id}`: consulta y mantiene el catálogo de roles.
+- `GET /api/admin/trabajos`, `POST /api/admin/trabajos`, `PATCH /api/admin/trabajos/{id}`: consulta y mantiene tipos, unidades y tarifas.
+- `GET /api/admin/estadisticas`: resumen del equipo con filtros configurables.
+- `POST /api/admin/tareas/{id}/aceptar`: aprueba la entrega y congela su precio; `POST /api/admin/tareas/{id}/rechazar`: devuelve con motivo; `POST /api/admin/tareas/{id}/cancelar`: cancela trabajo pendiente.
+- `GET /api/admin/facturas`, `GET /api/admin/facturas/{id}`, `POST /api/admin/facturas/{id}/pagar`: consulta facturas y marca el pago.
+- `GET /api/admin/cortes`, `POST /api/admin/cortes`, `GET /api/admin/cortes/{id}`: consulta o genera cortes. `POST /api/admin/cortes/{id}/lineas/{perfil}/pagar`: marca el pago individual. `GET /api/admin/cortes/{id}/csv` y `GET /api/admin/cortes/{id}/pdf`: exportan el corte.
+
+## Equipo, Drive y piezas
+- `PATCH /api/admin/equipo`: edita nombre y descripción del equipo; `POST /api/admin/equipo/enlaces`, `PATCH /api/admin/equipo/enlaces/{id}`, `DELETE /api/admin/equipo/enlaces/{id}`: mantienen los accesos rápidos.
+- `GET /api/admin/asignaciones/recientes` y `POST /api/admin/asignaciones/vistas`: consultan y marcan novedades de Recientes.
+- `GET /api/admin/drive`, `POST /api/admin/drive/conectar`, `POST /api/admin/drive/desconectar`: estado y conexión del Drive común. `POST /api/admin/tareas/{id}/drive-carpeta`: agrega carpeta al trabajo.
+- `GET /api/admin/piezas`, `POST /api/admin/piezas`, `PATCH /api/admin/piezas/{id}`: consultan, crean o avanzan piezas.

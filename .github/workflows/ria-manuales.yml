@@ -1,0 +1,17 @@
+name: Manuales de RIA
+on:
+  push:
+  pull_request:
+jobs:
+  manuales:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/verificar-ria.mjs
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - run: go test -C backend ./internal/httpapi -run TestManualRIAContieneRutas -count=1

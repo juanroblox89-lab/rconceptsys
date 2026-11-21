@@ -22,10 +22,17 @@ interface Pendiente {
   adjunto?: ChatAdjunto;
 }
 
+import { mencionaRIA, transmitirRIA } from "@/lib/ria";
+import { Sparkles } from "lucide-react";
+
 export default function ChatPage() {
   const router = useRouter();
   const [mensajes, setMensajes] = useState<ChatMensaje[]>([]);
   const [destinoMensaje, setDestinoMensaje] = useState(0);
+  const [riaTexto, setRiaTexto] = useState("");
+  const [riaActiva, setRiaActiva] = useState(false);
+  const [riaError, setRiaError] = useState<{ id: number; texto: string } | null>(null);
+  const riaControl = useRef<AbortController | null>(null);
   const [cuerpo, setCuerpo] = useState("");
   const [yo, setYo] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -225,6 +232,24 @@ export default function ChatPage() {
     void subirAdjunto(clave, api.postChatAdjuntoDrive(nombre, url));
   };
 
+  useEffect(() => () => riaControl.current?.abort(), []);
+  const consultarRIA = async (id: number) => {
+    if (riaControl.current) return;
+    const c = new AbortController(); riaControl.current = c;
+    setRiaActiva(true); setRiaTexto(""); setRiaError(null); setDestinoMensaje(0);
+    try {
+      const r = await transmitirRIA<ChatMensaje>({ mensaje_id: id }, (s) => setRiaTexto((t) => t + s), c.signal);
+      setMensajes((m) => m.some((v) => v.id === r.id) ? m : [...m, r].sort((a,b) => a.id-b.id));
+    } catch (e) {
+      if (!c.signal.aborted) setRiaError({ id, texto: e instanceof Error ? e.message : "RIA no pudo responder." });
+    } finally {
+      riaControl.current = null; setRiaActiva(false); setRiaTexto("");
+    }
+  };
+  useEffect(() => {
+    if (riaActiva && isNearBottomRef.current && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [riaActiva, riaTexto]);
+
   const enviarMensaje = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const texto = cuerpo.trim();
@@ -235,6 +260,8 @@ export default function ChatPage() {
       return;
     }
 
+    // Solo se ejecuta desde eventos de envío; no durante el render.
+    // eslint-disable-next-line react-hooks/purity
     const tempID = Date.now();
     const optimista: ChatMensaje = {
       id: tempID,
@@ -254,9 +281,10 @@ export default function ChatPage() {
     try {
       const creado = await api.postChat(texto, listos.map((a) => a.id));
       setMensajes((prev) =>
-        prev.map((m) => (m.id === tempID ? { ...creado, enviando: false } : m)),
+        [...prev.filter((m) => m.id !== tempID && m.id !== creado.id), creado].sort((a,b) => a.id-b.id),
       );
       isNearBottomRef.current = true;
+      if (mencionaRIA(texto)) void consultarRIA(creado.id);
     } catch {
       setMensajes((prev) =>
         prev.map((m) => (m.id === tempID ? { ...m, enviando: false, error: true } : m)),
@@ -278,8 +306,9 @@ export default function ChatPage() {
     try {
       const creado = await api.postChat(texto, (adjuntos ?? []).map((a) => a.id));
       setMensajes((prev) =>
-        prev.map((m) => (m.id === id ? { ...creado, enviando: false } : m)),
+        [...prev.filter((m) => m.id !== id && m.id !== creado.id), creado].sort((a,b) => a.id-b.id),
       );
+      if (mencionaRIA(texto)) void consultarRIA(creado.id);
     } catch {
       setMensajes((prev) =>
         prev.map((m) => (m.id === id ? { ...m, enviando: false, error: true } : m)),
@@ -328,20 +357,20 @@ export default function ChatPage() {
               )}
 
               <div className={`${styles.group} ${grupo.es_mio ? styles.groupMine : ""}`}>
-                <Link href={`/equipo/${grupo.autor_id}`} className={styles.avatarLink}>
+                {grupo.autor_id === "ria" ? <span className={styles.riaAvatar}><Sparkles size={19} strokeWidth={1.6} /></span> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.avatarLink}>
                   <Avatar
                     tamano={32}
                     src={grupo.autor_foto || undefined}
                     iniciales={grupo.autor_nombre.charAt(0).toUpperCase()}
                     alt={grupo.autor_nombre}
                   />
-                </Link>
+                </Link>}
 
                 <div className={styles.groupContent}>
                   <div className={styles.groupHeader}>
-                    <Link href={`/equipo/${grupo.autor_id}`} className={styles.authorName}>
+                    {grupo.autor_id === "ria" ? <strong className={styles.authorName}>RIA</strong> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.authorName}>
                       {grupo.autor_nombre}
-                    </Link>
+                    </Link>}
 
                     {grupo.autor_roles.map((rol) => (
                       <span
@@ -352,7 +381,6 @@ export default function ChatPage() {
                         {rol.nombre}
                       </span>
                     ))}
-
                     <span className={styles.time}>{grupo.lineas[0]?.hora}</span>
                   </div>
 
@@ -397,6 +425,16 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
+
+          {riaActiva && <div className={`${styles.group} ${styles.riaEntrada}`}>
+            <span className={styles.riaAvatar}><Sparkles size={19} strokeWidth={1.6} /></span>
+            <div className={styles.groupContent}><strong className={styles.authorName}>RIA</strong><div className={styles.bubble}>
+              {riaTexto && <p className={styles.bubbleTexto}>{riaTexto}</p>}
+              <span className={styles.riaEscribiendo} role="status">RIA está escribiendo…</span>
+            </div></div>
+          </div>}
+          {riaError && <p role="alert">{riaError.texto} <button type="button" className={styles.retryBtn} onClick={() => void consultarRIA(riaError.id)}>Reintentar</button></p>}
+
         </div>
 
         {nuevosMensajes > 0 && (

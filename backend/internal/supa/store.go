@@ -48,6 +48,7 @@ type dbPerfilRol struct {
 }
 
 type dbChatMensaje struct {
+	EsRIA     bool      `json:"es_ria"`
 	ID        int64     `json:"id"`
 	AutorID   string    `json:"autor_id"`
 	Cuerpo    string    `json:"cuerpo"`
@@ -319,7 +320,7 @@ func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, d
 		q.Set("order", "id.desc")
 	}
 	q.Set("limit", strconv.Itoa(limite))
-	q.Set("select", "id,autor_id,cuerpo,creado_en,editado_en,borrado_en,perfiles(*)")
+	q.Set("select", "*,perfiles(*)")
 
 	var rows []dbChatMensaje
 	if err := s.client.REST(ctx, "GET", "chat_mensajes", q, nil, "", &rows); err != nil {
@@ -337,12 +338,16 @@ func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, d
 		}
 
 		var autor *store.Perfil
-		if item.Autor != nil {
+		if item.Autor != nil && !item.EsRIA {
 			roles, _ := s.obtenerRolesDePerfil(ctx, item.Autor.ID)
 			autor = convertirPerfil(item.Autor, roles)
 		}
 
+		if item.EsRIA {
+			item.AutorID = "ria"
+		}
 		res = append(res, &store.ChatMensaje{
+			EsRIA:     item.EsRIA,
 			ID:        item.ID,
 			AutorID:   item.AutorID,
 			Autor:     autor,
@@ -362,7 +367,7 @@ func (s *SupabaseStore) CrearMensajeChat(ctx context.Context, autorID string, cu
 	}
 
 	q := url.Values{}
-	q.Set("select", "id,autor_id,cuerpo,creado_en,editado_en,borrado_en,perfiles(*)")
+	q.Set("select", "*,perfiles(*)")
 
 	var rows []dbChatMensaje
 	if err := s.client.REST(ctx, "POST", "chat_mensajes", q, payload, "return=representation", &rows); err != nil {

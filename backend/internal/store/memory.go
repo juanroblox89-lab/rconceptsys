@@ -11,6 +11,7 @@ import (
 )
 
 type MemoryStore struct {
+	ria         *memoriaRIA
 	mu          sync.RWMutex
 	perfiles    map[string]*Perfil
 	roles       map[int]*Rol

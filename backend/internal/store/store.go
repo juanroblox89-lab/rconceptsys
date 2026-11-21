@@ -45,6 +45,7 @@ type Perfil struct {
 }
 
 type ChatMensaje struct {
+	EsRIA     bool           `json:"es_ria,omitempty"`
 	ID        int64          `json:"id"`
 	AutorID   string         `json:"autor_id"`
 	Autor     *Perfil        `json:"autor,omitempty"`
@@ -289,6 +290,7 @@ type EstadisticasAdminResponse struct {
 type Store interface {
 	StoreF5
 	StoreNotificaciones
+	StoreRIA
 	ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error)
 
 	// Perfiles & Auth

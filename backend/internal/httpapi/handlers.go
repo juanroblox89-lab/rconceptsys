@@ -149,6 +149,8 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/push/suscribir", a.MiddlewareAuth(a.handlePostPushSuscribir, true, false))
 	mux.HandleFunc("DELETE /api/push/suscribir", a.MiddlewareAuth(a.handleDeletePushSuscribir, true, false))
 
+	mux.HandleFunc("GET /api/ria", a.MiddlewareAuth(a.handleHistorialRIA, true, false))
+	mux.HandleFunc("POST /api/ria", a.MiddlewareAuth(a.handleRIA, true, false))
 	mux.HandleFunc("GET /api/cortes/{id}/mio", a.MiddlewareAuth(a.handleCortePropio, true, false))
 	mux.HandleFunc("GET /api/notificaciones", a.MiddlewareAuth(a.handleNotificaciones, true, false))
 	mux.HandleFunc("POST /api/notificaciones/leidas", a.MiddlewareAuth(a.handleLeerNotificaciones, true, false))

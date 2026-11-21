@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Briefcase, Contact,
-  Settings,
+  Settings, Sparkles, CircleHelp,
   LogOut,
   User,
   ChevronsUpDown,
@@ -41,6 +41,7 @@ interface NavItemDef {
 
 export const navItems: NavItemDef[] = [
   { id: "chat", title: "Chat del equipo", href: "/", icon: MessagesSquare },
+  { id: "ria", title: "RIA", href: "/ria", icon: Sparkles },
   { id: "tareas", title: "Tareas", href: "/tareas", icon: CheckSquare },
   { id: "factura", title: "Mi factura", href: "/factura", icon: Receipt, workerOnly: true },
   { id: "equipo", title: "Equipo", href: "/equipo", icon: Users },
@@ -335,7 +336,8 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
               <User size={14} strokeWidth={1.75} aria-hidden="true" />
               Ver perfil
             </button>
-            <button
+            <Link href="/ria?ayuda=1" onClick={() => { setMenuPerfil(false); onNavigate?.(); }}><CircleHelp size={16} /> Ayuda</Link>
+                 <button
               type="button"
               role="menuitem"
               className={styles.perfilMenuItem}

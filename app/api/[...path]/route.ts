@@ -58,8 +58,9 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
   const ip = req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   if (ip) cabeceras.set("x-forwarded-for", ip);
 
+  const esRIA = req.method === "POST" && path.length === 1 && path[0] === "ria";
   const controlador = new AbortController();
-  const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
+  const temporizador = setTimeout(() => controlador.abort(), esRIA ? 75_000 : TIMEOUT_MS);
   try {
     let cuerpo: ArrayBuffer | undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -75,6 +76,11 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
     for (const c of res.headers.getSetCookie()) salida.append("Set-Cookie", c);
 
     if (res.status === 204 || res.status === 304) return new Response(null, { status: res.status, headers: salida });
+    if (esRIA && tipo?.startsWith("text/event-stream") && res.body) {
+      salida.set("Cache-Control", "no-cache, no-transform");
+      salida.set("X-Accel-Buffering", "no");
+      return new Response(res.body, { status: res.status, headers: salida });
+    }
     return new Response(await res.arrayBuffer(), { status: res.status, headers: salida });
   } catch {
     return error(503, "sin_servicio", "El servicio no responde ahora. Inténtalo de nuevo en un momento.");
