@@ -30,6 +30,10 @@ Aplicar en este orden sobre una base con las migraciones 001–011. Primero en u
 5. [016_celular.sql](supabase/migrations/016_celular.sql): celular privado y validación de almacenamiento.
 6. [017_drive_oauth.sql](supabase/migrations/017_drive_oauth.sql): estado de retorno de un solo uso.
 
+## Preview de Vercel
+
+El push terminó correctamente en `desde-cero` (`2ffc808`). El [despliegue de preview](https://vercel.com/juanroblox89-labs-projects/rconceptsys-nuevo/5GRBoLskc7HgVrmUnhpneURnTpME) quedó en `ERROR` antes de compilar: Vercel confirmó que el proyecto está en Hobby y solo admite cron diario. Se conservó `* * * * *` como pide el brief. Para desplegar sin cambiar esa frecuencia se necesita Pro o Enterprise; no se cambió el plan ni se tocó `main`.
+
 ## Evidencia y pendientes
 
 - Los `.log` enlazados conservan la salida real de `tsc`, lint, `next build`, `go vet` y `go test`. La última ronda los pasó todos. Los PNG y recorridos reproducibles están en `capturas-f6/`.

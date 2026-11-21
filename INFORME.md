@@ -8,4 +8,4 @@ Los siete bloques quedaron implementados en `desde-cero`, con commits por fase. 
 
 El streaming, Web Push, Drive, Supabase y cron no se dan por comprobados con servicios reales. Para RIA se verificaron los fragmentos SSE y el respaldo con servidores simulados. No se modificó `main` ni se publicó en producción.
 
-**Preview:** pendiente de comprobar tras el push a `desde-cero`.
+**Preview bloqueado:** el push a `desde-cero` se completó (`2ffc808`). [Vercel rechazó el despliegue](https://vercel.com/juanroblox89-labs-projects/rconceptsys-nuevo/5GRBoLskc7HgVrmUnhpneURnTpME) antes de compilar: Hobby solo admite cron diario. Se conservó el cron de un minuto del brief; para desplegarlo tal cual se requiere Pro o Enterprise. No se cambió el plan.
