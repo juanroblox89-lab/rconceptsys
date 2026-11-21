@@ -91,6 +91,9 @@ header .actions{display:flex;gap:var(--space);align-items:center}
 /* Canvas */
 .canvas-wrap{flex:1;overflow:auto;position:relative;background:var(--bg)}
 .canvas{position:relative;min-height:100%;min-width:100%}
+.connections-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+.connections-layer path.connection{fill:none;stroke:var(--acc);stroke-width:2;opacity:.85}
+.connections-layer circle.connection-marker{fill:var(--acc)}
 .module{
   position:absolute; background:var(--card); border:1px solid var(--border);
   border-radius:var(--radius); padding:var(--space-lg); min-width:220px; max-width:280px;
@@ -460,9 +463,20 @@ function renderModules(){
     canvas.appendChild(div);
   });
   
-  // Ajustar altura canvas
-  const maxRow = Math.ceil(modules.length / cols);
-  canvas.style.minHeight = (24 + maxRow * (200 + gap) + 24) + 'px';
+  // Reacomodar con la altura real de cada tarjeta (columnas tipo mosaico)
+  const colY = new Array(cols).fill(24);
+  modules.forEach((mod, i) => {
+    const div = document.getElementById(`mod-${mod.id}`);
+    const col = colY.indexOf(Math.min(...colY));
+    const x = 24 + col * (cardWidth + gap);
+    const y = colY[col];
+    const h = div.offsetHeight;
+    div.style.left = x + 'px';
+    div.style.top = y + 'px';
+    modulePositions[mod.id] = {x, y, w: div.offsetWidth, h};
+    colY[col] = y + h + gap;
+  });
+  canvas.style.minHeight = (Math.max(...colY) + 24) + 'px';
 }
 
 function openModuleModal(mod){
@@ -681,7 +695,7 @@ function renderConnections(){
 // ==== UTILIDADES ====
 function escapeHtml(str){
   if(!str) return '';
-  return String(str).replace(/[&<>"']/g, c=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 // Exponer para consola
