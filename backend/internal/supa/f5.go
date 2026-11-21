@@ -266,9 +266,8 @@ func (s *SupabaseStore) actividadEquipo(ctx context.Context) store.ActividadEqui
 		for k, v := range filtros {
 			q.Set(k, v)
 		}
-		var rows []struct {
-			ID int64 `json:"id"`
-		}
+		// PostgREST entrega UUID en perfiles e IDs numéricos en otras tablas.
+		var rows []json.RawMessage
 		if err := s.client.REST(ctx, "GET", tabla, q, nil, "", &rows); err != nil {
 			return 0
 		}

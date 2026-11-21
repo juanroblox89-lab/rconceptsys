@@ -11,6 +11,7 @@ import (
 )
 
 type MemoryStore struct {
+	oauthDrive       map[string]EstadoDriveOAuth
 	apariencias      map[string]Apariencia
 	mediosApariencia map[string][]byte
 	ria              *memoriaRIA

@@ -294,6 +294,7 @@ type Store interface {
 	StoreRIA
 	StoreApariencia
 	StoreCelular
+	StoreDriveOAuth
 	ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error)
 
 	// Perfiles & Auth

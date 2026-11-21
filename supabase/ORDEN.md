@@ -7,3 +7,4 @@ No se aplicaron desde el agente. Partir de una base que ya tenga 001–011 aplic
 3. `migrations/014_ria.sql` — historial privado, cupo diario en Bogotá y autoría de las respuestas en el chat de equipo.
 4. `migrations/015_apariencia.sql` — preferencias privadas por perfil y bucket privado de fondos de Glass.
 5. `migrations/016_celular.sql` — número privado, normalizado al formato internacional y nullable para cuentas existentes.
+6. `migrations/017_drive_oauth.sql` — estado de retorno de OAuth con caducidad y consumo atómico.

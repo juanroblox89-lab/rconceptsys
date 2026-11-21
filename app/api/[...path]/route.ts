@@ -57,6 +57,12 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
   // IP real del visitante para los limites de intentos del backend.
   const ip = req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   if (ip) cabeceras.set("x-forwarded-for", ip);
+  // No copiar X-Forwarded-Host del cliente; Next ya resolvió la URL pública.
+  const hostPublico = req.headers.get("host") ?? req.nextUrl.host;
+  if (/^[a-z0-9]+(?:[.-][a-z0-9]+)*(?::[0-9]{1,5})?$/i.test(hostPublico)) {
+    cabeceras.set("x-forwarded-host", hostPublico);
+    cabeceras.set("x-forwarded-proto", /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(hostPublico) ? req.nextUrl.protocol.slice(0, -1) : "https");
+  }
 
   const esRIA = req.method === "POST" && path.length === 1 && path[0] === "ria";
   const controlador = new AbortController();
@@ -81,6 +87,14 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
     // Cada cookie de sesion del backend debe llegar al navegador como cabecera Set-Cookie propia.
     for (const c of res.headers.getSetCookie()) salida.append("Set-Cookie", c);
 
+    if (req.method === "GET" && path.join("/") === "drive/callback" && res.status === 302) {
+      const location = res.headers.get("location");
+      if (location && /^\/admin\?drive=[a-z_]+$/.test(location)) {
+        salida.set("Location", location);
+        return new Response(null, { status: 302, headers: salida });
+      }
+      return error(502, "retorno_invalido", "No pudimos volver a Gestión desde Google Drive.");
+    }
     if (res.status === 204 || res.status === 304) return new Response(null, { status: res.status, headers: salida });
     if (esRIA && tipo?.startsWith("text/event-stream") && res.body) {
       salida.set("Cache-Control", "no-cache, no-transform");

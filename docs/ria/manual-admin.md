@@ -34,3 +34,6 @@
 - `GET /api/admin/asignaciones/recientes` y `POST /api/admin/asignaciones/vistas`: consultan y marcan novedades de Recientes.
 - `GET /api/admin/drive`, `POST /api/admin/drive/conectar`, `POST /api/admin/drive/desconectar`: estado y conexión del Drive común. `POST /api/admin/tareas/{id}/drive-carpeta`: agrega carpeta al trabajo.
 - `GET /api/admin/piezas`, `POST /api/admin/piezas`, `PATCH /api/admin/piezas/{id}`: consultan, crean o avanzan piezas.
+
+## Retorno de Drive
+- Al conectar el Drive común, Google vuelve a Gestión. Configura en Google Cloud la URL de retorno de la misma app; cuando hay una URL declarada explícitamente, esa tiene prioridad.

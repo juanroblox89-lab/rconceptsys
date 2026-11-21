@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -52,16 +53,31 @@ type DriveArchivo struct {
 	EsCarpeta    bool   `json:"es_carpeta"`
 }
 
+var hostPublicoOAuth = regexp.MustCompile(`^[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*(?::[0-9]{1,5})?$`)
+
 // redirectURI calcula la URL de retorno de Google.
 func (a *API) redirectURI(r *http.Request) string {
 	if u := strings.TrimSpace(a.F5.Drive.RedirectURI); u != "" {
 		return u
 	}
-	esquema := "https"
-	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
-		esquema = "http"
+	host := strings.TrimSpace(r.Header.Get("X-Forwarded-Host"))
+	if !hostPublicoOAuth.MatchString(host) {
+		return ""
 	}
-	return fmt.Sprintf("%s://%s/api/drive/callback", esquema, r.Host)
+	u, err := url.Parse("https://" + host)
+	if err != nil || strings.HasSuffix(strings.ToLower(u.Hostname()), ".vercel-infra.com") {
+		return ""
+	}
+	esquema := "https"
+	if r.Header.Get("X-Forwarded-Proto") == "http" {
+		if u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1" {
+			return ""
+		}
+		esquema = "http"
+	} else if r.Header.Get("X-Forwarded-Proto") != "https" {
+		return ""
+	}
+	return fmt.Sprintf("%s://%s/api/drive/callback", esquema, host)
 }
 
 // GET /api/admin/drive
@@ -92,17 +108,26 @@ func (a *API) handleAdminPostDriveConectar(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	retorno := a.redirectURI(r)
+	if retorno == "" {
+		ResponderError(w, 400, "drive_retorno", "Configura la URL pública de retorno de Google Drive.")
+		return
+	}
+
 	estado := make([]byte, 24)
 	if _, err := rand.Read(estado); err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_estado", "No se pudo iniciar la conexión con Google.")
 		return
 	}
 	state := hex.EncodeToString(estado)
-	a.F5.GuardarEstadoOAuth(state, yo.ID)
+	if err := a.Store.GuardarEstadoDriveOAuth(r.Context(), huellaDrive(state), store.EstadoDriveOAuth{AdminID: yo.ID, Retorno: retorno, Expira: time.Now().Add(10 * time.Minute)}); err != nil {
+		ResponderError(w, 503, "drive_estado", "No pudimos iniciar la conexión con Google.")
+		return
+	}
 
 	q := url.Values{}
 	q.Set("client_id", a.F5.Drive.ClientID)
-	q.Set("redirect_uri", a.redirectURI(r))
+	q.Set("redirect_uri", retorno)
 	q.Set("response_type", "code")
 	q.Set("scope", driveScope)
 	q.Set("access_type", "offline")
@@ -115,6 +140,11 @@ func (a *API) handleAdminPostDriveConectar(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+func huellaDrive(estado string) string {
+	h := sha256.Sum256([]byte(estado))
+	return hex.EncodeToString(h[:])
+}
+
 // GET /api/drive/callback?code=&state=
 func (a *API) handleDriveCallback(w http.ResponseWriter, r *http.Request) {
 	state := strings.TrimSpace(r.URL.Query().Get("state"))
@@ -125,8 +155,8 @@ func (a *API) handleDriveCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin?drive=cancelado", http.StatusFound)
 		return
 	}
-	adminID, ok := a.F5.ConsumirEstadoOAuth(state)
-	if !ok || code == "" {
+	oauth, err := a.Store.ConsumirEstadoDriveOAuth(r.Context(), huellaDrive(state))
+	if err != nil || code == "" {
 		http.Redirect(w, r, "/admin?drive=estado_invalido", http.StatusFound)
 		return
 	}
@@ -135,7 +165,13 @@ func (a *API) handleDriveCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := a.intercambiarCodigoDrive(r.Context(), code, a.redirectURI(r))
+	adminID := oauth.AdminID
+	perfil, err := a.Store.ObtenerPerfilPorID(r.Context(), adminID)
+	if err != nil || perfil == nil || !perfil.EsAdmin || perfil.Estado != store.EstadoAprobado {
+		http.Redirect(w, r, "/admin?drive=estado_invalido", http.StatusFound)
+		return
+	}
+	token, err := a.intercambiarCodigoDrive(r.Context(), code, oauth.Retorno)
 	if err != nil || strings.TrimSpace(token.RefreshToken) == "" {
 		http.Redirect(w, r, "/admin?drive=error", http.StatusFound)
 		return
