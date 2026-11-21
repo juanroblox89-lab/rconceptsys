@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -28,6 +29,22 @@ type riaProveedor struct {
 type riaModelo struct {
 	principal, respaldo riaProveedor
 	cliente             *http.Client
+	clavesNVIDIA        []string
+}
+
+var turnoNVIDIA atomic.Uint64
+
+func unirClavesNVIDIA(lista, singular string) []string {
+	var claves []string
+	vistas := map[string]bool{}
+	for _, raw := range append(strings.Split(lista, ","), singular) {
+		k := strings.TrimSpace(raw)
+		if k != "" && !vistas[k] {
+			claves = append(claves, k)
+			vistas[k] = true
+		}
+	}
+	return claves
 }
 
 func modeloRIADesdeEntorno() riaModelo {
@@ -36,9 +53,10 @@ func modeloRIADesdeEntorno() riaModelo {
 		respaldo = modeloRIARespaldo
 	}
 	return riaModelo{
-		principal: riaProveedor{base: strings.TrimSpace(os.Getenv("NINEROUTER_BASE_URL")), clave: strings.TrimSpace(os.Getenv("NINEROUTER_API_KEY")), modelo: "ag/claude-sonnet-5-5-low", espera: 6 * time.Second},
-		respaldo:  riaProveedor{base: baseNVIDIA, clave: strings.TrimSpace(os.Getenv("NVIDIA_API_KEY")), modelo: respaldo, nvidia: true, espera: 12 * time.Second},
-		cliente:   &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
+		principal:    riaProveedor{base: strings.TrimSpace(os.Getenv("NINEROUTER_BASE_URL")), clave: strings.TrimSpace(os.Getenv("NINEROUTER_API_KEY")), modelo: "ag/claude-sonnet-5-5-low", espera: 6 * time.Second},
+		respaldo:     riaProveedor{base: baseNVIDIA, modelo: respaldo, nvidia: true, espera: 12 * time.Second},
+		clavesNVIDIA: unirClavesNVIDIA(os.Getenv("NVIDIA_API_KEYS"), os.Getenv("NVIDIA_API_KEY")),
+		cliente:      &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	}
 }
 
@@ -47,7 +65,22 @@ func (m riaModelo) responder(ctx context.Context, mensajes []riaMensajeModelo, e
 	if err == nil || emitio || !reintentar || ctx.Err() != nil {
 		return err
 	}
-	_, _, err = m.leer(ctx, m.respaldo, mensajes, emitir)
+	claves := m.clavesNVIDIA
+	if len(claves) == 0 && m.respaldo.clave != "" {
+		claves = []string{m.respaldo.clave}
+	}
+	if len(claves) == 0 {
+		return errors.New("respaldo no configurado")
+	}
+	inicio := int((turnoNVIDIA.Add(1) - 1) % uint64(len(claves)))
+	for i := range claves {
+		p := m.respaldo
+		p.clave = claves[(inicio+i)%len(claves)]
+		emitio, _, err = m.leer(ctx, p, mensajes, emitir)
+		if err == nil || emitio || ctx.Err() != nil {
+			return err
+		}
+	}
 	return err
 }
 
