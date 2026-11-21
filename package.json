@@ -8,7 +8,8 @@
     "start": "next start -p 3300",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npx tsx lib/__tests__/chat-utils.test.ts"
+    "test": "npx tsx lib/__tests__/chat-utils.test.ts",
+    "mapa": "node scripts/generar-mapa.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.47.0",

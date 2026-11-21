@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>rconceptsys — Mapa de Arquitectura</title>
+<style>
+:root{
+  --bg:#0b0d10; --bg-elev:#111418; --bg-hover:#1a1e24;
+  --fg:#e8e9eb; --fg-muted:#8b8d93; --fg-subtle:#5a5c63;
+  --acc:#22d3ee; --acc-dim:#06b6d4; --acc-bg:#0e2a30;
+  --ok:#22c55e; --ok-bg:#0e2a1a; --warn:#fbbf24; --warn-bg:#2a240e;
+  --err:#ef4444; --err-bg:#2a0e0e;
+  --card:#151920; --border:#2a2e36; --border-strong:#3a3f4a;
+  --radius:6px; --radius-sm:4px;
+  --space:8px; --space-lg:16px; --space-xl:24px;
+  --font-sans:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.03);
+  --trans-fast:120ms; --trans-med:200ms; --trans-slow:320ms;
+}
+@media (prefers-reduced-motion:reduce){
+  :root{--trans-fast:0ms;--trans-med:0ms;--trans-slow:0ms;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font-sans); font-size:13px; line-height:1.5;
+  background:var(--bg); color:var(--fg); min-width:320px;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.9em;background:var(--bg-hover);padding:.1em .3em;border-radius:3px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* Header */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:var(--space) var(--space-lg); background:var(--bg-elev);
+  border-bottom:1px solid var(--border); flex-shrink:0; gap:var(--space);
+}
+header h1{font-size:14px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
+header .meta{font-size:11px;color:var(--fg-subtle);white-space:nowrap}
+header .actions{display:flex;gap:var(--space);align-items:center}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 10px;
+  font-size:11px;font-weight:500;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--bg-hover);color:var(--fg);
+  cursor:pointer;transition:background var(--trans-fast),border-color var(--trans-fast),color var(--trans-fast);
+}
+.btn:hover{background:var(--bg-elev);border-color:var(--border-strong)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#001a1f}
+.btn.primary:hover{background:var(--acc-dim)}
+.btn.ghost{background:transparent}
+.icon-btn{padding:6px;display:flex;align-items:center;justify-content:center}
+
+/* Layout principal */
+.main{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* Sidebar flujos */
+.sidebar{
+  width:260px; max-width:90vw; flex-shrink:0;
+  background:var(--bg-elev); border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sidebar-header{
+  padding:var(--space) var(--space-lg); border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sidebar-header h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--fg-muted)}
+.sidebar-header .count{font-size:11px;color:var(--fg-subtle);background:var(--bg-hover);padding:2px 6px;border-radius:999px}
+.flow-list{flex:1;overflow:auto;padding:var(--space);display:flex;flex-direction:column;gap:4px}
+.flow-item{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  border-radius:var(--radius); cursor:pointer;
+  background:transparent; border:1px solid transparent;
+  transition:background var(--trans-fast),border-color var(--trans-fast);
+}
+.flow-item:hover{background:var(--bg-hover);border-color:var(--border)}
+.flow-item.active{background:var(--acc-bg);border-color:var(--acc)}
+.flow-item .icon{flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:var(--bg-hover);color:var(--fg-muted)}
+.flow-item.active .icon{background:var(--acc);color:#001a1f}
+.flow-item .info{flex:1;min-width:0;display:flex;flex-direction:column}
+.flow-item .name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flow-item .desc{font-size:10px;color:var(--fg-subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flow-item .steps{font-size:10px;color:var(--fg-subtle);margin-top:2px}
+
+/* Canvas */
+.canvas-wrap{flex:1;overflow:auto;position:relative;background:var(--bg)}
+.canvas{position:relative;min-height:100%;min-width:100%}
+.module{
+  position:absolute; background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:var(--space-lg); min-width:220px; max-width:280px;
+  box-shadow:var(--shadow);
+  transition:transform var(--trans-med),box-shadow var(--trans-med),border-color var(--trans-med);
+}
+.module:hover{z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 0 1px var(--acc)}
+.module.selected{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-bg),var(--shadow)}
+.module-header{display:flex;align-items:center;gap:8px;margin-bottom:var(--space);padding-bottom:var(--space);border-bottom:1px solid var(--border)}
+.module-header .icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:var(--bg-hover);color:var(--acc)}
+.module-header h3{font-size:13px;font-weight:600}
+.module-header .type{font-size:10px;color:var(--fg-subtle);text-transform:uppercase;letter-spacing:.5px;margin-left:auto;background:var(--bg-hover);padding:2px 6px;border-radius:999px}
+.module-files{display:flex;flex-direction:column;gap:4px}
+.module-file{font-size:11px;color:var(--fg-muted);display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:var(--radius-sm);transition:background var(--trans-fast)}
+.module-file:hover{background:var(--bg-hover);color:var(--fg)}
+.module-file code{font-size:10px}
+
+/* Conexiones (líneas SVG) */
+.connection{position:absolute;pointer-events:none;z-index:1}
+.connection path{fill:none;stroke:var(--border);stroke-width:1.5;stroke-dasharray:4 4;transition:stroke var(--trans-med),stroke-width var(--trans-med)}
+.connection.active path{stroke:var(--acc);stroke-width:2;stroke-dasharray:none}
+.connection-marker{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--acc);transform:translate(-50%,-50%);opacity:0;transition:opacity var(--trans-fast)}
+.connection.active .connection-marker{opacity:1;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.4);opacity:1}}
+
+/* Panel detalle flujo */
+.detail{
+  width:360px; max-width:90vw; flex-shrink:0;
+  background:var(--bg-elev); border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.detail-header{
+  padding:var(--space) var(--space-lg); border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:var(--space);
+}
+.detail-header h2{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-header .badge{font-size:10px;padding:2px 6px;border-radius:999px;background:var(--bg-hover);color:var(--fg-muted)}
+.detail-content{flex:1;overflow:auto;padding:var(--space-lg);display:flex;flex-direction:column;gap:var(--space)}
+.detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--fg-subtle);text-align:center;gap:8px}
+.detail-empty svg{width:48px;height:48px;opacity:.4}
+.step-list{display:flex;flex-direction:column;gap:8px}
+.step-item{
+  display:flex;gap:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  transition:background var(--trans-fast),border-color var(--trans-fast),transform var(--trans-fast);
+}
+.step-item:hover{border-color:var(--border-strong);transform:translateX(2px)}
+.step-item.active{background:var(--acc-bg);border-color:var(--acc)}
+.step-num{flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:var(--bg-hover);border-radius:50%;font-size:11px;font-weight:600;color:var(--fg-muted);border:1px solid var(--border)}
+.step-item.active .step-num{background:var(--acc);color:#001a1f;border-color:var(--acc)}
+.step-info{flex:1;min-width:0}
+.step-info .func{font-size:11px;font-family:var(--mono);color:var(--acc);margin-bottom:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.step-info .func .file{color:var(--fg-muted);font-size:10px}
+.step-info .desc{font-size:11px;color:var(--fg);line-height:1.4}
+.step-info .refs{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
+.ref-tag{font-size:9px;padding:2px 6px;border-radius:3px;background:var(--bg-hover);color:var(--fg-subtle);border:1px solid var(--border)}
+.ref-tag.sql{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+.ref-tag.md{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+
+/* Modal módulo */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
+  display:flex;align-items:center;justify-content:center;padding:var(--space-lg);
+  opacity:0;visibility:hidden;transition:opacity var(--trans-med),visibility var(--trans-med);
+}
+.modal-overlay.open{opacity:1;visibility:visible}
+.modal{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  width:100%;max-width:480px;max-height:85vh;overflow:auto;
+  transform:scale(.95);transition:transform var(--trans-med);
+  box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05);
+}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-lg);border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:14px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--fg-muted);cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);transition:background var(--trans-fast),color var(--trans-fast)}
+.modal-close:hover{background:var(--bg-hover);color:var(--fg)}
+.modal-body{padding:var(--space-lg);display:flex;flex-direction:column;gap:var(--space-lg)}
+.modal-section h4{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--fg-muted);margin-bottom:var(--space)}
+.modal-files{display:flex;flex-direction:column;gap:4px}
+.modal-file{font-size:12px;color:var(--fg-muted);display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);background:var(--bg-hover);transition:background var(--trans-fast),color var(--trans-fast)}
+.modal-file:hover{background:var(--bg-elev);color:var(--fg)}
+.modal-file code{font-size:10px}
+.modal-endpoints{display:flex;flex-direction:column;gap:4px}
+.modal-endpoint{font-size:11px;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);background:var(--bg-hover)}
+.modal-endpoint .method{font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;background:var(--bg);color:var(--fg-muted)}
+.modal-endpoint .method.get{background:#0e2a1a;color:#22c55e}
+.modal-endpoint .method.post{background:#0e1a2a;color:#22d3ee}
+.modal-endpoint .method.patch{background:#2a1a0e;color:#fbbf24}
+.modal-endpoint .method.delete{background:#2a0e0e;color:#ef4444}
+.modal-endpoint .path{font-family:var(--mono);font-size:10px;color:var(--fg);flex:1}
+.modal-tables{display:flex;flex-wrap:wrap;gap:4px}
+.modal-table{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);background:var(--bg-hover);color:var(--fg-muted);border:1px solid var(--border);transition:all var(--trans-fast)}
+.modal-table:hover{background:var(--bg-elev);color:var(--fg);border-color:var(--border-strong)}
+
+/* Footer */
+footer{
+  padding:var(--space) var(--space-lg); background:var(--bg-elev);
+  border-top:1px solid var(--border); flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;gap:var(--space);
+  font-size:11px;color:var(--fg-subtle);flex-wrap:wrap;
+}
+footer .legend{display:flex;align-items:center;gap:var(--space-lg);flex-wrap:wrap}
+footer .legend-item{display:flex;align-items:center;gap:6px;font-size:10px}
+footer .legend-color{width:10px;height:10px;border-radius:2px}
+
+/* Responsive */
+@media (max-width:900px){
+  .detail{display:none}
+  .sidebar{width:220px}
+}
+@media (max-width:640px){
+  header{padding:var(--space)}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:50;width:280px;transform:translateX(-100%);transition:transform var(--trans-med)}
+  .sidebar.open{transform:translateX(0)}
+  .main{position:relative}
+  .menu-btn{display:flex}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:49}
+  .sidebar-overlay.open{display:block}
+  .canvas-wrap{height:calc(100vh - 88px)}
+}
+.menu-btn{display:none}
+@media (max-width:640px){
+  .menu-btn{display:flex}
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--fg-subtle)}
+::-webkit-scrollbar-corner{background:transparent}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--acc)">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+      <h1>rconceptsys</h1>
+    </div>
+    <div class="meta" id="genTime"></div>
+    <div class="actions">
+      <button class="btn ghost menu-btn" id="menuBtn" aria-label="Menú flujos">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <button class="btn primary" id="btnRegenerate" onclick="regenerateMap()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Regenerar
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Flujos de arquitectura">
+      <div class="sidebar-header">
+        <h2>Flujos</h2>
+        <span class="count" id="flowCount">0</span>
+      </div>
+      <div class="flow-list" id="flowList" role="listbox"></div>
+    </aside>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <svg class="connections-layer" id="connectionsLayer"></svg>
+      <div class="canvas" id="canvas"></div>
+    </div>
+
+    <aside class="detail" id="detail" aria-live="polite">
+      <div class="detail-header">
+        <h2 id="detailTitle">Selecciona un flujo</h2>
+        <span class="badge" id="detailSteps">0 pasos</span>
+      </div>
+      <div class="detail-content" id="detailContent">
+        <div class="detail-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <p>Haz clic en un flujo para ver sus pasos</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-color" style="background:#151920;border:1px solid var(--border)"></span>Módulo</span>
+      <span class="legend-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" style="stroke-dasharray:4 4"><path d="M3 12h18"/></svg> Conexión</span>
+      <span class="legend-item"><span class="legend-color" style="background:var(--acc)"></span> Activo</span>
+    </div>
+    <div id="commitHash"></div>
+  </footer>
+</div>
+
+<!-- Modal módulo -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle"></h3>
+      <button class="modal-close" id="modalClose" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ==== DATOS EMBEBIDOS (inyectados por generar-mapa.mjs) ====
+const MAPA_DATA = {"generado_en":"2026-11-21T20:38:22.719Z","version":"1.0","modulos":[{"id":"next","nombre":"Next.js (app/)","descripcion":"Frontend React 19 + Next.js 16, App Router, Server Components, proxy /api/* → Go","archivos_clave":["app/layout.tsx","app/(app)/layout.tsx","app/api/[...path]/route.ts","app/(app)/page.tsx","app/(app)/tareas/page.tsx","app/(app)/asignaciones/page.tsx","app/(app)/ria/page.tsx","app/(app)/chat.module.css","lib/ria.ts","lib/api.ts","next.config.ts"],"tipo":"frontend"},{"id":"go","nombre":"Go Backend (backend/)","descripcion":"API HTTP en Go (stdlib net/http), service_role Supabase, store interface (memoria/Supabase)","archivos_clave":["backend/cmd/server/main.go","backend/internal/httpapi/handlers.go","backend/internal/httpapi/auth.go","backend/internal/httpapi/notificaciones.go","backend/internal/httpapi/notificaciones_eventos.go","backend/internal/httpapi/push.go","backend/internal/httpapi/ria.go","backend/internal/httpapi/ria_modelo.go","backend/internal/httpapi/drive.go","backend/internal/httpapi/flujo.go","backend/internal/store/store.go","backend/internal/store/notificaciones.go","backend/internal/store/ria.go","backend/internal/store/drive_oauth.go","backend/internal/supa/store.go","backend/internal/supa/client.go","backend/internal/supa/notificaciones.go","backend/internal/supa/ria.go","backend/go.mod"],"tipo":"backend"},{"id":"supabase","nombre":"Supabase (PostgreSQL + Auth + Storage + Realtime)","descripcion":"Base de datos, autenticación, storage, realtime, pg_cron, pg_net, Vault","archivos_clave":["supabase/migrations/001_f0_base_y_chat.sql","supabase/migrations/002_endurecer_permisos.sql","supabase/migrations/003_trabajos_tareas_facturas.sql","supabase/migrations/004_minutos_clientes_estadisticas.sql","supabase/migrations/005_enlace_medios_tareas.sql","supabase/migrations/006_equipo_y_adjuntos_chat.sql","supabase/migrations/007_asignaciones_vistas.sql","supabase/migrations/008_drive_conexion.sql","supabase/migrations/009_clientes_piezas.sql","supabase/migrations/010_cortes_pago.sql","supabase/migrations/011_push_suscripciones.sql","supabase/migrations/012_clientes_flujo.sql","supabase/migrations/013_notificaciones.sql","supabase/migrations/014_ria.sql","supabase/migrations/015_apariencia.sql","supabase/migrations/016_celular.sql","supabase/migrations/017_drive_oauth.sql","supabase/migrations/018_cron_notificaciones_pg_cron.sql"],"tipo":"database"},{"id":"vercel","nombre":"Vercel (Web + API + Cron diario)","descripcion":"Despliegue: servicio \"web\" (Next.js) + servicio \"api\" (Go) vinculados por BACKEND_URL; cron diario 13:00 UTC","archivos_clave":["vercel.json"],"tipo":"infraestructura"},{"id":"pg_cron_pg_net","nombre":"pg_cron + pg_net (cron cada minuto)","descripcion":"Extensiones de Supabase: job pg_cron cada minuto llama a net.http_get hacia /api/cron/notificaciones con secretos del Vault","archivos_clave":["supabase/migrations/018_cron_notificaciones_pg_cron.sql"],"tipo":"infraestructura"},{"id":"google_drive","nombre":"Google Drive (conector equipo)","descripcion":"Una cuenta OAuth del equipo; backend crea subcarpetas por tarea y copia entregas; refresh_token guardado en BD (solo service_role)","archivos_clave":["backend/internal/httpapi/drive.go","backend/internal/store/drive_oauth.go","backend/internal/supa/store.go (ObtenerConexionDrive)","supabase/migrations/008_drive_conexion.sql","supabase/migrations/017_drive_oauth.sql"],"tipo":"externo"},{"id":"web_push","nombre":"Web Push (VAPID)","descripcion":"Push notifications cifradas RFC 8291/8292; suscripciones en push_suscripciones; cola en notificaciones; envío inmediato + cron cada minuto","archivos_clave":["backend/internal/httpapi/push.go","backend/internal/httpapi/notificaciones.go","backend/internal/supa/notificaciones.go","supabase/migrations/011_push_suscripciones.sql","supabase/migrations/013_notificaciones.sql"],"tipo":"externo"},{"id":"ria","nombre":"RIA (9router + respaldo NVIDIA)","descripcion":"Asistente IA: principal vía 9router (ag/claude-sonnet-5-5-low), respaldo directo a NVIDIA (nemotron-3.5-super-vl-120b-a12b) con round-robin de claves; streaming SSE; tope diario; chat equipo (@RIA) y privado (/ria)","archivos_clave":["backend/internal/httpapi/ria.go","backend/internal/httpapi/ria_modelo.go","backend/internal/httpapi/handlers.go (handleRIA)","backend/internal/store/ria.go","backend/internal/supa/ria.go","supabase/migrations/014_ria.sql","lib/ria.ts","app/(app)/ria/page.tsx","docs/ria/configuracion-nvidia.md"],"tipo":"ia"}],"endpoints":[{"metodo":"GET","ruta":"/healthz","handler":"backend/internal/httpapi/handlers.go:handleHealthz","archivo_funcion":"backend/internal/httpapi/handlers.go:handleHealthz","auth":"publico"},{"metodo":"POST","ruta":"/api/auth/registro","handler":"backend/internal/httpapi/handlers.go:handleAuthRegistro","archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthRegistro","auth":"publico"},{"metodo":"POST","ruta":"/api/auth/login","handler":"backend/internal/httpapi/handlers.go:handleAuthLogin","archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthLogin","auth":"publico"},{"metodo":"POST","ruta":"/api/auth/refresh","handler":"backend/internal/httpapi/handlers.go:handleAuthRefresh","archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthRefresh","auth":"publico"},{"metodo":"POST","ruta":"/api/auth/salir","handler":"backend/internal/httpapi/handlers.go:handleAuthSalir","archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthSalir","auth":"publico"},{"metodo":"GET","ruta":"/api/drive/callback","handler":"backend/internal/httpapi/handlers.go:handleDriveCallback","archivo_funcion":"backend/internal/httpapi/handlers.go:handleDriveCallback","auth":"publico"},{"metodo":"GET","ruta":"/api/cron/notificaciones","handler":"backend/internal/httpapi/handlers.go:handleCronNotificaciones","archivo_funcion":"backend/internal/httpapi/handlers.go:handleCronNotificaciones","auth":"publico"}],"tablas":[{"nombre":"perfiles","migracion":"001_f0_base_y_chat.sql","numero_migracion":1,"columnas_principales":["id","correo","nombre","foto_path","estado","es_admin","creado_en"]},{"nombre":"roles","migracion":"001_f0_base_y_chat.sql","numero_migracion":1,"columnas_principales":["id","clave","nombre","color","orden","activo"]},{"nombre":"perfil_roles","migracion":"001_f0_base_y_chat.sql","numero_migracion":1,"columnas_principales":["perfil_id","rol_id"]},{"nombre":"chat_mensajes","migracion":"001_f0_base_y_chat.sql","numero_migracion":1,"columnas_principales":["id","autor_id","cuerpo","creado_en","editado_en","borrado_en"]},{"nombre":"configuracion","migracion":"001_f0_base_y_chat.sql","numero_migracion":1,"columnas_principales":["clave","valor","actualizado_en"]},{"nombre":"tipos_trabajo","migracion":"003_trabajos_tareas_facturas.sql","numero_migracion":3,"columnas_principales":["id","clave","nombre","rol_id","precio","activo","orden","creado_en"]},{"nombre":"facturas","migracion":"003_trabajos_tareas_facturas.sql","numero_migracion":3,"columnas_principales":["id","perfil_id","estado","creada_en","pagada_en","pagada_por"]},{"nombre":"tareas","migracion":"003_trabajos_tareas_facturas.sql","numero_migracion":3,"columnas_principales":["id","tipo_id","titulo","descripcion","asignado_a","creado_por","estado","fecha_limite","nota_persona","motivo_rechazo"]},{"nombre":"clientes","migracion":"004_minutos_clientes_estadisticas.sql","numero_migracion":4,"columnas_principales":["id","nombre","activo","creado_en"]},{"nombre":"chat_adjuntos","migracion":"006_equipo_y_adjuntos_chat.sql","numero_migracion":6,"columnas_principales":["id","mensaje_id","autor_id","tipo","nombre","mime","tamano","duracion_seg","ancho","alto"]},{"nombre":"asignaciones_vistas","migracion":"007_asignaciones_vistas.sql","numero_migracion":7,"columnas_principales":["perfil_id","tarea_id","visto_en"]},{"nombre":"drive_conexion","migracion":"008_drive_conexion.sql","numero_migracion":8,"columnas_principales":["id","correo","refresh_token","carpeta_raiz_id","conectado_en","conectado_por","actualizado_en"]},{"nombre":"piezas","migracion":"009_clientes_piezas.sql","numero_migracion":9,"columnas_principales":["id","cliente_id","nombre","formato","etapa","fecha_publicacion","notas","drive_carpeta_url","creado_por","creado_en"]},{"nombre":"cortes","migracion":"010_cortes_pago.sql","numero_migracion":10,"columnas_principales":["id","periodo","desde","hasta","estado","total","creado_en","creado_por"]},{"nombre":"corte_lineas","migracion":"010_cortes_pago.sql","numero_migracion":10,"columnas_principales":["corte_id","perfil_id","total","tareas","pagada_en","pagada_por"]},{"nombre":"push_suscripciones","migracion":"011_push_suscripciones.sql","numero_migracion":11,"columnas_principales":["id","perfil_id","endpoint","p256dh","auth","user_agent","creado_en"]},{"nombre":"push_enviados","migracion":"011_push_suscripciones.sql","numero_migracion":11,"columnas_principales":["clave","creado_en"]},{"nombre":"notificaciones","migracion":"013_notificaciones.sql","numero_migracion":13,"columnas_principales":["id","perfil_id","tipo","titulo","cuerpo","url","leida_en","creada_en","actualizada_en","grupo"]},{"nombre":"notificaciones_eventos","migracion":"013_notificaciones.sql","numero_migracion":13,"columnas_principales":["perfil_id","clave","creada_en"]},{"nombre":"notificaciones_preferencias","migracion":"013_notificaciones.sql","numero_migracion":13,"columnas_principales":["perfil_id","tipos_silenciados","silenciar_chat","silencio_desde","silencio_hasta"]},{"nombre":"notificaciones_entregas","migracion":"013_notificaciones.sql","numero_migracion":13,"columnas_principales":["notificacion_id","suscripcion_id"]},{"nombre":"notificaciones_control","migracion":"013_notificaciones.sql","numero_migracion":13,"columnas_principales":["clave","valor","bloqueo_hasta"]},{"nombre":"ria_mensajes","migracion":"014_ria.sql","numero_migracion":14,"columnas_principales":["id","perfil_id","rol","cuerpo","creado_en"]},{"nombre":"ria_uso_diario","migracion":"014_ria.sql","numero_migracion":14,"columnas_principales":["perfil_id","dia","usos"]},{"nombre":"perfil_apariencia","migracion":"015_apariencia.sql","numero_migracion":15,"columnas_principales":["perfil_id","preferencias"]},{"nombre":"drive_oauth_estados","migracion":"017_drive_oauth.sql","numero_migracion":17,"columnas_principales":["huella","admin_id","retorno","expira"]}],"variables_entorno":[],"flujos":[{"id":"asignar-trabajo","nombre":"Asignar trabajo","descripcion":"Admin crea una tarea y se la asigna a una persona del equipo según su rol","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAdminPostTarea","descripcion":"Admin envía POST /api/admin/tareas con tipo_id, titulo, descripcion, asignado_a, fecha_limite"},{"orden":2,"archivo_funcion":"backend/internal/store/store.go:CrearTarea","descripcion":"Store crea la tarea en estado 'pendiente' con precio_congelado = precio del tipo_trabajo"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/push.go:AvisarTareaNueva","descripcion":"Encola aviso 'tarea-nueva' para la persona asignada"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:encolarAviso","descripcion":"Llama a Store.EncolarNotificacion (RPC rc_encolar_notificacion)"},{"orden":5,"archivo_funcion":"supabase/migrations/013_notificaciones.sql:rc_encolar_notificacion","descripcion":"Función SQL que inserta en notificaciones con agrupación por ventana"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:despacharYa","descripcion":"Intenta enviar inmediatamente llamando a enviarColaNotificaciones"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones","descripcion":"Reclama notificaciones (RPC rc_reclamar_notificaciones), cifra y envía Web Push via VAPID"}]},{"id":"entregar","nombre":"Entregar trabajo","descripcion":"Persona marca tarea como hecha, adjunta enlace de Drive, admin aprueba o rechaza","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/handlers.go:handlePostTareaHecha","descripcion":"Persona envía POST /api/tareas/{id}/hecha con nota_persona y enlace_medios"},{"orden":2,"archivo_funcion":"backend/internal/store/store.go:MarcarTareaHecha","descripcion":"Cambia estado a 'hecha', guarda hecha_en, nota_persona, enlace_medios"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/notificaciones_eventos.go:avisarEntregaAdmins","descripcion":"Encola aviso 'entrega-hecha' para todos los admins"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAdminPostTareaAceptar","descripcion":"Admin envía POST /api/admin/tareas/{id}/aceptar con cantidad (minutos si unidad=minuto)"},{"orden":5,"archivo_funcion":"backend/internal/store/store.go:AceptarTarea","descripcion":"Llama RPC aceptar_tarea: congela precio_unitario, cantidad_aceptada, precio_congelado, factura_id, estado='aceptada'"},{"orden":6,"archivo_funcion":"supabase/migrations/004_minutos_clientes_estadisticas.sql:aceptar_tarea","descripcion":"Función SQL atómica que crea/usa factura abierta y congela valores"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/push.go:AvisarEntregaAprobada","descripcion":"Encola aviso 'entrega-aprobada' para la persona"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAdminPostTareaRechazar","descripcion":"Admin envía POST /api/admin/tareas/{id}/rechazar con motivo"},{"orden":9,"archivo_funcion":"backend/internal/store/store.go:RechazarTarea","descripcion":"Cambia estado a 'rechazada', guarda motivo_rechazo, resuelta_en, resuelta_por"},{"orden":10,"archivo_funcion":"backend/internal/httpapi/notificaciones_eventos.go:avisarSolicitud","descripcion":"Encola aviso 'entrega-devuelta' para la persona con el motivo (usa avisarSolicitud genérico)"}]},{"id":"notificacion-encolar","nombre":"Notificación: encolar","descripcion":"Cómo se crea una notificación en la bandeja y cola de envío","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:encolarAviso","descripcion":"Recibe perfil, aviso, clave, grupo, ventana; llama Store.EncolarNotificacion"},{"orden":2,"archivo_funcion":"backend/internal/store/notificaciones.go:EncolarNotificacion","descripcion":"Interfaz del store para encolar"},{"orden":3,"archivo_funcion":"backend/internal/supa/notificaciones.go:EncolarNotificacion","descripcion":"POST /rpc/rc_encolar_notificacion con parámetros p_perfil, p_tipo, p_titulo, p_cuerpo, p_url, p_clave, p_grupo, p_ventana_segundos"},{"orden":4,"archivo_funcion":"supabase/migrations/013_notificaciones.sql:rc_encolar_notificacion","descripcion":"Inserta en notificaciones; agrupa si mismo tipo+grupo+ventana; respeta preferencias (tipos_silenciados, silenciar_chat); usa advisory lock para concurrencia"}]},{"id":"notificacion-enviar","nombre":"Notificación: enviar (inmediato)","descripcion":"Intento de envío inmediato al generar el evento","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:despacharYa","descripcion":"Llama enviarColaNotificaciones con timeout 4s"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones","descripcion":"Reclama notificaciones pendientes (RPC rc_reclamar_notificaciones), para cada una obtiene suscripciones push, cifra (RFC 8291) y envía POST al endpoint"},{"orden":3,"archivo_funcion":"backend/internal/supa/notificaciones.go:ReclamarNotificaciones","descripcion":"POST /rpc/rc_reclamar_notificaciones con p_limite"},{"orden":4,"archivo_funcion":"supabase/migrations/013_notificaciones.sql:rc_reclamar_notificaciones","descripcion":"SELECT FOR UPDATE SKIP LOCKED en notificaciones donde finalizada_en IS NULL y disponible_en <= now(); actualiza bloqueo_hasta e intentos"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/push.go:cifrarPushWeb","descripcion":"Cifrado AES-128-GCM según RFC 8291 con claves VAPID"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/push.go:cabeceraVAPID","descripcion":"Firma JWT ES256 según RFC 8292 para autorización en push service"},{"orden":7,"archivo_funcion":"backend/internal/supa/notificaciones.go:RegistrarNotificacionEntregada","descripcion":"Inserta en notificaciones_entregas para no reenviar a la misma suscripción"}]},{"id":"notificacion-cron","nombre":"Notificación: cron cada minuto (pg_cron + pg_net)","descripcion":"Supabase ejecuta cada minuto el endpoint /api/cron/notificaciones que procesa la cola","pasos":[{"orden":1,"archivo_funcion":"supabase/migrations/018_cron_notificaciones_pg_cron.sql:rconcept_llamar_cron_notificaciones","descripcion":"Función PL/pgSQL que lee secretos del Vault (rconcept_cron_url, rconcept_cron_secret) y hace net.http_get con header Authorization: Bearer"},{"orden":2,"archivo_funcion":"supabase/migrations/018_cron_notificaciones_pg_cron.sql:cron.schedule","descripcion":"pg_cron job 'rconcept-cron-notificaciones' con schedule '* * * * *' (cada minuto)"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:handleCronNotificaciones","descripcion":"GET /api/cron/notificaciones verifica CRON_SECRET, llama enviarColaNotificaciones"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones","descripcion":"Mismo flujo de envío que el inmediato: reclama, cifra, envía, registra entrega"},{"orden":5,"archivo_funcion":"backend/internal/store/notificaciones.go:ResolverNotificacion","descripcion":"Interfaz store: marca finalizada_en o reprograma disponible_en según resultado"},{"orden":6,"archivo_funcion":"backend/internal/supa/notificaciones.go:ResolverNotificacion","descripcion":"PATCH notificaciones con bloqueo_hasta=NULL y finalizada_en=now() o disponible_en=siguiente"}]},{"id":"drive","nombre":"Google Drive (conector equipo)","descripcion":"Admin conecta una cuenta de Google Drive del equipo; backend crea subcarpetas por tarea y copia entregas","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/drive.go:handleAdminPostDriveConectar","descripcion":"Admin POST /api/admin/drive/conectar genera state (huella SHA-256), guarda en drive_oauth_estados, redirige a Google OAuth"},{"orden":2,"archivo_funcion":"backend/internal/store/drive_oauth.go:GuardarEstadoDriveOAuth","descripcion":"Guarda huella, admin_id, retorno, expira"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/drive.go:handleDriveCallback","descripcion":"GET /api/drive/callback?code=...&state=... consume estado (RPC rc_consumir_drive_oauth), cambia code por refresh_token, guarda en drive_conexion"},{"orden":4,"archivo_funcion":"supabase/migrations/017_drive_oauth.sql:rc_consumir_drive_oauth","descripcion":"DELETE drive_oauth_estados WHERE huella=... AND expira>now() RETURNING admin_id, retorno"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/drive.go:tokenDrive","descripcion":"Usa refresh_token para obtener access_token de Google (POST /oauth2/v4/token)"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/drive.go:crearCarpetaDrive","descripcion":"POST /drive/v3/files (mime=application/vnd.google-apps.folder) dentro de carpeta_raiz_id; guarda drive_carpeta_id y drive_carpeta_url en tarea"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/drive.go:copiarArchivoDrive","descripcion":"Al aprobar tarea: descarga archivo del enlace_medios y sube a la carpeta de la tarea en Drive del equipo"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/notificaciones_eventos.go:avisarSolicitud","descripcion":"Encola aviso 'drive' cuando hay cambios en la carpeta de Drive (usa avisarSolicitud genérico)"}]},{"id":"ria-chat-equipo","nombre":"RIA: chat de equipo (mención @RIA)","descripcion":"En el chat del equipo, al mencionar @RIA, responde en streaming y publica como mensaje de RIA","pasos":[{"orden":1,"archivo_funcion":"lib/ria.ts:mencionaRIA","descripcion":"Frontend detecta mención @RIA en mensaje de chat"},{"orden":2,"archivo_funcion":"lib/ria.ts:transmitirRIA","descripcion":"POST /api/ria con {pregunta, mensaje_id} vía SSE"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Valida que mensaje_id existe, es del usuario, y contiene @RIA; extrae pregunta quitando la mención"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria.go:contextoRIA","descripcion":"Construye contexto: perfil, tareas, clientes (si admin), histogramas; system prompt con datos de referencia"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Verifica tope diario (ASISTENTE_TOPE_DIA, default 20) via RPC rc_cupo_ria (lógica interna)"},{"orden":6,"archivo_funcion":"supabase/migrations/014_ria.sql:rc_cupo_ria","descripcion":"Upsert en ria_uso_diario; retorna false si usos >= tope"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:modeloRIADesdeEntorno","descripcion":"Configura proveedor principal (9router: NINEROUTER_BASE_URL, NINEROUTER_API_KEY, modelo ag/claude-sonnet-5-5-low) y respaldo (NVIDIA: NVIDIA_API_KEYS, modelo nemotron-3.5-super-vl-120b-a12b)"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:responder","descripcion":"Intenta proveedor principal (timeout 6s); si falla (429/5xx/timeout) hace round-robin por claves NVIDIA (timeout 12s cada una)"},{"orden":9,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Streaming: event: inicio, event: delta (texto), event: fin / event: error (emitir es closure interno)"},{"orden":10,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Inserta en chat_mensajes con autor_id='ria', es_ria=true, cuerpo=respuesta completa (lógica interna)"},{"orden":11,"archivo_funcion":"backend/internal/store/ria.go:GuardarConversacionRIA","descripcion":"Guarda en ria_mensajes (user + assistant) para historial privado"}]},{"id":"ria-chat-privado","nombre":"RIA: chat privado (/ria)","descripcion":"Conversación 1-a-1 con RIA, incluye historial de 16 mensajes previos","pasos":[{"orden":1,"archivo_funcion":"lib/ria.ts:transmitirRIA","descripcion":"POST /api/ria con {pregunta} vía SSE"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"equipo=false; salta validación de mención @RIA"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria.go:contextoRIA","descripcion":"Contexto sin datos de equipo; incluye HistorialRIA (últimos 16) del usuario"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Mismo tope diario que chat equipo (compartido, lógica interna)"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:responder","descripcion":"Misma cadena 9router → NVIDIA con round-robin y timeouts"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Streaming idéntico: inicio, delta, fin/error (emitir es closure interno)"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Guarda pregunta y respuesta en ria_mensajes (historial privado, no se comparte) - lógica interna"}]},{"id":"ria-streaming","nombre":"RIA: streaming SSE","descripcion":"Mecanismo de Server-Sent Events para respuesta token a token","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Verifica http.Flusher, setea headers: Content-Type text/event-stream, Cache-Control no-cache, X-Accel-Buffering no"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"fmt.Fprintf(w, \"event: %s\\ndata: %s\\n\\n\", evento, json); flusher.Flush() (emitir es closure interno)"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:leer","descripcion":"HTTP POST a proveedor con Accept: text/event-stream; bufio.Scanner lee líneas 'data: ...'; parsea JSON choices[0].delta.content"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:leer","descripcion":"time.AfterFunc(p.espera, cancel) — 6s principal, 12s respaldo NVIDIA; si no llega primer delta, cancela y reintenta siguiente proveedor"},{"orden":5,"archivo_funcion":"lib/ria.ts:transmitirRIA","descripcion":"Frontend: fetch POST /api/ria con Accept: text/event-stream; ReadableStream reader; parsea event: delta → callback(texto); event: fin → return dato"}]},{"id":"ria-respaldo-nvidia","nombre":"RIA: respaldo directo a NVIDIA","descripcion":"Si 9router falla, usa claves NVIDIA_API_KEYS en round-robin directo a integrate.api.nvidia.com/v1","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:modeloRIADesdeEntorno","descripcion":"Lee NINEROUTER_BASE_URL, NINEROUTER_API_KEY (principal); NVIDIA_API_KEYS, NVIDIA_API_KEY, RIA_MODELO_RESPALDO (respaldo)"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:unirClavesNVIDIA","descripcion":"Combina lista NVIDIA_API_KEYS (coma-separada) + NVIDIA_API_KEY singular; deduplica; orden estable"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:responder","descripcion":"Si principal falla (emitio=false, reintentar=true, sin error de contexto), itera claves NVIDIA: turnoNVIDIA.Add(1) round-robin; cada clave con timeout cuota = tiempo_restante / claves_restantes"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:leer","descripcion":"POST a baseNVIDIA/chat/completions con chat_template_kwargs.enable_thinking=false; stream=true; max_tokens=4096 (bandera nvidia=true internamente)"},{"orden":5,"archivo_funcion":"docs/ria/configuracion-nvidia.md","descripcion":"Documentación: variables NVIDIA_API_KEYS, NVIDIA_API_KEY, RIA_MODELO_RESPALDO (default nemotron-3.5-super-vl-120b-a12b)"}]},{"id":"login-celular","nombre":"Login y celular","descripcion":"Autenticación Supabase Auth + perfil; celular opcional guardado en perfiles, solo accesible via /api/yo/celular (service_role)","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthLogin","descripcion":"POST /api/auth/login llama AuthVerifier.Login (Supabase TokenPassword con anon key)"},{"orden":2,"archivo_funcion":"backend/internal/supa/client.go:TokenPassword","descripcion":"POST {SUPABASE_URL}/auth/v1/token?grant_type=password con email, password, apikey=anon_key"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/auth.go:Login","descripcion":"DemoAuthVerifier.Login: obtiene perfil por correo; si email en ADMIN_EMAILS fuerza es_admin=true y estado=aprobado"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthRegistro","descripcion":"POST /api/auth/registro llama AuthVerifier.Registro (AdminCreateUser con email_confirm=true)"},{"orden":5,"archivo_funcion":"backend/internal/supa/client.go:AdminCreateUser","descripcion":"POST /auth/v1/admin/users con service_role; crea usuario y trigger handle_new_user inserta en perfiles (estado=pendiente)"},{"orden":6,"archivo_funcion":"supabase/migrations/001_f0_base_y_chat.sql:handle_new_user","descripcion":"Trigger AFTER INSERT en auth.users: inserta en perfiles con nombre de user_metadata o email prefix"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleGetYo","descripcion":"GET /api/yo (MiddlewareAuth sin requiereAprobado); lee perfil incluyendo celular"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/handlers.go:handlePatchYo","descripcion":"PATCH /api/yo (MiddlewareAuth sin requiereAprobado); guarda perfil incluyendo celular"},{"orden":9,"archivo_funcion":"backend/internal/store/store.go:ObtenerPerfilPorID","descripcion":"Store interface para obtener perfil por ID"},{"orden":10,"archivo_funcion":"backend/internal/store/store.go:CrearOActualizarPerfil","descripcion":"Store interface para crear/actualizar perfil"},{"orden":11,"archivo_funcion":"supabase/migrations/016_celular.sql","descripcion":"ALTER TABLE perfiles ADD COLUMN celular con CHECK E.164 (^\\+[1-9][0-9]{7,14}$); REVOKE SELECT en perfiles; GRANT SELECT solo columnas públicas a authenticated"},{"orden":12,"archivo_funcion":"backend/internal/httpapi/auth.go:MiddlewareAuth","descripcion":"Extrae Bearer token de Authorization o Cookie; verifica con AuthVerifier; inyecta perfil en context (usuarioKey)"}]}],"reglas_proyecto":["main = producción (rama protegida, no se hace push directo)","push solo a rama desde-cero","sin push --force, sin reset --hard, sin stash","migraciones NO se aplican desde el agente (las aplica Juan en Supabase Dashboard)","no tocar .env* ni Sensible\\","variables de entorno solo por nombre en documentación (nunca valores)","todo brief futuro termina con el paso \"regenerar mapa.json\" (npm run mapa)","código real únicamente: nada inventado; si no se confirma en código, marcar \"sin confirmar\"","commits claros en español","verificación: npm run mapa sin errores, tsc/lint si se toca código afectado, capturas 375 y 1280px sin desbordes ni errores de consola"],"archivos_clave":{"next":["app/layout.tsx","app/(app)/layout.tsx","app/api/[...path]/route.ts","app/(app)/page.tsx","app/(app)/tareas/page.tsx","app/(app)/asignaciones/page.tsx","app/(app)/ria/page.tsx","app/(app)/chat.module.css","lib/ria.ts","lib/api.ts","next.config.ts"],"go":["backend/cmd/server/main.go","backend/internal/httpapi/handlers.go","backend/internal/httpapi/auth.go","backend/internal/httpapi/notificaciones.go","backend/internal/httpapi/notificaciones_eventos.go","backend/internal/httpapi/push.go","backend/internal/httpapi/ria.go","backend/internal/httpapi/ria_modelo.go","backend/internal/httpapi/drive.go","backend/internal/httpapi/flujo.go","backend/internal/store/store.go","backend/internal/store/notificaciones.go","backend/internal/store/ria.go","backend/internal/store/drive_oauth.go","backend/internal/supa/store.go","backend/internal/supa/client.go","backend/internal/supa/notificaciones.go","backend/internal/supa/ria.go","backend/go.mod"],"supabase":["supabase/migrations/001_f0_base_y_chat.sql","supabase/migrations/002_endurecer_permisos.sql","supabase/migrations/003_trabajos_tareas_facturas.sql","supabase/migrations/004_minutos_clientes_estadisticas.sql","supabase/migrations/005_enlace_medios_tareas.sql","supabase/migrations/006_equipo_y_adjuntos_chat.sql","supabase/migrations/007_asignaciones_vistas.sql","supabase/migrations/008_drive_conexion.sql","supabase/migrations/009_clientes_piezas.sql","supabase/migrations/010_cortes_pago.sql","supabase/migrations/011_push_suscripciones.sql","supabase/migrations/012_clientes_flujo.sql","supabase/migrations/013_notificaciones.sql","supabase/migrations/014_ria.sql","supabase/migrations/015_apariencia.sql","supabase/migrations/016_celular.sql","supabase/migrations/017_drive_oauth.sql","supabase/migrations/018_cron_notificaciones_pg_cron.sql"],"vercel":["vercel.json"],"pg_cron_pg_net":["supabase/migrations/018_cron_notificaciones_pg_cron.sql"],"google_drive":["backend/internal/httpapi/drive.go","backend/internal/store/drive_oauth.go","supabase/migrations/008_drive_conexion.sql","supabase/migrations/017_drive_oauth.sql"],"web_push":["backend/internal/httpapi/push.go","backend/internal/httpapi/notificaciones.go","backend/internal/supa/notificaciones.go","supabase/migrations/011_push_suscripciones.sql","supabase/migrations/013_notificaciones.sql"],"ria":["backend/internal/httpapi/ria.go","backend/internal/httpapi/ria_modelo.go","backend/internal/store/ria.go","backend/internal/supa/ria.go","supabase/migrations/014_ria.sql","lib/ria.ts","app/(app)/ria/page.tsx","docs/ria/configuracion-nvidia.md"]}};
+const FLUJOS_DATA = {"flujos":[{"id":"asignar-trabajo","nombre":"Asignar trabajo","descripcion":"Admin crea una tarea y se la asigna a una persona del equipo según su rol","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAdminPostTarea","descripcion":"Admin envía POST /api/admin/tareas con tipo_id, titulo, descripcion, asignado_a, fecha_limite"},{"orden":2,"archivo_funcion":"backend/internal/store/store.go:CrearTarea","descripcion":"Store crea la tarea en estado 'pendiente' con precio_congelado = precio del tipo_trabajo"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/push.go:AvisarTareaNueva","descripcion":"Encola aviso 'tarea-nueva' para la persona asignada"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:encolarAviso","descripcion":"Llama a Store.EncolarNotificacion (RPC rc_encolar_notificacion)"},{"orden":5,"archivo_funcion":"supabase/migrations/013_notificaciones.sql:rc_encolar_notificacion","descripcion":"Función SQL que inserta en notificaciones con agrupación por ventana"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:despacharYa","descripcion":"Intenta enviar inmediatamente llamando a enviarColaNotificaciones"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones","descripcion":"Reclama notificaciones (RPC rc_reclamar_notificaciones), cifra y envía Web Push via VAPID"}]},{"id":"entregar","nombre":"Entregar trabajo","descripcion":"Persona marca tarea como hecha, adjunta enlace de Drive, admin aprueba o rechaza","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/handlers.go:handlePostTareaHecha","descripcion":"Persona envía POST /api/tareas/{id}/hecha con nota_persona y enlace_medios"},{"orden":2,"archivo_funcion":"backend/internal/store/store.go:MarcarTareaHecha","descripcion":"Cambia estado a 'hecha', guarda hecha_en, nota_persona, enlace_medios"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/notificaciones_eventos.go:avisarEntregaAdmins","descripcion":"Encola aviso 'entrega-hecha' para todos los admins"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAdminPostTareaAceptar","descripcion":"Admin envía POST /api/admin/tareas/{id}/aceptar con cantidad (minutos si unidad=minuto)"},{"orden":5,"archivo_funcion":"backend/internal/store/store.go:AceptarTarea","descripcion":"Llama RPC aceptar_tarea: congela precio_unitario, cantidad_aceptada, precio_congelado, factura_id, estado='aceptada'"},{"orden":6,"archivo_funcion":"supabase/migrations/004_minutos_clientes_estadisticas.sql:aceptar_tarea","descripcion":"Función SQL atómica que crea/usa factura abierta y congela valores"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/push.go:AvisarEntregaAprobada","descripcion":"Encola aviso 'entrega-aprobada' para la persona"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAdminPostTareaRechazar","descripcion":"Admin envía POST /api/admin/tareas/{id}/rechazar con motivo"},{"orden":9,"archivo_funcion":"backend/internal/store/store.go:RechazarTarea","descripcion":"Cambia estado a 'rechazada', guarda motivo_rechazo, resuelta_en, resuelta_por"},{"orden":10,"archivo_funcion":"backend/internal/httpapi/notificaciones_eventos.go:avisarSolicitud","descripcion":"Encola aviso 'entrega-devuelta' para la persona con el motivo (usa avisarSolicitud genérico)"}]},{"id":"notificacion-encolar","nombre":"Notificación: encolar","descripcion":"Cómo se crea una notificación en la bandeja y cola de envío","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:encolarAviso","descripcion":"Recibe perfil, aviso, clave, grupo, ventana; llama Store.EncolarNotificacion"},{"orden":2,"archivo_funcion":"backend/internal/store/notificaciones.go:EncolarNotificacion","descripcion":"Interfaz del store para encolar"},{"orden":3,"archivo_funcion":"backend/internal/supa/notificaciones.go:EncolarNotificacion","descripcion":"POST /rpc/rc_encolar_notificacion con parámetros p_perfil, p_tipo, p_titulo, p_cuerpo, p_url, p_clave, p_grupo, p_ventana_segundos"},{"orden":4,"archivo_funcion":"supabase/migrations/013_notificaciones.sql:rc_encolar_notificacion","descripcion":"Inserta en notificaciones; agrupa si mismo tipo+grupo+ventana; respeta preferencias (tipos_silenciados, silenciar_chat); usa advisory lock para concurrencia"}]},{"id":"notificacion-enviar","nombre":"Notificación: enviar (inmediato)","descripcion":"Intento de envío inmediato al generar el evento","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:despacharYa","descripcion":"Llama enviarColaNotificaciones con timeout 4s"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones","descripcion":"Reclama notificaciones pendientes (RPC rc_reclamar_notificaciones), para cada una obtiene suscripciones push, cifra (RFC 8291) y envía POST al endpoint"},{"orden":3,"archivo_funcion":"backend/internal/supa/notificaciones.go:ReclamarNotificaciones","descripcion":"POST /rpc/rc_reclamar_notificaciones con p_limite"},{"orden":4,"archivo_funcion":"supabase/migrations/013_notificaciones.sql:rc_reclamar_notificaciones","descripcion":"SELECT FOR UPDATE SKIP LOCKED en notificaciones donde finalizada_en IS NULL y disponible_en <= now(); actualiza bloqueo_hasta e intentos"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/push.go:cifrarPushWeb","descripcion":"Cifrado AES-128-GCM según RFC 8291 con claves VAPID"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/push.go:cabeceraVAPID","descripcion":"Firma JWT ES256 según RFC 8292 para autorización en push service"},{"orden":7,"archivo_funcion":"backend/internal/supa/notificaciones.go:RegistrarNotificacionEntregada","descripcion":"Inserta en notificaciones_entregas para no reenviar a la misma suscripción"}]},{"id":"notificacion-cron","nombre":"Notificación: cron cada minuto (pg_cron + pg_net)","descripcion":"Supabase ejecuta cada minuto el endpoint /api/cron/notificaciones que procesa la cola","pasos":[{"orden":1,"archivo_funcion":"supabase/migrations/018_cron_notificaciones_pg_cron.sql:rconcept_llamar_cron_notificaciones","descripcion":"Función PL/pgSQL que lee secretos del Vault (rconcept_cron_url, rconcept_cron_secret) y hace net.http_get con header Authorization: Bearer"},{"orden":2,"archivo_funcion":"supabase/migrations/018_cron_notificaciones_pg_cron.sql:cron.schedule","descripcion":"pg_cron job 'rconcept-cron-notificaciones' con schedule '* * * * *' (cada minuto)"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:handleCronNotificaciones","descripcion":"GET /api/cron/notificaciones verifica CRON_SECRET, llama enviarColaNotificaciones"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones","descripcion":"Mismo flujo de envío que el inmediato: reclama, cifra, envía, registra entrega"},{"orden":5,"archivo_funcion":"backend/internal/store/notificaciones.go:ResolverNotificacion","descripcion":"Interfaz store: marca finalizada_en o reprograma disponible_en según resultado"},{"orden":6,"archivo_funcion":"backend/internal/supa/notificaciones.go:ResolverNotificacion","descripcion":"PATCH notificaciones con bloqueo_hasta=NULL y finalizada_en=now() o disponible_en=siguiente"}]},{"id":"drive","nombre":"Google Drive (conector equipo)","descripcion":"Admin conecta una cuenta de Google Drive del equipo; backend crea subcarpetas por tarea y copia entregas","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/drive.go:handleAdminPostDriveConectar","descripcion":"Admin POST /api/admin/drive/conectar genera state (huella SHA-256), guarda en drive_oauth_estados, redirige a Google OAuth"},{"orden":2,"archivo_funcion":"backend/internal/store/drive_oauth.go:GuardarEstadoDriveOAuth","descripcion":"Guarda huella, admin_id, retorno, expira"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/drive.go:handleDriveCallback","descripcion":"GET /api/drive/callback?code=...&state=... consume estado (RPC rc_consumir_drive_oauth), cambia code por refresh_token, guarda en drive_conexion"},{"orden":4,"archivo_funcion":"supabase/migrations/017_drive_oauth.sql:rc_consumir_drive_oauth","descripcion":"DELETE drive_oauth_estados WHERE huella=... AND expira>now() RETURNING admin_id, retorno"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/drive.go:tokenDrive","descripcion":"Usa refresh_token para obtener access_token de Google (POST /oauth2/v4/token)"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/drive.go:crearCarpetaDrive","descripcion":"POST /drive/v3/files (mime=application/vnd.google-apps.folder) dentro de carpeta_raiz_id; guarda drive_carpeta_id y drive_carpeta_url en tarea"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/drive.go:copiarArchivoDrive","descripcion":"Al aprobar tarea: descarga archivo del enlace_medios y sube a la carpeta de la tarea en Drive del equipo"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/notificaciones_eventos.go:avisarSolicitud","descripcion":"Encola aviso 'drive' cuando hay cambios en la carpeta de Drive (usa avisarSolicitud genérico)"}]},{"id":"ria-chat-equipo","nombre":"RIA: chat de equipo (mención @RIA)","descripcion":"En el chat del equipo, al mencionar @RIA, responde en streaming y publica como mensaje de RIA","pasos":[{"orden":1,"archivo_funcion":"lib/ria.ts:mencionaRIA","descripcion":"Frontend detecta mención @RIA en mensaje de chat"},{"orden":2,"archivo_funcion":"lib/ria.ts:transmitirRIA","descripcion":"POST /api/ria con {pregunta, mensaje_id} vía SSE"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Valida que mensaje_id existe, es del usuario, y contiene @RIA; extrae pregunta quitando la mención"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria.go:contextoRIA","descripcion":"Construye contexto: perfil, tareas, clientes (si admin), histogramas; system prompt con datos de referencia"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Verifica tope diario (ASISTENTE_TOPE_DIA, default 20) via RPC rc_cupo_ria (lógica interna)"},{"orden":6,"archivo_funcion":"supabase/migrations/014_ria.sql:rc_cupo_ria","descripcion":"Upsert en ria_uso_diario; retorna false si usos >= tope"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:modeloRIADesdeEntorno","descripcion":"Configura proveedor principal (9router: NINEROUTER_BASE_URL, NINEROUTER_API_KEY, modelo ag/claude-sonnet-5-5-low) y respaldo (NVIDIA: NVIDIA_API_KEYS, modelo nemotron-3.5-super-vl-120b-a12b)"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:responder","descripcion":"Intenta proveedor principal (timeout 6s); si falla (429/5xx/timeout) hace round-robin por claves NVIDIA (timeout 12s cada una)"},{"orden":9,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Streaming: event: inicio, event: delta (texto), event: fin / event: error (emitir es closure interno)"},{"orden":10,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Inserta en chat_mensajes con autor_id='ria', es_ria=true, cuerpo=respuesta completa (lógica interna)"},{"orden":11,"archivo_funcion":"backend/internal/store/ria.go:GuardarConversacionRIA","descripcion":"Guarda en ria_mensajes (user + assistant) para historial privado"}]},{"id":"ria-chat-privado","nombre":"RIA: chat privado (/ria)","descripcion":"Conversación 1-a-1 con RIA, incluye historial de 16 mensajes previos","pasos":[{"orden":1,"archivo_funcion":"lib/ria.ts:transmitirRIA","descripcion":"POST /api/ria con {pregunta} vía SSE"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"equipo=false; salta validación de mención @RIA"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria.go:contextoRIA","descripcion":"Contexto sin datos de equipo; incluye HistorialRIA (últimos 16) del usuario"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Mismo tope diario que chat equipo (compartido, lógica interna)"},{"orden":5,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:responder","descripcion":"Misma cadena 9router → NVIDIA con round-robin y timeouts"},{"orden":6,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Streaming idéntico: inicio, delta, fin/error (emitir es closure interno)"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Guarda pregunta y respuesta en ria_mensajes (historial privado, no se comparte) - lógica interna"}]},{"id":"ria-streaming","nombre":"RIA: streaming SSE","descripcion":"Mecanismo de Server-Sent Events para respuesta token a token","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"Verifica http.Flusher, setea headers: Content-Type text/event-stream, Cache-Control no-cache, X-Accel-Buffering no"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/ria.go:handleRIA","descripcion":"fmt.Fprintf(w, \"event: %s\\ndata: %s\\n\\n\", evento, json); flusher.Flush() (emitir es closure interno)"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:leer","descripcion":"HTTP POST a proveedor con Accept: text/event-stream; bufio.Scanner lee líneas 'data: ...'; parsea JSON choices[0].delta.content"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:leer","descripcion":"time.AfterFunc(p.espera, cancel) — 6s principal, 12s respaldo NVIDIA; si no llega primer delta, cancela y reintenta siguiente proveedor"},{"orden":5,"archivo_funcion":"lib/ria.ts:transmitirRIA","descripcion":"Frontend: fetch POST /api/ria con Accept: text/event-stream; ReadableStream reader; parsea event: delta → callback(texto); event: fin → return dato"}]},{"id":"ria-respaldo-nvidia","nombre":"RIA: respaldo directo a NVIDIA","descripcion":"Si 9router falla, usa claves NVIDIA_API_KEYS en round-robin directo a integrate.api.nvidia.com/v1","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:modeloRIADesdeEntorno","descripcion":"Lee NINEROUTER_BASE_URL, NINEROUTER_API_KEY (principal); NVIDIA_API_KEYS, NVIDIA_API_KEY, RIA_MODELO_RESPALDO (respaldo)"},{"orden":2,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:unirClavesNVIDIA","descripcion":"Combina lista NVIDIA_API_KEYS (coma-separada) + NVIDIA_API_KEY singular; deduplica; orden estable"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:responder","descripcion":"Si principal falla (emitio=false, reintentar=true, sin error de contexto), itera claves NVIDIA: turnoNVIDIA.Add(1) round-robin; cada clave con timeout cuota = tiempo_restante / claves_restantes"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/ria_modelo.go:leer","descripcion":"POST a baseNVIDIA/chat/completions con chat_template_kwargs.enable_thinking=false; stream=true; max_tokens=4096 (bandera nvidia=true internamente)"},{"orden":5,"archivo_funcion":"docs/ria/configuracion-nvidia.md","descripcion":"Documentación: variables NVIDIA_API_KEYS, NVIDIA_API_KEY, RIA_MODELO_RESPALDO (default nemotron-3.5-super-vl-120b-a12b)"}]},{"id":"login-celular","nombre":"Login y celular","descripcion":"Autenticación Supabase Auth + perfil; celular opcional guardado en perfiles, solo accesible via /api/yo/celular (service_role)","pasos":[{"orden":1,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthLogin","descripcion":"POST /api/auth/login llama AuthVerifier.Login (Supabase TokenPassword con anon key)"},{"orden":2,"archivo_funcion":"backend/internal/supa/client.go:TokenPassword","descripcion":"POST {SUPABASE_URL}/auth/v1/token?grant_type=password con email, password, apikey=anon_key"},{"orden":3,"archivo_funcion":"backend/internal/httpapi/auth.go:Login","descripcion":"DemoAuthVerifier.Login: obtiene perfil por correo; si email en ADMIN_EMAILS fuerza es_admin=true y estado=aprobado"},{"orden":4,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleAuthRegistro","descripcion":"POST /api/auth/registro llama AuthVerifier.Registro (AdminCreateUser con email_confirm=true)"},{"orden":5,"archivo_funcion":"backend/internal/supa/client.go:AdminCreateUser","descripcion":"POST /auth/v1/admin/users con service_role; crea usuario y trigger handle_new_user inserta en perfiles (estado=pendiente)"},{"orden":6,"archivo_funcion":"supabase/migrations/001_f0_base_y_chat.sql:handle_new_user","descripcion":"Trigger AFTER INSERT en auth.users: inserta en perfiles con nombre de user_metadata o email prefix"},{"orden":7,"archivo_funcion":"backend/internal/httpapi/handlers.go:handleGetYo","descripcion":"GET /api/yo (MiddlewareAuth sin requiereAprobado); lee perfil incluyendo celular"},{"orden":8,"archivo_funcion":"backend/internal/httpapi/handlers.go:handlePatchYo","descripcion":"PATCH /api/yo (MiddlewareAuth sin requiereAprobado); guarda perfil incluyendo celular"},{"orden":9,"archivo_funcion":"backend/internal/store/store.go:ObtenerPerfilPorID","descripcion":"Store interface para obtener perfil por ID"},{"orden":10,"archivo_funcion":"backend/internal/store/store.go:CrearOActualizarPerfil","descripcion":"Store interface para crear/actualizar perfil"},{"orden":11,"archivo_funcion":"supabase/migrations/016_celular.sql","descripcion":"ALTER TABLE perfiles ADD COLUMN celular con CHECK E.164 (^\\+[1-9][0-9]{7,14}$); REVOKE SELECT en perfiles; GRANT SELECT solo columnas públicas a authenticated"},{"orden":12,"archivo_funcion":"backend/internal/httpapi/auth.go:MiddlewareAuth","descripcion":"Extrae Bearer token de Authorization o Cookie; verifica con AuthVerifier; inyecta perfil en context (usuarioKey)"}]}]};
+
+// ==== ESTADO ====
+let selectedFlowId = null;
+let selectedModuleId = null;
+let modulePositions = {};
+let animationFrames = {};
+
+// ==== ICONOS SVG POR TIPO ====
+const ICONS = {
+  frontend: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>`,
+  backend: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M6 8h12"/><path d="M6 12h12"/></svg>`,
+  database: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 7.33 3 12 3s12-1.34 12-3V5"/><path d="M3 12c0 1.66 7.33 3 12 3s12-1.34 12-3"/></svg>`,
+  infraestructura: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/></svg>`,
+  default: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`
+};
+const FLOW_ICONS = {
+  'asignar-trabajo': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  'entregar': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+  'notificacion-encolar': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+  'notificacion-enviar': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M22 12l-5 5-5-5"/></svg>`,
+  'notificacion-cron': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  'drive': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+  'ria-chat-equipo': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  'ria-chat-privado': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 12h8"/></svg>`,
+  'ria-streaming': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 16 17 22 11"/></svg>`,
+  'ria-respaldo-nvidia': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M2 12h20"/></svg>`,
+  'login-celular': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>`
+};
+
+// ==== INICIALIZACIÓN ====
+document.addEventListener('DOMContentLoaded', init);
+
+function init(){
+  renderModules();
+  renderFlowList();
+  renderConnections();
+  updateGenTime();
+  loadCommitHash();
+  setupEventListeners();
+  // Auto-seleccionar primer flujo
+  if(FLUJOS_DATA.flujos.length > 0){
+    selectFlow(FLUJOS_DATA.flujos[0].id);
+  }
+}
+
+function updateGenTime(){
+  const el = document.getElementById('genTime');
+  if(el && MAPA_DATA.generado_en){
+    const d = new Date(MAPA_DATA.generado_en);
+    el.textContent = `Generado: ${d.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})}`;
+  }
+}
+
+async function loadCommitHash(){
+  try{
+    const res = await fetch('mapa.json');
+    if(res.ok){
+      const data = await res.json();
+      const el = document.getElementById('commitHash');
+      if(el && data.commit_hash){
+        el.textContent = `commit: ${data.commit_hash.slice(0,8)}`;
+      }
+    }
+  }catch(e){}
+}
+
+function setupEventListeners(){
+  document.getElementById('menuBtn')?.addEventListener('click',()=>{
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+  });
+  document.getElementById('sidebarOverlay')?.addEventListener('click',()=>{
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  });
+  document.getElementById('modalClose')?.addEventListener('click',closeModal);
+  document.getElementById('modalOverlay')?.addEventListener('click',(e)=>{
+    if(e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener('keydown',(e)=>{
+    if(e.key==='Escape') closeModal();
+  });
+  window.addEventListener('resize',()=>{
+    if(window.innerWidth>640){
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('open');
+    }
+    renderConnections();
+  });
+}
+
+async function regenerateMap(){
+  const btn = document.getElementById('btnRegenerate');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-opacity="1"/></svg> Generando...`;
+  try{
+    const res = await fetch('/api/generar-mapa',{method:'POST'});
+    if(res.ok){
+      location.reload();
+    }else{
+      alert('Error regenerando mapa');
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Regenerar`;
+    }
+  }catch(e){
+    alert('Error: '+e.message);
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Regenerar`;
+  }
+}
+
+// ==== RENDER MÓDULOS ====
+function renderModules(){
+  const canvas = document.getElementById('canvas');
+  const modules = MAPA_DATA.modulos || [];
+  const wrapRect = document.getElementById('canvasWrap').getBoundingClientRect();
+  
+  // Layout automático: grid responsivo
+  const cols = Math.max(1, Math.floor(wrapRect.width / 320));
+  const gap = 24;
+  const cardWidth = 260;
+  
+  modules.forEach((mod, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = 24 + col * (cardWidth + gap);
+    const y = 24 + row * (200 + gap);
+    
+    modulePositions[mod.id] = {x, y, w: cardWidth, h: 200};
+    
+    const div = document.createElement('div');
+    div.className = 'module';
+    div.id = `mod-${mod.id}`;
+    div.dataset.moduleId = mod.id;
+    div.style.left = x + 'px';
+    div.style.top = y + 'px';
+    div.innerHTML = `
+      <div class="module-header">
+        <div class="icon">${ICONS[mod.tipo] || ICONS.default}</div>
+        <h3>${escapeHtml(mod.nombre)}</h3>
+        <span class="type">${escapeHtml(mod.tipo)}</span>
+      </div>
+      <div class="module-files">
+        ${(mod.archivos_clave || []).slice(0,8).map(f => `
+          <div class="module-file" title="${escapeHtml(f)}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--fg-subtle);flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <code>${escapeHtml(f)}</code>
+          </div>
+        `).join('')}
+        ${mod.archivos_clave && mod.archivos_clave.length > 8 ? `<div class="module-file" style="color:var(--acc);font-size:10px">+${mod.archivos_clave.length - 8} más</div>` : ''}
+      </div>
+    `;
+    div.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      openModuleModal(mod);
+    });
+    canvas.appendChild(div);
+  });
+  
+  // Ajustar altura canvas
+  const maxRow = Math.ceil(modules.length / cols);
+  canvas.style.minHeight = (24 + maxRow * (200 + gap) + 24) + 'px';
+}
+
+function openModuleModal(mod){
+  const title = document.getElementById('modalTitle');
+  const body = document.getElementById('modalBody');
+  title.textContent = mod.nombre;
+  
+  let html = '';
+  if(mod.archivos_clave && mod.archivos_clave.length){
+    html += `<div class="modal-section"><h4>Archivos clave (${mod.archivos_clave.length})</h4><div class="modal-files">${mod.archivos_clave.map(f=>`<div class="modal-file"><code>${escapeHtml(f)}</code></div>`).join('')}</div></div>`;
+  }
+  if(mod.endpoints && mod.endpoints.length){
+    html += `<div class="modal-section"><h4>Endpoints (${mod.endpoints.length})</h4><div class="modal-endpoints">${mod.endpoints.map(e=>`<div class="modal-endpoint"><span class="method ${e.method.toLowerCase()}">${e.method}</span><span class="path">${escapeHtml(e.path)}</span></div>`).join('')}</div></div>`;
+  }
+  if(mod.tablas && mod.tablas.length){
+    html += `<div class="modal-section"><h4>Tablas (${mod.tablas.length})</h4><div class="modal-tables">${mod.tablas.map(t=>`<span class="modal-table">${escapeHtml(t)}</span>`).join('')}</div></div>`;
+  }
+  if(mod.env_vars && mod.env_vars.length){
+    html += `<div class="modal-section"><h4>Variables de entorno (${mod.env_vars.length})</h4><div class="modal-tables">${mod.env_vars.map(v=>`<span class="modal-table">${escapeHtml(v)}</span>`).join('')}</div></div>`;
+  }
+  
+  body.innerHTML = html || '<p style="color:var(--fg-muted)">Sin detalles adicionales</p>';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ==== RENDER LISTA DE FLUJOS ====
+function renderFlowList(){
+  const list = document.getElementById('flowList');
+  const flows = FLUJOS_DATA.flujos || [];
+  document.getElementById('flowCount').textContent = flows.length;
+  
+  list.innerHTML = flows.map(flow => `
+    <div class="flow-item" id="flow-${flow.id}" data-flow-id="${flow.id}" role="option" tabindex="0" aria-selected="false">
+      <div class="icon">${FLOW_ICONS[flow.id] || FLOW_ICONS['asignar-trabajo']}</div>
+      <div class="info">
+        <span class="name">${escapeHtml(flow.nombre)}</span>
+        <span class="desc">${escapeHtml(flow.descripcion)}</span>
+        <span class="steps">${flow.pasos?.length || 0} pasos</span>
+      </div>
+    </div>
+  `).join('');
+  
+  list.querySelectorAll('.flow-item').forEach(item => {
+    item.addEventListener('click',()=>selectFlow(item.dataset.flowId));
+    item.addEventListener('keydown',(e)=>{if(e.key==='Enter'||e.key===' ')selectFlow(item.dataset.flowId)});
+  });
+}
+
+// ==== SELECCIÓN DE FLUJO ====
+function selectFlow(flowId){
+  selectedFlowId = flowId;
+  
+  // Actualizar UI lista
+  document.querySelectorAll('.flow-item').forEach(item=>{
+    const active = item.dataset.flowId === flowId;
+    item.classList.toggle('active', active);
+    item.setAttribute('aria-selected', active);
+  });
+  
+  // Actualizar módulos
+  const flow = FLUJOS_DATA.flujos.find(f=>f.id===flowId);
+  if(!flow) return;
+  
+  document.getElementById('detailTitle').textContent = flow.nombre;
+  document.getElementById('detailSteps').textContent = `${flow.pasos?.length || 0} pasos`;
+  
+  // Resaltar módulos involucrados
+  const involvedModules = new Set();
+  flow.pasos?.forEach(paso=>{
+    if(paso.archivo_funcion){
+      const file = paso.archivo_funcion.split(':')[0];
+      MAPA_DATA.modulos.forEach(mod=>{
+        if(mod.archivos_clave?.includes(file)){
+          involvedModules.add(mod.id);
+        }
+      });
+    }
+  });
+  
+  document.querySelectorAll('.module').forEach(mod=>{
+    const active = involvedModules.has(mod.dataset.moduleId);
+    mod.classList.toggle('selected', active);
+  });
+  
+  // Render pasos en detail
+  renderFlowSteps(flow);
+  
+  // Render conexiones
+  renderConnections();
+  
+  // Cerrar sidebar en móvil
+  if(window.innerWidth <= 640){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  }
+}
+
+function renderFlowSteps(flow){
+  const content = document.getElementById('detailContent');
+  const steps = flow.pasos || [];
+  
+  if(steps.length === 0){
+    content.innerHTML = `<div class="detail-empty"><p>Sin pasos definidos</p></div>`;
+    return;
+  }
+  
+  content.innerHTML = `
+    <div class="step-list">
+      ${steps.map((paso, i) => `
+        <div class="step-item" id="step-${flow.id}-${i}" data-step-index="${i}">
+          <div class="step-num">${i+1}</div>
+          <div class="step-info">
+            ${paso.archivo_funcion ? `
+              <div class="func">
+                <span class="file">${escapeHtml(paso.archivo_funcion.split(':')[0])}:</span>
+                <span>${escapeHtml(paso.archivo_funcion.split(':')[1] || '')}</span>
+              </div>
+            ` : ''}
+            <div class="desc">${escapeHtml(paso.descripcion)}</div>
+            ${paso.archivo_funcion_extra ? `
+              <div class="refs">
+                ${paso.archivo_funcion_extra.map(ref => {
+                  const ext = ref.split('.').pop()?.toLowerCase();
+                  const cls = ['sql','md'].includes(ext) ? ext : '';
+                  return `<span class="ref-tag ${cls}">${escapeHtml(ref)}</span>`;
+                }).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  // Click en paso -> resaltar en canvas
+  content.querySelectorAll('.step-item').forEach(item=>{
+    item.addEventListener('click',()=>{
+      content.querySelectorAll('.step-item').forEach(s=>s.classList.remove('active'));
+      item.classList.add('active');
+      highlightStepInModules(flow, parseInt(item.dataset.stepIndex));
+    });
+  });
+}
+
+function highlightStepInModules(flow, stepIndex){
+  const paso = flow.pasos[stepIndex];
+  if(!paso?.archivo_funcion) return;
+  
+  const file = paso.archivo_funcion.split(':')[0];
+  document.querySelectorAll('.module').forEach(mod=>{
+    const isInvolved = MAPA_DATA.modulos.find(m=>m.id===mod.dataset.moduleId)?.archivos_clave?.includes(file);
+    mod.classList.toggle('selected', isInvolved);
+  });
+  renderConnections();
+}
+
+// ==== CONEXIONES SVG ====
+function renderConnections(){
+  if(!selectedFlowId) {
+    document.getElementById('connectionsLayer').innerHTML = '';
+    return;
+  }
+  
+  const flow = FLUJOS_DATA.flujos.find(f=>f.id===selectedFlowId);
+  if(!flow) return;
+  
+  const svg = document.getElementById('connectionsLayer');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const wrapRect = canvasWrap.getBoundingClientRect();
+  
+  // Módulos involucrados en orden
+  const moduleOrder = [];
+  const seen = new Set();
+  flow.pasos.forEach(paso=>{
+    if(paso.archivo_funcion){
+      const file = paso.archivo_funcion.split(':')[0];
+      MAPA_DATA.modulos.forEach(mod=>{
+        if(mod.archivos_clave?.includes(file) && !seen.has(mod.id)){
+          seen.add(mod.id);
+          moduleOrder.push(mod.id);
+        }
+      });
+    }
+  });
+  
+  // Dibujar líneas entre módulos consecutivos
+  let paths = '';
+  for(let i=0;i<moduleOrder.length-1;i++){
+    const from = modulePositions[moduleOrder[i]];
+    const to = modulePositions[moduleOrder[i+1]];
+    if(!from || !to) continue;
+    
+    const fromX = from.x + from.w;
+    const fromY = from.y + from.h/2;
+    const toX = to.x;
+    const toY = to.y + to.h/2;
+    
+    const midX = (fromX + toX) / 2;
+    // Curva Bezier suave
+    paths += `<path class="connection" d="M${fromX} ${fromY} C${midX} ${fromY}, ${midX} ${toY}, ${toX} ${toY}"/>`;
+    // Marcador animado
+    paths += `<circle class="connection-marker" cx="${midX}" cy="${(fromY+toY)/2}" r="4"/>`;
+  }
+  
+  svg.innerHTML = paths;
+  svg.style.width = canvasWrap.scrollWidth + 'px';
+  svg.style.height = canvasWrap.scrollHeight + 'px';
+}
+
+// ==== UTILIDADES ====
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
+}
+
+// Exponer para consola
+window.selectFlow = selectFlow;
+window.regenerateMap = regenerateMap;
+</script>
+<style>
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</body>
+</html>
