@@ -19,7 +19,7 @@
     }
   },
   "crons": [
-    { "path": "/api/cron/notificaciones", "schedule": "* * * * *" }
+    { "path": "/api/cron/notificaciones", "schedule": "0 13 * * *" }
   ],
   "rewrites": [
     {

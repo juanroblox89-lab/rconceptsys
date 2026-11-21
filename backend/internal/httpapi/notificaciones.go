@@ -24,10 +24,25 @@ func (a *API) encolarAviso(ctx context.Context, perfil string, aviso AvisoPush, 
 	}
 	return a.Store.EncolarNotificacion(ctx, store.Notificacion{PerfilID: perfil, Tipo: aviso.Etiqueta, Titulo: aviso.Titulo, Cuerpo: aviso.Cuerpo, URL: aviso.URL, Grupo: grupo}, clave, ventana)
 }
-func (a *API) avisar(ctx context.Context, perfil string, aviso AvisoPush, clave string) {
+func (a *API) encolarSinEnviar(ctx context.Context, perfil string, aviso AvisoPush, clave string) {
 	if e := a.encolarAviso(ctx, perfil, aviso, clave, "", 0); e != nil {
 		log.Printf("[avisos] no se pudo encolar %s: %v", aviso.Etiqueta, e)
 	}
+}
+
+// despacharYa envia en el momento del evento lo que ya esta disponible en la cola.
+// Si falla, el aviso queda en la cola y el cron lo reintenta.
+func (a *API) despacharYa(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 4*time.Second)
+	defer cancel()
+	if e := a.enviarColaNotificaciones(ctx); e != nil {
+		log.Printf("[avisos] envio inmediato incompleto: %v", e)
+	}
+}
+
+func (a *API) avisar(ctx context.Context, perfil string, aviso AvisoPush, clave string) {
+	a.encolarSinEnviar(ctx, perfil, aviso, clave)
+	a.despacharYa(ctx)
 }
 func (a *API) avisarAdmins(ctx context.Context, aviso AvisoPush, clave string) {
 	miembros, e := a.Store.ListarEquipo(ctx)
@@ -37,9 +52,10 @@ func (a *API) avisarAdmins(ctx context.Context, aviso AvisoPush, clave string) {
 	}
 	for _, m := range miembros {
 		if m.EsAdmin {
-			a.avisar(ctx, m.ID, aviso, clave)
+			a.encolarSinEnviar(ctx, m.ID, aviso, clave)
 		}
 	}
+	a.despacharYa(ctx)
 }
 func urlTarea(id int64) string { return fmt.Sprintf("/tareas?tarea=%d#tarea-%d", id, id) }
 

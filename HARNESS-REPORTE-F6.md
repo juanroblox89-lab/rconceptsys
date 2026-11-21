@@ -38,3 +38,9 @@ El push terminó correctamente en `desde-cero` (`2ffc808`). El [despliegue de pr
 
 - Los `.log` enlazados conservan la salida real de `tsc`, lint, `next build`, `go vet` y `go test`. La última ronda los pasó todos. Los PNG y recorridos reproducibles están en `capturas-f6/`.
 - Pendientes con servicios reales: aplicar y probar SQL en una base de prueba, push en dispositivos reales (incluidos TWA e iPhone instalado), cambios de Drive y autorización real de Google, cron de Vercel, túnel 9router y confirmación autenticada de NVIDIA con `GET /v1/models`. Los resultados locales no acreditan esos servicios.
+
+## Cambio de cron (21 nov, decisión de Juan: opción gratis)
+
+- `vercel.json`: cron diario `0 13 * * *` (compatible con Hobby).
+- Migración nueva `supabase/migrations/018_cron_notificaciones_pg_cron.sql`: pg_cron + pg_net llaman cada minuto a `/api/cron/notificaciones` con el secreto leído de Vault (`rconcept_cron_url`, `rconcept_cron_secret`, que carga Juan; el archivo no los contiene). Orden: después de 017.
+- Los avisos se envían al momento del evento (envío inmediato tras encolar, tope 4 s); el cron solo reintenta, revisa Drive y manda los "vence mañana". Pendiente probar contra Supabase y Vercel reales.
