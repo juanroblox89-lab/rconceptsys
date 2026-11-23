@@ -83,3 +83,11 @@
 .form :global(.rc-input-contenedor), .form :global(.rc-select), .form textarea { min-height: 44px; }
 .form textarea { min-height: 108px; }
 .form input[type=file] { font-size: 13px; }
+
+/* Foto del cliente: vista previa + botón, sin el selector crudo del navegador. */
+.fotoEditor { display: flex; align-items: center; gap: var(--rc-esp-16); }
+.fotoPrevia, .fotoVacia { width: 64px; height: 64px; border-radius: 50%; flex: none; object-fit: cover; }
+.fotoVacia { display: grid; place-items: center; background: var(--rc-superficie-hundida); color: var(--rc-texto-secundario, currentColor); border: 1px dashed var(--rc-gris-100); }
+.fotoTexto { display: grid; gap: var(--rc-esp-4); justify-items: start; min-width: 0; }
+.fotoTexto .ayuda { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.fotoTitulo { font-size: var(--rc-fs-etiqueta); font-weight: var(--rc-fw-semibold); color: var(--rc-texto); }

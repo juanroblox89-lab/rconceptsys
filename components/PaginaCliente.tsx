@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
+import { ArrowLeft, Camera, ExternalLink, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Cliente, FichaClienteDatos, DriveArchivo } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
@@ -87,6 +87,9 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
   const [carpeta, setCarpeta] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
+  const inputFoto = useRef<HTMLInputElement>(null);
+  const vistaPrevia = useMemo(() => (foto ? URL.createObjectURL(foto) : null), [foto]);
+  useEffect(() => () => { if (vistaPrevia) URL.revokeObjectURL(vistaPrevia); }, [vistaPrevia]);
   useEffect(() => {
     if (modo !== "elegir") return;
     let vigente = true;
@@ -114,11 +117,18 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
   }
   return <form className={`${styles.panel} ${styles.form}`} onSubmit={guardar}>
     <Campo etiqueta="Nombre" required maxLength={80} value={nombre} onChange={e => setNombre(e.target.value)} />
-    <div className={styles.identidad}>{base && <FotoCliente cliente={base} />}<Campo etiqueta="Foto de perfil" type="file" accept="image/*" onChange={e => {
-      const archivos = (e.currentTarget as HTMLInputElement).files;
-      setFoto(archivos?.[0] ?? null); setError("");
-    }} /></div>
-    <p className={styles.ayuda}>JPEG, PNG o WebP de hasta 1 MB.</p>
+    <div className={styles.fotoEditor}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), next/image no aplica */}
+      {vistaPrevia ? <img className={styles.fotoPrevia} src={vistaPrevia} alt="Foto elegida" /> : base ? <FotoCliente cliente={base} grande /> : <span className={styles.fotoVacia} aria-hidden="true"><Camera size={22} strokeWidth={1.6} /></span>}
+      <div className={styles.fotoTexto}>
+        <span className={styles.fotoTitulo}>Foto de perfil</span>
+        <span className={styles.ayuda}>{foto ? foto.name : "JPEG, PNG o WebP de hasta 1 MB."}</span>
+        <Boton type="button" variante="secundario" tamano="sm" onClick={() => inputFoto.current?.click()} disabled={ocupado}>{foto || base?.foto_url ? "Cambiar foto" : "Elegir foto"}</Boton>
+      </div>
+      <input ref={inputFoto} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => {
+        setFoto(e.currentTarget.files?.[0] ?? null); setError(""); e.currentTarget.value = "";
+      }} />
+    </div>
     <Campo como="textarea" etiqueta="Notas" filas={5} maxLength={1000} value={notas} onChange={e => setNotas(e.target.value)} />
     <PickerDriveCliente valor={referencia} onChange={setReferencia} disabled={ocupado} />
     <Campo como="select" etiqueta="Carpeta operativa de Drive" value={modo} onChange={e => { setModo(e.target.value); setCarpetas(null); setCarpeta(""); setError(""); }}>
