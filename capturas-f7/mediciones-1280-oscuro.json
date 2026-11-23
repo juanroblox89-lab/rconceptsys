@@ -1,0 +1,122 @@
+[
+  {
+    "nombre": "01-ria-vacio",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "02-ria-pensando",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "03-ria-respuesta",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "04-tareas",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "05-trabajo",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "06-trabajos",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "07-perfil",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "08-asignar",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "09-clientes",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "10-cliente",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "11-editar-cliente",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  },
+  {
+    "nombre": "12-notificaciones",
+    "modo": "oscuro",
+    "viewport": 1280,
+    "documento": 1280,
+    "anchoMain": 1062,
+    "scrollMain": 1062,
+    "color": "dark",
+    "fondo": "rgb(23, 28, 37)"
+  }
+]

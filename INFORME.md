@@ -1,11 +1,19 @@
-# Informe · F6 de rconceptsys
+# Informe F7 · RConcept Systems
 
-Los siete bloques quedaron implementados en `desde-cero`, con commits por fase. Las comprobaciones locales de TypeScript, ESLint, Next, `go vet` y `go test` pasaron. Se verificaron los recorridos principales a 375 y 1280 px; el chat también se midió a 1920 px.
+## Cambios
 
-- [Reporte completo](HARNESS-REPORTE-F6.md): alcance, resultados, variables de Vercel y pruebas pendientes.
-- [Orden y SQL de las migraciones](supabase/ORDEN.md): archivos 012–017, listos para revisión. No se aplicaron.
-- [Salida final de las pruebas](capturas-f6/verificacion-f7.log).
+- **RIA:** saludo centrado, sugerencia según rol, respuestas sin tarjeta, «Pensando», caja fija abajo y desplazamiento que sigue la respuesta sin arrastrar a quien subió a leer. El dictado deja el texto en la caja. Monograma nuevo en el chat privado y de equipo; la barra lateral conserva su icono y comportamiento por la regla de no modificarla.
+- **Trabajos:** formulario común con **Especificaciones** desde Tareas, Trabajos y el perfil del miembro. Los listados comparten filas con avatar, estado, fecha y **Abrir**. El detalle muestra el historial disponible, permite editar según estado y pide confirmación para cancelar. La revisión de entregas sigue en la bandeja de Tareas.
+- **Clientes:** búsqueda con lupa, una acción **Ver** por cliente, ficha y edición en páginas independientes. Las estadísticas se calculan en Go con los trabajos del cliente. La foto se carga a un bucket privado y Google Picker selecciona carpetas o archivos por título sin alterar la carpeta operativa. Se quitó **Paquete contratado** de la interfaz; la columna y los datos no se modificaron.
 
-El streaming, Web Push, Drive, Supabase y cron no se dan por comprobados con servicios reales. Para RIA se verificaron los fragmentos SSE y, con servidores simulados, la rotación de `NVIDIA_API_KEYS`, los reintentos por 429, 5xx y timeout, y la compatibilidad con `NVIDIA_API_KEY` sola. Consulta la [configuración del respaldo](docs/ria/configuracion-nvidia.md). No se modificó `main` ni se publicó en producción.
+## Verificación
 
-**Preview bloqueado:** el push a `desde-cero` se completó (`2ffc808`). [Vercel rechazó el despliegue](https://vercel.com/juanroblox89-labs-projects/rconceptsys-nuevo/5GRBoLskc7HgVrmUnhpneURnTpME) antes de compilar: Hobby solo admite cron diario. Se conservó el cron de un minuto del brief; para desplegarlo tal cual se requiere Pro o Enterprise. No se cambió el plan.
+`npm run mapa`, `npm run lint`, `npm run typecheck`, `go build ./...`, `go vet ./...` y `go test ./...` pasaron. [48 capturas y mediciones](capturas-f7/INDICE.md) a 375×812 y 1280×800, en claro y oscuro. Ninguna de las pantallas medidas tuvo desborde horizontal. Las pruebas visuales usaron datos de prueba; Go se verificó aparte con el backend demo sobre memoria.
+
+## Antes de desplegar
+
+1. Aplicar [019_clientes_f7.sql](supabase/migrations/019_clientes_f7.sql) en Supabase. Es idempotente y no se ejecutó desde esta sesión.
+2. Habilitar Google Picker en `rconcept-systems` y configurar `GOOGLE_PICKER_API_KEY`, `GOOGLE_PICKER_APP_ID` y los orígenes autorizados del cliente OAuth existente. La cuenta de Drive conectada debe poder abrir la referencia seleccionada.
+3. Validar con cuenta real la selección de archivo y carpeta, una foto en Storage y un dictado con micrófono físico. También queda por comprobar RIA con su proveedor real; el QA automatizado usó una respuesta controlada.
+
+Ver [HARNESS-REPORTE.md](HARNESS-REPORTE.md) para hashes y pasos para retomar. No se desplegó producción ni se tocó `main`. El informe anterior permanece en el historial Git.
