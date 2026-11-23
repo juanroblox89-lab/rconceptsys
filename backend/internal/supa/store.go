@@ -60,20 +60,21 @@ type dbChatMensaje struct {
 
 // Modelos DB PostgREST para F2 y F3
 type dbCliente struct {
-	DriveReferenciaID     *string `json:"drive_referencia_id"`
-	DriveReferenciaNombre *string `json:"drive_referencia_nombre"`
-	DriveReferenciaURL    *string `json:"drive_referencia_url"`
-	FotoURL               *string `json:"foto_url"`
-	DriveCarpetaID        *string `json:"drive_carpeta_id"`
-	MaterialCarpetaID     *string `json:"material_carpeta_id"`
-	ProductoCarpetaID     *string `json:"producto_carpeta_id"`
-	ID                    int     `json:"id"`
-	Nombre                string  `json:"nombre"`
-	Activo                bool    `json:"activo"`
-	Paquete               *string `json:"paquete"`
-	DriveURL              *string `json:"drive_url"`
-	Notas                 *string `json:"notas"`
-	CreadoEn              string  `json:"creado_en"`
+	DriveReferencias      []store.ReferenciaDrive `json:"drive_referencias"`
+	DriveReferenciaID     *string                 `json:"drive_referencia_id"`
+	DriveReferenciaNombre *string                 `json:"drive_referencia_nombre"`
+	DriveReferenciaURL    *string                 `json:"drive_referencia_url"`
+	FotoURL               *string                 `json:"foto_url"`
+	DriveCarpetaID        *string                 `json:"drive_carpeta_id"`
+	MaterialCarpetaID     *string                 `json:"material_carpeta_id"`
+	ProductoCarpetaID     *string                 `json:"producto_carpeta_id"`
+	ID                    int                     `json:"id"`
+	Nombre                string                  `json:"nombre"`
+	Activo                bool                    `json:"activo"`
+	Paquete               *string                 `json:"paquete"`
+	DriveURL              *string                 `json:"drive_url"`
+	Notas                 *string                 `json:"notas"`
+	CreadoEn              string                  `json:"creado_en"`
 }
 
 type dbTipoTrabajo struct {
@@ -648,6 +649,7 @@ func convertirCliente(dc *dbCliente) *store.Cliente {
 	t, _ := time.Parse(time.RFC3339, dc.CreadoEn)
 	return &store.Cliente{
 		ID:                dc.ID,
+		DriveReferencias:  store.ReferenciasDeCliente(dc.DriveReferencias, dc.DriveReferenciaID, dc.DriveReferenciaNombre, dc.DriveReferenciaURL),
 		DriveReferenciaID: dc.DriveReferenciaID, DriveReferenciaNombre: dc.DriveReferenciaNombre, DriveReferenciaURL: dc.DriveReferenciaURL,
 		FotoURL: dc.FotoURL, DriveCarpetaID: dc.DriveCarpetaID, MaterialCarpetaID: dc.MaterialCarpetaID, ProductoCarpetaID: dc.ProductoCarpetaID,
 		Nombre:   dc.Nombre,

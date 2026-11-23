@@ -10,3 +10,4 @@ No se aplicaron desde el agente. Partir de una base que ya tenga 001–011 aplic
 6. `migrations/017_drive_oauth.sql` — estado de retorno de OAuth con caducidad y consumo atómico.
 7. `migrations/018_cron_notificaciones_pg_cron.sql` — cron de notificaciones de Supabase.
 8. `migrations/019_clientes_f7.sql` — referencia de Google Picker y bucket privado para fotos de clientes. Ejecutar antes del despliegue de F7; no altera `paquete`.
+9. `migrations/020_clientes_varias_referencias.sql` — lista `drive_referencias` (hasta 10) y paso de la referencia única anterior. Aplicar antes del despliegue que la usa.

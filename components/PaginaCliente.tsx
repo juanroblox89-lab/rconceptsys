@@ -14,8 +14,14 @@ import { FilaTrabajo, fechaTrabajo } from "./FilaTrabajo";
 import { PickerDriveCliente, type ReferenciaDrive } from "./PickerDriveCliente";
 import styles from "./FlujoTrabajo.module.css";
 
+/** Lista de referencias del cliente; acepta clientes que solo tienen la referencia única anterior. */
+function referenciasDe(c?: Cliente): ReferenciaDrive[] {
+  if (c?.drive_referencias?.length) return c.drive_referencias.map(r => ({ id: r.id, nombre: r.nombre, url: r.url }));
+  return c?.drive_referencia_id ? [{ id: c.drive_referencia_id, nombre: c.drive_referencia_nombre ?? "Referencia de Drive", url: c.drive_referencia_url ?? undefined }] : [];
+}
+
 function EnlaceCliente({ href, children }: { href?: string | null; children: string }) {
-  return href && /^https:\/\/drive\.google\.com\//.test(href) ? <a className={styles.enlace} href={href} target="_blank" rel="noreferrer">{children}<ExternalLink size={14} aria-hidden="true" /></a> : null;
+  return href && /^https:\/\/(drive|docs)\.google\.com\//.test(href) ? <a className={styles.enlace} href={href} target="_blank" rel="noreferrer">{children}<ExternalLink size={14} aria-hidden="true" /></a> : null;
 }
 
 export function PaginaCliente({ id, editar = false, admin = false }: { id?: number; editar?: boolean; admin?: boolean }) {
@@ -50,7 +56,7 @@ export function PaginaCliente({ id, editar = false, admin = false }: { id?: numb
           <h2>Notas y referencias</h2>
           <p className={styles.textoLargo}>{dato.cliente.notas || "Sin notas."}</p>
           <div className={styles.acciones}>
-            <EnlaceCliente href={dato.cliente.drive_referencia_url}>{dato.cliente.drive_referencia_nombre ?? "Referencia de Drive"}</EnlaceCliente>
+            {referenciasDe(dato.cliente).map(r => <EnlaceCliente key={r.id} href={r.url}>{r.nombre}</EnlaceCliente>)}
             <EnlaceCliente href={dato.cliente.drive_url}>{dato.cliente.drive_carpeta_id ? "Carpeta del cliente" : "Referencia anterior"}</EnlaceCliente>
             {dato.cliente.material_carpeta_id && <EnlaceCliente href={`https://drive.google.com/drive/folders/${encodeURIComponent(dato.cliente.material_carpeta_id)}`}>Material del lugar</EnlaceCliente>}
             {dato.cliente.producto_carpeta_id && <EnlaceCliente href={`https://drive.google.com/drive/folders/${encodeURIComponent(dato.cliente.producto_carpeta_id)}`}>Producto</EnlaceCliente>}
@@ -81,7 +87,7 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
   const [foto, setFoto] = useState<File | null>(null);
   const [notas, setNotas] = useState(cliente?.notas ?? "");
   const [activo, setActivo] = useState(cliente?.activo ?? true);
-  const [referencia, setReferencia] = useState<ReferenciaDrive | null>(cliente?.drive_referencia_id ? { id: cliente.drive_referencia_id, nombre: cliente.drive_referencia_nombre ?? "Referencia de Drive" } : null);
+  const [referencias, setReferencias] = useState<ReferenciaDrive[]>(() => referenciasDe(cliente));
   const [modo, setModo] = useState("");
   const [carpetas, setCarpetas] = useState<DriveArchivo[] | null>(null);
   const [carpeta, setCarpeta] = useState("");
@@ -106,8 +112,10 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
     try {
       let actual = base ?? await api.adminPostCliente(nombre.trim());
       setBase(actual);
+      const ids = referencias.map(r => r.id);
+      const cambiaron = ids.join("|") !== referenciasDe(actual).map(r => r.id).join("|");
       actual = await api.adminPatchCliente(actual.id, { nombre: nombre.trim(), notas: notas.trim(), activo,
-        ...(referencia?.id !== (actual.drive_referencia_id ?? undefined) ? { drive_referencia_id: referencia?.id ?? null } : {}) });
+        ...(cambiaron ? { drive_referencias: ids } : {}) });
       setBase(actual);
       if (foto) { actual = await api.adminSubirFotoCliente(actual.id, foto); setBase(actual); setFoto(null); }
       if (modo) { actual = await api.adminClienteDrive(actual.id, modo === "crear" ? { crear: true } : { carpeta_id: carpeta }); setBase(actual); }
@@ -130,7 +138,7 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
       }} />
     </div>
     <Campo como="textarea" etiqueta="Notas" filas={5} maxLength={1000} value={notas} onChange={e => setNotas(e.target.value)} />
-    <PickerDriveCliente valor={referencia} onChange={setReferencia} disabled={ocupado} />
+    <PickerDriveCliente valor={referencias} onChange={setReferencias} disabled={ocupado} />
     <Campo como="select" etiqueta="Carpeta operativa de Drive" value={modo} onChange={e => { setModo(e.target.value); setCarpetas(null); setCarpeta(""); setError(""); }}>
       <option value="">{base?.drive_carpeta_id ? "Conservar carpeta vinculada" : "Vincular después"}</option>
       <option value="elegir">Elegir carpeta existente</option><option value="crear">Crear carpeta del cliente</option>

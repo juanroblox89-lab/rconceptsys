@@ -399,7 +399,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ nombre }),
     }),
-  adminPatchCliente: (id: number, campos: Partial<Cliente>) =>
+  adminPatchCliente: (id: number, campos: Partial<Omit<Cliente, 'drive_referencias'>> & { drive_referencias?: string[] }) =>
     fetchApi<Cliente>(`/api/admin/clientes/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(campos),

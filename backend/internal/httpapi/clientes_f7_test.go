@@ -92,3 +92,32 @@ func TestF7FichaClienteYFoto(t *testing.T) {
 		t.Fatal("foto no coincide")
 	}
 }
+
+func TestF7VariasReferenciasValidacion(t *testing.T) {
+	routes, _, admin, _, _, _ := setupF2TestEnvironment(t)
+	const ruta = "/api/admin/clientes/1"
+	once := make([]any, 11)
+	for i := range once {
+		once[i] = fmt.Sprintf("archivo%02dABCDEFGHIJKLMNOPQRS", i)
+	}
+	for nombre, cuerpo := range map[string]map[string]any{
+		"mas de 10":   {"drive_referencias": once},
+		"no es lista": {"drive_referencias": "abc"},
+		"vacia":       {"drive_referencias": []any{""}},
+	} {
+		if got := doRequest(routes, "PATCH", ruta, admin, cuerpo); got.Code != http.StatusBadRequest {
+			t.Fatalf("%s: HTTP %d, esperado 400: %s", nombre, got.Code, got.Body.String())
+		}
+	}
+	vaciar := doRequest(routes, "PATCH", ruta, admin, map[string]any{"drive_referencias": []any{}})
+	if vaciar.Code != http.StatusOK {
+		t.Fatalf("vaciar: HTTP %d: %s", vaciar.Code, vaciar.Body.String())
+	}
+	var c store.Cliente
+	if err := json.Unmarshal(vaciar.Body.Bytes(), &c); err != nil {
+		t.Fatal(err)
+	}
+	if c.DriveReferencias == nil || len(c.DriveReferencias) != 0 || c.DriveReferenciaID != nil {
+		t.Fatalf("la lista vacía debe limpiar las referencias: %+v", c)
+	}
+}

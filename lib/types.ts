@@ -164,7 +164,14 @@ export interface ErrorApi {
 // Tipos F2 y F3: Trabajos, Clientes, Tareas, Facturas y Estadísticas
 // ==========================================
 
+export interface ReferenciaDriveCliente {
+  id: string;
+  nombre: string;
+  url?: string;
+}
+
 export interface Cliente {
+  drive_referencias?: ReferenciaDriveCliente[];
   drive_referencia_id?: string | null;
   drive_referencia_nombre?: string | null;
   drive_referencia_url?: string | null;

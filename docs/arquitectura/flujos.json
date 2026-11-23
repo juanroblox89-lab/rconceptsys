@@ -563,8 +563,8 @@
     },
     {
       "id": "cliente-picker-f7",
-      "nombre": "Referencia de Drive con Google Picker",
-      "descripcion": "Archivo o carpeta de referencia, independiente de las carpetas operativas.",
+      "nombre": "Referencias de Drive con Google Picker",
+      "descripcion": "Hasta 10 archivos o carpetas de referencia por cliente (drive_referencias, migración 020), independientes de las carpetas operativas.",
       "pasos": [
         {
           "orden": 1,
@@ -574,7 +574,7 @@
         {
           "orden": 2,
           "archivo_funcion": "components/PickerDriveCliente.tsx:PickerDriveCliente",
-          "descripcion": "Google Identity Services autoriza drive.file y abre Google Picker para seleccionar archivo o carpeta."
+          "descripcion": "Google se prepara al abrir la página; un clic autoriza drive.file y abre Google Picker con selección múltiple. Cada referencia se puede abrir o quitar con confirmación sí/no, y + añade más."
         },
         {
           "orden": 3,
@@ -584,7 +584,7 @@
         {
           "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPatchCliente",
-          "descripcion": "Persiste id, título y enlace de la referencia sin tocar paquete ni carpetas operativas."
+          "descripcion": "Recibe drive_referencias (lista de ids), valida cada una y guarda la lista; las columnas drive_referencia_* reflejan la primera."
         }
       ]
     },

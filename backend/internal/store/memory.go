@@ -699,6 +699,7 @@ func (m *MemoryStore) clonarClienteLocked(c *Cliente) *Cliente {
 		return nil
 	}
 	cp := *c
+	cp.DriveReferencias = append([]ReferenciaDrive{}, ReferenciasDeCliente(c.DriveReferencias, c.DriveReferenciaID, c.DriveReferenciaNombre, c.DriveReferenciaURL)...)
 	return &cp
 }
 
@@ -846,6 +847,13 @@ func (m *MemoryStore) ActualizarCliente(ctx context.Context, id int, campos map[
 		}
 	}
 
+	if v, ok := campos["drive_referencias"]; ok {
+		lista, tipoOK := v.([]ReferenciaDrive)
+		if !tipoOK {
+			return nil, ErrValidation
+		}
+		c.DriveReferencias = append([]ReferenciaDrive{}, lista...)
+	}
 	for clave, destino := range map[string]**string{"foto_url": &c.FotoURL, "drive_referencia_id": &c.DriveReferenciaID, "drive_referencia_nombre": &c.DriveReferenciaNombre, "drive_referencia_url": &c.DriveReferenciaURL, "drive_carpeta_id": &c.DriveCarpetaID, "material_carpeta_id": &c.MaterialCarpetaID, "producto_carpeta_id": &c.ProductoCarpetaID} {
 		if v, ok := campos[clave]; ok {
 			if v == nil {

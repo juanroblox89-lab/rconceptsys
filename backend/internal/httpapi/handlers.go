@@ -1775,7 +1775,7 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 
 	for k := range campos {
 		switch k {
-		case "nombre", "activo", "paquete", "drive_url", "notas", "foto_url", "drive_referencia_id":
+		case "nombre", "activo", "paquete", "drive_url", "notas", "foto_url", "drive_referencia_id", "drive_referencias":
 		default:
 			ResponderError(w, 400, "campo_no_permitido", "Ese dato no se puede cambiar desde aquí.")
 			return
@@ -1801,6 +1801,40 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ResponderError(w, 400, "referencia_invalida", "Selecciona un archivo o carpeta de Drive.")
 			return
+		}
+	}
+	if v, ok := campos["drive_referencias"]; ok {
+		crudos, tipoOK := v.([]any)
+		if !tipoOK || len(crudos) > 10 {
+			ResponderError(w, 400, "referencia_invalida", "Elige hasta 10 archivos o carpetas de Drive.")
+			return
+		}
+		lista := make([]store.ReferenciaDrive, 0, len(crudos))
+		vistos := map[string]bool{}
+		for _, crudo := range crudos {
+			ref, esTexto := crudo.(string)
+			ref = strings.TrimSpace(ref)
+			if !esTexto || ref == "" {
+				ResponderError(w, 400, "referencia_invalida", "Selecciona un archivo o carpeta de Drive.")
+				return
+			}
+			if vistos[ref] {
+				continue
+			}
+			vistos[ref] = true
+			nombre, enlace, err := a.referenciaDriveCliente(r.Context(), ref)
+			if err != nil {
+				ResponderError(w, 422, "referencia_invalida", err.Error())
+				return
+			}
+			lista = append(lista, store.ReferenciaDrive{ID: ref, Nombre: nombre, URL: enlace})
+		}
+		campos["drive_referencias"] = lista
+		// Columnas anteriores: reflejan la primera referencia para no romper lecturas viejas.
+		if len(lista) == 0 {
+			campos["drive_referencia_id"], campos["drive_referencia_nombre"], campos["drive_referencia_url"] = nil, nil, nil
+		} else {
+			campos["drive_referencia_id"], campos["drive_referencia_nombre"], campos["drive_referencia_url"] = lista[0].ID, lista[0].Nombre, lista[0].URL
 		}
 	}
 	actualizado, err := a.Store.ActualizarCliente(r.Context(), id, campos)

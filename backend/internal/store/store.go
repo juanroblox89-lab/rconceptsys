@@ -76,21 +76,47 @@ type TipoTrabajo struct {
 	CreadoEn time.Time `json:"creado_en"`
 }
 
+// ReferenciaDrive es un archivo o carpeta de Drive elegido con Google Picker como material de referencia.
+type ReferenciaDrive struct {
+	ID     string `json:"id"`
+	Nombre string `json:"nombre"`
+	URL    string `json:"url"`
+}
+
+// ReferenciasDeCliente devuelve la lista de referencias; si solo existe la referencia única anterior, la incluye.
+func ReferenciasDeCliente(lista []ReferenciaDrive, id, nombre, enlace *string) []ReferenciaDrive {
+	if len(lista) > 0 {
+		return lista
+	}
+	if id == nil || *id == "" {
+		return []ReferenciaDrive{}
+	}
+	ref := ReferenciaDrive{ID: *id, Nombre: "Referencia de Drive"}
+	if nombre != nil && *nombre != "" {
+		ref.Nombre = *nombre
+	}
+	if enlace != nil {
+		ref.URL = *enlace
+	}
+	return []ReferenciaDrive{ref}
+}
+
 type Cliente struct {
-	DriveReferenciaID     *string   `json:"drive_referencia_id,omitempty"`
-	DriveReferenciaNombre *string   `json:"drive_referencia_nombre,omitempty"`
-	DriveReferenciaURL    *string   `json:"drive_referencia_url,omitempty"`
-	FotoURL               *string   `json:"foto_url,omitempty"`
-	DriveCarpetaID        *string   `json:"drive_carpeta_id,omitempty"`
-	MaterialCarpetaID     *string   `json:"material_carpeta_id,omitempty"`
-	ProductoCarpetaID     *string   `json:"producto_carpeta_id,omitempty"`
-	ID                    int       `json:"id"`
-	Nombre                string    `json:"nombre"`
-	Activo                bool      `json:"activo"`
-	Paquete               *string   `json:"paquete,omitempty"`
-	DriveURL              *string   `json:"drive_url,omitempty"`
-	Notas                 *string   `json:"notas,omitempty"`
-	CreadoEn              time.Time `json:"creado_en"`
+	DriveReferencias      []ReferenciaDrive `json:"drive_referencias"`
+	DriveReferenciaID     *string           `json:"drive_referencia_id,omitempty"`
+	DriveReferenciaNombre *string           `json:"drive_referencia_nombre,omitempty"`
+	DriveReferenciaURL    *string           `json:"drive_referencia_url,omitempty"`
+	FotoURL               *string           `json:"foto_url,omitempty"`
+	DriveCarpetaID        *string           `json:"drive_carpeta_id,omitempty"`
+	MaterialCarpetaID     *string           `json:"material_carpeta_id,omitempty"`
+	ProductoCarpetaID     *string           `json:"producto_carpeta_id,omitempty"`
+	ID                    int               `json:"id"`
+	Nombre                string            `json:"nombre"`
+	Activo                bool              `json:"activo"`
+	Paquete               *string           `json:"paquete,omitempty"`
+	DriveURL              *string           `json:"drive_url,omitempty"`
+	Notas                 *string           `json:"notas,omitempty"`
+	CreadoEn              time.Time         `json:"creado_en"`
 }
 
 type EstadoTarea string

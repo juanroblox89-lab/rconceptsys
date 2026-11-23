@@ -91,3 +91,17 @@
 .fotoTexto { display: grid; gap: var(--rc-esp-4); justify-items: start; min-width: 0; }
 .fotoTexto .ayuda { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .fotoTitulo { font-size: var(--rc-fs-etiqueta); font-weight: var(--rc-fw-semibold); color: var(--rc-texto); }
+
+/* Referencias de Drive del cliente: una fila por archivo, acciones compactas a la derecha. */
+.referencias { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+.referencia { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 10px; border-radius: 10px; background: var(--rc-superficie-hundida); }
+.referenciaIcono { flex: none; opacity: .7; }
+.referenciaNombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.referenciaAccion { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--rc-azul-texto); font: inherit; font-size: 13px; cursor: pointer; transition: background-color 160ms cubic-bezier(.2,.8,.2,1); }
+.referenciaAccion:hover { background: var(--rc-superficie-clara); }
+.referenciaAccion:disabled { opacity: .5; cursor: default; }
+button.referenciaAccion { color: var(--rc-rojo-texto); }
+.confirmarQuitar { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.confirmarQuitar > span { flex: 1; min-width: 0; }
+@media (max-width: 600px) { .referenciaAccion > span { display: none; } .referenciaAccion { padding: 0 10px; min-height: 36px; } }
+@media (prefers-reduced-motion: reduce) { .referenciaAccion { transition: none; } }
