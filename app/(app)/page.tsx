@@ -23,7 +23,7 @@ interface Pendiente {
 }
 
 import { mencionaRIA, transmitirRIA } from "@/lib/ria";
-import { Sparkles } from "lucide-react";
+import { MarcaRIA } from "@/components/MarcaRIA";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -357,7 +357,7 @@ export default function ChatPage() {
               )}
 
               <div className={`${styles.group} ${grupo.es_mio ? styles.groupMine : ""}`}>
-                {grupo.autor_id === "ria" ? <span className={styles.riaAvatar}><Sparkles size={19} strokeWidth={1.6} /></span> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.avatarLink}>
+                {grupo.autor_id === "ria" ? <MarcaRIA size={32} /> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.avatarLink}>
                   <Avatar
                     tamano={32}
                     src={grupo.autor_foto || undefined}
@@ -427,7 +427,7 @@ export default function ChatPage() {
           ))}
 
           {riaActiva && <div className={`${styles.group} ${styles.riaEntrada}`}>
-            <span className={styles.riaAvatar}><Sparkles size={19} strokeWidth={1.6} /></span>
+            <MarcaRIA size={32} />
             <div className={styles.groupContent}><strong className={styles.authorName}>RIA</strong><div className={styles.bubble}>
               {riaTexto && <p className={styles.bubbleTexto}>{riaTexto}</p>}
               <span className={styles.riaEscribiendo} role="status">RIA está escribiendo…</span>
