@@ -23,7 +23,6 @@ import {
   Rol,
   TipoTrabajo,
   Cliente,
-  Tarea,
   ResumenFacturasPersona,
   EstadisticasAdminResponse,
   UnidadTrabajo,
@@ -35,12 +34,10 @@ import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Pestanas } from "@/components/ui/Pestanas";
 import { Interruptor } from "@/components/ui/Interruptor";
-import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
 import { ClientesPanel } from "@/components/ClientesPanel";
-import { FormularioAsignacion } from "@/components/FormularioAsignacion";
-import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
+import { AdminTareas } from "@/components/AdminTareas";
 import { useAviso } from "@/components/ui/Aviso";
 import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
 import { AdminEquipo } from "@/components/admin/AdminEquipo";
@@ -98,7 +95,6 @@ export default function AdminPage() {
   const [roles, setRoles] = useState<Rol[]>([]);
   const [trabajos, setTrabajos] = useState<TipoTrabajo[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [tareas, setTareas] = useState<Tarea[]>([]);
   const [facturas, setFacturas] = useState<ResumenFacturasPersona[]>([]);
 
   // Estados locales - Trabajos
@@ -111,21 +107,6 @@ export default function AdminPage() {
   const [nuevoTrabPrecio, setNuevoTrabPrecio] = useState<number>(0);
   const [nuevoTrabUnidad, setNuevoTrabUnidad] = useState<UnidadTrabajo>("trabajo");
   const [guardandoTrabajo, setGuardandoTrabajo] = useState(false);
-
-  // Estados locales - Tareas
-  const [filtroPersona, setFiltroPersona] = useState<string>("");
-  const [filtroEstado, setFiltroEstado] = useState<string>("");
-  const [modalNuevaTarea, setModalNuevaTarea] = useState(false);
-
-  // Modal Aceptar Tarea con corrección opcional de minutos
-  const [modalAceptarTarea, setModalAceptarTarea] = useState<Tarea | null>(null);
-  const [minutosAceptarInput, setMinutosAceptarInput] = useState<string>("");
-  const [aceptandoTarea, setAceptandoTarea] = useState(false);
-
-  // Modal Rechazar Tarea
-  const [tareaARechazar, setTareaARechazar] = useState<Tarea | null>(null);
-  const [motivoRechazo, setMotivoRechazo] = useState("");
-  const [rechazando, setRechazando] = useState(false);
 
   // Estados locales - Estadísticas
   const [statsAdmin, setStatsAdmin] = useState<EstadisticasAdminResponse | null>(null);
@@ -151,18 +132,16 @@ export default function AdminPage() {
 
   const cargarDatos = useCallback(async () => {
     try {
-      const [mList, rList, tList, tareasRes, fList, cList] = await Promise.all([
+      const [mList, rList, tList, fList, cList] = await Promise.all([
         api.adminGetMiembros(),
         api.adminGetRoles(),
         api.adminGetTrabajos(),
-        api.adminGetTareas(),
         api.adminGetFacturas(),
         api.adminGetClientes(),
       ]);
       setMiembros(mList);
       setRoles(rList);
       setTrabajos(tList);
-      setTareas(tareasRes?.tareas || []);
       setFacturas(fList);
       setClientes(cList);
 
@@ -463,88 +442,6 @@ export default function AdminPage() {
   };
 
   // ==========================================
-  // Acciones: Pestaña Tareas
-  // ==========================================
-  const handleAbrirAceptarTarea = (tarea: Tarea) => {
-    setModalAceptarTarea(tarea);
-    setMinutosAceptarInput(tarea.cantidad ? String(tarea.cantidad) : "1");
-  };
-
-  const handleConfirmarAceptarTarea = async () => {
-    if (!modalAceptarTarea) return;
-    const esMinuto = modalAceptarTarea.tipo?.unidad === "minuto";
-    let cant: number | undefined = undefined;
-    if (esMinuto) {
-      const num = parseInt(minutosAceptarInput, 10);
-      if (isNaN(num) || num < 1 || num > 1440) {
-        mostrarAviso({
-          tipo: "error",
-          titulo: "Minutos inválidos",
-          texto: "Los minutos aceptados deben ser un número entre 1 y 1440.",
-        });
-        return;
-      }
-      cant = num;
-    }
-    setAceptandoTarea(true);
-    try {
-      await api.adminAceptarTarea(modalAceptarTarea.id, cant);
-      mostrarAviso({
-        tipo: "exito",
-        titulo: "Tarea aceptada",
-        texto: `La tarea fue aceptada y su valor congelado en la factura.`,
-      });
-      setModalAceptarTarea(null);
-      await cargarDatos();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({
-        tipo: "error",
-        titulo: "No se pudo aceptar",
-        texto: e.message || "Error al aceptar tarea.",
-      });
-    } finally {
-      setAceptandoTarea(false);
-    }
-  };
-
-  const handleRechazarTareaConfirm = async () => {
-    if (!tareaARechazar) return;
-    if (!motivoRechazo.trim()) {
-      mostrarAviso({ tipo: "error", titulo: "Motivo obligatorio", texto: "Debes ingresar una razón de rechazo." });
-      return;
-    }
-    setRechazando(true);
-    try {
-      await api.adminRechazarTarea(tareaARechazar.id, motivoRechazo.trim());
-      mostrarAviso({
-        tipo: "advertencia",
-        titulo: "Tarea rechazada",
-        texto: "La tarea regresó a la persona con el motivo indicado para su corrección.",
-      });
-      setTareaARechazar(null);
-      setMotivoRechazo("");
-      await cargarDatos();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "Error al rechazar", texto: e.message || "No se pudo rechazar la tarea." });
-    } finally {
-      setRechazando(false);
-    }
-  };
-
-  const handleCancelarTarea = async (tarea: Tarea) => {
-    try {
-      await api.adminCancelarTarea(tarea.id);
-      mostrarAviso({ tipo: "info", titulo: "Tarea cancelada" });
-      await cargarDatos();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "No se pudo cancelar", texto: e.message || "Error al cancelar." });
-    }
-  };
-
-  // ==========================================
   // Acciones: Pestaña Facturas
   // ==========================================
   const handlePagarFacturaConfirm = async () => {
@@ -567,16 +464,6 @@ export default function AdminPage() {
     }
   };
 
-  // ==========================================
-  // Filtros de Tareas
-  // ==========================================
-  const tareasPorRevisar = tareas.filter((t) => t.estado === "hecha");
-  const tareasFiltradas = tareas.filter((t) => {
-    if (filtroPersona && t.asignado_a !== filtroPersona) return false;
-    if (filtroEstado && t.estado !== filtroEstado) return false;
-    return true;
-  });
-
   useEffect(() => {
     if (cargando || pestanaActiva !== "miembros") return;
     const id = new URLSearchParams(location.search).get("solicitud");
@@ -587,7 +474,6 @@ export default function AdminPage() {
   }, [cargando, pestanaActiva]);
   const pendientesMiembros = miembros.filter((m) => m.estado === "pendiente");
   const aprobadosYSuspendidos = miembros.filter((m) => m.estado !== "pendiente");
-
   const miembrosAprobados = miembros.filter((m) => m.estado === "aprobado" && !m.es_admin);
 
   const tabsItems = [
@@ -841,282 +727,8 @@ export default function AdminPage() {
 
           {/* PESTAÑA 2: TAREAS                                         */}
           {/* ========================================================= */}
-          {pestanaActiva === "tareas" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--rc-esp-20)" }}>
-              {/* Botón superior de nueva tarea */}
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <Boton
-                  variante="primario"
-                  onClick={() => {
-                    setModalNuevaTarea(true);
-                  }}
-                >
-                  <Plus size={14} style={{ marginRight: 6 }} />
-                  Nueva tarea
-                </Boton>
-              </div>
+          {pestanaActiva === "tareas" && <AdminTareas embedded />}
 
-              {/* 1. Bandeja Por Revisar */}
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle} style={{ color: "var(--rc-azul-texto)" }}>
-                  Bandeja por revisar ({tareasPorRevisar.length})
-                </h2>
-
-                {tareasPorRevisar.length === 0 ? (
-                  <Tarjeta
-                    variante="vacia"
-                    tituloVacio="Todo revisado"
-                    textoVacio="No hay tareas pendientes de aprobación en este momento."
-                  />
-                ) : (
-                  <div className={styles.bandejaReviewGrid}>
-                    {tareasPorRevisar.map((t) => (
-                      <article key={t.id} className={styles.reviewCard}>
-                        <div className={styles.reviewHeader}>
-                          <span className={styles.reviewPersona}>
-                            {t.asignado?.nombre || "Miembro"}
-                          </span>
-                          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                            <Chip punto="azul">
-                              {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
-                            </Chip>
-                            {t.cliente && (
-                              <Chip punto="verde">
-                                {t.cliente.nombre}
-                              </Chip>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className={styles.reviewTitulo}>{t.titulo}</div>
-                        {t.descripcion && (
-                          <div style={{ fontSize: 12, color: "var(--rc-texto-secundario)" }}>
-                            {t.descripcion}
-                          </div>
-                        )}
-
-                        {t.tipo?.unidad === "minuto" && (
-                          <div style={{ fontSize: 12, color: "var(--rc-azul-texto)", fontWeight: 600 }}>
-                            Minutos grabados reportados: {t.cantidad || 0} min
-                          </div>
-                        )}
-
-                        {t.nota_persona && (
-                          <div className={styles.reviewNota}>
-                            <strong>Nota de la persona:</strong> {t.nota_persona}
-                          </div>
-                        )}
-
-                        {t.enlace_medios && (
-                          <div style={{ marginTop: "var(--rc-esp-8)" }}>
-                            <EnlaceDrive enlace={t.enlace_medios} />
-                          </div>
-                        )}
-
-                        <div className={styles.reviewValor}>
-                          <span>Valor estimado a congelar:</span>
-                          <span className={styles.reviewValorMonto}>
-                            {t.tipo?.unidad === "minuto" && t.cantidad && t.tipo?.precio
-                              ? `$ ${(t.cantidad * t.tipo.precio).toLocaleString("es-CO")} (${t.cantidad} min × $ ${t.tipo.precio.toLocaleString("es-CO")})`
-                              : `$ ${(t.tipo?.precio || 0).toLocaleString("es-CO")}`}
-                          </span>
-                        </div>
-
-                        <div className={styles.reviewAcciones}>
-                          <Boton
-                            variante="peligro"
-                            onClick={() => {
-                              setTareaARechazar(t);
-                              setMotivoRechazo("");
-                            }}
-                          >
-                            Rechazar
-                          </Boton>
-                          <Boton
-                            variante="primario"
-                            onClick={() => handleAbrirAceptarTarea(t)}
-                          >
-                            <Check size={14} style={{ marginRight: 4 }} />
-                            {t.tipo?.unidad === "minuto" ? "Revisar y aceptar" : "Aceptar"}
-                          </Boton>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              {/* 2. Listado general de tareas con filtros */}
-              <section className={styles.section}>
-                <div className={styles.sectionHeaderRow}>
-                  <h2 className={styles.sectionTitle}>Todas las tareas</h2>
-
-                  {/* Filtros */}
-                  <div className={styles.filtrosRow}>
-                    <select
-                      className={styles.selectCompacto}
-                      value={filtroPersona}
-                      onChange={(e) => setFiltroPersona(e.target.value)}
-                    >
-                      <option value="">Todas las personas</option>
-                      {miembrosAprobados.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.nombre}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className={styles.selectCompacto}
-                      value={filtroEstado}
-                      onChange={(e) => setFiltroEstado(e.target.value)}
-                    >
-                      <option value="">Todos los estados</option>
-                      <option value="pendiente">Pendiente</option>
-                      <option value="hecha">Por revisar (hecha)</option>
-                      <option value="aceptada">Aceptada</option>
-                      <option value="rechazada">Rechazada</option>
-                      <option value="cancelada">Cancelada</option>
-                    </select>
-                  </div>
-                </div>
-
-                {tareasFiltradas.length === 0 ? (
-                  <Tarjeta
-                    variante="vacia"
-                    tituloVacio="Sin tareas con estos filtros"
-                    textoVacio="Intenta ajustando los filtros de persona o estado."
-                  />
-                ) : (
-                  <>
-                    <div className={styles.desktopTable}>
-                      <Tabla>
-                        <thead>
-                          <tr>
-                            <th>Título</th>
-                            <th>Persona</th>
-                            <th>Trabajo</th>
-                            <th>Cliente</th>
-                            <th>Estado</th>
-                            <th>Valor</th>
-                            <th style={{ textAlign: "right" }}>Acción</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tareasFiltradas.map((t) => (
-                            <TablaFila key={t.id}>
-                              <td>
-                                <strong>{t.titulo}</strong>
-                                {t.enlace_medios && (
-                                  <div style={{ marginTop: 4 }}>
-                                    <EnlaceDrive enlace={t.enlace_medios} />
-                                  </div>
-                                )}
-                                {t.fecha_limite && (
-                                  <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)" }}>
-                                    Límite: {t.fecha_limite}
-                                  </div>
-                                )}
-                              </td>
-                              <td>{t.asignado?.nombre || "—"}</td>
-                              <td>{t.tipo?.nombre || "—"}</td>
-                              <td>
-                                {t.cliente ? (
-                                  <Chip punto="verde">{t.cliente.nombre}</Chip>
-                                ) : (
-                                  <span style={{ fontSize: 11, color: "var(--rc-texto-secundario)" }}>—</span>
-                                )}
-                              </td>
-                              <td>
-                                <Estado
-                                  variante={
-                                    t.estado === "aceptada"
-                                      ? "aprobado"
-                                      : t.estado === "rechazada" || t.estado === "cancelada"
-                                      ? "suspendido"
-                                      : "pendiente"
-                                  }
-                                >
-                                  {t.estado === "hecha" ? "por revisar" : t.estado}
-                                </Estado>
-                              </td>
-                              <td>
-                                <span className={styles.montoVerde}>
-                                  {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
-                                    ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`
-                                    : `$ ${(t.precio_congelado ?? t.tipo?.precio ?? 0).toLocaleString("es-CO")}`}
-                                </span>
-                              </td>
-                              <td style={{ textAlign: "right" }}>
-                                {(t.estado === "pendiente" || t.estado === "rechazada") && (
-                                  <Boton
-                                    variante="secundario"
-                                    onClick={() => handleCancelarTarea(t)}
-                                  >
-                                    Cancelar
-                                  </Boton>
-                                )}
-                              </td>
-                            </TablaFila>
-                          ))}
-                        </tbody>
-                      </Tabla>
-                    </div>
-
-                    {/* Móvil */}
-                    <div className={styles.mobileCards}>
-                      {tareasFiltradas.map((t) => (
-                        <article key={t.id} className={styles.mobileCard}>
-                          <div className={styles.mobileCardHeader}>
-                            <strong>{t.titulo}</strong>
-                            <Estado
-                              variante={
-                                t.estado === "aceptada"
-                                  ? "aprobado"
-                                  : t.estado === "rechazada" || t.estado === "cancelada"
-                                  ? "suspendido"
-                                  : "pendiente"
-                              }
-                            >
-                              {t.estado === "hecha" ? "por revisar" : t.estado}
-                            </Estado>
-                          </div>
-                          <div style={{ fontSize: 12, color: "var(--rc-texto-secundario)", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                            <span>Asignado a: <strong>{t.asignado?.nombre || "—"}</strong> ({t.tipo?.nombre})</span>
-                            {t.cliente && <Chip punto="verde">{t.cliente.nombre}</Chip>}
-                          </div>
-                          {t.enlace_medios && (
-                            <div>
-                              <EnlaceDrive enlace={t.enlace_medios} />
-                            </div>
-                          )}
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span className={styles.montoVerde}>
-                              {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
-                                ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`
-                                : `$ ${(t.precio_congelado ?? t.tipo?.precio ?? 0).toLocaleString("es-CO")}`}
-                            </span>
-                            {(t.estado === "pendiente" || t.estado === "rechazada") && (
-                              <Boton
-                                variante="secundario"
-                                onClick={() => handleCancelarTarea(t)}
-                              >
-                                Cancelar
-                              </Boton>
-                            )}
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </section>
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* PESTAÑA: ESTADÍSTICAS (F3)                                */}
-          {/* ========================================================= */}
           {pestanaActiva === "estadisticas" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--rc-esp-20)" }}>
               {/* Controles de Filtros y Presets */}
@@ -1937,131 +1549,6 @@ export default function AdminPage() {
               onChange={(e) => setNuevoTrabPrecio(parseInt(e.target.value, 10) || 0)}
               disabled={guardandoTrabajo}
             />
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal Nueva Tarea */}
-      {modalNuevaTarea && <FormularioAsignacion onCerrar={() => setModalNuevaTarea(false)} onGuardar={() => { setModalNuevaTarea(false); void cargarDatos(); }} />}
-
-      {/* Modal Aceptar Tarea con corrección opcional de minutos */}
-      {modalAceptarTarea && (
-        <Modal
-          abierto={true}
-          titulo="Aceptar tarea y congelar en factura"
-          descripcion={`Revisa y confirma la liquidación para "${modalAceptarTarea.titulo}".`}
-          onCerrar={() => setModalAceptarTarea(null)}
-          accionPrimaria={
-            <Boton
-              variante="primario"
-              cargando={aceptandoTarea}
-              onClick={handleConfirmarAceptarTarea}
-            >
-              <Check size={14} style={{ marginRight: 4 }} />
-              Aceptar y congelar
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setModalAceptarTarea(null)}
-              disabled={aceptandoTarea}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--rc-superficie-clara)", padding: "10px", borderRadius: "var(--rc-radio-md)" }}>
-              <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)" }}>
-                Asignado a: <strong style={{ color: "var(--rc-texto)" }}>{modalAceptarTarea.asignado?.nombre || "Miembro"}</strong>
-              </div>
-              <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)" }}>
-                Trabajo: <strong style={{ color: "var(--rc-texto)" }}>{modalAceptarTarea.tipo?.nombre}</strong> ({modalAceptarTarea.tipo?.unidad === "minuto" ? "Cobro por minuto" : "Cobro por trabajo"})
-              </div>
-              {modalAceptarTarea.cliente && (
-                <div style={{ fontSize: "var(--rc-fs-secundario)", color: "var(--rc-verde-texto)" }}>
-                  Cliente: <strong>{modalAceptarTarea.cliente.nombre}</strong>
-                </div>
-              )}
-              {modalAceptarTarea.nota_persona && (
-                <div style={{ fontSize: "11px", color: "var(--rc-azul-texto)", marginTop: 4 }}>
-                  Nota: &ldquo;{modalAceptarTarea.nota_persona}&rdquo;
-                </div>
-              )}
-            </div>
-
-            {modalAceptarTarea.tipo?.unidad === "minuto" ? (
-              <div>
-                <Campo
-                  etiqueta="Minutos aceptados (puedes corregir la duración) *"
-                  type="number"
-                  min={1}
-                  max={1440}
-                  value={minutosAceptarInput}
-                  onChange={(e) => setMinutosAceptarInput(e.target.value)}
-                  disabled={aceptandoTarea}
-                />
-                <div style={{ marginTop: 6, fontSize: "var(--rc-fs-secundario)", color: "var(--rc-texto-secundario)", display: "flex", justifyContent: "space-between" }}>
-                  <span>Tarifa: $ {modalAceptarTarea.tipo?.precio?.toLocaleString("es-CO")} / min</span>
-                  <span style={{ fontWeight: 600, color: "var(--rc-verde-texto)" }}>
-                    Total a congelar: $ {((Number(minutosAceptarInput) || 0) * (modalAceptarTarea.tipo?.precio || 0)).toLocaleString("es-CO")}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div style={{ fontSize: "var(--rc-fs-cuerpo)", color: "var(--rc-texto)", padding: "8px 0" }}>
-                Total a congelar en factura:{" "}
-                <strong style={{ color: "var(--rc-verde-texto)" }}>
-                  $ {(modalAceptarTarea.tipo?.precio || 0).toLocaleString("es-CO")}
-                </strong>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal Rechazar Tarea */}
-      {tareaARechazar && (
-        <Modal
-          abierto={true}
-          titulo="Rechazar tarea"
-          descripcion={`Indica el motivo de rechazo para "${tareaARechazar.titulo}". La persona podrá corregirla y volver a enviarla.`}
-          onCerrar={() => setTareaARechazar(null)}
-          accionPrimaria={
-            <Boton
-              variante="peligro"
-              cargando={rechazando}
-              onClick={handleRechazarTareaConfirm}
-            >
-              Rechazar tarea
-            </Boton>
-          }
-          accionSecundaria={
-            <Boton
-              variante="secundario"
-              onClick={() => setTareaARechazar(null)}
-              disabled={rechazando}
-            >
-              Cancelar
-            </Boton>
-          }
-        >
-          <div className={styles.modalForm}>
-            <Campo
-              etiqueta="Motivo del rechazo (obligatorio, hasta 500 caracteres)"
-              como="textarea"
-              filas={3}
-              placeholder="Explica qué correcciones son necesarias..."
-              value={motivoRechazo}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-                setMotivoRechazo(e.target.value.slice(0, 500))
-              }
-              disabled={rechazando}
-            />
-            <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)", textAlign: "right" }}>
-              {motivoRechazo.length} / 500
-            </div>
           </div>
         </Modal>
       )}

@@ -16,7 +16,7 @@
 ## Otras secciones
 - `/equipo`: directorio de miembros aprobados; `/equipo/[id]`: perfil de un miembro.
 - `/perfil`: consulta y edita tu nombre y tu foto; administra los avisos del dispositivo.
-- `/ria`: conversación privada con RIA. El historial pertenece a tu cuenta.
+- `/ria`: conversación privada con RIA. El historial pertenece a tu cuenta. La sugerencia se adapta a tu rol. Puedes dictar desde el micrófono si tu navegador admite reconocimiento de voz; el texto queda en la caja para revisarlo antes de enviar.
 - `/login`: inicia sesión; `/registro`: solicita acceso; `/pendiente`: consulta el estado de la solicitud.
 - `/estilo`: catálogo de referencia de la interfaz.
 - `/api/[...path]`: conexión interna entre la interfaz y la API; no es una pantalla.

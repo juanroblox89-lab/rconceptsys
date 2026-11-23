@@ -14,6 +14,8 @@ type ConfDrive struct {
 	ClientSecret string
 	RedirectURI  string
 	CarpetaRaiz  string
+	PickerKey    string
+	PickerAppID  string
 }
 
 // Configurado indica si hay credenciales de Google Cloud para conectar Drive.
@@ -57,6 +59,8 @@ func NuevoEstadoF5() *EstadoF5 {
 			ClientSecret: strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")),
 			RedirectURI:  strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URI")),
 			CarpetaRaiz:  strings.TrimSpace(os.Getenv("GOOGLE_DRIVE_CARPETA_RAIZ")),
+			PickerKey:    strings.TrimSpace(os.Getenv("GOOGLE_PICKER_API_KEY")),
+			PickerAppID:  strings.TrimSpace(os.Getenv("GOOGLE_PICKER_APP_ID")),
 		},
 		Push: ConfPush{
 			Publica: strings.TrimSpace(os.Getenv("VAPID_CLAVE_PUBLICA")),

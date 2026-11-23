@@ -48,10 +48,12 @@ function glob(pattern, base = ROOT) {
 }
 function matchPattern(str, pattern) {
   // Convert glob to regex
-  const regex = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\*\*/g, '.*')
-    .replace(/\*/g, '[^/]*');
+  const regex = pattern.split(/(\*\*\/|\*\*|\*)/).map(t => {
+    if (t === '**/') return '(?:.*/)?';
+    if (t === '**') return '.*';
+    if (t === '*') return '[^/]*';
+    return escapeRegExp(t);
+  }).join('');
   return new RegExp(`^${regex}$`).test(str);
 }
 
@@ -62,22 +64,15 @@ function extraerEndpoints() {
   const content = readFile(handlersPath);
   const endpoints = [];
 
-  // Regex para mux.HandleFunc("METHOD /path", a.handler)
-  const routeRegex = /mux\.HandleFunc\("([A-Z]+)\s+([^"]+)",\s*a\.(\w+)\)/g;
-  let match;
-  while ((match = routeRegex.exec(content)) !== null) {
-    const [, method, route, handler] = match;
-    // Encontrar la función handler
-    const fnRegex = new RegExp(`func\\s*\\(a\\s*\\*API\\)\\s*${handler}\\s*\\(`, 'g');
-    const fnMatch = fnRegex.exec(content);
-    endpoints.push({
-      metodo: method,
-      ruta: route,
-      handler: `backend/internal/httpapi/handlers.go:${handler}`,
-      archivo_funcion: `backend/internal/httpapi/handlers.go:${handler}`,
-      // Determinar quién puede llamarlo según MiddlewareAuth
-      auth: inferirAuth(content, handler)
-    });
+  const fuentes = glob('backend/internal/httpapi/*.go').filter(f => !f.endsWith('_test.go'));
+  const ubicaciones = new Map();
+  for (const archivo of fuentes) {
+    for (const [, nombre] of readFile(path.join(ROOT, archivo)).matchAll(/func\s*\(a\s*\*API\)\s*(\w+)\s*\(/g)) ubicaciones.set(nombre, archivo);
+  }
+  const rutas = /mux\.HandleFunc\("([A-Z]+)\s+([^"]+)",\s*(?:a\.MiddlewareAuth\()?a\.(\w+)/g;
+  for (const [, metodo, ruta, handler] of content.matchAll(rutas)) {
+    const referencia = `${ubicaciones.get(handler) ?? 'backend/internal/httpapi/handlers.go'}:${handler}`;
+    endpoints.push({ metodo, ruta, handler: referencia, archivo_funcion: referencia, auth: inferirAuth(content, handler) });
   }
   return endpoints;
 }
@@ -86,7 +81,7 @@ function inferirAuth(content, handler) {
   // Buscar la línea de mux.HandleFunc para este handler y ver MiddlewareAuth
   const lines = content.split('\n');
   for (const line of lines) {
-    if (line.includes(handler) && line.includes('mux.HandleFunc')) {
+    if (new RegExp(`\\ba\\.${handler}\\b`).test(line) && line.includes('mux.HandleFunc')) {
       if (line.includes('MiddlewareAuth(a.')) {
         // MiddlewareAuth(a.handleX, true, true) -> requiereAprobado, requiereAdmin
         const args = line.match(/MiddlewareAuth\([^,]+,\s*([^,]+),\s*([^)]+)\)/);
@@ -600,37 +595,20 @@ async function generarMapa() {
 }
 
 async function generarMapaHTML(mapa, flujosData) {
-  const { readFile, writeFile } = await import('fs/promises');
-  const { join } = await import('path');
-  const { fileURLToPath } = await import('url');
-  const { execSync } = await import('child_process');
-  
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = join(__filename, '..');
-  
-  const htmlPath = join(__dirname, '..', 'docs', 'arquitectura', 'mapa.html');
-  let html = await readFile(htmlPath, 'utf-8');
-  
-  // Inyectar datos JSON como variables JavaScript
-  const mapaJSON = JSON.stringify(mapa, null, 0);
-  const flujosJSON = JSON.stringify(flujosData, null, 0);
-  
-  html = html.replace('const MAPA_DATA = __MAPA_DATA__;', `const MAPA_DATA = ${mapaJSON};`);
-  html = html.replace('const FLUJOS_DATA = __FLUJOS_DATA__;', `const FLUJOS_DATA = ${flujosJSON};`);
-  
-  // Agregar commit hash si está disponible
+  const { readFile, writeFile } = await import('node:fs/promises');
+  const { execFileSync } = await import('node:child_process');
+  let html = await readFile(MAPA_HTML, 'utf8');
   let commitHash = '';
-  try {
-    commitHash = execSync('git rev-parse HEAD', {cwd: join(__dirname, '..'), encoding: 'utf-8'}).trim();
-  } catch (e) {}
-  
-  if (commitHash) {
-    const mapaWithHash = {...mapa, commit_hash: commitHash};
-    writeJSON(MAPA_JSON, mapaWithHash);
-    html = html.replace('const MAPA_DATA = __MAPA_DATA__;', `const MAPA_DATA = ${JSON.stringify(mapaWithHash, null, 0)};`);
+  try { commitHash = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8', windowsHide: true }).trim(); } catch { /* sin git */ }
+  const datos = commitHash ? { ...mapa, commit_hash: commitHash } : mapa;
+  writeJSON(MAPA_JSON, datos);
+  const seguro = obj => JSON.stringify(obj).replaceAll('<', '\\u003c');
+  for (const [nombre, valor] of [['MAPA_DATA', datos], ['FLUJOS_DATA', flujosData]]) {
+    const patron = new RegExp(`^const ${nombre} = [^\\r\\n]+;$`, 'm');
+    if (!patron.test(html)) throw new Error(`No se encontró ${nombre} en mapa.html`);
+    html = html.replace(patron, () => `const ${nombre} = ${seguro(valor)};`);
   }
-  
-  await writeFile(htmlPath, html, 'utf-8');
+  await writeFile(MAPA_HTML, html, 'utf8');
 }
 
 // Ejecutar

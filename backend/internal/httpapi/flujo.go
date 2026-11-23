@@ -36,6 +36,24 @@ func FechaEntrega(fecha *string, ahora time.Time) string {
 	return "para el " + diasSemana[d.Weekday()] + fmt.Sprintf(" %d", d.Day())
 }
 
+func (a *API) handleAdminGetTarea(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, 400, "id_invalido", "No encontramos ese trabajo.")
+		return
+	}
+	t, err := a.Store.ObtenerTareaPorID(r.Context(), id)
+	if err == store.ErrNotFound {
+		ResponderError(w, 404, "tarea_no_encontrada", "No encontramos ese trabajo.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, 500, "error_trabajo", "No pudimos cargar ese trabajo.")
+		return
+	}
+	ResponderJSON(w, 200, t)
+}
+
 func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || id <= 0 {

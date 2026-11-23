@@ -2,21 +2,22 @@
 
 ## Trabajos y Clientes
 
-- `/asignaciones` (Trabajos): busca por persona, estado o rango; abre una entrega en revisión o edita un trabajo pendiente o devuelto. Para asignar, elige cliente, persona, tipo, fecha, carpeta si corresponde y describe el trabajo. Puedes crear el cliente sin perder lo que escribiste. Si la persona no tiene el rol del trabajo, confirma explícitamente que quieres asignarlo de todos modos.
-- `/clientes`: busca, crea o edita fichas. La ficha conserva paquete, notas y enlace de referencia, y admite el logo mediante enlace HTTPS. Vincula una carpeta existente o crea una nueva en el Drive del equipo; se preparan «Material del lugar» y «Producto». Abre los trabajos asociados desde la ficha. Si Drive falla, puedes reintentar sin crear otro cliente.
-- `/tareas`: revisa las entregas del equipo. Los trabajos nuevos o editados se notifican a la persona asignada. La carpeta del trabajo se selecciona o crea dentro de la carpeta del cliente.
-- `/admin`: Gestión; la sección Clientes usa la misma ficha que el apartado del menú.
+- `/asignaciones` y `/tareas`: filtra los trabajos y pulsa **Abrir**. En `/trabajos/[id]` puedes consultar estado, actividad y entrega, editar si está pendiente o devuelto, y cancelar con confirmación. Las entregas se aprueban o devuelven en la bandeja de `/tareas`.
+- `/trabajos/nuevo`: asigna desde Tareas, Trabajos o el perfil del miembro (persona preseleccionada). Elige cliente, persona, tipo, fecha, carpeta si corresponde y escribe las **Especificaciones**. Si no coincide el rol, confirma explícitamente.
+- `/clientes`: busca por nombre. El botón **Ver** abre `/clientes/[id]` con notas, referencias y estadísticas calculadas de sus trabajos. Usa `/clientes/nuevo` para crear la ficha y `/clientes/[id]/editar` para editarla. Puedes subir una foto JPEG, PNG o WebP hasta 1 MB. La interfaz no muestra el paquete contratado y no lo cambia al guardar.
+- En la ficha del cliente, **Referencia de Drive** es independiente de **Carpeta operativa de Drive**. Google Picker permite elegir archivo o carpeta. El Drive del equipo debe tener acceso a la referencia. La carpeta operativa conserva «Material del lugar» y «Producto».
+- `/admin`: Gestión; la sección Clientes usa el mismo listado y las mismas fichas.
 
 ### API de estos flujos
 
-- `GET /api/admin/clientes`: lista fichas.
-- `POST /api/admin/clientes`: crea el cliente.
-- `PATCH /api/admin/clientes/{id}`: actualiza nombre, estado, logo y datos de la ficha.
-- `POST /api/admin/clientes/{id}/drive`: vincula o crea la carpeta y prepara sus dos subcarpetas.
-- `GET /api/admin/drive/archivos`: lista archivos y carpetas del Drive conectado, también bajo un padre concreto.
-- `GET /api/admin/tareas`: lista trabajos y número por revisar.
+- `GET /api/admin/clientes`: lista fichas; `GET /api/admin/clientes/{id}`: ficha, estadísticas y trabajos de un cliente.
+- `POST /api/admin/clientes`: crea el cliente; `PATCH /api/admin/clientes/{id}`: actualiza datos de ficha y verifica referencias de Drive.
+- `POST /api/admin/clientes/{id}/foto`: sube una foto; `GET /api/admin/clientes/{id}/foto/{archivo}`: sirve la foto vigente con sesión de administración.
+- `POST /api/admin/clientes/{id}/drive`: vincula o crea la carpeta operativa y prepara sus dos subcarpetas.
+- `GET /api/admin/drive/archivos`: lista archivos y carpetas del Drive conectado; `GET /api/admin/drive/picker`: configuración pública del selector, solo para administradores.
+- `GET /api/admin/tareas`: lista trabajos y número por revisar; `GET /api/admin/tareas/{id}`: detalle e historial disponible.
 - `POST /api/admin/tareas`: asigna un trabajo con cliente y fecha obligatorios.
-- `PATCH /api/admin/tareas/{id}`: cambia persona, tipo, fecha, descripción o carpeta de un trabajo abierto.
+- `PATCH /api/admin/tareas/{id}`: cambia persona, tipo, fecha, especificaciones o carpeta de un trabajo abierto.
 - `GET /api/admin/asignaciones`: lista Trabajos con filtros.
 
 ## Miembros, catálogo y finanzas

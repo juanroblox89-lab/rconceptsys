@@ -1,10 +1,6 @@
 /* Las superficies conservan el vocabulario del RC-Kit. */
-html[data-rc-modo="oscuro"], html[data-rc-modo="sistema"][data-rc-tema="rconcept-dark"] { color-scheme: dark; --rc-es-oscuro: 1; }
-@media (prefers-color-scheme: dark) {
-  html:not([data-rc-modo]), html[data-rc-modo="sistema"] { color-scheme: dark; --rc-es-oscuro: 1; }
-}
 /* El valor de color-scheme alimenta light-dark() sin duplicar la paleta. */
-html {
+html:root {
   color-scheme: light;
   --rc-superficie: var(--rc-personal-fondo, light-dark(#eceef3,#171c25));
   --rc-superficie-clara: color-mix(in srgb, var(--rc-superficie), white 5%);
@@ -40,6 +36,10 @@ html {
   --rc-fs-interfaz: var(--rc-personal-interfaz, 13px);
   --rc-fs-cuerpo: var(--rc-personal-contenido, 13px);
   --rc-lh-cuerpo: calc(var(--rc-fs-cuerpo) * 1.5);
+}
+html:root[data-rc-modo="oscuro"], html[data-rc-modo="sistema"][data-rc-tema="rconcept-dark"] { color-scheme: dark; --rc-es-oscuro: 1; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-rc-modo]), html[data-rc-modo="sistema"] { color-scheme: dark; --rc-es-oscuro: 1; }
 }
 html[data-rc-contraste="true"] { --rc-texto-secundario: var(--rc-texto); --rc-texto-tenue: var(--rc-texto); --rc-gris-300: var(--rc-gris-700); }
 html[data-rc-tema="glass"] {

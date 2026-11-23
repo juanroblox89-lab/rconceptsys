@@ -76,7 +76,7 @@ func (a *API) avisarEntregaAdmins(ctx context.Context, t *store.Tarea, persona s
 	if t.HechaEn != nil {
 		clave = fmt.Sprintf("entrega:%d:%s", t.ID, t.HechaEn.UTC().Format(time.RFC3339Nano))
 	}
-	a.avisarAdmins(ctx, AvisoPush{Titulo: persona + " hizo una entrega", Cuerpo: datosAvisoTarea(t), URL: urlTarea(t.ID), Etiqueta: "entrega-hecha"}, clave)
+	a.avisarAdmins(ctx, AvisoPush{Titulo: persona + " hizo una entrega", Cuerpo: datosAvisoTarea(t), URL: fmt.Sprintf("/trabajos/%d?desde=tareas", t.ID), Etiqueta: "entrega-hecha"}, clave)
 }
 func rutaCorte(id int64) string { return fmt.Sprintf("/factura?corte=%d#corte-%d", id, id) }
 func (a *API) avisarCorte(ctx context.Context, id int64, perfil string, pagado bool, periodo string) {

@@ -4,18 +4,18 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Check,
   Plus,
-  Calendar,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import estilosTarea from "@/app/(app)/tareas/tareas.module.css";
-import { FormularioAsignacion } from "@/components/FormularioAsignacion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FilaTrabajo } from "@/components/FilaTrabajo";
+import flujo from "@/components/FlujoTrabajo.module.css";
 import {
   Perfil,
   Tarea,
 } from "@/lib/types";
-import { Tabla, TablaFila } from "@/components/ui/Tabla";
 import { Boton } from "@/components/ui/Boton";
-import { Estado } from "@/components/ui/Estado";
 import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Chip } from "@/components/ui/Chip";
@@ -31,6 +31,7 @@ export interface AdminTareasProps {
 }
 
 export function AdminTareas({ embedded = false }: AdminTareasProps) {
+  const router = useRouter();
   const [cargando, setCargando] = useState(true);
   const { mostrarAviso } = useAviso();
 
@@ -40,9 +41,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   // Filtros
   const [filtroPersona, setFiltroPersona] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("");
-
-  const [modalNuevaTarea, setModalNuevaTarea] = useState(false);
-  const [nuevaTareaAsignadoA, setNuevaTareaAsignadoA] = useState("");
 
   // Modal Aceptar Tarea con corrección opcional de minutos
   const [modalAceptarTarea, setModalAceptarTarea] = useState<Tarea | null>(null);
@@ -78,33 +76,10 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     cargarDatos();
   }, [cargarDatos]);
 
-  // Leer parámetros de URL al montar (?nueva=1&persona=<id>)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      if (sp.get("nueva") === "1") {
-        const pers = sp.get("persona");
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (pers) setNuevaTareaAsignadoA(pers);
-        setModalNuevaTarea(true);
-      }
-    }
-  }, []);
-
-  const formatearFechaHora = (iso?: string | null) => {
-    if (!iso) return "—";
-    try {
-      // Una fecha sola (AAAA-MM-DD) se lee al mediodía local: a medianoche UTC en Colombia sale el día anterior.
-      const d = new Date(iso.length <= 10 ? `${iso}T12:00:00` : iso);
-      return d.toLocaleDateString("es-CO", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return iso;
-    }
-  };
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("nueva") === "1") router.replace(`/trabajos/nuevo?desde=tareas&persona=${encodeURIComponent(sp.get("persona") ?? "")}`);
+  }, [router]);
 
   const [destino, setDestino] = useState("");
   useEffect(() => {
@@ -176,26 +151,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     }
   };
 
-  // Cancelar no se puede deshacer: primero se pide confirmación en un modal.
-  const [tareaACancelar, setTareaACancelar] = useState<Tarea | null>(null);
-  const [cancelando, setCancelando] = useState(false);
-  const handleCancelarTarea = (tarea: Tarea) => setTareaACancelar(tarea);
-  const handleConfirmarCancelar = async () => {
-    if (!tareaACancelar) return;
-    setCancelando(true);
-    try {
-      await api.adminCancelarTarea(tareaACancelar.id);
-      mostrarAviso({ tipo: "info", titulo: "Tarea cancelada" });
-      setTareaACancelar(null);
-      await cargarDatos();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      mostrarAviso({ tipo: "error", titulo: "No se pudo cancelar", texto: e.message || "Error al cancelar." });
-    } finally {
-      setCancelando(false);
-    }
-  };
-
   const tareasPorRevisar = tareas.filter((t) => t.estado === "hecha");
   const tareasFiltradas = tareas.filter((t) => {
     if (filtroPersona && t.asignado_a !== filtroPersona) return false;
@@ -217,9 +172,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
             </div>
             <Boton
               variante="primario"
-              onClick={() => {
-                setModalNuevaTarea(true);
-              }}
+              onClick={() => router.push("/trabajos/nuevo?desde=tareas")}
             >
               <Plus size={15} style={{ marginRight: 6 }} />
               Asignar trabajo
@@ -232,9 +185,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--rc-esp-16)" }}>
           <Boton
             variante="primario"
-            onClick={() => {
-              setModalNuevaTarea(true);
-            }}
+            onClick={() => router.push("/trabajos/nuevo?desde=admin")}
           >
             <Plus size={15} style={{ marginRight: 6 }} />
             Asignar trabajo
@@ -321,6 +272,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                     </div>
 
                     <div className={styles.reviewAcciones}>
+                      <Link className={flujo.enlace} href={`/trabajos/${t.id}?desde=tareas`}>Abrir</Link>
                       <Boton
                         variante="peligro"
                         onClick={() => {
@@ -350,13 +302,13 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               <h2 className={styles.sectionTitle}>Todas las tareas ({tareasFiltradas.length})</h2>
 
               {/* Filtros */}
-              <div className={styles.filtrosRow}>
+              <div className={flujo.filtrosTrabajo}>
                 <select
-                  className={styles.selectCompacto}
+                  aria-label="Filtrar por persona"
                   value={filtroPersona}
                   onChange={(e) => setFiltroPersona(e.target.value)}
                 >
-                  <option value="">Todas las personas</option>
+                  <option value="">Cualquier persona</option>
                   {miembrosAprobados.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.nombre}
@@ -365,11 +317,11 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                 </select>
 
                 <select
-                  className={styles.selectCompacto}
+                  aria-label="Filtrar por estado"
                   value={filtroEstado}
                   onChange={(e) => setFiltroEstado(e.target.value)}
                 >
-                  <option value="">Todos los estados</option>
+                  <option value="">Todo estado</option>
                   <option value="pendiente">Pendiente</option>
                   <option value="hecha">Por revisar (hecha)</option>
                   <option value="aceptada">Aceptada</option>
@@ -386,194 +338,14 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                 textoVacio="Intenta ajustando los filtros de persona o estado."
               />
             ) : (
-              <>
-                <div className={styles.desktopTable}>
-                  <Tabla>
-                    <thead>
-                      <tr>
-                        <th>Título / Aviso</th>
-                        <th>Persona</th>
-                        <th>Estado</th>
-                        <th>Valor</th>
-                        <th style={{ textAlign: "right" }}>Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tareasFiltradas.map((t) => (
-                        <TablaFila key={t.id}>
-                          <td>
-                            <div style={{ fontWeight: 600 }}>{t.titulo}</div>
-                            {t.enlace_medios && (
-                              <div style={{ marginTop: 4 }}>
-                                <EnlaceDrive enlace={t.enlace_medios} />
-                              </div>
-                            )}
-                            {t.fecha_limite && (
-                              <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)", display: "flex", alignItems: "center", gap: 4 }}>
-                                <Calendar size={11} /> Entrega: {formatearFechaHora(t.fecha_limite)}
-                              </div>
-                            )}
-                          </td>
-                          <td>{t.asignado?.nombre || "—"}</td>
-                          <td>
-                            <Estado
-                              variante={
-                                t.estado === "aceptada"
-                                  ? "aprobado"
-                                  : t.estado === "rechazada" || t.estado === "cancelada"
-                                  ? "suspendido"
-                                  : "pendiente"
-                              }
-                            >
-                              {t.estado === "hecha" ? "por revisar" : t.estado}
-                            </Estado>
-                          </td>
-                          <td>
-                            {t.estado === "aceptada" && t.precio_congelado != null ? (
-                              <div style={{ display: "flex", flexDirection: "column" }}>
-                                <span style={{ fontWeight: 600, color: "var(--rc-verde-texto)" }}>
-                                  $ {t.precio_congelado.toLocaleString("es-CO")}
-                                </span>
-                                {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && (
-                                  <span style={{ fontSize: 10, color: "var(--rc-texto-secundario)" }}>
-                                    {t.cantidad_aceptada} min × $ {(t.precio_unitario_congelado || 0).toLocaleString("es-CO")}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span style={{ color: "var(--rc-texto-tenue)", fontSize: 11 }}>—</span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: "right" }}>
-                            {t.estado === "hecha" && (
-                              <div style={{ display: "inline-flex", gap: 6 }}>
-                                <Boton
-                                  variante="peligro"
-                                  tamano="sm"
-                                  onClick={() => {
-                                    setTareaARechazar(t);
-                                    setMotivoRechazo("");
-                                  }}
-                                >
-                                  Rechazar
-                                </Boton>
-                                <Boton
-                                  variante="primario"
-                                  tamano="sm"
-                                  onClick={() => handleAbrirAceptarTarea(t)}
-                                >
-                                  Aceptar
-                                </Boton>
-                              </div>
-                            )}
-                            {t.estado === "pendiente" && (
-                              <Boton
-                                variante="fantasma"
-                                tamano="sm"
-                                onClick={() => handleCancelarTarea(t)}
-                              >
-                                Cancelar
-                              </Boton>
-                            )}
-                            {t.estado !== "hecha" && t.estado !== "pendiente" && (
-                              <span style={{ fontSize: 11, color: "var(--rc-texto-secundario)" }}>
-                                {formatearFechaHora(t.resuelta_en || t.creada_en)}
-                              </span>
-                            )}
-                          </td>
-                        </TablaFila>
-                      ))}
-                    </tbody>
-                  </Tabla>
-                </div>
-
-                {/* Móvil: Tarjetas apiladas */}
-                <div className={styles.mobileCards}>
-                  {tareasFiltradas.map((t) => (
-                    <article key={t.id} className={styles.mobileCard}>
-                      <div className={styles.mobileCardHeader}>
-                        <div>
-                          <div className={styles.mobileCardName}>{t.titulo}</div>
-                          <div className={styles.mobileCardEmail}>
-                            Para: <strong>{t.asignado?.nombre || "—"}</strong>
-                          </div>
-                        </div>
-                        <Estado
-                          variante={
-                            t.estado === "aceptada"
-                              ? "aprobado"
-                              : t.estado === "rechazada" || t.estado === "cancelada"
-                              ? "suspendido"
-                              : "pendiente"
-                          }
-                        >
-                          {t.estado === "hecha" ? "por revisar" : t.estado}
-                        </Estado>
-                      </div>
-
-                      {t.enlace_medios && (
-                        <div>
-                          <EnlaceDrive enlace={t.enlace_medios} />
-                        </div>
-                      )}
-
-                      {t.estado === "aceptada" && t.precio_congelado != null && (
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--rc-verde-texto)" }}>
-                          Valor congelado: $ {t.precio_congelado.toLocaleString("es-CO")}
-                          {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && (
-                            <span style={{ fontSize: 11, fontWeight: "normal", color: "var(--rc-texto-secundario)", marginLeft: 6 }}>
-                              ({t.cantidad_aceptada} min × $ {(t.precio_unitario_congelado || 0).toLocaleString("es-CO")})
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {t.estado === "hecha" && (
-                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                          <Boton
-                            variante="peligro"
-                            tamano="sm"
-                            onClick={() => {
-                              setTareaARechazar(t);
-                              setMotivoRechazo("");
-                            }}
-                          >
-                            Rechazar
-                          </Boton>
-                          <Boton
-                            variante="primario"
-                            tamano="sm"
-                            onClick={() => handleAbrirAceptarTarea(t)}
-                          >
-                            Aceptar
-                          </Boton>
-                        </div>
-                      )}
-
-                      {t.estado === "pendiente" && (
-                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                          <Boton
-                            variante="fantasma"
-                            tamano="sm"
-                            onClick={() => handleCancelarTarea(t)}
-                          >
-                            Cancelar
-                          </Boton>
-                        </div>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              </>
+              <ul className={flujo.listaTrabajos}>
+                {tareasFiltradas.map(t => <FilaTrabajo key={t.id} tarea={t} origen={embedded ? "admin" : "tareas"}
+                  id={t.estado === "hecha" ? undefined : `tarea-${t.id}`} resaltado={destino === String(t.id)} />)}
+              </ul>
             )}
           </section>
         </div>
       )}
-
-      {/* ========================================================= */}
-      {/* MODAL: NUEVA TAREA (SIMPLIFICADO: SOLO AVISO Y PERSONA)    */}
-      {/* ========================================================= */}
-      {modalNuevaTarea && <FormularioAsignacion personaInicial={nuevaTareaAsignadoA} onCerrar={() => setModalNuevaTarea(false)} onGuardar={() => { setModalNuevaTarea(false); setNuevaTareaAsignadoA(""); void cargarDatos(); }} />}
 
       {/* ========================================================= */}
       {/* MODAL: ACEPTAR TAREA (con ajuste de minutos si aplica)    */}
@@ -644,19 +416,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               </div>
             )}
           </div>
-        </Modal>
-      )}
-
-      {tareaACancelar && (
-        <Modal
-          abierto={true}
-          titulo="Cancelar tarea"
-          descripcion={`La tarea "${tareaACancelar.titulo}" de ${tareaACancelar.asignado?.nombre || "la persona"} quedará cancelada y no se puede deshacer.`}
-          onCerrar={() => setTareaACancelar(null)}
-          accionPrimaria={<Boton variante="peligro" cargando={cancelando} onClick={handleConfirmarCancelar}>Sí, cancelar tarea</Boton>}
-          accionSecundaria={<Boton variante="secundario" onClick={() => setTareaACancelar(null)} disabled={cancelando}>Volver</Boton>}
-        >
-          {null}
         </Modal>
       )}
 

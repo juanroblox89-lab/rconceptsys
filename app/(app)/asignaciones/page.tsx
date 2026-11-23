@@ -2,42 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { CalendarDays, CircleAlert, Filter, Plus } from "lucide-react";
 import { Boton } from "@/components/ui/Boton";
-import { FormularioAsignacion } from "@/components/FormularioAsignacion";
+import { FilaTrabajo, trabajoVencido } from "@/components/FilaTrabajo";
+import flujo from "@/components/FlujoTrabajo.module.css";
 import { api } from "@/lib/api";
-import { AsignacionResumen, EstadoTarea, Perfil } from "@/lib/types";
-import { Avatar } from "@/components/ui/Avatar";
+import { AsignacionResumen, Perfil } from "@/lib/types";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import styles from "./asignaciones.module.css";
-
-const ETIQUETAS_ESTADO: Record<EstadoTarea, string> = {
-  pendiente: "Pendiente",
-  hecha: "Entregada",
-  aceptada: "Aprobada",
-  rechazada: "Rechazada",
-  cancelada: "Cancelada",
-};
-
-function hoyISO(): string {
-  const ahora = new Date();
-  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
-}
-
-function fmtFecha(iso: string | null | undefined): string {
-  if (!iso) return "Sin fecha";
-  const fecha = new Date(iso.length <= 10 ? `${iso}T12:00:00` : iso);
-  if (Number.isNaN(fecha.getTime())) return "Sin fecha";
-  return fecha.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function estaVencida(asignacion: AsignacionResumen): boolean {
-  const t = asignacion.tarea;
-  if (!t.fecha_limite) return false;
-  if (t.estado !== "pendiente" && t.estado !== "rechazada") return false;
-  return t.fecha_limite < hoyISO();
-}
 
 export default function AsignacionesPage() {
   const router = useRouter();
@@ -47,7 +19,6 @@ export default function AsignacionesPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  const [formulario, setFormulario] = useState<AsignacionResumen["tarea"] | "nueva" | null>(null);
   const [destino, setDestino] = useState("");
 
   useEffect(() => {
@@ -117,14 +88,14 @@ export default function AsignacionesPage() {
 
   const visibles = useMemo(() => {
     if (estado !== "vencida") return asignaciones;
-    return asignaciones.filter((a) => estaVencida(a));
+    return asignaciones.filter((a) => trabajoVencido(a.tarea));
   }, [asignaciones, estado]);
 
   const conteo = useMemo(() => {
     const base: Record<string, number> = { pendiente: 0, hecha: 0, aceptada: 0, rechazada: 0, vencida: 0 };
     for (const a of asignaciones) {
       base[a.tarea.estado] = (base[a.tarea.estado] ?? 0) + 1;
-      if (estaVencida(a)) base.vencida += 1;
+      if (trabajoVencido(a.tarea)) base.vencida += 1;
     }
     return base;
   }, [asignaciones]);
@@ -141,7 +112,7 @@ export default function AsignacionesPage() {
             {conteo.vencida > 0 ? ` · ${conteo.vencida} vencida${conteo.vencida === 1 ? "" : "s"}` : ""}
           </p>
         </div>
-        <Boton onClick={() => setFormulario("nueva")} disabled={!yo}><Plus size={16} aria-hidden="true" /> Asignar trabajo</Boton>
+        <Boton onClick={() => router.push("/trabajos/nuevo?desde=asignaciones")} disabled={!yo}><Plus size={16} aria-hidden="true" /> Asignar trabajo</Boton>
         <button
           type="button"
           className={styles.botonFiltros}
@@ -223,50 +194,11 @@ export default function AsignacionesPage() {
           </p>
         </div>
       ) : (
-        <ul className={styles.lista}>
-          {visibles.map(({ tarea, novedad }) => {
-            const vencida = estaVencida({ tarea, novedad });
-            return (
-              <li key={tarea.id} id={`trabajo-${tarea.id}`} className={`${styles.item} ${destino === String(tarea.id) ? styles.resaltado : ""}`}>
-                <div className={styles.itemEnlace}>
-                  <div className={styles.itemFila}>
-                    <span className={styles.itemTitulo}>{tarea.cliente ? `${tarea.cliente.nombre} · ` : ""}{tarea.descripcion || tarea.titulo}</span>
-                    {novedad && <span className={styles.itemNuevo} aria-label="Nueva" />}
-                  </div>
-                  <div className={styles.itemMeta}>
-                    <span className={styles.itemPersona}>
-                      {tarea.asignado ? (
-                        <Avatar
-                          tamano={24}
-                          src={tarea.asignado.foto_path || undefined}
-                          iniciales={tarea.asignado.nombre.charAt(0).toUpperCase()}
-                          alt={tarea.asignado.nombre}
-                        />
-                      ) : null}
-                      {tarea.asignado?.nombre ?? "Sin asignar"}
-                    </span>
-                    <span>{tarea.tipo?.nombre ?? "Trabajo"}</span>
-                    <span className={styles.itemFecha}>
-                      {tarea.fecha_limite ? `Límite ${fmtFecha(tarea.fecha_limite)}` : "Sin fecha límite"}
-                    </span>
-                  </div>
-                </div>
-                {(tarea.estado === "pendiente" || tarea.estado === "rechazada") && <Boton variante="secundario" onClick={() => setFormulario(tarea)}>Editar</Boton>}
-                {tarea.estado === "hecha" && <Link href={`/tareas?tarea=${tarea.id}#tarea-${tarea.id}`}>Revisar entrega</Link>}
-                <span
-                  className={`${styles.estado} ${
-                    vencida ? styles.estadoVencida : tarea.estado === "aceptada" ? styles.estadoAprobada : ""
-                  }`}
-                >
-                  {vencida ? "Vencida" : ETIQUETAS_ESTADO[tarea.estado]}
-                </span>
-              </li>
-            );
-          })}
+        <ul className={flujo.listaTrabajos}>
+          {visibles.map(({ tarea, novedad }) => <FilaTrabajo key={tarea.id} tarea={tarea} novedad={novedad} origen="asignaciones"
+            id={`trabajo-${tarea.id}`} resaltado={destino === String(tarea.id)} />)}
         </ul>
       )}
-      {formulario && <FormularioAsignacion tarea={formulario === "nueva" ? undefined : formulario}
-        onCerrar={() => setFormulario(null)} onGuardar={() => { setFormulario(null); void cargar(); }} />}
     </div>
   );
 }

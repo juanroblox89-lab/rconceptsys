@@ -7,36 +7,41 @@
       "pasos": [
         {
           "orden": 1,
+          "archivo_funcion": "components/FormularioAsignacion.tsx:FormularioAsignacion",
+          "descripcion": "Formulario compartido en /trabajos/nuevo desde Tareas, Trabajos y perfil; Especificaciones, cliente, persona, tipo, fecha y carpeta operativa"
+        },
+        {
+          "orden": 2,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTarea",
           "descripcion": "Admin envía POST /api/admin/tareas con tipo_id, titulo, descripcion, asignado_a, fecha_limite"
         },
         {
-          "orden": 2,
+          "orden": 3,
           "archivo_funcion": "backend/internal/store/store.go:CrearTarea",
-          "descripcion": "Store crea la tarea en estado 'pendiente' con precio_congelado = precio del tipo_trabajo"
+          "descripcion": "Store crea la tarea en estado pendiente; el precio se congela al aprobar la entrega"
         },
         {
-          "orden": 3,
+          "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/push.go:AvisarTareaNueva",
           "descripcion": "Encola aviso 'tarea-nueva' para la persona asignada"
         },
         {
-          "orden": 4,
+          "orden": 5,
           "archivo_funcion": "backend/internal/httpapi/notificaciones.go:encolarAviso",
           "descripcion": "Llama a Store.EncolarNotificacion (RPC rc_encolar_notificacion)"
         },
         {
-          "orden": 5,
+          "orden": 6,
           "archivo_funcion": "supabase/migrations/013_notificaciones.sql:rc_encolar_notificacion",
           "descripcion": "Función SQL que inserta en notificaciones con agrupación por ventana"
         },
         {
-          "orden": 6,
+          "orden": 7,
           "archivo_funcion": "backend/internal/httpapi/notificaciones.go:despacharYa",
           "descripcion": "Intenta enviar inmediatamente llamando a enviarColaNotificaciones"
         },
         {
-          "orden": 7,
+          "orden": 8,
           "archivo_funcion": "backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones",
           "descripcion": "Reclama notificaciones (RPC rc_reclamar_notificaciones), cifra y envía Web Push via VAPID"
         }
@@ -484,6 +489,119 @@
           "orden": 12,
           "archivo_funcion": "backend/internal/httpapi/auth.go:MiddlewareAuth",
           "descripcion": "Extrae Bearer token de Authorization o Cookie; verifica con AuthVerifier; inyecta perfil en context (usuarioKey)"
+        }
+      ]
+    },
+    {
+      "id": "detalle-trabajo-f7",
+      "nombre": "Detalle de trabajo",
+      "descripcion": "Trabajos y Todas las tareas comparten filas y una página individual para consultar, editar o cancelar.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/FilaTrabajo.tsx:FilaTrabajo",
+          "descripcion": "Abrir dirige a /trabajos/[id]; se conserva el origen para volver."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminGetTarea",
+          "descripcion": "GET /api/admin/tareas/{id}: detalle para administradores."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/PaginaTrabajo.tsx:PaginaTrabajo",
+          "descripcion": "Muestra datos, estado e historial disponible. Pendientes y devueltos se editan con el formulario compartido."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
+          "descripcion": "PATCH de los campos modificados y aviso a la persona."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaCancelar",
+          "descripcion": "POST de cancelación tras confirmación."
+        }
+      ]
+    },
+    {
+      "id": "ficha-cliente-f7",
+      "nombre": "Ficha y foto del cliente",
+      "descripcion": "La ficha de cliente es una página y calcula sus estadísticas en el backend.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/ClientesPanel.tsx:ClientesPanel",
+          "descripcion": "Lista clientes y abre /clientes/[id] mediante Ver."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminGetCliente",
+          "descripcion": "GET de ficha con trabajos del cliente y estadísticas de sus estados y marcas de entrega."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/PaginaCliente.tsx:PaginaCliente",
+          "descripcion": "Ficha con notas, referencias, estadísticas y trabajos; edición en /clientes/[id]/editar."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminPostClienteFoto",
+          "descripcion": "POST multipart con límite de 1 MB y validación del formato por contenido."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/supa/clientes_f7.go:GuardarFotoCliente",
+          "descripcion": "Guarda por cliente en el bucket privado clientes-fotos (migración 019)."
+        },
+        {
+          "orden": 6,
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminGetClienteFoto",
+          "descripcion": "Entrega autenticada de la foto vigente."
+        }
+      ]
+    },
+    {
+      "id": "cliente-picker-f7",
+      "nombre": "Referencia de Drive con Google Picker",
+      "descripcion": "Archivo o carpeta de referencia, independiente de las carpetas operativas.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePicker",
+          "descripcion": "Devuelve configuración pública del mismo proyecto OAuth sin exponer el token del equipo."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "components/PickerDriveCliente.tsx:PickerDriveCliente",
+          "descripcion": "Google Identity Services autoriza drive.file y abre Google Picker para seleccionar archivo o carpeta."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:referenciaDriveCliente",
+          "descripcion": "El backend comprueba acceso con el Drive conectado y obtiene el nombre canónico."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPatchCliente",
+          "descripcion": "Persiste id, título y enlace de la referencia sin tocar paquete ni carpetas operativas."
+        }
+      ]
+    },
+    {
+      "id": "ria-dictado-f7",
+      "nombre": "RIA: dictado y conversación",
+      "descripcion": "Chat privado con sugerencia por rol, seguimiento de scroll y dictado editable.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "app/(app)/ria/page.tsx:RIAPage",
+          "descripcion": "Saludo, sugerencia, mensajes sin etiquetas y Pensando. El contenedor queda al final al enviar y no arrastra al lector que subió a revisar."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "lib/use-dictado-ria.ts:useDictadoRIA",
+          "descripcion": "Web Speech API; los modelos de chat configurados no exponen transcripción en el contrato de RIA. El texto se agrega al borrador, no se envía solo."
         }
       ]
     }

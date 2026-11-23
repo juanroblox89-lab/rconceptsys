@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"rconceptsys/backend/internal/store"
@@ -14,6 +15,7 @@ import (
 type destinoDrive struct {
 	titulo, ruta  string
 	destinatarios map[string]bool
+	admins        map[string]bool
 }
 type cambioDrive struct {
 	FileID  string `json:"fileId"`
@@ -86,8 +88,13 @@ func (a *API) revisarCambiosDrive(ctx context.Context) error {
 			aviso := AvisoPush{Titulo: "Cambio en Drive · " + d.titulo, Cuerpo: recortar(c.File.Name, 120), URL: d.ruta, Etiqueta: "drive"}
 			for perfil := range d.destinatarios {
 				n := aviso
+				retorno := d.ruta
+				if !d.admins[perfil] && (retorno == "/clientes" || strings.HasPrefix(retorno, "/clientes/")) {
+					retorno = "/tareas"
+					n.URL = retorno
+				}
 				if c.FileID != "" && driveIDValido(c.FileID) {
-					n.URL = "/drive-cambio?archivo=" + url.QueryEscape(c.FileID) + "&volver=" + url.QueryEscape(d.ruta)
+					n.URL = "/drive-cambio?archivo=" + url.QueryEscape(c.FileID) + "&volver=" + url.QueryEscape(retorno)
 				}
 				e := a.encolarAviso(ctx, perfil, n, fmt.Sprintf("drive:%s:%s:%s", padre, c.FileID, c.Time), padre, 2*time.Minute)
 				if e != nil {
@@ -151,7 +158,7 @@ func (a *API) destinosDrive(ctx context.Context) (map[string]destinoDrive, error
 		if t.DriveCarpetaID != nil {
 			d, ok := destinos[*t.DriveCarpetaID]
 			if !ok {
-				d = destinoDrive{datosAvisoTarea(t), urlTarea(t.ID), acceso()}
+				d = destinoDrive{datosAvisoTarea(t), urlTarea(t.ID), acceso(), admins}
 			}
 			if miembros[t.AsignadoA] {
 				d.destinatarios[t.AsignadoA] = true
@@ -169,7 +176,7 @@ func (a *API) destinosDrive(ctx context.Context) (map[string]destinoDrive, error
 			sufijo string
 		}{{c.DriveCarpetaID, ""}, {c.MaterialCarpetaID, " · Material del lugar"}, {c.ProductoCarpetaID, " · Producto"}} {
 			if f.id != nil {
-				destinos[*f.id] = destinoDrive{c.Nombre + f.sufijo, "/clientes", p}
+				destinos[*f.id] = destinoDrive{c.Nombre + f.sufijo, fmt.Sprintf("/clientes/%d", c.ID), p, admins}
 			}
 		}
 	}

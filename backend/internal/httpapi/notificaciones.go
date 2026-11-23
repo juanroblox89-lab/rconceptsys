@@ -273,7 +273,7 @@ func (a *API) encolarVencimientos(ctx context.Context) error {
 		clave := fmt.Sprintf("vencio:%d:%s", t.ID, *t.FechaLimite)
 		aviso := AvisoPush{Titulo: "Venció el trabajo", Cuerpo: datosAvisoTarea(t), URL: urlTarea(t.ID), Etiqueta: "vencio"}
 		fallos = errors.Join(fallos, a.encolarAviso(ctx, t.AsignadoA, aviso, clave, "", 0))
-		aviso.URL = fmt.Sprintf("/asignaciones?trabajo=%d#trabajo-%d", t.ID, t.ID)
+		aviso.URL = fmt.Sprintf("/trabajos/%d?desde=asignaciones", t.ID)
 		for _, m := range miembros {
 			if m.EsAdmin {
 				fallos = errors.Join(fallos, a.encolarAviso(ctx, m.ID, aviso, clave, "", 0))

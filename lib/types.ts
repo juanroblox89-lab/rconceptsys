@@ -165,6 +165,9 @@ export interface ErrorApi {
 // ==========================================
 
 export interface Cliente {
+  drive_referencia_id?: string | null;
+  drive_referencia_nombre?: string | null;
+  drive_referencia_url?: string | null;
  foto_url?: string | null;
  drive_carpeta_id?: string | null;
  material_carpeta_id?: string | null;
@@ -176,6 +179,20 @@ export interface Cliente {
   drive_url?: string | null;
   notas?: string | null;
   creado_en: string;
+}
+
+export interface FichaClienteDatos {
+  cliente: Cliente;
+  trabajos: Tarea[];
+  estadisticas: {
+    total: number;
+    activos: number;
+    entregados: number;
+    por_revisar: number;
+    aprobados: number;
+    cancelados: number;
+    ultima_entrega: string | null;
+  };
 }
 
 export type UnidadTrabajo = 'trabajo' | 'minuto';

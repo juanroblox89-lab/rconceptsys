@@ -60,17 +60,20 @@ type dbChatMensaje struct {
 
 // Modelos DB PostgREST para F2 y F3
 type dbCliente struct {
-	FotoURL           *string `json:"foto_url"`
-	DriveCarpetaID    *string `json:"drive_carpeta_id"`
-	MaterialCarpetaID *string `json:"material_carpeta_id"`
-	ProductoCarpetaID *string `json:"producto_carpeta_id"`
-	ID                int     `json:"id"`
-	Nombre            string  `json:"nombre"`
-	Activo            bool    `json:"activo"`
-	Paquete           *string `json:"paquete"`
-	DriveURL          *string `json:"drive_url"`
-	Notas             *string `json:"notas"`
-	CreadoEn          string  `json:"creado_en"`
+	DriveReferenciaID     *string `json:"drive_referencia_id"`
+	DriveReferenciaNombre *string `json:"drive_referencia_nombre"`
+	DriveReferenciaURL    *string `json:"drive_referencia_url"`
+	FotoURL               *string `json:"foto_url"`
+	DriveCarpetaID        *string `json:"drive_carpeta_id"`
+	MaterialCarpetaID     *string `json:"material_carpeta_id"`
+	ProductoCarpetaID     *string `json:"producto_carpeta_id"`
+	ID                    int     `json:"id"`
+	Nombre                string  `json:"nombre"`
+	Activo                bool    `json:"activo"`
+	Paquete               *string `json:"paquete"`
+	DriveURL              *string `json:"drive_url"`
+	Notas                 *string `json:"notas"`
+	CreadoEn              string  `json:"creado_en"`
 }
 
 type dbTipoTrabajo struct {
@@ -644,7 +647,8 @@ func convertirCliente(dc *dbCliente) *store.Cliente {
 	}
 	t, _ := time.Parse(time.RFC3339, dc.CreadoEn)
 	return &store.Cliente{
-		ID:      dc.ID,
+		ID:                dc.ID,
+		DriveReferenciaID: dc.DriveReferenciaID, DriveReferenciaNombre: dc.DriveReferenciaNombre, DriveReferenciaURL: dc.DriveReferenciaURL,
 		FotoURL: dc.FotoURL, DriveCarpetaID: dc.DriveCarpetaID, MaterialCarpetaID: dc.MaterialCarpetaID, ProductoCarpetaID: dc.ProductoCarpetaID,
 		Nombre:   dc.Nombre,
 		Activo:   dc.Activo,
@@ -842,17 +846,35 @@ func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTar
 	if filtro.ClienteID != nil {
 		q.Set("cliente_id", fmt.Sprintf("eq.%d", *filtro.ClienteID))
 	}
-	q.Set("order", "creada_en.desc")
-
-	var rows []dbTarea
-	if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
-		return nil, err
+	q.Set("order", "creada_en.desc,id.desc")
+	if filtro.ClienteID == nil {
+		var rows []dbTarea
+		if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+			return nil, err
+		}
+		res := make([]*store.Tarea, 0, len(rows))
+		for i := range rows {
+			res = append(res, convertirTarea(&rows[i]))
+		}
+		return res, nil
 	}
-	res := make([]*store.Tarea, len(rows))
-	for i := range rows {
-		res[i] = convertirTarea(&rows[i])
+	const pagina = 500
+	res := []*store.Tarea{}
+	q.Set("limit", strconv.Itoa(pagina))
+	for offset := 0; ; {
+		q.Set("offset", strconv.Itoa(offset))
+		var rows []dbTarea
+		if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			return res, nil
+		}
+		for i := range rows {
+			res = append(res, convertirTarea(&rows[i]))
+		}
+		offset += len(rows)
 	}
-	return res, nil
 }
 
 func (s *SupabaseStore) ContarTareasPorRevisar(ctx context.Context) (int, error) {

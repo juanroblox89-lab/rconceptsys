@@ -5,6 +5,7 @@ import {
   Rol,
   TipoTrabajo,
   Cliente,
+  FichaClienteDatos,
   Tarea,
   Factura,
   FacturaMiaRespuesta,
@@ -385,6 +386,13 @@ export const api = {
       body: JSON.stringify(campos),
     }),
 
+  adminGetCliente: (id: number) => fetchApi<FichaClienteDatos>(`/api/admin/clientes/${id}`),
+  adminSubirFotoCliente: (id: number, foto: File) => {
+    const form = new FormData();
+    form.append('foto', foto);
+    return fetchApi<Cliente>(`/api/admin/clientes/${id}/foto`, { method: 'POST', body: form });
+  },
+  adminGetDrivePicker: () => fetchApi<{ cliente_id: string; clave: string; proyecto_id: string }>('/api/admin/drive/picker'),
   adminGetClientes: () => fetchApi<Cliente[]>('/api/admin/clientes'),
   adminPostCliente: (nombre: string) =>
     fetchApi<Cliente>('/api/admin/clientes', {
@@ -397,6 +405,7 @@ export const api = {
       body: JSON.stringify(campos),
     }),
 
+  adminGetTarea: (id: number) => fetchApi<Tarea>(`/api/admin/tareas/${id}`),
   adminGetTareas: (filtros?: { estado?: string; persona?: string }) => {
     const q = new URLSearchParams();
     if (filtros?.estado) q.set('estado', filtros.estado);
@@ -419,7 +428,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(tarea),
     }),
-  adminPatchTarea: (id: number, campos: Partial<{ tipo_id: number; asignado_a: string; descripcion: string; fecha_limite: string; drive_carpeta_id: string }>) => fetchApi<Tarea>(`/api/admin/tareas/${id}`, { method: 'PATCH', body: JSON.stringify(campos) }),
+  adminPatchTarea: (id: number, campos: Partial<{ tipo_id: number; asignado_a: string; descripcion: string; fecha_limite: string; drive_carpeta_id: string; drive_crear: string; forzar: boolean }>) => fetchApi<Tarea>(`/api/admin/tareas/${id}`, { method: 'PATCH', body: JSON.stringify(campos) }),
  adminClienteDrive: (id: number, datos: {crear?: boolean; carpeta_id?: string}) => fetchApi<Cliente>(`/api/admin/clientes/${id}/drive`, {method: 'POST',body:JSON.stringify(datos)}),
  adminAceptarTarea: (id: number, cantidad?: number) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/aceptar`, {

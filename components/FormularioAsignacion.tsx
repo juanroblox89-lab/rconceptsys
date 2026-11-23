@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
 import type { Cliente, Perfil, Pieza, Tarea, TipoTrabajo } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
 import { Campo } from "@/components/ui/Campo";
-import { Modal } from "@/components/ui/Modal";
 import { SelectorCarpetaTrabajo, type EleccionCarpeta } from "./SelectorCarpetaTrabajo";
 import styles from "./FlujoTrabajo.module.css";
 
 export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onGuardar }: {
   tarea?: Tarea; personaInicial?: string; onCerrar: () => void; onGuardar: (t: Tarea) => void;
 }) {
-  const formId = useId();
   const [catalogo, setCatalogo] = useState<{ clientes: Cliente[]; personas: Perfil[]; tipos: TipoTrabajo[]; piezas: Pieza[] } | null>(null);
   const [cliente, setCliente] = useState(String(tarea?.cliente_id ?? ""));
   const [persona, setPersona] = useState(tarea?.asignado_a ?? personaInicial);
@@ -57,12 +55,20 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       }
       const texto = descripcion.trim();
       if ((texto.match(/[\p{L}\p{N}]/gu) ?? []).length < 3) {
-        setError("Describe el trabajo con al menos tres letras o números.");
+        setError("Escribe las especificaciones con al menos tres letras o números.");
         return;
       }
       const datos = { asignado_a: persona, tipo_id: Number(tipo), fecha_limite: fecha, descripcion: texto, forzar,
         ...(carpeta.nombre.trim() ? { drive_crear: carpeta.nombre.trim() } : carpeta.id && carpeta.id !== tarea?.drive_carpeta_id ? { drive_carpeta_id: carpeta.id } : {}) };
-      if (tarea) onGuardar(await api.adminPatchTarea(tarea.id, datos));
+      if (tarea) {
+        const { asignado_a, tipo_id, fecha_limite, descripcion, ...otros } = datos;
+        onGuardar(await api.adminPatchTarea(tarea.id, { ...otros,
+          ...(tarea.asignado_a !== asignado_a ? { asignado_a } : {}),
+          ...(tarea.tipo_id !== tipo_id ? { tipo_id } : {}),
+          ...((tarea.fecha_limite ?? "") !== fecha_limite ? { fecha_limite } : {}),
+          ...(tarea.descripcion !== descripcion ? { descripcion } : {}),
+        }));
+      }
       else onGuardar(await api.adminPostTarea({ ...datos, cliente_id: Number(cliente), pieza_id: pieza ? Number(pieza) : null, titulo: [...texto].slice(0, 100).join("") }));
     } catch (e) {
       const fallo = e as { message?: string; codigo?: string };
@@ -70,11 +76,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
     } finally { setOcupado(false); }
   }
 
-  return <Modal className={styles.dialogo} titulo={alta ? "Crear cliente" : tarea ? "Editar trabajo" : "Asignar trabajo"}
-    onCerrar={() => { if (ocupado) return; if (alta) setAlta(false); else onCerrar(); }}
-    accionSecundaria={<Boton variante="secundario" disabled={ocupado} onClick={() => alta ? setAlta(false) : onCerrar()}>{alta ? "Volver al trabajo" : "Cancelar"}</Boton>}
-    accionPrimaria={catalogo && <Boton type="submit" form={formId} cargando={ocupado}>{alta ? "Crear y seleccionar" : tarea ? "Guardar cambios" : "Asignar trabajo"}</Boton>}>
-    <form id={formId} onSubmit={guardar} className={styles.form}>
+  return <form onSubmit={guardar} className={styles.form}>
       {!catalogo ? <p className={styles.ayuda}>{error ? <Boton variante="secundario" onClick={() => { setError(""); setIntento(intento + 1); }}>Reintentar</Boton> : "Cargando datos…"}</p> : alta ? <>
         <Campo etiqueta="Nombre del cliente" required maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} />
         <p className={styles.ayuda}>Tu asignación se conserva. Puedes completar la ficha y vincular Drive desde Clientes.</p>
@@ -88,15 +90,16 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         </>}
         <Campo como="select" etiqueta="Persona" required value={persona} onChange={(e) => { setPersona(e.target.value); setForzar(false); }}>
           <option value="">Selecciona a una persona</option>
+          {tarea && !catalogo.personas.some(p => p.id === tarea.asignado_a) && <option value={tarea.asignado_a}>{tarea.asignado?.nombre ?? "Asignación anterior"}</option>}
           {catalogo.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
         </Campo>
         <Campo como="select" etiqueta="Tipo de trabajo" required value={tipo} onChange={(e) => { setTipo(e.target.value); setForzar(false); }}>
           <option value="">Selecciona un tipo</option>
           {catalogo.tipos.filter((t) => t.activo || t.id === tarea?.tipo_id).map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
         </Campo>
-        <Campo type="date" etiqueta="Fecha de entrega" required value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        <Campo type="date" etiqueta="Fecha de entrega" required={!tarea || !!tarea.fecha_limite} value={fecha} onChange={(e) => setFecha(e.target.value)} />
         <SelectorCarpetaTrabajo key={cliente} padre={clienteActual?.drive_carpeta_id ?? ""} actual={tarea?.drive_carpeta_id} valor={carpeta} onChange={setCarpeta} />
-        <Campo como="textarea" filas={3} etiqueta="Descripción" required maxLength={1000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+        <Campo como="textarea" filas={5} etiqueta="Especificaciones" placeholder="En este video, coge los medios de..." required maxLength={1000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
         {!tarea && catalogo.piezas.some((p) => String(p.cliente_id) === cliente) && <Campo como="select" etiqueta="Pieza (opcional)" value={pieza} onChange={(e) => setPieza(e.target.value)}>
           <option value="">Sin pieza</option>
           {catalogo.piezas.filter((p) => String(p.cliente_id) === cliente).map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -105,7 +108,10 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
           !catalogo.personas.find((p) => p.id === persona)?.roles?.some((r) => r.id === catalogo.tipos.find((t) => String(t.id) === tipo)?.rol_id) &&
           <label><input type="checkbox" checked={forzar} onChange={(e) => setForzar(e.target.checked)} /> Asignar aunque el rol no coincida</label>}
       </>}
-      {error && <p className={styles.error} role="alert">{error}</p>}
-    </form>
-  </Modal>;
+    {error && <p className={styles.error} role="alert">{error}</p>}
+    {catalogo && <div className={styles.accionesFormulario}>
+      <Boton variante="secundario" disabled={ocupado} onClick={() => alta ? setAlta(false) : onCerrar()}>{alta ? "Volver al trabajo" : "Volver sin guardar"}</Boton>
+      <Boton type="submit" cargando={ocupado}>{alta ? "Crear y seleccionar" : tarea ? "Guardar cambios" : "Asignar trabajo"}</Boton>
+    </div>}
+  </form>;
 }

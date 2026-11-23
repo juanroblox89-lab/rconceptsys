@@ -129,7 +129,7 @@ export default function MiembroDetallePage({ params }: PageProps) {
                 </Boton>
               {yo?.es_admin && !miembro.es_admin && (
                 <div style={{ marginTop: "var(--rc-esp-8)" }}>
-                  <Boton variante="primario" style={{ width: "100%", height: "34px" }} onClick={() => router.push(`/tareas?nueva=1&persona=${encodeURIComponent(miembro.id)}`)}>
+                  <Boton variante="primario" style={{ width: "100%", height: "34px" }} onClick={() => router.push(`/trabajos/nuevo?desde=equipo&persona=${encodeURIComponent(miembro.id)}`)}>
                     <ClipboardList size={16} strokeWidth={1.75} style={{ marginRight: 6 }} />
                     Enviar trabajo
                   </Boton>

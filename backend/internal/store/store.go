@@ -77,17 +77,20 @@ type TipoTrabajo struct {
 }
 
 type Cliente struct {
-	FotoURL           *string   `json:"foto_url,omitempty"`
-	DriveCarpetaID    *string   `json:"drive_carpeta_id,omitempty"`
-	MaterialCarpetaID *string   `json:"material_carpeta_id,omitempty"`
-	ProductoCarpetaID *string   `json:"producto_carpeta_id,omitempty"`
-	ID                int       `json:"id"`
-	Nombre            string    `json:"nombre"`
-	Activo            bool      `json:"activo"`
-	Paquete           *string   `json:"paquete,omitempty"`
-	DriveURL          *string   `json:"drive_url,omitempty"`
-	Notas             *string   `json:"notas,omitempty"`
-	CreadoEn          time.Time `json:"creado_en"`
+	DriveReferenciaID     *string   `json:"drive_referencia_id,omitempty"`
+	DriveReferenciaNombre *string   `json:"drive_referencia_nombre,omitempty"`
+	DriveReferenciaURL    *string   `json:"drive_referencia_url,omitempty"`
+	FotoURL               *string   `json:"foto_url,omitempty"`
+	DriveCarpetaID        *string   `json:"drive_carpeta_id,omitempty"`
+	MaterialCarpetaID     *string   `json:"material_carpeta_id,omitempty"`
+	ProductoCarpetaID     *string   `json:"producto_carpeta_id,omitempty"`
+	ID                    int       `json:"id"`
+	Nombre                string    `json:"nombre"`
+	Activo                bool      `json:"activo"`
+	Paquete               *string   `json:"paquete,omitempty"`
+	DriveURL              *string   `json:"drive_url,omitempty"`
+	Notas                 *string   `json:"notas,omitempty"`
+	CreadoEn              time.Time `json:"creado_en"`
 }
 
 type EstadoTarea string
@@ -339,6 +342,8 @@ type Store interface {
 	ObtenerClientePorID(ctx context.Context, id int) (*Cliente, error)
 	CrearCliente(ctx context.Context, nombre string) (*Cliente, error)
 	ActualizarCliente(ctx context.Context, id int, campos map[string]any) (*Cliente, error)
+	GuardarFotoCliente(context.Context, int, string, string, []byte) error
+	LeerFotoCliente(context.Context, int, string) ([]byte, error)
 
 	// F2 y F3: Tareas
 	CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error)

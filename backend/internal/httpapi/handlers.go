@@ -92,6 +92,10 @@ func (a *API) Routes() http.Handler {
 	// F3: Solo Admin (Clientes y Estadísticas globales)
 	mux.HandleFunc("GET /api/admin/clientes", a.MiddlewareAuth(a.handleAdminGetClientes, true, true))
 	mux.HandleFunc("POST /api/admin/clientes", a.MiddlewareAuth(a.handleAdminPostCliente, true, true))
+	mux.HandleFunc("GET /api/admin/clientes/{id}", a.MiddlewareAuth(a.handleAdminGetCliente, true, true))
+	mux.HandleFunc("POST /api/admin/clientes/{id}/foto", a.MiddlewareAuth(a.handleAdminPostClienteFoto, true, true))
+	mux.HandleFunc("GET /api/admin/clientes/{id}/foto/{archivo}", a.MiddlewareAuth(a.handleAdminGetClienteFoto, true, true))
+	mux.HandleFunc("GET /api/admin/drive/picker", a.MiddlewareAuth(a.handleAdminDrivePicker, true, true))
 	mux.HandleFunc("PATCH /api/admin/clientes/{id}", a.MiddlewareAuth(a.handleAdminPatchCliente, true, true))
 	mux.HandleFunc("GET /api/admin/estadisticas", a.MiddlewareAuth(a.handleAdminGetEstadisticas, true, true))
 
@@ -129,6 +133,7 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /api/admin/drive/archivos", a.MiddlewareAuth(a.handleAdminGetDriveArchivos, true, true))
 	mux.HandleFunc("POST /api/admin/tareas/{id}/drive-carpeta", a.MiddlewareAuth(a.handleAdminPostTareaDriveCarpeta, true, true))
 
+	mux.HandleFunc("GET /api/admin/tareas/{id}", a.MiddlewareAuth(a.handleAdminGetTarea, true, true))
 	mux.HandleFunc("PATCH /api/admin/tareas/{id}", a.MiddlewareAuth(a.handleAdminPatchTarea, true, true))
 	mux.HandleFunc("POST /api/admin/clientes/{id}/drive", a.MiddlewareAuth(a.handleAdminClienteDrive, true, true))
 
@@ -1770,7 +1775,7 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 
 	for k := range campos {
 		switch k {
-		case "nombre", "activo", "paquete", "drive_url", "notas", "foto_url":
+		case "nombre", "activo", "paquete", "drive_url", "notas", "foto_url", "drive_referencia_id":
 		default:
 			ResponderError(w, 400, "campo_no_permitido", "Ese dato no se puede cambiar desde aquí.")
 			return
@@ -1780,6 +1785,21 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 		u, e := url.Parse(v)
 		if e != nil || u.Scheme != "https" || u.Host == "" {
 			ResponderError(w, 400, "foto_invalida", "La foto debe tener un enlace https válido.")
+			return
+		}
+	}
+	if v, ok := campos["drive_referencia_id"]; ok {
+		if v == nil {
+			campos["drive_referencia_nombre"], campos["drive_referencia_url"] = nil, nil
+		} else if ref, tipoOK := v.(string); tipoOK {
+			nombre, enlace, err := a.referenciaDriveCliente(r.Context(), ref)
+			if err != nil {
+				ResponderError(w, 422, "referencia_invalida", err.Error())
+				return
+			}
+			campos["drive_referencia_nombre"], campos["drive_referencia_url"] = nombre, enlace
+		} else {
+			ResponderError(w, 400, "referencia_invalida", "Selecciona un archivo o carpeta de Drive.")
 			return
 		}
 	}

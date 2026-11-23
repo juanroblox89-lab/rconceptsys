@@ -69,3 +69,10 @@ npx next start -p 3310
 - **Suite E2E Playwright con Auth Real y Fake Supabase Server**: `node scripts/e2e.mjs`
   - Ejecuta flujo completo de dos navegadores simultáneos: registro de nuevo usuario, intento fallido con contraseña incorrecta, aprobación por el admin con asignación de roles, verificación de bloqueo para cuentas pendientes, intercambio de mensajes en tiempo real vía polling y verificación de privacidad del correo de compañeros.
   - Genera capturas en `_qa/f0b/` a 375x812 y 1280x800.
+
+## 8. Interfaz F7
+
+- Trabajos: `/trabajos/nuevo` y `/trabajos/[id]` desde Tareas, Trabajos o el perfil de un miembro. Las entregas se revisan en la bandeja de Tareas.
+- Clientes: `/clientes/[id]` y `/clientes/[id]/editar`. Aplicar `supabase/migrations/019_clientes_f7.sql` antes de habilitar referencias y fotos. El bucket `clientes-fotos` es privado, accesible únicamente mediante la API de administración.
+- Google Picker: habilitar **Google Picker API** en el proyecto `rconcept-systems`; configurar en el entorno de Go `GOOGLE_PICKER_APP_ID` (número de proyecto) y `GOOGLE_PICKER_API_KEY` (clave restringida a Picker API y a los orígenes web de RConcept). Autorizar esos orígenes en el cliente web `GOOGLE_CLIENT_ID` ya existente. En Gestión debe estar conectado el Drive del equipo y la referencia elegida debe ser visible para esa cuenta.
+- QA visual sin credenciales: con Next de demo en `127.0.0.1:3313`, `node scripts/qa-f7.mjs` usa Edge headless y fixtures para API, dictado y Google. Prueba Go por separado, sin levantar dos servidores a la vez.
