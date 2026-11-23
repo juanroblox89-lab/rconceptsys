@@ -49,7 +49,8 @@ export default function MiFacturaPage() {
   const formatearFechaHora = (iso?: string | null) => {
     if (!iso) return "—";
     try {
-      const d = new Date(iso);
+      // Una fecha sola (AAAA-MM-DD) se lee al mediodía local: a medianoche UTC en Colombia sale el día anterior.
+      const d = new Date(iso.length <= 10 ? `T12:00:00` : iso);
       return d.toLocaleDateString("es-CO", {
         day: "2-digit",
         month: "2-digit",

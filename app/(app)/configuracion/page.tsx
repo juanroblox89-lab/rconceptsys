@@ -9,6 +9,7 @@ import { Campo } from "@/components/ui/Campo";
 import { Boton } from "@/components/ui/Boton";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import styles from "@/components/FlujoTrabajo.module.css";
+import conf from "./configuracion.module.css";
 
 const tipos: Array<[string, string]> = [
   ["tarea-nueva", "Trabajo asignado"], ["tarea-editada", "Trabajo actualizado"], ["chat", "Mensajes del equipo"], ["drive", "Cambios en Drive"], ["ria", "Respuesta de RIA"],
@@ -42,15 +43,15 @@ export default function ConfiguracionPage() {
       <form className={styles.form} onSubmit={guardar}>
         <h2>Notificaciones</h2>
         <p className={styles.ayuda}>Las menciones siempre llegan. El horario de silencio solo aplaza los avisos al dispositivo.</p>
-        <label><input type="checkbox" checked={prefs.silenciar_chat} onChange={(e) => setPrefs({ ...prefs, silenciar_chat: e.target.checked })} /> Silenciar chat del equipo</label>
-        <fieldset className={styles.lista} disabled={ocupado}>
+        <label className={conf.opcion}><input type="checkbox" checked={prefs.silenciar_chat} onChange={(e) => setPrefs({ ...prefs, silenciar_chat: e.target.checked })} /> Silenciar chat del equipo</label>
+        <fieldset className={conf.tarjeta} disabled={ocupado}>
           <legend>Tipos de aviso</legend>
-          {tipos.filter(([k]) => admin || !["entrega-hecha", "solicitud"].includes(k)).map(([k, texto]) => <label key={k}><input type="checkbox" checked={!prefs.tipos_silenciados.includes(k)} onChange={(e) => setPrefs({ ...prefs, tipos_silenciados: e.target.checked ? prefs.tipos_silenciados.filter((t) => t !== k) : [...prefs.tipos_silenciados, k] })} /> {texto}</label>)}
+          <div className={conf.opciones}>{tipos.filter(([k]) => admin || !["entrega-hecha", "solicitud"].includes(k)).map(([k, texto]) => <label key={k} className={conf.opcion}><input type="checkbox" checked={!prefs.tipos_silenciados.includes(k)} onChange={(e) => setPrefs({ ...prefs, tipos_silenciados: e.target.checked ? prefs.tipos_silenciados.filter((t) => t !== k) : [...prefs.tipos_silenciados, k] })} /> {texto}</label>)}</div>
         </fieldset>
-        <fieldset className={styles.lista} disabled={ocupado}>
+        <fieldset className={conf.tarjeta} disabled={ocupado}>
           <legend>Horario de silencio (hora de Bogotá)</legend>
-          <Campo etiqueta="Desde" type="time" value={prefs.silencio_desde} onChange={(e) => setPrefs({ ...prefs, silencio_desde: e.target.value })} />
-          <Campo etiqueta="Hasta" type="time" value={prefs.silencio_hasta} onChange={(e) => setPrefs({ ...prefs, silencio_hasta: e.target.value })} />
+          <div className={conf.horario}><Campo etiqueta="Desde" type="time" value={prefs.silencio_desde} onChange={(e) => setPrefs({ ...prefs, silencio_desde: e.target.value })} />
+          <Campo etiqueta="Hasta" type="time" value={prefs.silencio_hasta} onChange={(e) => setPrefs({ ...prefs, silencio_hasta: e.target.value })} /></div>
           <div><Boton variante="fantasma" onClick={() => setPrefs({ ...prefs, silencio_desde: "", silencio_hasta: "" })}>Quitar horario</Boton></div>
         </fieldset>
         <div><Boton type="submit" cargando={ocupado}>Guardar preferencias</Boton></div>

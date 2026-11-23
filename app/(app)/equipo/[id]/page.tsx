@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ClipboardList, MessagesSquare } from "lucide-react";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
@@ -19,6 +20,7 @@ interface PageProps {
 
 export default function MiembroDetallePage({ params }: PageProps) {
   const { id } = use(params);
+  const router = useRouter();
   const [yo, setYo] = useState<Perfil | null>(null);
   const [miembro, setMiembro] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -115,8 +117,9 @@ export default function MiembroDetallePage({ params }: PageProps) {
             </div>
 
             <div style={{ marginTop: "var(--rc-esp-8)", width: "100%", maxWidth: "240px" }}>
-              <Link href="/" style={{ display: "block" }}>
+              {/* Botones que navegan con el router: un <button> dentro de un <a> es HTML inválido. */}
                 <Boton
+                  onClick={() => router.push("/")}
                   variante="vidrio"
                   envoltorioClassName="rc-escena-vidrio--bloque"
                   style={{ width: "100%", height: "34px" }}
@@ -124,17 +127,13 @@ export default function MiembroDetallePage({ params }: PageProps) {
                   <MessagesSquare size={16} strokeWidth={1.75} style={{ marginRight: 6 }} />
                   Enviar mensaje en el chat
                 </Boton>
-              </Link>
               {yo?.es_admin && !miembro.es_admin && (
-                <Link
-                  href={`/tareas?nueva=1&persona=${encodeURIComponent(miembro.id)}`}
-                  style={{ display: "block", marginTop: "var(--rc-esp-8)" }}
-                >
-                  <Boton variante="primario" style={{ width: "100%", height: "34px" }}>
+                <div style={{ marginTop: "var(--rc-esp-8)" }}>
+                  <Boton variante="primario" style={{ width: "100%", height: "34px" }} onClick={() => router.push(`/tareas?nueva=1&persona=${encodeURIComponent(miembro.id)}`)}>
                     <ClipboardList size={16} strokeWidth={1.75} style={{ marginRight: 6 }} />
                     Enviar trabajo
                   </Boton>
-                </Link>
+                </div>
               )}
             </div>
           </div>

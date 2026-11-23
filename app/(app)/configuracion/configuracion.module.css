@@ -1,0 +1,62 @@
+/* Configuración: los fieldset del navegador se reemplazan por tarjetas del sistema de diseño. */
+.tarjeta {
+  margin: 0;
+  min-width: 0;
+  border: 1px solid var(--rc-gris-100);
+  border-radius: var(--rc-radio-lg);
+  background: var(--rc-superficie);
+  padding: var(--rc-esp-12) var(--rc-esp-16) var(--rc-esp-16);
+  display: grid;
+  gap: var(--rc-esp-8);
+  grid-auto-rows: max-content;
+}
+
+.tarjeta legend {
+  float: left; /* saca la leyenda del borde y la deja como título normal de la tarjeta */
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--rc-esp-8);
+  font-size: var(--rc-fs-titulo-seccion);
+  line-height: var(--rc-lh-titulo-seccion);
+  font-weight: var(--rc-fw-semibold);
+  color: var(--rc-texto);
+}
+
+.opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--rc-esp-4) var(--rc-esp-16);
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-8);
+  min-height: 36px;
+  padding: 0 var(--rc-esp-8);
+  border-radius: var(--rc-radio-md);
+  font-size: var(--rc-fs-interfaz);
+  color: var(--rc-texto);
+  cursor: pointer;
+  transition: background-color var(--rc-transicion);
+}
+
+.opcion:hover {
+  background: var(--rc-superficie-hundida);
+}
+
+.opcion input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--rc-azul-texto);
+  cursor: pointer;
+}
+
+.horario {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--rc-esp-12);
+  align-items: end;
+}

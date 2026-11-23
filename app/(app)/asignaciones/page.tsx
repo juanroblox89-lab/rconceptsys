@@ -174,6 +174,7 @@ export default function AsignacionesPage() {
             <option value="aceptada">Aprobada</option>
             <option value="rechazada">Rechazada</option>
             <option value="vencida">Vencida</option>
+            <option value="cancelada">Cancelada</option>
           </select>
         </label>
         <label className={styles.campo}>

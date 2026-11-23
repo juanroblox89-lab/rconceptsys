@@ -671,6 +671,11 @@ func (a *API) handleAdminAprobarMiembro(w http.ResponseWriter, r *http.Request) 
 
 func (a *API) handleAdminSuspenderMiembro(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	// Un admin que se suspende a sí mismo se queda fuera del sistema sin forma de volver.
+	if yo := UsuarioDesdeContexto(r.Context()); yo != nil && yo.ID == id {
+		ResponderError(w, http.StatusBadRequest, "auto_suspension", "No puedes suspender tu propia cuenta.")
+		return
+	}
 	p, err := a.Store.SuspenderMiembro(r.Context(), id)
 	if err != nil {
 		ResponderError(w, http.StatusNotFound, "miembro_no_encontrado", "No se encontró el miembro para suspender.")
@@ -1744,7 +1749,11 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 			if clave == "drive_url" || clave == "foto_url" {
 				limite = 500
 				if s != "" && !strings.HasPrefix(s, "https://") {
-					ResponderError(w, http.StatusBadRequest, "enlace_invalido", "La carpeta de Drive debe ser un enlace https.")
+					mensaje := "El enlace de la carpeta de Drive debe empezar por https://."
+					if clave == "foto_url" {
+						mensaje = "El enlace de la foto de perfil debe empezar por https://."
+					}
+					ResponderError(w, http.StatusBadRequest, "enlace_invalido", mensaje)
 					return
 				}
 			}

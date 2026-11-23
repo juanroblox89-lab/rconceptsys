@@ -94,7 +94,8 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   const formatearFechaHora = (iso?: string | null) => {
     if (!iso) return "—";
     try {
-      const d = new Date(iso);
+      // Una fecha sola (AAAA-MM-DD) se lee al mediodía local: a medianoche UTC en Colombia sale el día anterior.
+      const d = new Date(iso.length <= 10 ? `${iso}T12:00:00` : iso);
       return d.toLocaleDateString("es-CO", {
         day: "2-digit",
         month: "2-digit",
@@ -175,14 +176,23 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     }
   };
 
-  const handleCancelarTarea = async (tarea: Tarea) => {
+  // Cancelar no se puede deshacer: primero se pide confirmación en un modal.
+  const [tareaACancelar, setTareaACancelar] = useState<Tarea | null>(null);
+  const [cancelando, setCancelando] = useState(false);
+  const handleCancelarTarea = (tarea: Tarea) => setTareaACancelar(tarea);
+  const handleConfirmarCancelar = async () => {
+    if (!tareaACancelar) return;
+    setCancelando(true);
     try {
-      await api.adminCancelarTarea(tarea.id);
+      await api.adminCancelarTarea(tareaACancelar.id);
       mostrarAviso({ tipo: "info", titulo: "Tarea cancelada" });
+      setTareaACancelar(null);
       await cargarDatos();
     } catch (err: unknown) {
       const e = err as { message?: string };
       mostrarAviso({ tipo: "error", titulo: "No se pudo cancelar", texto: e.message || "Error al cancelar." });
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -634,6 +644,19 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               </div>
             )}
           </div>
+        </Modal>
+      )}
+
+      {tareaACancelar && (
+        <Modal
+          abierto={true}
+          titulo="Cancelar tarea"
+          descripcion={`La tarea "${tareaACancelar.titulo}" de ${tareaACancelar.asignado?.nombre || "la persona"} quedará cancelada y no se puede deshacer.`}
+          onCerrar={() => setTareaACancelar(null)}
+          accionPrimaria={<Boton variante="peligro" cargando={cancelando} onClick={handleConfirmarCancelar}>Sí, cancelar tarea</Boton>}
+          accionSecundaria={<Boton variante="secundario" onClick={() => setTareaACancelar(null)} disabled={cancelando}>Volver</Boton>}
+        >
+          {null}
         </Modal>
       )}
 

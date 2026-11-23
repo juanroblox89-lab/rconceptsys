@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Check,
   Shield,
@@ -103,6 +103,7 @@ export default function AdminPage() {
 
   // Estados locales - Trabajos
   const [preciosEditados, setPreciosEditados] = useState<Record<number, number>>({});
+  const guardandoPrecio = useRef(new Set<number>());
   const [modalNuevoTrabajo, setModalNuevoTrabajo] = useState(false);
   const [nuevoTrabClave, setNuevoTrabClave] = useState("");
   const [nuevoTrabNombre, setNuevoTrabNombre] = useState("");
@@ -286,10 +287,24 @@ export default function AdminPage() {
     await cargarDatos();
   };
 
-  const handleSuspender = async (id: string) => {
-    await api.adminSuspender(id);
-    mostrarAviso({ tipo: "info", titulo: "Miembro suspendido", texto: "El acceso ha sido revocado." });
-    await cargarDatos();
+  // Suspender quita el acceso de inmediato: primero se confirma en un modal.
+  const [miembroASuspender, setMiembroASuspender] = useState<Perfil | null>(null);
+  const [suspendiendo, setSuspendiendo] = useState(false);
+  const handleSuspender = (id: string) => setMiembroASuspender(miembros.find((m) => m.id === id) ?? null);
+  const confirmarSuspender = async () => {
+    if (!miembroASuspender) return;
+    setSuspendiendo(true);
+    try {
+      await api.adminSuspender(miembroASuspender.id);
+      mostrarAviso({ tipo: "info", titulo: "Miembro suspendido", texto: "El acceso ha sido revocado." });
+      setMiembroASuspender(null);
+      await cargarDatos();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      mostrarAviso({ tipo: "error", titulo: "No se pudo suspender", texto: e.message || "Inténtalo de nuevo." });
+    } finally {
+      setSuspendiendo(false);
+    }
   };
 
   const handleReactivar = async (id: string) => {
@@ -351,10 +366,13 @@ export default function AdminPage() {
   // ==========================================
   const handleGuardarPrecio = async (trabajo: TipoTrabajo) => {
     const nuevoPrecio = preciosEditados[trabajo.id];
+    // Se guarda al salir del campo y al pulsar Guardar: sin cambios o con un guardado en curso no se repite.
+    if (nuevoPrecio === trabajo.precio || guardandoPrecio.current.has(trabajo.id)) return;
     if (nuevoPrecio === undefined || nuevoPrecio < 0 || nuevoPrecio > 100000000) {
       mostrarAviso({ tipo: "error", titulo: "Precio inválido", texto: "Ingresa un valor entre 0 y 100.000.000 COP." });
       return;
     }
+    guardandoPrecio.current.add(trabajo.id);
     try {
       await api.adminPatchTrabajo(trabajo.id, { precio: nuevoPrecio });
       mostrarAviso({
@@ -366,6 +384,8 @@ export default function AdminPage() {
     } catch (err: unknown) {
       const e = err as { message?: string };
       mostrarAviso({ tipo: "error", titulo: "No se pudo guardar", texto: e.message || "Error al actualizar precio." });
+    } finally {
+      guardandoPrecio.current.delete(trabajo.id);
     }
   };
 
@@ -1820,6 +1840,19 @@ export default function AdminPage() {
       )}
 
       {/* Modal Nuevo Trabajo */}
+      {miembroASuspender && (
+        <Modal
+          abierto={true}
+          titulo="Suspender miembro"
+          descripcion={`${miembroASuspender.nombre || "Esta persona"} perderá el acceso al sistema hasta que lo reactives.`}
+          onCerrar={() => setMiembroASuspender(null)}
+          accionPrimaria={<Boton variante="peligro" cargando={suspendiendo} onClick={confirmarSuspender}>Sí, suspender</Boton>}
+          accionSecundaria={<Boton variante="secundario" onClick={() => setMiembroASuspender(null)} disabled={suspendiendo}>Volver</Boton>}
+        >
+          {null}
+        </Modal>
+      )}
+
       {modalNuevoTrabajo && (
         <Modal
           abierto={true}

@@ -186,7 +186,7 @@
 .recientesTitulo {
   flex: 1 1 auto;
   text-align: left;
-  font-size: var(--rc-fs-xs);
+  font-size: var(--rc-fs-micro);
   font-weight: var(--rc-fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;

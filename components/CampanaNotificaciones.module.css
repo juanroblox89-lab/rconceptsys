@@ -16,4 +16,4 @@
 @keyframes entrada { from { opacity: .45; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
 @media (max-width: 767px) { .raiz.barra { display: none; } }
-@media (min-width: 768px) { .raiz { position: relative; top: auto; right: auto; } .boton { width: 36px; height: 36px; box-shadow: none; } .panel { position: fixed; top: 52px; left: 12px; right: auto; } }
+@media (min-width: 768px) { .raiz { position: relative; top: auto; right: auto; } .boton { width: 36px; height: 36px; box-shadow: none; } .panel { position: fixed; top: 52px; left: 12px; right: auto; z-index: calc(var(--rc-z-pill) + 2); } }

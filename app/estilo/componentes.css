@@ -56,8 +56,8 @@
 }
 
 .rc-subtitulo {
-  font-size: 9.5px;
-  line-height: 13px;
+  font-size: var(--rc-fs-etiqueta);
+  line-height: var(--rc-lh-etiqueta);
   font-weight: var(--rc-fw-semibold);
   color: var(--rc-gris-700);
   white-space: nowrap;
@@ -682,7 +682,7 @@
 }
 
 .rc-chip {
-  height: 20px;
+  height: 24px;
   padding: 0 var(--rc-esp-6);
   border-radius: var(--rc-radio-pildora);
   background: var(--rc-superficie);
@@ -690,7 +690,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--rc-esp-4);
-  font-size: 9px;
+  font-size: var(--rc-fs-micro);
   line-height: 1;
   font-weight: var(--rc-fw-medio);
   color: var(--rc-gris-700);
@@ -732,7 +732,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--rc-esp-6);
-  font-size: 9px;
+  font-size: var(--rc-fs-micro);
   font-weight: var(--rc-fw-semibold);
 }
 
@@ -866,8 +866,8 @@
 }
 
 .rc-card__texto {
-  font-size: 9px;
-  line-height: 13px;
+  font-size: var(--rc-fs-micro);
+  line-height: var(--rc-lh-micro);
   color: var(--rc-texto-secundario);
 }
 
@@ -1332,7 +1332,7 @@
 .rc-tabla {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9px;
+  font-size: var(--rc-fs-secundario);
 }
 
 .rc-tabla th {
@@ -1371,13 +1371,13 @@
 }
 
 .rc-estado-tabla {
-  height: 16px;
+  height: 22px;
   padding: 0 var(--rc-esp-6);
   border-radius: var(--rc-radio-pildora);
   display: inline-flex;
   align-items: center;
   gap: var(--rc-esp-4);
-  font-size: 8px;
+  font-size: var(--rc-fs-micro);
   font-weight: var(--rc-fw-semibold);
 }
 
@@ -1647,7 +1647,7 @@
 }
 
 .rc-toast__titulo {
-  font-size: 9px;
+  font-size: var(--rc-fs-etiqueta);
   font-weight: var(--rc-fw-bold);
   line-height: 1.2;
 }
@@ -1658,7 +1658,7 @@
 .rc-toast--error .rc-toast__titulo { color: var(--rc-rojo-texto); }
 
 .rc-toast__texto {
-  font-size: 8px;
+  font-size: var(--rc-fs-micro);
   color: var(--rc-texto-secundario);
 }
 
@@ -1734,7 +1734,7 @@
 }
 
 .rc-modal__titulo {
-  font-size: 9px;
+  font-size: var(--rc-fs-titulo-seccion);
   font-weight: var(--rc-fw-bold);
   color: var(--rc-gris-900);
 }
