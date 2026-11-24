@@ -59,7 +59,7 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
   return <section className={`${styles.pagina} ${styles.paginaDetalle}`}>
     <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={volver}><ArrowLeft size={16} aria-hidden="true" />{textoVolver}</Link>
     <header className={styles.cabecera}>
-      <div><h1>{id === undefined ? "Asignar trabajo" : tarea?.titulo ?? "Trabajo"}</h1><p>{id === undefined ? "Define a quién va dirigido y qué debe entregar." : tarea?.cliente?.nombre ?? "Detalle de la asignación"}</p></div>
+      <div><h1>{id === undefined ? "Asignar trabajo" : tarea?.titulo ?? "Trabajo"}</h1>{tarea?.cliente && <p>{tarea.cliente.nombre}</p>}</div>
       {tarea && <EstadoTrabajo tarea={tarea} />}
     </header>
     {exito && <p role="status">{exito}</p>}
@@ -98,7 +98,7 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
       </section>}
       {editable && <Boton variante="peligro" onClick={() => { setError(""); setConfirmar(true); }}>Cancelar trabajo</Boton>}
     </>}
-    {confirmar && <Modal className={styles.dialogo} titulo="¿Cancelar este trabajo?" descripcion="El trabajo quedará cancelado. Esta acción no se puede deshacer." onCerrar={() => { if (!cancelando) setConfirmar(false); }}
+    {confirmar && <Modal className={styles.dialogo} titulo="¿Cancelar este trabajo?" descripcion="Esta acción no se puede deshacer." onCerrar={() => { if (!cancelando) setConfirmar(false); }}
       accionSecundaria={<Boton variante="secundario" disabled={cancelando} onClick={() => setConfirmar(false)}>Conservar trabajo</Boton>}
       accionPrimaria={<Boton variante="peligro" cargando={cancelando} onClick={() => void cancelar()}>Sí, cancelar trabajo</Boton>}>
       {error ? <p role="alert" className={styles.error}>{error}</p> : null}

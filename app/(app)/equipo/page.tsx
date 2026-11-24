@@ -46,10 +46,7 @@ export default function EquipoPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Equipo de trabajo</h1>
-        <p className={styles.subtitle}>
-          Miembros activos en producción, edición y distribución
-        </p>
+        <h1 className={styles.title}>Equipo</h1>
       </div>
 
       {cargando ? (
@@ -59,8 +56,7 @@ export default function EquipoPage() {
       ) : miembros.length === 0 ? (
         <Tarjeta
           variante="vacia"
-          tituloVacio="No hay miembros"
-          textoVacio="No hay miembros aprobados en este momento."
+          tituloVacio="Sin miembros aprobados"
         />
       ) : (
         <div className={styles.grid}>

@@ -63,8 +63,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     } catch {
       mostrarAviso({
         tipo: "error",
-        titulo: "Error al cargar tareas",
-        texto: "No se pudieron obtener las tareas del equipo.",
+        titulo: "No se pudieron cargar las tareas",
       });
     } finally {
       setCargando(false);
@@ -108,7 +107,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
         mostrarAviso({
           tipo: "error",
           titulo: "Minutos requeridos",
-          texto: "Debes ingresar los minutos aceptados (entero entre 1 y 1440).",
+          texto: "Ingresa entre 1 y 1440 minutos.",
         });
         return;
       }
@@ -118,7 +117,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     setAceptandoTarea(true);
     try {
       await api.adminAceptarTarea(modalAceptarTarea.id, cantAceptada);
-      mostrarAviso({ tipo: "exito", titulo: "Tarea aceptada", texto: "La tarea se ingresó a la factura abierta de la persona." });
+      mostrarAviso({ tipo: "exito", titulo: "Tarea aceptada", texto: "Se añadió a la factura abierta." });
       setModalAceptarTarea(null);
       setMinutosAceptarInput("");
       await cargarDatos();
@@ -133,13 +132,13 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   const handleConfirmarRechazar = async () => {
     if (!tareaARechazar) return;
     if (!motivoRechazo.trim()) {
-      mostrarAviso({ tipo: "error", titulo: "Motivo obligatorio", texto: "Debes explicar el motivo del rechazo." });
+      mostrarAviso({ tipo: "error", titulo: "Motivo obligatorio" });
       return;
     }
     setRechazando(true);
     try {
       await api.adminRechazarTarea(tareaARechazar.id, motivoRechazo.trim());
-      mostrarAviso({ tipo: "info", titulo: "Tarea rechazada", texto: "Se notificó a la persona con el motivo." });
+      mostrarAviso({ tipo: "info", titulo: "Tarea rechazada" });
       setTareaARechazar(null);
       setMotivoRechazo("");
       await cargarDatos();
@@ -166,9 +165,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
             <div>
               <h1 className={styles.title}>Gestión de tareas</h1>
-              <p className={styles.subtitle}>
-                Asigna tareas al equipo, revisa entregas de trabajo y aprueba valores a facturar
-              </p>
             </div>
             <Boton
               variante="primario"
@@ -211,7 +207,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               <Tarjeta
                 variante="vacia"
                 tituloVacio="Todo revisado"
-                textoVacio="No hay tareas pendientes de aprobación en este momento."
               />
             ) : (
               <div className={styles.bandejaReviewGrid}>
@@ -426,7 +421,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
         <Modal
           abierto={true}
           titulo="Rechazar tarea"
-          descripcion={`Indica el motivo por el cual rechazas "${tareaARechazar.titulo}". La persona podrá ver este motivo y corregir la entrega.`}
+          descripcion={`La persona verá el motivo y podrá corregir «${tareaARechazar.titulo}».`}
           onCerrar={() => setTareaARechazar(null)}
           accionPrimaria={
             <Boton

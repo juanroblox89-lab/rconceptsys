@@ -37,7 +37,6 @@ export function SelectorCarpetaTrabajo({ padre, actual, valor, onChange }: {
       <option value="existente" disabled={!padre}>Elegir una subcarpeta existente</option>
       {actual && <option value="nueva" disabled={!padre}>Preparar carpeta con el nombre del trabajo</option>}
     </Campo>
-    {!padre && <p className={styles.ayuda}>Si Drive está conectado, la carpeta se prepara al asignar.</p>}
     {modo === "existente" && padre && <>
       <Campo como="select" etiqueta="Subcarpeta existente" value={valor.id} required disabled={!consulta || !!consulta.error}
         onChange={(e) => onChange({ id: e.target.value, nombre: "" })}>

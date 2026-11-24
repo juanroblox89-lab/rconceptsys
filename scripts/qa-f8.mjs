@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const base = process.env.QA_BASE ?? 'http://127.0.0.1:3318';
-const dir = 'capturas-f8';
+const dir = process.env.QA_DIR ?? 'capturas-f8';
 mkdirSync(dir, { recursive: true });
 const admin = { id: 'admin-1', nombre: 'Admin Demo', estado: 'aprobado', es_admin: true };
 const miembro = { id: 'cam-1', nombre: 'Mateo Grabador', estado: 'aprobado', es_admin: false };
@@ -71,6 +71,8 @@ try {
             token++; return enviar({ access_token: 'efimero-qa', expires_in: 3600, carpeta_id: u.searchParams.has('cliente_id') ? 'estudio_norte' : 'rconcept_demo', clave: 'fake', proyecto_id: '123' });
           }
           if (p === '/api/notificaciones') return enviar({ no_leidas: 0, notificaciones: [] });
+          if (p === '/api/notificaciones/preferencias') return enviar({ tipos_silenciados: [], silenciar_chat: false, silencio_desde: '', silencio_hasta: '' });
+          if (p === '/api/push/clave') return enviar({ configurado: false, clave: '' });
           if (p === '/api/admin/asignaciones/recientes') return enviar({ asignaciones: [], recientes: [] });
           return enviar([]);
         });
@@ -142,6 +144,11 @@ try {
           await captura('05-edicion');
           assert.equal(token, 0);
         }
+        await page.goto(`${base}/configuracion`, { waitUntil: 'domcontentloaded' });
+        const avisos = page.getByRole('region', { name: 'Avisos push' });
+        await avisos.getByText('Los avisos no están disponibles.').waitFor();
+        assert.equal(await avisos.getByText(/En la APK|Tarea nueva, tarea que vence mañana|VAPID/).count(), 0);
+        await avisos.scrollIntoViewIfNeeded(); await captura('08-avisos');
         assert.deepEqual(errores, []);
         writeFileSync(`${dir}/mediciones-${width}-${modo}.json`, JSON.stringify(resultados.filter(r => r.viewport === width && r.color === (modo === 'claro' ? 'light' : 'dark')), null, 2));
       } finally { await ctx.close(); }

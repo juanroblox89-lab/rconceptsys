@@ -45,7 +45,6 @@ export default function LoginPage() {
         <div className={styles.header}>
           <Logo size={20} />
           <h1 className={styles.title}>Iniciar sesión</h1>
-          <p className={styles.subtitle}>Sistema operativo interno de RConcept</p>
         </div>
 
         {error && <div className={styles.errorBanner}>{error}</div>}

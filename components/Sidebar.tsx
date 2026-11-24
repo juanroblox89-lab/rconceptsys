@@ -258,7 +258,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
             {recientesAbierto && (
               <div className={styles.recientesLista}>
                 {recientes.length === 0 ? (
-                  <p className={styles.recientesVacio}>Sin movimiento todavía.</p>
+                  <p className={styles.recientesVacio}>Sin trabajos recientes.</p>
                 ) : (
                   recientes.map((asignacion) => {
                     const Icono = iconoReciente(asignacion.tarea.tipo?.clave ?? "");

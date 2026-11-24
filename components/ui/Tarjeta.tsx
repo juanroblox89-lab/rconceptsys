@@ -12,7 +12,7 @@ export interface TarjetaProps extends React.HTMLAttributes<HTMLElement> {
 export function Tarjeta({
   variante = "normal",
   tituloVacio = "No hay resultados",
-  textoVacio = "Aún no tienes contenido en esta sección.",
+  textoVacio,
   envoltorioClassName = "",
   className = "",
   children,
@@ -42,7 +42,7 @@ export function Tarjeta({
         ) : (
           <>
             <h3 className="rc-card__titulo">{tituloVacio}</h3>
-            <p className="rc-card__texto">{textoVacio}</p>
+            {textoVacio && <p className="rc-card__texto">{textoVacio}</p>}
           </>
         )}
       </article>

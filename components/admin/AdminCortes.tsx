@@ -105,7 +105,7 @@ export function AdminCortes() {
         <div>
           <h2 className={styles.bloqueTitulo}>Cortes de pago</h2>
           <p className={styles.bloqueAyuda}>
-            Suma lo aprobado en el periodo por persona. Marca pagado cuando transfieras y exporta el comprobante.
+            Marca el corte como pagado después de transferir.
           </p>
         </div>
         <div className={styles.botonesGrupo}>
@@ -144,7 +144,7 @@ export function AdminCortes() {
         <p className={styles.cargando}>Cargando cortes…</p>
       ) : cortes.length === 0 ? (
         <p className={styles.vacio}>
-          Todavía no hay cortes. Se cierran sobre las tareas aprobadas del periodo que elijas.
+          Sin cortes.
         </p>
       ) : (
         <ul className={styles.cortes}>

@@ -1343,7 +1343,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 			if tipo.Rol != nil && tipo.Rol.Nombre != "" {
 				nombreRol = tipo.Rol.Nombre
 			}
-			ResponderError(w, http.StatusUnprocessableEntity, "rol_no_coincide", fmt.Sprintf("La persona no tiene asignado %s para este trabajo. Usa forzar: true si deseas asignarla de todos modos.", nombreRol))
+			ResponderError(w, http.StatusUnprocessableEntity, "rol_no_coincide", fmt.Sprintf("La persona no tiene asignado %s. Confirma la asignación si quieres continuar.", nombreRol))
 			return
 		}
 	}

@@ -33,8 +33,7 @@ export function MisTareas() {
     } catch {
       mostrarAviso({
         tipo: "error",
-        titulo: "Error al cargar tareas",
-        texto: "No pudimos obtener la lista de tus tareas.",
+        titulo: "No se pudieron cargar tus tareas",
       });
     } finally {
       setCargando(false);
@@ -51,8 +50,7 @@ export function MisTareas() {
         if (montado) {
           mostrarAviso({
             tipo: "error",
-            titulo: "Error al cargar tareas",
-            texto: "No pudimos obtener la lista de tus tareas.",
+            titulo: "No se pudieron cargar tus tareas",
           });
         }
       } finally {
@@ -97,7 +95,7 @@ export function MisTareas() {
         mostrarAviso({
           tipo: "error",
           titulo: "Minutos requeridos",
-          texto: "Debes ingresar los minutos grabados (entero entre 1 y 1440).",
+          texto: "Ingresa entre 1 y 1440 minutos.",
         });
         return;
       }
@@ -109,8 +107,7 @@ export function MisTareas() {
       await api.postTareaHecha(modalTarea.id, nota.trim() || undefined, cantNum, enlace.trim() || undefined);
       mostrarAviso({
         tipo: "exito",
-        titulo: "Tarea completada",
-        texto: "Tu tarea fue enviada a revisión por el administrador.",
+        titulo: "Entrega enviada a revisión",
       });
       cerrarModal();
       await cargarTareas();
@@ -147,9 +144,6 @@ export function MisTareas() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Mis tareas</h1>
-        <p className={styles.subtitle}>
-          Gestiona las tareas asignadas según tu rol y marca tu trabajo completado
-        </p>
       </div>
 
       {cargando ? (
@@ -160,7 +154,6 @@ export function MisTareas() {
         <Tarjeta
           variante="vacia"
           tituloVacio="Sin tareas asignadas"
-          textoVacio="Aún no tienes tareas pendientes o completadas en el sistema."
         />
       ) : (
         <>
@@ -173,7 +166,6 @@ export function MisTareas() {
               <Tarjeta
                 variante="vacia"
                 tituloVacio="Todo al día"
-                textoVacio="No tienes tareas pendientes por realizar."
               />
             ) : (
               <div className={styles.grid}>
@@ -205,7 +197,6 @@ export function MisTareas() {
               <Tarjeta
                 variante="vacia"
                 tituloVacio="Sin revisiones pendientes"
-                textoVacio="No hay tareas esperando aprobación del administrador."
               />
             ) : (
               <div className={styles.grid}>
@@ -223,7 +214,6 @@ export function MisTareas() {
               <Tarjeta
                 variante="vacia"
                 tituloVacio="Sin tareas aceptadas"
-                textoVacio="Las tareas aceptadas por el administrador aparecerán aquí con su valor congelado."
               />
             ) : (
               <div className={styles.grid}>
@@ -270,15 +260,14 @@ export function MisTareas() {
                   disabled={enviando}
                 />
                 <div style={{ fontSize: "var(--rc-fs-etiqueta)", color: "var(--rc-texto-secundario)", marginTop: "4px" }}>
-                  Este trabajo se cobra por minuto. Ingresa la duración real de grabación (1 a 1440).
+                  Se cobra por minuto grabado.
                 </div>
               </div>
             )}
             <Campo
-              etiqueta="Nota opcional (hasta 500 caracteres)"
+              etiqueta="Nota (opcional)"
               como="textarea"
               filas={3}
-              placeholder="Ej. Detalles de la entrega o anotaciones..."
               value={nota}
               onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setNota(e.target.value.slice(0, 500))}
               disabled={enviando}

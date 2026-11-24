@@ -149,7 +149,7 @@ export function EquipoBarra({ abierta = false, onCerrar }: EquipoBarraProps) {
               <p className={styles.etiqueta}>Accesos rápidos</p>
               {enlaces.length === 0 ? (
                 <p className={styles.nota}>
-                  Todavía no hay enlaces. Un admin los agrega en Gestión → Equipo.
+                  Sin enlaces.
                 </p>
               ) : (
                 <ul className={styles.enlaces}>
@@ -186,12 +186,12 @@ export function EquipoBarra({ abierta = false, onCerrar }: EquipoBarraProps) {
                   </li>
                 ))}
               </ul>
-              <p className={styles.nota}>Totales desde el inicio. Archivos suma lo adjunto en el chat y los enlaces de Drive de las tareas.</p>
+              <p className={styles.nota}>Archivos: adjuntos del chat y enlaces de tareas.</p>
             </section>
 
             <p className={styles.pie}>
               <Link href="/equipo" className={styles.pieEnlace}>
-                Ver miembros del equipo
+                Ver miembros
               </Link>
             </p>
           </>

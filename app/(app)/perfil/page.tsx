@@ -55,7 +55,6 @@ export default function MiPerfilPage() {
       mostrarAviso({
         tipo: "exito",
         titulo: "Nombre guardado",
-        texto: "Tu nombre de visualización se actualizó con éxito.",
       });
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -101,7 +100,6 @@ export default function MiPerfilPage() {
       mostrarAviso({
         tipo: "exito",
         titulo: "Foto actualizada",
-        texto: "Tu avatar se actualizó correctamente.",
       });
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -124,9 +122,6 @@ export default function MiPerfilPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Mi perfil</h1>
-        <p className={styles.subtitle}>
-          Administra tus datos personales y consulta el acumulado de tus trabajos.
-        </p>
       </div>
 
       {errorLocal && (

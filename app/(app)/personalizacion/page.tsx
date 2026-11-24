@@ -28,10 +28,10 @@ export default function Personalizacion(){
     aplicarApariencia(p,true);cambiar({imagen:p.imagen,video:p.video});setEstado('Fondo guardado.');
   });
   return <div className={styles.pagina}>
-    <header><h1>Personalización</h1><p>Elige cómo se ve RConcept en tu cuenta.</p></header>
+    <header><h1>Personalización</h1></header>
     <fieldset disabled={!listo||ocupado} className={styles.contenido}>
       <section className={styles.panel} data-rc-panel>
-        <h2>Apariencia</h2><p>El modo controla la luz; el tema define las superficies.</p>
+        <h2>Apariencia</h2>
         <div className={styles.opciones} aria-label="Modo de color">{modos.map(({id,nombre,Icon})=><button type="button" aria-pressed={v.modo===id} onClick={()=>cambiar({modo:id})} key={id}><span className={`${styles.muestra} ${styles[id]}`}><Icon size={20} strokeWidth={1.65}/></span>{nombre}</button>)}</div>
         <h3>Tema</h3>
         <div className={styles.opciones} aria-label="Tema">{temas.map(({id,nombre})=><button type="button" aria-pressed={v.tema===id} onClick={()=>cambiar({tema:id,modo:id==='rconcept-dark'?'oscuro':v.modo})} key={id}><span className={`${styles.muestra} ${styles[id]}`}><i/><i/></span>{nombre}</button>)}</div>
@@ -41,7 +41,7 @@ export default function Personalizacion(){
         <div className={styles.colores}>{colores.map(({id,nombre,base})=><label key={id}><span>{nombre}</span><span className={styles.campoColor}><input type="color" aria-label={`Selector de ${nombre.toLowerCase()}`} value={/^#[0-9a-f]{6}$/i.test(v[id]??'')?v[id]:base} onChange={e=>cambiar({[id]:e.currentTarget.value})}/><input aria-label={`Código hex de ${nombre.toLowerCase()}`} maxLength={7} placeholder={base} value={v[id]??''} onChange={e=>cambiar({[id]:e.currentTarget.value})} /></span></label>)}</div>
       </section>
       {v.tema==='glass'&&<section className={styles.panel} data-rc-panel>
-        <h2>Fondo Glass</h2><p>Sube una imagen o un video de hasta 2,5 MB. En celular se muestra solo el primer fotograma.</p>
+        <h2>Fondo Glass</h2><p>Hasta 2,5 MB. En celular, el video se muestra como imagen.</p>
         <input aria-label="Subir fondo Glass" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" onChange={e=>{const f=e.currentTarget.files?.[0];if(f)void subir(f);e.currentTarget.value='';}}/>
         {(v.imagen||v.video)&&<Boton type="button" onClick={()=>cambiar({imagen:undefined,video:undefined})}>Quitar fondo</Boton>}
         <label className={styles.fila}>Oscurecido <output>{v.oscurecido}%</output><input type="range" min={0} max={85} value={v.oscurecido} onChange={e=>cambiar({oscurecido:e.currentTarget.valueAsNumber})}/></label>

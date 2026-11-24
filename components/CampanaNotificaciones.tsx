@@ -49,7 +49,7 @@ export function CampanaNotificaciones({ barra = false }: { barra?: boolean }) {
       <header><strong>Notificaciones{noLeidas ? ` (${noLeidas})` : ""}</strong><button type="button" disabled={!noLeidas || marcando} onClick={() => void leerTodas()}><CheckCheck size={16} aria-hidden="true" /> Marcar todo leído</button></header>
       {error && <p role="alert">No pudimos actualizar tus avisos. <Boton variante="secundario" tamano="sm" onClick={() => void cargar()}>Reintentar</Boton></p>}
       {!datos && !error && <p role="status">Cargando avisos…</p>}
-      {datos && !datos.notificaciones.length && <p>Por ahora no tienes notificaciones.</p>}
+      {datos && !datos.notificaciones.length && <p>Sin notificaciones.</p>}
       {datos && datos.notificaciones.length > 0 && <ul>{datos.notificaciones.map((n) => <li key={n.id}>
         <Link href={n.url.startsWith("/") && !n.url.startsWith("//") ? n.url : "/"} className={n.leida_en ? undefined : styles.noLeida} onClick={() => {
           setAbierta(false); if (!n.leida_en) void api.leerNotificaciones(n.id).then(cargar, () => setError(true));

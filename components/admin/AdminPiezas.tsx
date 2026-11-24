@@ -67,7 +67,7 @@ export function AdminPiezas() {
       setNuevaFormato("Reel");
       setFormAbierto(false);
       await cargar();
-      mostrarAviso({ tipo: "exito", titulo: "Pieza creada", texto: "Nace en la etapa Guion." });
+      mostrarAviso({ tipo: "exito", titulo: "Pieza creada" });
     } catch (err) {
       mostrarAviso({
         tipo: "error",
@@ -104,7 +104,7 @@ export function AdminPiezas() {
         <div>
           <h2 className={styles.bloqueTitulo}>Piezas de contenido</h2>
           <p className={styles.bloqueAyuda}>
-            Cada pieza agrupa sus tareas y avanza: Guion → Grabación → Edición → Revisión → Aprobada → Publicada.
+            Agrupa varios trabajos en una pieza.
           </p>
         </div>
         <Boton variante="primario" onClick={() => setFormAbierto((v) => !v)}>
@@ -157,7 +157,7 @@ export function AdminPiezas() {
         <p className={styles.cargando}>Cargando piezas…</p>
       ) : piezas.length === 0 ? (
         <p className={styles.vacio}>
-          Todavía no hay piezas. Crea una y cuélgale las tareas desde Nueva tarea.
+          Sin piezas.
         </p>
       ) : (
         <div className={styles.tablero}>

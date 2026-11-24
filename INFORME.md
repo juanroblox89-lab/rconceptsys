@@ -6,6 +6,8 @@
 - Desconexión roja con Sí/No. El selector de referencias usa el Drive del equipo sin un segundo consentimiento. Los miembros consultan las fichas, pero no las editan; la foto de perfil propia quedó intacta.
 - Pasaron lint, TypeScript, build/vet/tests Go y mapa. 40 capturas en dos tamaños y temas, con ambos roles. Google Picker se probó con un doble; no se accedió ni se movió nada en el Drive real.
 
+**Tarea 6:** retirado el texto de relleno de Avisos y recortadas ayudas, estados vacíos, errores y toasts en toda la app. El inventario antes/después está en el reporte. La revisión headless dejó 48 capturas en `capturas-f8-textos/`.
+
 **Entregables:** [reporte técnico](<HARNESS-REPORTE-F8.md>) · [capturas y mediciones](<capturas-f8/INDICE.md>) · [migración 021](<supabase/migrations/021_drive_organizado.sql>) · [orden de migraciones](<supabase/ORDEN.md>).
 
 **Para Elías:** aplicar 021 antes del despliegue. Después validar el Picker real con la cuenta autorizada; en Gestión → Equipo, organizar y revisar la simulación antes de confirmar el traslado. La migración no mueve archivos.

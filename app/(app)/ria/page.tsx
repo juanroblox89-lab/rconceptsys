@@ -134,7 +134,7 @@ export default function RIAPage() {
       <div className={`${styles.hilo} ${vacio ? styles.hiloVacio : ""}`}>
         {!listo && !error && <div role="status" aria-label="Cargando conversación"><Esqueleto filas={3} /></div>}
         {vacio && <div className={styles.saludo}>
-          <h2>{primerNombre ? `¿En qué te ayudo, ${primerNombre}?` : "Listo cuando quieras."}</h2>
+          <h2>{primerNombre ? `¿En qué te ayudo, ${primerNombre}?` : "¿En qué te ayudo?"}</h2>
           <button type="button" className={styles.sugerencia} onClick={() => publicar(sugerencia)} disabled={microActivo}>
             {sugerencia}<ArrowRight size={16} aria-hidden="true" />
           </button>

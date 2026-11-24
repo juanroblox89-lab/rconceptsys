@@ -59,7 +59,6 @@ export default function RegistroPage() {
         <div className={styles.header}>
           <Logo size={20} />
           <h1 className={styles.title}>Crear cuenta</h1>
-          <p className={styles.subtitle}>Únete al equipo creativo de RConcept</p>
         </div>
 
         {error && <div className={styles.errorBanner}>{error}</div>}

@@ -38,13 +38,13 @@ export function ClientesPanel({ integrado = false }: { integrado?: boolean }) {
   const clientes = datos?.filter(c => normalizar(c.nombre).includes(normalizar(filtro))) ?? [];
   return <section className={integrado ? styles.clientes : `${styles.pagina} ${styles.clientes}`}>
     <header className={styles.cabeceraClientes}>
-      <div><p className={styles.sobreTitulo}>Producción</p>{integrado ? <h2>Clientes</h2> : <h1>Clientes</h1>}<p>Consulta sus fichas, trabajos y referencias de Drive.</p></div>
+      <div>{integrado ? <h2>Clientes</h2> : <h1>Clientes</h1>}</div>
       {puedeEditar && <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={`/clientes/nuevo${origen}`}><Plus size={16} aria-hidden="true" /> Nuevo cliente</Link>}
     </header>
     {!datos ? (error ? <><p className={styles.error} role="alert">{error}</p><Boton variante="secundario" onClick={() => { setError(""); setIntento(n => n + 1); }}>Reintentar</Boton></> : <Esqueleto filas={4} />) : <>
       <div className={styles.buscarCliente}><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar clientes" placeholder="Buscar clientes" value={filtro} onChange={e => setFiltro(e.target.value)} /></div>
       <p className={styles.ayuda} role="status">{clientes.length} {clientes.length === 1 ? "cliente" : "clientes"}</p>
-      {!clientes.length ? <div className={styles.panel}><p>{filtro ? "No encontramos clientes con ese nombre." : "Aún no hay clientes disponibles."}</p></div> :
+      {!clientes.length ? <div className={styles.panel}><p>{filtro ? "No encontramos clientes con ese nombre." : "Sin clientes."}</p></div> :
         <ul className={styles.listaTrabajos}>{clientes.map(c => <li className={styles.filaCliente} key={c.id}>
           <FotoCliente cliente={c} /><div><strong title={c.nombre}>{c.nombre}</strong><small>{c.activo ? "Activo" : "Inactivo"}</small></div>
           <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} aria-label={`Ver cliente: ${c.nombre}`} href={`/clientes/${c.id}${origen}`}>Ver <ChevronRight size={14} aria-hidden="true" /></Link>

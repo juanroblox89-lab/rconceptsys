@@ -52,11 +52,11 @@ export function PaginaCliente({ id, editar = false, admin = false }: { id?: numb
     <header className={styles.cabecera}>
       <div className={styles.identidad}>{cliente && !verEditor && <FotoCliente cliente={cliente} grande />}<div>
         <h1>{id === undefined ? "Nuevo cliente" : verEditor ? "Editar cliente" : cliente?.nombre ?? "Cliente"}</h1>
-        <p>{id === undefined ? "Crea la ficha del cliente." : verEditor ? cliente?.nombre : cliente?.activo ? "Cliente activo" : cliente ? "Cliente inactivo" : "Ficha del cliente"}</p>
+        {cliente && <p>{verEditor ? cliente.nombre : cliente.activo ? "Cliente activo" : "Cliente inactivo"}</p>}
       </div></div>
       {puedeEditar && cliente && !verEditor && <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={`/clientes/${cliente.id}/editar${desde}`}><Pencil size={15} aria-hidden="true" /> Editar</Link>}
     </header>
-    {editar && !puedeEditar && <p className={styles.ayuda}>Ficha de solo lectura. Solo los administradores pueden editarla.</p>}
+    {editar && !puedeEditar && <p className={styles.ayuda}>Ficha de solo lectura.</p>}
     {typeof respuesta === "string" ? <div className={styles.panel}><p role="alert" className={styles.error}>{respuesta}</p><Boton variante="secundario" onClick={() => { setRespuesta(null); setIntento(n => n + 1); }}>Reintentar</Boton></div> :
       id !== undefined && !dato ? <Esqueleto filas={5} /> : verEditor || id === undefined ?
       <EditorCliente cliente={cliente} onCerrar={() => router.push(ficha)} onGuardar={c => router.push(`/clientes/${c.id}${desde}`)} /> : dato && <>
@@ -83,7 +83,7 @@ export function PaginaCliente({ id, editar = false, admin = false }: { id?: numb
           </dl>
         </section>
         <section className={styles.panel}><h2>Trabajos ({dato.estadisticas.total})</h2>
-          {!dato.trabajos.length ? <p className={styles.ayuda}>Este cliente todavía no tiene trabajos.</p> : <ul className={styles.listaTrabajos}>{dato.trabajos.map(t => <FilaTrabajo key={t.id} tarea={t} origen={`cliente-${dato.cliente.id}`} soloLectura={!puedeEditar} />)}</ul>}
+          {!dato.trabajos.length ? <p className={styles.ayuda}>Sin trabajos.</p> : <ul className={styles.listaTrabajos}>{dato.trabajos.map(t => <FilaTrabajo key={t.id} tarea={t} origen={`cliente-${dato.cliente.id}`} soloLectura={!puedeEditar} />)}</ul>}
         </section>
       </>}
   </section>;
@@ -135,10 +135,9 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
     </div>
     <Campo como="textarea" etiqueta="Notas" filas={5} maxLength={1000} value={notas} onChange={e => setNotas(e.target.value)} />
     <PickerDriveCliente clienteId={base?.id} valor={referencias} onChange={setReferencias} disabled={ocupado} />
-    <div className={styles.acciones}>
-      <span className={styles.ayuda}>La carpeta operativa se prepara automáticamente con el Drive del equipo.</span>
-      <EnlaceCliente href={base?.drive_carpeta_id ? base.drive_url : null}>Abrir carpeta del cliente</EnlaceCliente>
-    </div>
+    {base?.drive_carpeta_id && base.drive_url && <div className={styles.acciones}>
+      <EnlaceCliente href={base.drive_url}>Abrir carpeta del cliente</EnlaceCliente>
+    </div>}
     {cliente && <label><input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} /> Cliente activo</label>}
     {error && <p className={styles.error} role="alert">{error}</p>}
     <div className={styles.accionesFormulario}><Boton variante="secundario" disabled={ocupado} onClick={onCerrar}>Volver sin guardar</Boton><Boton type="submit" cargando={ocupado}>Guardar ficha</Boton></div>

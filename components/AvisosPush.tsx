@@ -60,12 +60,12 @@ export function AvisosPush() {
     try {
       const clave = await api.getPushClave();
       if (!clave.configurado || !clave.clave) {
-        setError("El servidor no tiene las claves VAPID. Pídele a Juan que las configure.");
+        setError("Los avisos no están disponibles.");
         return;
       }
       const permiso = await Notification.requestPermission();
       if (permiso !== "granted") {
-        setError("El navegador no dio permiso para mostrar avisos.");
+        setError("Permite las notificaciones en tu navegador.");
         return;
       }
       const registro = await navigator.serviceWorker.register("/sw.js");
@@ -76,7 +76,7 @@ export function AvisosPush() {
       });
       const json = suscripcion.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-        setError("El navegador no entregó una suscripción válida.");
+        setError("No se pudieron activar los avisos.");
         return;
       }
       await api.postPushSuscribir({
@@ -86,9 +86,9 @@ export function AvisosPush() {
       });
       setSuscrito(true);
       setEstado("activo");
-      setMensaje("Avisos activados en este dispositivo.");
+      setMensaje("Avisos activados.");
     } catch {
-      setError("No se pudieron activar los avisos en este dispositivo.");
+      setError("No se pudieron activar los avisos.");
     } finally {
       setTrabajando(false);
     }
@@ -108,7 +108,7 @@ export function AvisosPush() {
       }
       setSuscrito(false);
       setEstado("soportado");
-      setMensaje("Avisos desactivados en este dispositivo.");
+      setMensaje("Avisos desactivados.");
     } catch {
       setError("No se pudieron desactivar los avisos.");
     } finally {
@@ -124,20 +124,15 @@ export function AvisosPush() {
         </span>
         <div className={styles.textos}>
           <h2 className={styles.titulo}>Avisos en este dispositivo</h2>
-          <p className={styles.descripcion}>
-            Tarea nueva, tarea que vence mañana y entrega aprobada. En la APK se conecta igual.
-          </p>
         </div>
       </div>
 
       {estado === "cargando" ? (
-        <p className={styles.nota}>Revisando el estado de los avisos…</p>
+        <p className={styles.nota}>Comprobando avisos…</p>
       ) : estado === "sin_soporte" ? (
-        <p className={styles.nota}>Este navegador no permite avisos push.</p>
+        <p className={styles.nota}>Este navegador no admite avisos en el dispositivo.</p>
       ) : estado === "sin_claves" ? (
-        <p className={styles.nota}>
-          Faltan las claves VAPID en el servidor (<code>VAPID_CLAVE_PUBLICA</code> y <code>VAPID_CLAVE_PRIVADA</code>).
-        </p>
+        <p className={styles.nota}>Los avisos no están disponibles.</p>
       ) : (
         <div className={styles.acciones}>
           {suscrito ? (

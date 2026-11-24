@@ -108,13 +108,13 @@ func (a *API) handleAdminPostDriveConectar(w http.ResponseWriter, r *http.Reques
 	yo := a.usuarioActual(r)
 	if !a.F5.Drive.Configurado() {
 		ResponderError(w, http.StatusBadRequest, "drive_no_configurado",
-			"Faltan las credenciales de Google Cloud. Pídele a Juan que cree GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET.")
+			"Pide a soporte que habilite Google Drive.")
 		return
 	}
 
 	retorno := a.redirectURI(r)
 	if retorno == "" {
-		ResponderError(w, 400, "drive_retorno", "Configura la URL pública de retorno de Google Drive.")
+		ResponderError(w, 400, "drive_retorno", "Pide a soporte que revise la conexión con Google Drive.")
 		return
 	}
 

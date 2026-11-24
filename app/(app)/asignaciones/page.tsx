@@ -190,7 +190,7 @@ export default function AsignacionesPage() {
           <p>
             {hayFiltros
               ? "Ninguna asignación coincide con esos filtros."
-              : "Todavía no hay asignaciones. Se crean al asignar una tarea."}
+              : "Sin asignaciones."}
           </p>
         </div>
       ) : (

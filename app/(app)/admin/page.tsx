@@ -270,7 +270,7 @@ function GestionAdmin() {
       await api.adminSetRoles(id, rolesElegidos);
     }
     await api.adminAprobar(id);
-    mostrarAviso({ tipo: "exito", titulo: "Miembro aprobado", texto: "La cuenta ya tiene acceso al sistema." });
+    mostrarAviso({ tipo: "exito", titulo: "Miembro aprobado" });
     await cargarDatos();
   };
 
@@ -283,7 +283,7 @@ function GestionAdmin() {
     setSuspendiendo(true);
     try {
       await api.adminSuspender(miembroASuspender.id);
-      mostrarAviso({ tipo: "info", titulo: "Miembro suspendido", texto: "El acceso ha sido revocado." });
+      mostrarAviso({ tipo: "info", titulo: "Miembro suspendido" });
       setMiembroASuspender(null);
       await cargarDatos();
     } catch (err: unknown) {
@@ -296,7 +296,7 @@ function GestionAdmin() {
 
   const handleReactivar = async (id: string) => {
     await api.adminReactivar(id);
-    mostrarAviso({ tipo: "exito", titulo: "Miembro reactivado", texto: "El acceso ha sido restablecido." });
+    mostrarAviso({ tipo: "exito", titulo: "Miembro reactivado" });
     await cargarDatos();
   };
 
@@ -433,7 +433,7 @@ function GestionAdmin() {
         activo: true,
         orden: trabajos.length + 1,
       });
-      mostrarAviso({ tipo: "exito", titulo: "Trabajo creado exitosamente" });
+      mostrarAviso({ tipo: "exito", titulo: "Trabajo creado" });
       setModalNuevoTrabajo(false);
       setNuevoTrabClave("");
       setNuevoTrabNombre("");
@@ -460,7 +460,7 @@ function GestionAdmin() {
       mostrarAviso({
         tipo: "exito",
         titulo: "Factura marcada como pagada",
-        texto: `La factura de ${facturaAPagar.persona} fue cerrada. La próxima tarea abrirá un nuevo corte.`,
+        texto: `${facturaAPagar.persona}`,
       });
       setFacturaAPagar(null);
       await cargarDatos();
@@ -499,9 +499,6 @@ function GestionAdmin() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Panel de administración</h1>
-        <p className={styles.subtitle}>
-          Control de acceso, configuración de trabajos, bandeja de tareas y facturación por persona
-        </p>
       </div>
 
       <Pestanas
@@ -523,9 +520,9 @@ function GestionAdmin() {
             <section className={styles.section}>
               <div className={styles.sectionHeaderRow}>
                 <div>
-                  <h2 className={styles.sectionTitle}>Tipos de trabajo configurables</h2>
+                  <h2 className={styles.sectionTitle}>Tipos de trabajo</h2>
                   <p className={styles.avisoInfo}>
-                    El precio configurado aplica para nuevas tareas. Modificar el precio <strong>no afecta</strong> las tareas ya aceptadas.
+                    El nuevo precio no cambia las tareas ya aceptadas.
                   </p>
                 </div>
                 <Boton
@@ -1026,7 +1023,6 @@ function GestionAdmin() {
                 <Tarjeta
                   variante="vacia"
                   tituloVacio="Sin facturas activas"
-                  textoVacio="Aún no hay registros de facturas para los miembros del equipo."
                 />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--rc-esp-12)" }}>
@@ -1149,7 +1145,6 @@ function GestionAdmin() {
                   <Tarjeta
                     variante="vacia"
                     tituloVacio="Sin pendientes"
-                    textoVacio="No hay cuentas esperando aprobación en este momento."
                   />
                 ) : (
                   <>
@@ -1464,7 +1459,7 @@ function GestionAdmin() {
         <Modal
           abierto={true}
           titulo="Suspender miembro"
-          descripcion={`${miembroASuspender.nombre || "Esta persona"} perderá el acceso al sistema hasta que lo reactives.`}
+          descripcion={`${miembroASuspender.nombre || "Esta persona"} perderá el acceso hasta que le reactives la cuenta.`}
           onCerrar={() => setMiembroASuspender(null)}
           accionPrimaria={<Boton variante="peligro" cargando={suspendiendo} onClick={confirmarSuspender}>Sí, suspender</Boton>}
           accionSecundaria={<Boton variante="secundario" onClick={() => setMiembroASuspender(null)} disabled={suspendiendo}>Volver</Boton>}
@@ -1477,7 +1472,6 @@ function GestionAdmin() {
         <Modal
           abierto={true}
           titulo="Nuevo tipo de trabajo"
-          descripcion="Define un nuevo trabajo disponible para asignación y facturación."
           onCerrar={() => setModalNuevoTrabajo(false)}
           accionPrimaria={
             <Boton
@@ -1566,7 +1560,7 @@ function GestionAdmin() {
         <Modal
           abierto={true}
           titulo="Confirmar pago de factura"
-          descripcion={`¿Deseas marcar como pagada la factura abierta de ${facturaAPagar.persona} por valor de $ ${facturaAPagar.total.toLocaleString("es-CO")}?`}
+          descripcion={`¿Marcar como pagada la factura de ${facturaAPagar.persona} por $ ${facturaAPagar.total.toLocaleString("es-CO")}?`}
           onCerrar={() => setFacturaAPagar(null)}
           accionPrimaria={
             <Boton
@@ -1588,7 +1582,7 @@ function GestionAdmin() {
           }
         >
           <p style={{ fontSize: 13, color: "var(--rc-texto-secundario)", marginTop: 8 }}>
-            Al confirmar, esta factura se archivará en el historial de pagadas y la próxima tarea aceptada de esta persona abrirá un nuevo corte automáticamente.
+            La próxima tarea aceptada abrirá otra factura.
           </p>
         </Modal>
       )}

@@ -325,8 +325,7 @@ export default function ChatPage() {
       <div className={styles.container}>
         <header className={styles.header}>
           <div className={styles.headerTexto}>
-            <h1 className={styles.headerTitle}>Chat de todo el equipo</h1>
-            <p className={styles.headerMeta}>Coordinación general de producción</p>
+            <h1 className={styles.headerTitle}>Chat del equipo</h1>
           </div>
           <button
             type="button"

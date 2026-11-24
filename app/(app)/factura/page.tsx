@@ -28,8 +28,7 @@ export default function MiFacturaPage() {
         if (montado) {
           mostrarAviso({
             tipo: "error",
-            titulo: "Error al cargar factura",
-            texto: "No pudimos consultar tu estado de facturación.",
+            titulo: "No pudimos cargar tu factura",
           });
         }
       } finally {
@@ -70,9 +69,6 @@ export default function MiFacturaPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Mi factura</h1>
-        <p className={styles.subtitle}>
-          Consulta tus trabajos aceptados acumulados y el historial de pagos recibidos
-        </p>
       </div>
 
       <CortePropio />
@@ -85,7 +81,7 @@ export default function MiFacturaPage() {
           {/* Tarjetas de estadísticas */}
           <div className={styles.statsRow}>
             <div className={styles.statCard}>
-              <span className={styles.statLabel}>Factura abierta actual</span>
+              <span className={styles.statLabel}>Factura abierta</span>
               <span className={styles.statValor}>
                 $ {totalAbierta.toLocaleString("es-CO")}
               </span>
@@ -95,7 +91,7 @@ export default function MiFacturaPage() {
             </div>
 
             <div className={styles.statCard}>
-              <span className={styles.statLabel}>Total histórico cobrado</span>
+              <span className={styles.statLabel}>Total cobrado</span>
               <span className={styles.statValor}>
                 $ {(datos?.total_pagado || 0).toLocaleString("es-CO")}
               </span>
@@ -117,7 +113,6 @@ export default function MiFacturaPage() {
               <Tarjeta
                 variante="vacia"
                 tituloVacio="Aún no tienes trabajos aceptados"
-                textoVacio="Cuando el administrador acepte tus tareas hechas, su valor congelado aparecerá aquí."
               />
             ) : (
               <>
@@ -206,7 +201,6 @@ export default function MiFacturaPage() {
               <Tarjeta
                 variante="vacia"
                 tituloVacio="Sin facturas pagadas"
-                textoVacio="Aún no tienes cortes de factura pagados registrados en el sistema."
               />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

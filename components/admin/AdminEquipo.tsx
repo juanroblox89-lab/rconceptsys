@@ -53,14 +53,14 @@ export function AdminEquipo() {
     const params = new URLSearchParams(window.location.search);
     const resultado = params.get("drive");
     if (!resultado) return;
-    const mensajes: Record<string, { tipo: "exito" | "error" | "info"; titulo: string; texto: string }> = {
-      organizacion_pendiente: { tipo: "info", titulo: "Drive conectado", texto: "Falta preparar algunas carpetas. Pulsa Organizar Drive para reintentar." },
-      conectado: { tipo: "exito", titulo: "Drive conectado", texto: "Las subcarpetas por tarea ya se crean en ese Drive." },
-      cancelado: { tipo: "info", titulo: "Conexión cancelada", texto: "No se conectó ninguna cuenta de Google." },
+    const mensajes: Record<string, { tipo: "exito" | "error" | "info"; titulo: string; texto?: string }> = {
+      organizacion_pendiente: { tipo: "info", titulo: "Drive conectado", texto: "Pulsa «Organizar Drive» para completar las carpetas." },
+      conectado: { tipo: "exito", titulo: "Drive conectado" },
+      cancelado: { tipo: "info", titulo: "Conexión cancelada" },
       estado_invalido: { tipo: "error", titulo: "Enlace vencido", texto: "Vuelve a intentar la conexión desde Gestión." },
-      sin_configurar: { tipo: "error", titulo: "Faltan credenciales", texto: "El servidor no tiene GOOGLE_CLIENT_ID ni GOOGLE_CLIENT_SECRET." },
+      sin_configurar: { tipo: "error", titulo: "Falta configurar Drive", texto: "Pide a soporte que lo habilite." },
       error: { tipo: "error", titulo: "No se pudo conectar", texto: "Google no devolvió el permiso. Inténtalo otra vez." },
-      error_guardar: { tipo: "error", titulo: "No se pudo guardar", texto: "La conexión llegó pero no se pudo guardar en la base." },
+      error_guardar: { tipo: "error", titulo: "No se pudo guardar la conexión" },
     };
     const aviso = mensajes[resultado];
     if (aviso) mostrarAviso(aviso);
@@ -72,7 +72,7 @@ export function AdminEquipo() {
     try {
       const actualizado = await api.adminPatchEquipo({ nombre, descripcion });
       setConfig(actualizado);
-      mostrarAviso({ tipo: "exito", titulo: "Equipo guardado", texto: "La barra derecha ya muestra los cambios." });
+      mostrarAviso({ tipo: "exito", titulo: "Equipo guardado" });
     } catch (err) {
       mostrarAviso({
         tipo: "error",
@@ -91,7 +91,7 @@ export function AdminEquipo() {
       setEnlaceNombre("");
       setEnlaceUrl("");
       await cargar();
-      mostrarAviso({ tipo: "exito", titulo: "Enlace agregado", texto: "Ya aparece en la barra derecha." });
+      mostrarAviso({ tipo: "exito", titulo: "Enlace agregado" });
     } catch (err) {
       mostrarAviso({
         tipo: "error",
@@ -130,7 +130,7 @@ export function AdminEquipo() {
       mostrarAviso({
         tipo: "error",
         titulo: "No se pudo iniciar la conexión",
-        texto: err instanceof Error ? err.message : "Faltan credenciales de Google Cloud.",
+        texto: err instanceof Error ? err.message : "Pide a soporte que revise la conexión.",
       });
       setConectando(false);
     }
@@ -142,7 +142,7 @@ export function AdminEquipo() {
       await api.adminDesconectarDrive();
       setConfirmar(false); setPlan(null); setMovimientos(null);
       await cargar();
-      mostrarAviso({ tipo: "info", titulo: "Drive desconectado", texto: "Ya no se crean carpetas automáticas." });
+      mostrarAviso({ tipo: "info", titulo: "Drive desconectado" });
     } catch {
       mostrarAviso({ tipo: "error", titulo: "No se pudo desconectar", texto: "Inténtalo de nuevo." });
     } finally { setAccionDrive(""); }
@@ -154,7 +154,7 @@ export function AdminEquipo() {
       const r = await api.adminOrganizarDrive();
       await cargar();
       mostrarAviso({ tipo: r.clientes_pendientes.length ? "info" : "exito", titulo: "Estructura de Drive preparada",
-        texto: `${r.clientes_listos} fichas listas.${r.clientes_pendientes.length ? ` Pendientes: ${r.clientes_pendientes.join(", ")}. Puedes reintentar.` : " No se movieron carpetas antiguas."}` });
+        texto: `${r.clientes_listos} fichas listas.${r.clientes_pendientes.length ? ` Pendientes: ${r.clientes_pendientes.join(", ")}. Puedes reintentar.` : ""}` });
     } catch (e) { mostrarAviso({ tipo: "error", titulo: "No se pudo organizar", texto: (e as Error).message }); }
     finally { setAccionDrive(""); }
   };
@@ -186,9 +186,6 @@ export function AdminEquipo() {
         <div className={styles.bloqueCabecera}>
           <div>
             <h2 className={styles.bloqueTitulo}>Este equipo</h2>
-            <p className={styles.bloqueAyuda}>
-              Es la tarjeta que se ve en la barra derecha del chat, en pantallas grandes.
-            </p>
           </div>
           <Boton variante="primario" onClick={guardarEquipo} cargando={guardando} disabled={guardando}>
             Guardar
@@ -207,12 +204,9 @@ export function AdminEquipo() {
 
       <section className={styles.bloque}>
         <h2 className={styles.bloqueTitulo}>Enlaces rápidos</h2>
-        <p className={styles.bloqueAyuda}>
-          Abren en otra pestaña. Ejemplos: Drive del equipo, Materiales, Entregas.
-        </p>
 
         {enlaces.length === 0 ? (
-          <p className={styles.vacio}>Todavía no hay enlaces.</p>
+          <p className={styles.vacio}>Sin enlaces.</p>
         ) : (
           <ul className={styles.enlaces}>
             {enlaces.map((enlace, indice) => (
@@ -289,9 +283,6 @@ export function AdminEquipo() {
 
       <section className={styles.bloque}>
         <h2 className={styles.bloqueTitulo}>Google Drive del equipo</h2>
-        <p className={styles.bloqueAyuda}>
-          Un solo Drive para todo: cada tarea tiene su subcarpeta y lo entregado se copia ahí.
-        </p>
 
         <div className={styles.driveEstado}>
           <span className={`${styles.pastilla} ${drive?.conectado ? styles.pastillaOk : styles.pastillaTenue}`}>
@@ -303,18 +294,14 @@ export function AdminEquipo() {
 
         {!drive?.configurado ? (
           <div className={styles.notaTecnica}>
-            <p>
-              Faltan las credenciales de Google Cloud en el servidor. Juan debe crear un cliente OAuth (tipo
-              aplicación web) y cargar <code>GOOGLE_CLIENT_ID</code> y <code>GOOGLE_CLIENT_SECRET</code>. La URL de
-              retorno es <code>https://&lt;dominio&gt;/api/drive/callback</code>.
-            </p>
+            <p>Pide a soporte que habilite Google Drive.</p>
           </div>
         ) : !drive.conectado && (
           <div><Boton variante="primario" onClick={conectarDrive} cargando={conectando}>Conectar Drive del equipo</Boton></div>
         )}
         {drive?.conectado && <>
           <div className={styles.driveAcciones}>
-            <span className={styles.driveCarpeta}>{drive.organizado ? "Carpeta raíz: RConcept" : "Drive conectado. Falta organizar las carpetas."}</span>
+            <span className={styles.driveCarpeta}>{drive.organizado ? "Carpeta raíz: RConcept" : "Carpetas sin organizar."}</span>
             {drive.organizado && <a className="rc-btn rc-btn--secundario rc-btn--sm" href={`https://drive.google.com/drive/folders/${encodeURIComponent(drive.carpeta_raiz_id)}`} target="_blank" rel="noreferrer">Abrir en Drive <ExternalLink size={14} aria-hidden="true" /></a>}
           </div>
           {confirmar ? <div className={styles.confirmacionDrive} role="group" aria-labelledby="confirmar-drive">
@@ -327,12 +314,12 @@ export function AdminEquipo() {
           </div>}
           {drive.organizado && <div className={styles.planDrive}>
             <h3>Carpetas antiguas</h3>
-            <p className={styles.bloqueAyuda}>Simula primero el traslado de carpetas de la app que siguen sueltas en Mi unidad. No se borra nada.</p>
+            <p className={styles.bloqueAyuda}>Revisa qué carpetas de Mi unidad se moverían. No se borra nada.</p>
             <div><Boton variante="secundario" tamano="sm" onClick={simular} disabled={!drive.configurado || !!accionDrive || confirmar} cargando={accionDrive === "simular"}>Simular movimientos</Boton></div>
             {plan && <div className={styles.planDrive} role="region" aria-label="Resultado de la simulación">
               <p>{plan.movimientos.length ? `${plan.movimientos.length} carpetas por mover. Aún no se movió nada.` : "No hay carpetas verificadas por mover."}</p>
               {plan.movimientos.length > 0 && <ul>{plan.movimientos.map(m => <li key={m.tarea_id}><strong>{m.nombre}</strong> → {m.destino}</li>)}</ul>}
-              {plan.omitidas.length > 0 && <p className={styles.bloqueAyuda}>No se tocarán las tareas con carpetas no verificadas: {plan.omitidas.join(", ")}.</p>}
+              {plan.omitidas.length > 0 && <p className={styles.bloqueAyuda}>Tareas omitidas (carpetas sin verificar): {plan.omitidas.join(", ")}.</p>}
               {plan.movimientos.length > 0 && <div className={styles.driveAcciones}>
                 <Boton tamano="sm" variante="primario" disabled={!!accionDrive || confirmar} cargando={accionDrive === "mover"} onClick={aplicar}>Aplicar movimientos</Boton>
                 <Boton tamano="sm" variante="secundario" disabled={!!accionDrive} onClick={() => setPlan(null)}>Cancelar</Boton>

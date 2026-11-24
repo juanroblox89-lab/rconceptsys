@@ -85,7 +85,7 @@ export default function EstiloPage() {
           <p className="rc-cabecera__subtitulo">Equipo de Producción de Contenido</p>
         </div>
         <p className="rc-cabecera__descripcion">
-          Componentes, estilos y patrones para una experiencia interna consistente, rápida y enfocada en la productividad.
+          Catálogo de componentes
         </p>
         <div>
           <span className="rc-cabecera__insignia">UI KIT / DESIGN SYSTEM</span>
@@ -844,7 +844,6 @@ export default function EstiloPage() {
             <Aviso
               tipo="exito"
               titulo="Cambios guardados"
-              texto="Correctamente."
               onCerrar={() => {}}
             />
             <Aviso

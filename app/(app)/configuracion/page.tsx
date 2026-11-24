@@ -38,7 +38,7 @@ export default function ConfiguracionPage() {
     finally { setOcupado(false); }
   }
   return <div className={styles.pagina}>
-    <header className={styles.cabecera}><div><h1>Configuración</h1><p>Personaliza cómo recibes los avisos.</p></div></header>
+    <header className={styles.cabecera}><div><h1>Configuración</h1></div></header>
     {!prefs ? (estado.error ? <><p role="alert">{estado.texto}</p><Boton onClick={() => { setEstado({ texto: "", error: false }); setIntento(intento + 1); }}>Reintentar</Boton></> : <Esqueleto filas={5} />) :
       <form className={styles.form} onSubmit={guardar}>
         <h2>Notificaciones</h2>

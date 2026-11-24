@@ -104,7 +104,7 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
   const bloqueado = disabled || estado === "preparando" || estado === "sin_drive" || estado === "sin_organizar";
   return <div className={styles.lista}>
     <strong>Referencias de Drive</strong>
-    {valor.length === 0 ? <p className={styles.ayuda}>Archivos o carpetas con el material del cliente.</p> :
+    {valor.length > 0 &&
       <ul className={styles.referencias}>
         {valor.map(r => <li key={r.id} className={styles.referencia}>
           {confirmar === r.id ? <div className={styles.confirmarQuitar} role="group" aria-label={`Quitar ${r.nombre}`}>
@@ -126,7 +126,7 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
     </div>
     {estado === "sin_drive" && <p className={styles.ayuda} role="status">Conecta el Drive del equipo en Gestión → Equipo</p>}
     {estado === "sin_organizar" && <p className={styles.ayuda} role="status">Organiza el Drive del equipo en Gestión → Equipo</p>}
-    {lleno && <p className={styles.ayuda}>Puedes tener hasta {MAX_REFERENCIAS} referencias.</p>}
+    {lleno && <p className={styles.ayuda}>Máximo: {MAX_REFERENCIAS} referencias.</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}
   </div>;
 }

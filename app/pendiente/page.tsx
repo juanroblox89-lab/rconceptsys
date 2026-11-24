@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Clock, RefreshCw } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Boton } from "@/components/ui/Boton";
-import { Estado } from "@/components/ui/Estado";
 import { api } from "@/lib/api";
 import styles from "./pendiente.module.css";
 
@@ -66,16 +65,12 @@ export default function PendientePage() {
           <div className={styles.iconCircle}>
             <Clock size={28} strokeWidth={1.75} />
           </div>
-          <Estado variante="pendiente">Pendiente de aprobación</Estado>
-          <h1 className={styles.title}>Cuenta en espera de aprobación</h1>
+          <h1 className={styles.title}>Cuenta pendiente de aprobación</h1>
           <p className={styles.description}>
-            Tu cuenta ha sido creada exitosamente. Un administrador debe aprobar tu acceso antes de que puedas usar el chat y las herramientas de RConcept.
+            Un administrador debe aprobar tu acceso.
           </p>
         </div>
 
-        <div className={styles.infoBox}>
-          Esta pantalla se actualizará automáticamente en cuanto tu cuenta sea aprobada.
-        </div>
 
         <div className={styles.actions}>
           <Boton
