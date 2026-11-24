@@ -182,11 +182,12 @@ func convertirCorte(dc *dbCorte) *store.Corte {
 }
 
 type dbConexionDrive struct {
-	Correo        string  `json:"correo"`
-	RefreshToken  string  `json:"refresh_token"`
-	CarpetaRaizID string  `json:"carpeta_raiz_id"`
-	ConectadoEn   string  `json:"conectado_en"`
-	ConectadoPor  *string `json:"conectado_por"`
+	Correo            string  `json:"correo"`
+	RefreshToken      string  `json:"refresh_token"`
+	CarpetaRaizID     string  `json:"carpeta_raiz_id"`
+	CarpetaClientesID string  `json:"carpeta_clientes_id"`
+	ConectadoEn       string  `json:"conectado_en"`
+	ConectadoPor      *string `json:"conectado_por"`
 }
 
 type dbSuscripcionPush struct {
@@ -754,11 +755,12 @@ func (s *SupabaseStore) ObtenerConexionDrive(ctx context.Context) (*store.Conexi
 	}
 	t, _ := time.Parse(time.RFC3339, rows[0].ConectadoEn)
 	return &store.ConexionDrive{
-		Correo:        rows[0].Correo,
-		RefreshToken:  rows[0].RefreshToken,
-		CarpetaRaizID: rows[0].CarpetaRaizID,
-		ConectadoEn:   t,
-		ConectadoPor:  rows[0].ConectadoPor,
+		Correo:            rows[0].Correo,
+		RefreshToken:      rows[0].RefreshToken,
+		CarpetaRaizID:     rows[0].CarpetaRaizID,
+		CarpetaClientesID: rows[0].CarpetaClientesID,
+		ConectadoEn:       t,
+		ConectadoPor:      rows[0].ConectadoPor,
 	}, nil
 }
 
@@ -767,11 +769,12 @@ func (s *SupabaseStore) GuardarConexionDrive(ctx context.Context, c *store.Conex
 		return store.ErrValidation
 	}
 	payload := map[string]any{
-		"correo":          c.Correo,
-		"refresh_token":   c.RefreshToken,
-		"carpeta_raiz_id": c.CarpetaRaizID,
-		"conectado_en":    time.Now().UTC().Format(time.RFC3339),
-		"conectado_por":   c.ConectadoPor,
+		"correo":              c.Correo,
+		"refresh_token":       c.RefreshToken,
+		"carpeta_raiz_id":     c.CarpetaRaizID,
+		"carpeta_clientes_id": c.CarpetaClientesID,
+		"conectado_en":        c.ConectadoEn.UTC().Format(time.RFC3339),
+		"conectado_por":       c.ConectadoPor,
 	}
 	q := url.Values{}
 	q.Set("on_conflict", "id")

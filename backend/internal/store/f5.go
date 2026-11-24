@@ -87,11 +87,12 @@ type FiltroAsignaciones struct {
 
 // ConexionDrive guarda el OAuth de Google Drive del equipo (una sola cuenta).
 type ConexionDrive struct {
-	Correo        string    `json:"correo"`
-	RefreshToken  string    `json:"-"`
-	CarpetaRaizID string    `json:"carpeta_raiz_id"`
-	ConectadoEn   time.Time `json:"conectado_en"`
-	ConectadoPor  *string   `json:"conectado_por,omitempty"`
+	Correo            string    `json:"correo"`
+	RefreshToken      string    `json:"-"`
+	CarpetaRaizID     string    `json:"carpeta_raiz_id"`
+	CarpetaClientesID string    `json:"-"`
+	ConectadoEn       time.Time `json:"conectado_en"`
+	ConectadoPor      *string   `json:"conectado_por,omitempty"`
 }
 
 // Etapas de una pieza de contenido.

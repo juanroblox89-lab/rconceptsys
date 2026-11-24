@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -82,6 +83,8 @@ func (a *API) Routes() http.Handler {
 
 	// F3: Miembros aprobados (Clientes y Mis Estadísticas)
 	mux.HandleFunc("GET /api/clientes", a.MiddlewareAuth(a.handleGetClientes, true, false))
+	mux.HandleFunc("GET /api/clientes/{id}", a.MiddlewareAuth(a.handleGetFichaCliente, true, false))
+	mux.HandleFunc("GET /api/clientes/{id}/foto/{archivo}", a.MiddlewareAuth(a.handleGetClienteFoto, true, false))
 	mux.HandleFunc("GET /api/yo/estadisticas", a.MiddlewareAuth(a.handleGetYoEstadisticas, true, false))
 
 	// F2: Solo Admin (Trabajos, Tareas y Facturas)
@@ -92,10 +95,10 @@ func (a *API) Routes() http.Handler {
 	// F3: Solo Admin (Clientes y Estadísticas globales)
 	mux.HandleFunc("GET /api/admin/clientes", a.MiddlewareAuth(a.handleAdminGetClientes, true, true))
 	mux.HandleFunc("POST /api/admin/clientes", a.MiddlewareAuth(a.handleAdminPostCliente, true, true))
-	mux.HandleFunc("GET /api/admin/clientes/{id}", a.MiddlewareAuth(a.handleAdminGetCliente, true, true))
+	mux.HandleFunc("GET /api/admin/clientes/{id}", a.MiddlewareAuth(a.handleGetFichaCliente, true, true))
 	mux.HandleFunc("POST /api/admin/clientes/{id}/foto", a.MiddlewareAuth(a.handleAdminPostClienteFoto, true, true))
-	mux.HandleFunc("GET /api/admin/clientes/{id}/foto/{archivo}", a.MiddlewareAuth(a.handleAdminGetClienteFoto, true, true))
-	mux.HandleFunc("GET /api/admin/drive/picker", a.MiddlewareAuth(a.handleAdminDrivePicker, true, true))
+	mux.HandleFunc("GET /api/admin/clientes/{id}/foto/{archivo}", a.MiddlewareAuth(a.handleGetClienteFoto, true, true))
+	mux.HandleFunc("GET /api/admin/drive/picker-token", a.MiddlewareAuth(a.handleAdminDrivePickerToken, true, true))
 	mux.HandleFunc("PATCH /api/admin/clientes/{id}", a.MiddlewareAuth(a.handleAdminPatchCliente, true, true))
 	mux.HandleFunc("GET /api/admin/estadisticas", a.MiddlewareAuth(a.handleAdminGetEstadisticas, true, true))
 
@@ -130,6 +133,8 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/admin/drive/conectar", a.MiddlewareAuth(a.handleAdminPostDriveConectar, true, true))
 	mux.HandleFunc("GET /api/drive/callback", a.handleDriveCallback)
 	mux.HandleFunc("POST /api/admin/drive/desconectar", a.MiddlewareAuth(a.handleAdminPostDriveDesconectar, true, true))
+	mux.HandleFunc("POST /api/admin/drive/organizar", a.MiddlewareAuth(a.handleAdminOrganizarDrive, true, true))
+	mux.HandleFunc("POST /api/admin/drive/migrar-carpetas", a.MiddlewareAuth(a.handleAdminMigrarCarpetasDrive, true, true))
 	mux.HandleFunc("GET /api/admin/drive/archivos", a.MiddlewareAuth(a.handleAdminGetDriveArchivos, true, true))
 	mux.HandleFunc("POST /api/admin/tareas/{id}/drive-carpeta", a.MiddlewareAuth(a.handleAdminPostTareaDriveCarpeta, true, true))
 
@@ -1264,10 +1269,6 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ClienteID == nil {
-		ResponderError(w, 400, "cliente_requerido", "Selecciona un cliente antes de asignar el trabajo.")
-		return
-	}
 	if req.FechaLimite == nil {
 		ResponderError(w, 400, "fecha_requerida", "Selecciona una fecha de entrega.")
 		return
@@ -1276,15 +1277,16 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 400, "fecha_invalida", "Selecciona una fecha de entrega válida.")
 		return
 	}
-	// Cliente obligatorio: debe existir y estar activo
-	cli, err := a.Store.ObtenerClientePorID(r.Context(), *req.ClienteID)
-	if err == store.ErrNotFound || (cli != nil && !cli.Activo) {
-		ResponderError(w, http.StatusBadRequest, "cliente_invalido", "Ese cliente no existe o está inactivo.")
-		return
-	}
-	if err != nil || cli == nil {
-		ResponderError(w, http.StatusInternalServerError, "error_obtener_cliente", "No pudimos consultar el cliente.")
-		return
+	if req.ClienteID != nil {
+		cli, err := a.Store.ObtenerClientePorID(r.Context(), *req.ClienteID)
+		if err == store.ErrNotFound || (cli != nil && !cli.Activo) {
+			ResponderError(w, http.StatusBadRequest, "cliente_invalido", "Ese cliente no existe o está inactivo.")
+			return
+		}
+		if err != nil || cli == nil {
+			ResponderError(w, http.StatusInternalServerError, "error_obtener_cliente", "No pudimos consultar el cliente.")
+			return
+		}
 	}
 	if !tipo.Activo {
 		ResponderError(w, http.StatusBadRequest, "tipo_invalido", "Elige un tipo de trabajo activo.")
@@ -1348,6 +1350,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 
 	tarea := &store.Tarea{
 		TipoID:      tipo.ID,
+		Tipo:        tipo,
 		ClienteID:   req.ClienteID,
 		PiezaID:     req.PiezaID,
 		Titulo:      titulo,
@@ -1357,32 +1360,11 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		FechaLimite: req.FechaLimite,
 	}
 
-	if req.DriveCrear != "" {
-		req.DriveCrear = strings.TrimSpace(req.DriveCrear)
-		if req.DriveCrear == "" || req.DriveCarpetaID != "" {
-			ResponderError(w, 400, "carpeta_invalida", "Elige una sola opción para la carpeta del trabajo.")
-			return
-		}
-		if cli.DriveCarpetaID == nil {
-			ResponderError(w, 400, "carpeta_cliente_requerida", "Configura primero la carpeta de Drive del cliente.")
-			return
-		}
-		if len([]rune(req.DriveCrear)) > 80 {
-			ResponderError(w, 400, "nombre_largo", "El nombre de la carpeta admite hasta 80 caracteres.")
-			return
-		}
-		tok, e := a.tokenDrive(r.Context())
-		if e != nil {
-			ResponderError(w, 400, "drive_no_conectado", "Conecta el Drive del equipo para crear la carpeta.")
-			return
-		}
-		f, e := a.asegurarSubcarpeta(r.Context(), tok, req.DriveCrear, *cli.DriveCarpetaID)
-		if e != nil {
-			ResponderError(w, 502, "drive_error", "No pudimos crear la carpeta. Reintenta sin perder los datos.")
-			return
-		}
-		req.DriveCarpetaID = f.ID
-	} else if req.DriveCarpetaID != "" {
+	if req.DriveCrear != "" && (strings.TrimSpace(req.DriveCrear) == "" || req.DriveCarpetaID != "" || len([]rune(req.DriveCrear)) > 80) {
+		ResponderError(w, 400, "carpeta_invalida", "Elige una sola opción para la carpeta del trabajo.")
+		return
+	}
+	if req.DriveCarpetaID != "" {
 		if !driveIDValido(req.DriveCarpetaID) {
 			ResponderError(w, 400, "carpeta_invalida", "Selecciona una carpeta válida.")
 			return
@@ -1403,6 +1385,17 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if creada.DriveCarpetaID == nil {
+		if carpeta, e := a.crearCarpetaDeTrabajo(r.Context(), creada); e == nil {
+			if actualizada, e := a.Store.ActualizarCarpetaDriveTarea(r.Context(), creada.ID, carpeta.ID, carpeta.Enlace); e == nil {
+				creada = actualizada
+			} else {
+				log.Printf("drive F8: no se guardó carpeta para tarea %d", creada.ID)
+			}
+		} else if e != errDriveDesconectado {
+			log.Printf("drive F8: carpeta pendiente para tarea %d", creada.ID)
+		}
+	}
 	// Aviso push: tarea nueva.
 	a.AvisarTareaNueva(r.Context(), creada)
 
@@ -1698,6 +1691,11 @@ func (a *API) handleAdminPostCliente(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if actual, e := a.prepararAltaClienteDrive(r.Context(), creado); e == nil {
+		creado = actual
+	} else if e != errDriveDesconectado {
+		log.Printf("drive F8: carpeta pendiente para cliente %d", creado.ID)
+	}
 	ResponderJSON(w, http.StatusCreated, creado)
 }
 

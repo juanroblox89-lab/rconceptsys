@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-23T21:17:57.452Z",
+  "generado_en": "2026-11-24T01:32:37.277Z",
   "version": "1.0",
   "modulos": [
     {
@@ -335,6 +335,20 @@
     },
     {
       "metodo": "GET",
+      "ruta": "/api/clientes/{id}",
+      "handler": "backend/internal/httpapi/clientes_f7.go:handleGetFichaCliente",
+      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleGetFichaCliente",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/clientes/{id}/foto/{archivo}",
+      "handler": "backend/internal/httpapi/clientes_f7.go:handleGetClienteFoto",
+      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleGetClienteFoto",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
       "ruta": "/api/yo/estadisticas",
       "handler": "backend/internal/httpapi/handlers.go:handleGetYoEstadisticas",
       "archivo_funcion": "backend/internal/httpapi/handlers.go:handleGetYoEstadisticas",
@@ -378,9 +392,9 @@
     {
       "metodo": "GET",
       "ruta": "/api/admin/clientes/{id}",
-      "handler": "backend/internal/httpapi/clientes_f7.go:handleAdminGetCliente",
-      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminGetCliente",
-      "auth": "solo_admin"
+      "handler": "backend/internal/httpapi/clientes_f7.go:handleGetFichaCliente",
+      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleGetFichaCliente",
+      "auth": "miembros_aprobados"
     },
     {
       "metodo": "POST",
@@ -392,15 +406,15 @@
     {
       "metodo": "GET",
       "ruta": "/api/admin/clientes/{id}/foto/{archivo}",
-      "handler": "backend/internal/httpapi/clientes_f7.go:handleAdminGetClienteFoto",
-      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminGetClienteFoto",
-      "auth": "solo_admin"
+      "handler": "backend/internal/httpapi/clientes_f7.go:handleGetClienteFoto",
+      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleGetClienteFoto",
+      "auth": "miembros_aprobados"
     },
     {
       "metodo": "GET",
-      "ruta": "/api/admin/drive/picker",
-      "handler": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePicker",
-      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePicker",
+      "ruta": "/api/admin/drive/picker-token",
+      "handler": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePickerToken",
+      "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePickerToken",
       "auth": "solo_admin"
     },
     {
@@ -569,6 +583,20 @@
       "ruta": "/api/admin/drive/desconectar",
       "handler": "backend/internal/httpapi/drive.go:handleAdminPostDriveDesconectar",
       "archivo_funcion": "backend/internal/httpapi/drive.go:handleAdminPostDriveDesconectar",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/admin/drive/organizar",
+      "handler": "backend/internal/httpapi/drive_organizacion.go:handleAdminOrganizarDrive",
+      "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:handleAdminOrganizarDrive",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/admin/drive/migrar-carpetas",
+      "handler": "backend/internal/httpapi/drive_organizacion.go:handleAdminMigrarCarpetasDrive",
+      "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:handleAdminMigrarCarpetasDrive",
       "auth": "solo_admin"
     },
     {
@@ -1123,7 +1151,6 @@
     "DATABASE_URL",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
-    "GOOGLE_DRIVE_CARPETA_RAIZ",
     "GOOGLE_PICKER_API_KEY",
     "GOOGLE_PICKER_APP_ID",
     "GOOGLE_REDIRECT_URI",
@@ -1135,6 +1162,7 @@
     "NVIDIA_API_KEY",
     "NVIDIA_API_KEYS",
     "PORT",
+    "QA_BASE",
     "QA_MODE",
     "QA_WIDTH",
     "RC_MODO_DEMO",
@@ -1363,7 +1391,7 @@
     {
       "id": "drive",
       "nombre": "Google Drive (conector equipo)",
-      "descripcion": "Admin conecta una cuenta de Google Drive del equipo; backend crea subcarpetas por tarea y copia entregas",
+      "descripcion": "Solo administradores conectan la cuenta, preparan RConcept y simulan antes de mover carpetas históricas.",
       "pasos": [
         {
           "orden": 1,
@@ -1392,13 +1420,13 @@
         },
         {
           "orden": 6,
-          "archivo_funcion": "backend/internal/httpapi/drive.go:crearCarpetaDrive",
-          "descripcion": "POST /drive/v3/files (mime=application/vnd.google-apps.folder) dentro de carpeta_raiz_id; guarda drive_carpeta_id y drive_carpeta_url en tarea"
+          "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:crearCarpetaDeTrabajo",
+          "descripcion": "Localiza carpeta del cliente (o RConcept si no hay cliente) y prepara una carpeta por ID de tarea con Material y Entregas."
         },
         {
           "orden": 7,
           "archivo_funcion": "backend/internal/httpapi/drive.go:copiarArchivoDrive",
-          "descripcion": "Al aprobar tarea: descarga archivo del enlace_medios y sube a la carpeta de la tarea en Drive del equipo"
+          "descripcion": "Cuando el miembro entrega un archivo de Drive, se copia en Entregas dentro de su carpeta."
         },
         {
           "orden": 8,
@@ -1677,7 +1705,7 @@
     {
       "id": "ficha-cliente-f7",
       "nombre": "Ficha y foto del cliente",
-      "descripcion": "La ficha de cliente es una página y calcula sus estadísticas en el backend.",
+      "descripcion": "Los miembros aprobados leen fichas y sus trabajos asignados; solo administradores editan.",
       "pasos": [
         {
           "orden": 1,
@@ -1686,13 +1714,13 @@
         },
         {
           "orden": 2,
-          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminGetCliente",
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleGetFichaCliente",
           "descripcion": "GET de ficha con trabajos del cliente y estadísticas de sus estados y marcas de entrega."
         },
         {
           "orden": 3,
           "archivo_funcion": "components/PaginaCliente.tsx:PaginaCliente",
-          "descripcion": "Ficha con notas, referencias, estadísticas y trabajos; edición en /clientes/[id]/editar."
+          "descripcion": "Ficha con referencias y estadísticas; los controles y la edición se montan solo para administradores aprobados."
         },
         {
           "orden": 4,
@@ -1706,7 +1734,7 @@
         },
         {
           "orden": 6,
-          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminGetClienteFoto",
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleGetClienteFoto",
           "descripcion": "Entrega autenticada de la foto vigente."
         }
       ]
@@ -1718,13 +1746,13 @@
       "pasos": [
         {
           "orden": 1,
-          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePicker",
-          "descripcion": "Devuelve configuración pública del mismo proyecto OAuth sin exponer el token del equipo."
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePickerToken",
+          "descripcion": "Devuelve a un admin un access token efímero sin caché ni refresh token, con carpeta del cliente o raíz como destino inicial."
         },
         {
           "orden": 2,
           "archivo_funcion": "components/PickerDriveCliente.tsx:PickerDriveCliente",
-          "descripcion": "Google se prepara al abrir la página; un clic autoriza drive.file y abre Google Picker con selección múltiple. Cada referencia se puede abrir o quitar con confirmación sí/no, y + añade más."
+          "descripcion": "Carga Google Picker al pulsar; abre directamente con DocsView.setParent y el token del equipo, sin segundo OAuth."
         },
         {
           "orden": 3,
@@ -1752,6 +1780,38 @@
           "orden": 2,
           "archivo_funcion": "lib/use-dictado-ria.ts:useDictadoRIA",
           "descripcion": "Web Speech API; los modelos de chat configurados no exponen transcripción en el contrato de RIA. El texto se agrega al borrador, no se envía solo."
+        }
+      ]
+    },
+    {
+      "id": "drive-organizado-f8",
+      "nombre": "Organización y movimientos del Drive",
+      "descripcion": "Jerarquía RConcept y traslado conservador de las carpetas de trabajo verificadas.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/admin/AdminEquipo.tsx:AdminEquipo",
+          "descripcion": "Confirma desconexión en línea; organiza, presenta simulación y pide confirmación para aplicar el plan."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:handleAdminOrganizarDrive",
+          "descripcion": "Prepara RConcept/Clientes, Recursos y Archivo por nombre y padre."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:asegurarClienteDrive",
+          "descripcion": "Prepara cada carpeta de cliente y persiste ID y URL, con Material del lugar y Producto."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:planearMovimientosDrive",
+          "descripcion": "Simula sin escribir; comprueba procedencia, pertenencia a Mi unidad y destino."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:handleAdminMigrarCarpetasDrive",
+          "descripcion": "Exige la huella vigente de la simulación para trasladar carpetas por ID con addParents/removeParents."
         }
       ]
     }
@@ -1853,5 +1913,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "b13b00561b6376f5729751dea0c642786823add8"
+  "commit_hash": "51112d6d3aaa1e425091773e1c81acb5b883759c"
 }

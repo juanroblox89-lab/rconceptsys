@@ -69,7 +69,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
           ...(tarea.descripcion !== descripcion ? { descripcion } : {}),
         }));
       }
-      else onGuardar(await api.adminPostTarea({ ...datos, cliente_id: Number(cliente), pieza_id: pieza ? Number(pieza) : null, titulo: [...texto].slice(0, 100).join("") }));
+      else onGuardar(await api.adminPostTarea({ ...datos, cliente_id: cliente ? Number(cliente) : null, pieza_id: pieza ? Number(pieza) : null, titulo: [...texto].slice(0, 100).join("") }));
     } catch (e) {
       const fallo = e as { message?: string; codigo?: string };
       setError(fallo.codigo === "rol_no_coincide" ? "La persona no tiene el rol de este trabajo. Si es intencional, confirma para continuar." : fallo.message || "No se pudieron guardar los cambios.");
@@ -79,11 +79,11 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
   return <form onSubmit={guardar} className={styles.form}>
       {!catalogo ? <p className={styles.ayuda}>{error ? <Boton variante="secundario" onClick={() => { setError(""); setIntento(intento + 1); }}>Reintentar</Boton> : "Cargando datos…"}</p> : alta ? <>
         <Campo etiqueta="Nombre del cliente" required maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <p className={styles.ayuda}>Tu asignación se conserva. Puedes completar la ficha y vincular Drive desde Clientes.</p>
+        <p className={styles.ayuda}>Tu asignación se conserva. Puedes completar la ficha desde Clientes.</p>
       </> : <>
         {tarea ? <p className={styles.ayuda}>Cliente: {clienteActual?.nombre ?? "Sin cliente (trabajo anterior)"}</p> : <>
-          <Campo como="select" etiqueta="Cliente" required value={cliente} onChange={(e) => { setCliente(e.target.value); setPieza(""); setCarpeta({ id: "", nombre: "" }); }}>
-            <option value="">Selecciona un cliente</option>
+          <Campo como="select" etiqueta="Cliente" value={cliente} onChange={(e) => { setCliente(e.target.value); setPieza(""); setCarpeta({ id: "", nombre: "" }); }}>
+            <option value="">Sin cliente</option>
             {catalogo.clientes.filter((c) => c.activo).map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </Campo>
           <div><Boton variante="fantasma" onClick={() => { setError(""); setAlta(true); }}>Crear cliente</Boton></div>

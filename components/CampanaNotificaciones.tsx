@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
+import { Boton } from "@/components/ui/Boton";
 import { api } from "@/lib/api";
 import type { BandejaNotificaciones } from "@/lib/types";
 import styles from "./CampanaNotificaciones.module.css";
@@ -46,7 +47,7 @@ export function CampanaNotificaciones({ barra = false }: { barra?: boolean }) {
     }}><Bell size={19} strokeWidth={1.75} aria-hidden="true" />{noLeidas > 0 && <span className={styles.punto} />}</button>
     {abierta && (() => { const contenido = <section id={panel} ref={caja} className={styles.panel} aria-label="Bandeja de notificaciones">
       <header><strong>Notificaciones{noLeidas ? ` (${noLeidas})` : ""}</strong><button type="button" disabled={!noLeidas || marcando} onClick={() => void leerTodas()}><CheckCheck size={16} aria-hidden="true" /> Marcar todo leído</button></header>
-      {error && <p role="alert">No pudimos actualizar tus avisos. <button type="button" onClick={() => void cargar()}>Reintentar</button></p>}
+      {error && <p role="alert">No pudimos actualizar tus avisos. <Boton variante="secundario" tamano="sm" onClick={() => void cargar()}>Reintentar</Boton></p>}
       {!datos && !error && <p role="status">Cargando avisos…</p>}
       {datos && !datos.notificaciones.length && <p>Por ahora no tienes notificaciones.</p>}
       {datos && datos.notificaciones.length > 0 && <ul>{datos.notificaciones.map((n) => <li key={n.id}>

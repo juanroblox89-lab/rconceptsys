@@ -9,8 +9,8 @@ export default async function DriveCambioPage({ searchParams }: { searchParams: 
   return <div className={styles.pagina}>
     <header className={styles.cabecera}><div><h1>Cambio en Drive</h1><p>{id ? "El archivo se abre en Google Drive con tus permisos." : "No encontramos el archivo de este aviso."}</p></div></header>
     <div className={styles.acciones}>
-      {id && <a className={styles.enlace} href={`https://drive.google.com/open?id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">Abrir archivo en Drive <ExternalLink size={16} aria-hidden="true" /></a>}
-      <Link className={styles.enlace} href={destino}>Volver al trabajo o cliente</Link>
+      {id && <a className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={`https://drive.google.com/open?id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">Abrir archivo en Drive <ExternalLink size={16} aria-hidden="true" /></a>}
+      <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={destino}>Volver al trabajo o cliente</Link>
     </div>
   </div>;
 }

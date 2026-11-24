@@ -87,13 +87,17 @@ func (a *API) handleAdminGetDrive(w http.ResponseWriter, r *http.Request) {
 		"conectado":       false,
 		"correo":          "",
 		"carpeta_raiz_id": "",
+		"organizado":      false,
 		"conectado_en":    nil,
 	}
 	conexion, err := a.Store.ObtenerConexionDrive(r.Context())
 	if err == nil && conexion != nil {
 		resp["conectado"] = true
 		resp["correo"] = conexion.Correo
-		resp["carpeta_raiz_id"] = conexion.CarpetaRaizID
+		if conexion.CarpetaClientesID != "" {
+			resp["carpeta_raiz_id"] = conexion.CarpetaRaizID
+			resp["organizado"] = conexion.CarpetaRaizID != ""
+		}
 		resp["conectado_en"] = conexion.ConectadoEn
 	}
 	ResponderJSON(w, http.StatusOK, resp)
@@ -177,24 +181,36 @@ func (a *API) handleDriveCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.F5.DriveMu.Lock()
+	defer a.F5.DriveMu.Unlock()
 	correo := a.correoDrive(r.Context(), token.AccessToken)
 
 	conexion := &store.ConexionDrive{
-		Correo:        correo,
-		RefreshToken:  token.RefreshToken,
-		CarpetaRaizID: strings.TrimSpace(a.F5.Drive.CarpetaRaiz),
-		ConectadoEn:   time.Now(),
-		ConectadoPor:  &adminID,
+		Correo:       correo,
+		RefreshToken: token.RefreshToken,
+		ConectadoEn:  time.Now(),
+		ConectadoPor: &adminID,
 	}
+	organizado := a.asegurarArbolDrive(r.Context(), token.AccessToken, conexion) == nil
 	if err := a.Store.GuardarConexionDrive(r.Context(), conexion); err != nil {
 		http.Redirect(w, r, "/admin?drive=error_guardar", http.StatusFound)
 		return
 	}
-	http.Redirect(w, r, "/admin?drive=conectado", http.StatusFound)
+	if organizado {
+		_, pendientes, err := a.organizarClientesDrive(r.Context(), token.AccessToken, conexion.CarpetaClientesID)
+		organizado = err == nil && len(pendientes) == 0
+	}
+	resultado := "conectado"
+	if !organizado {
+		resultado = "organizacion_pendiente"
+	}
+	http.Redirect(w, r, "/admin?drive="+resultado, http.StatusFound)
 }
 
 // POST /api/admin/drive/desconectar
 func (a *API) handleAdminPostDriveDesconectar(w http.ResponseWriter, r *http.Request) {
+	a.F5.DriveMu.Lock()
+	defer a.F5.DriveMu.Unlock()
 	if err := a.Store.EliminarConexionDrive(r.Context()); err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_desconectar", "No se pudo desconectar Drive.")
 		return
@@ -278,7 +294,10 @@ func (a *API) handleAdminPostTareaDriveCarpeta(w http.ResponseWriter, r *http.Re
 		Enlace    string `json:"enlace"`
 		Crear     bool   `json:"crear"`
 	}
-	_ = leerJSONCuerpo(r, 1024*8, &req)
+	if leerJSONCuerpo(r, 1024*8, &req) != nil {
+		ResponderError(w, 400, "datos_invalidos", "Revisa la carpeta del trabajo.")
+		return
+	}
 
 	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
 	if err == store.ErrNotFound {
@@ -294,42 +313,28 @@ func (a *API) handleAdminPostTareaDriveCarpeta(w http.ResponseWriter, r *http.Re
 	enlace := strings.TrimSpace(req.Enlace)
 
 	if req.Crear {
-		token, err := a.tokenDrive(r.Context())
+		archivo, err := a.crearCarpetaDeTrabajo(r.Context(), tarea)
 		if err != nil {
-			ResponderError(w, http.StatusBadRequest, "drive_no_conectado", "Primero conecta el Drive del equipo desde Gestión.")
+			responderFalloDrive(w, err)
 			return
 		}
-		nombre := fmt.Sprintf("T-%d %s", tarea.ID, recortar(tarea.Titulo, 60))
-		if tarea.ClienteID == nil {
-			ResponderError(w, 400, "cliente_requerido", "El trabajo necesita un cliente para crear su carpeta.")
-			return
-		}
-		cliente, e := a.Store.ObtenerClientePorID(r.Context(), *tarea.ClienteID)
-		if e != nil || cliente.DriveCarpetaID == nil {
-			ResponderError(w, 400, "carpeta_cliente_requerida", "Configura primero la carpeta de Drive del cliente.")
-			return
-		}
-		archivo, err := a.asegurarSubcarpeta(r.Context(), token, nombre, *cliente.DriveCarpetaID)
-		if err != nil {
-			ResponderError(w, http.StatusBadGateway, "drive_error", "No se pudo crear la carpeta en Drive.")
-			return
-		}
-		carpetaID = archivo.ID
-		enlace = archivo.Enlace
-	} else if carpetaID == "" {
-		if enlace == "" && tarea.DriveCarpetaID != nil {
-			carpetaID = *tarea.DriveCarpetaID
-		}
+		carpetaID, enlace = archivo.ID, archivo.Enlace
+	} else {
 		if carpetaID == "" && enlace != "" {
 			carpetaID = idDeEnlaceDrive(enlace)
 		}
 		if carpetaID == "" {
+			carpetaID = textoDrive(tarea.DriveCarpetaID)
+		}
+		if !driveIDValido(carpetaID) {
 			ResponderError(w, http.StatusBadRequest, "carpeta_requerida", "Indica la carpeta de Drive o pide crearla.")
 			return
 		}
-		if enlace == "" {
-			enlace = "https://drive.google.com/drive/folders/" + carpetaID
+		if err := a.verificarCarpetaCliente(r.Context(), tarea.ClienteID, carpetaID); err != nil {
+			ResponderError(w, http.StatusBadRequest, "carpeta_invalida", err.Error())
+			return
 		}
+		enlace = urlCarpetaDrive(carpetaID)
 	}
 
 	actualizada, err := a.Store.ActualizarCarpetaDriveTarea(r.Context(), id, carpetaID, enlace)
@@ -383,45 +388,53 @@ func (a *API) tokenDrive(ctx context.Context) (string, error) {
 	if err != nil || conexion == nil || conexion.RefreshToken == "" {
 		return "", fmt.Errorf("drive no conectado")
 	}
-	if !a.F5.Drive.Configurado() {
-		return "", fmt.Errorf("drive sin credenciales")
-	}
-	form := url.Values{}
-	form.Set("client_id", a.F5.Drive.ClientID)
-	form.Set("client_secret", a.F5.Drive.ClientSecret)
-	form.Set("refresh_token", conexion.RefreshToken)
-	form.Set("grant_type", "refresh_token")
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, driveTokenURL, strings.NewReader(form.Encode()))
+	tok, err := a.refrescarTokenDrive(ctx, conexion)
 	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	res, err := a.F5.HTTP.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("google refresh: HTTP %d", res.StatusCode)
-	}
-	var tok tokenDriveResp
-	if err := json.NewDecoder(res.Body).Decode(&tok); err != nil {
 		return "", err
 	}
 	return tok.AccessToken, nil
 }
 
+func (a *API) refrescarTokenDrive(ctx context.Context, conexion *store.ConexionDrive) (*tokenDriveResp, error) {
+	if !a.F5.Drive.Configurado() {
+		return nil, fmt.Errorf("drive sin credenciales")
+	}
+	form := url.Values{"client_id": {a.F5.Drive.ClientID}, "client_secret": {a.F5.Drive.ClientSecret}, "refresh_token": {conexion.RefreshToken}, "grant_type": {"refresh_token"}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, driveTokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	res, err := a.F5.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google refresh: HTTP %d", res.StatusCode)
+	}
+	var tok tokenDriveResp
+	if err := json.NewDecoder(res.Body).Decode(&tok); err != nil {
+		return nil, err
+	}
+	if tok.AccessToken == "" {
+		return nil, fmt.Errorf("google refresh sin access token")
+	}
+	return &tok, nil
+}
+
 func (a *API) correoDrive(ctx context.Context, token string) string {
 	q := url.Values{}
-	q.Set("fields", "emailAddress")
+	q.Set("fields", "user(emailAddress)")
 	var resp struct {
-		EmailAddress string `json:"emailAddress"`
+		User struct {
+			EmailAddress string `json:"emailAddress"`
+		} `json:"user"`
 	}
 	if err := a.pedirDrive(ctx, token, driveAPIBase+"/about?"+q.Encode(), &resp); err != nil {
 		return ""
 	}
-	return resp.EmailAddress
+	return resp.User.EmailAddress
 }
 
 func (a *API) pedirDrive(ctx context.Context, token, urlCompleta string, out any) error {
@@ -442,10 +455,13 @@ func (a *API) pedirDrive(ctx context.Context, token, urlCompleta string, out any
 	return json.NewDecoder(res.Body).Decode(out)
 }
 
-func (a *API) crearCarpetaDrive(ctx context.Context, token, nombre, padreID string) (*DriveArchivo, error) {
+func (a *API) crearCarpetaDrive(ctx context.Context, token, nombre, padreID string, propiedades map[string]string) (*DriveArchivo, error) {
 	cuerpo := map[string]any{
 		"name":     nombre,
 		"mimeType": driveCarpetaMime,
+	}
+	if len(propiedades) != 0 {
+		cuerpo["appProperties"] = propiedades
 	}
 	if padreID != "" {
 		cuerpo["parents"] = []string{padreID}
@@ -480,7 +496,7 @@ func (a *API) crearCarpetaDrive(ctx context.Context, token, nombre, padreID stri
 	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
 		return nil, err
 	}
-	return &DriveArchivo{ID: out.ID, Nombre: out.Name, Mime: out.MimeType, Enlace: out.WebViewLink, EsCarpeta: true}, nil
+	return &DriveArchivo{ID: out.ID, Nombre: out.Name, Mime: out.MimeType, Enlace: urlCarpetaDrive(out.ID), EsCarpeta: true}, nil
 }
 
 // copiarArchivoDrive copia un archivo del Drive del equipo a una carpeta destino.
@@ -536,7 +552,11 @@ func (a *API) SincronizarEntregaConDrive(ctx context.Context, tarea *store.Tarea
 	if err != nil {
 		return
 	}
-	_, _ = a.copiarArchivoDrive(ctx, token, archivoID, *tarea.DriveCarpetaID, "")
+	entregas, err := a.asegurarSubcarpeta(ctx, token, "Entregas", *tarea.DriveCarpetaID)
+	if err != nil {
+		return
+	}
+	_, _ = a.copiarArchivoDrive(ctx, token, archivoID, entregas.ID, "")
 }
 
 var (

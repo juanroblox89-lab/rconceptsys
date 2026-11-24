@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, FileText, Plus, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, type ApiError } from "@/lib/api";
 import { Boton } from "@/components/ui/Boton";
 import styles from "./FlujoTrabajo.module.css";
 
 export type ReferenciaDrive = { id: string; nombre: string; url?: string };
 export const MAX_REFERENCIAS = 10;
-type Vista = { setIncludeFolders(v: boolean): Vista; setSelectFolderEnabled(v: boolean): Vista };
+type Vista = { setParent(id: string): Vista; setIncludeFolders(v: boolean): Vista; setSelectFolderEnabled(v: boolean): Vista };
 type Dialogo = { setVisible(v: boolean): void; dispose?(): void };
 type Respuesta = { action: string; docs?: Array<{ id: string; name: string; url?: string }> };
 type ConstructorPicker = {
@@ -17,12 +17,9 @@ type ConstructorPicker = {
   setMaxItems(n: number): ConstructorPicker; enableFeature(f: string): ConstructorPicker;
   addView(v: Vista): ConstructorPicker; setCallback(fn: (r: Respuesta) => void): ConstructorPicker; build(): Dialogo;
 };
-type OAuth = { requestAccessToken(): void };
 type Google = Window & {
   gapi?: { load(n: string, opts: { callback(): void; onerror(): void; timeout: number; ontimeout(): void }): void };
   google?: {
-    accounts?: { oauth2: { initTokenClient(opts: { client_id: string; scope: string; include_granted_scopes: boolean;
-      callback(r: { access_token?: string }): void; error_callback(): void }): OAuth } };
     picker?: { DocsView: new () => Vista; PickerBuilder: new () => ConstructorPicker; Action: { PICKED: string; CANCEL: string }; Feature: { MULTISELECT_ENABLED: string } };
   };
 };
@@ -45,73 +42,66 @@ function cargarScript(src: string) {
 }
 
 /** Referencias de Drive del cliente: abrir, quitar (con confirmación) y añadir con el selector de Google. */
-export function PickerDriveCliente({ valor, onChange, disabled }: { valor: ReferenciaDrive[]; onChange(r: ReferenciaDrive[]): void; disabled: boolean }) {
-  const [estado, setEstado] = useState<"preparando" | "listo" | "abriendo" | "sin_drive">("preparando");
+export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
+  clienteId?: number; valor: ReferenciaDrive[]; onChange(r: ReferenciaDrive[]): void; disabled: boolean;
+}) {
+  const [estado, setEstado] = useState<"preparando" | "listo" | "abriendo" | "sin_drive" | "sin_organizar">("preparando");
   const [error, setError] = useState("");
   const [confirmar, setConfirmar] = useState<string | null>(null);
-  const token = useRef<OAuth | null>(null);
   const dialogo = useRef<Dialogo | null>(null);
   const vigente = useRef(false);
   const actual = useRef(valor);
   useEffect(() => { actual.current = valor; }, [valor]);
 
-  // Se prepara Google al abrir la página: así el clic abre la ventana de Google sin que el navegador la bloquee.
   useEffect(() => {
+    let activo = true;
     vigente.current = true;
-    (async () => {
-      try {
-        const conf = await api.adminGetDrivePicker();
-        await Promise.all([cargarScript("https://apis.google.com/js/api.js"), cargarScript("https://accounts.google.com/gsi/client")]);
-        const w = window as Google;
-        if (!w.gapi || !w.google?.accounts) throw new Error("Google Drive no está disponible ahora.");
-        const gapi = w.gapi;
-        if (!w.google.picker) await new Promise<void>((resolve, reject) => {
-          const fallo = () => reject(new Error("No pudimos preparar Google Drive."));
-          gapi.load("picker", { callback: resolve, onerror: fallo, timeout: 10_000, ontimeout: fallo });
-        });
-        const picker = w.google.picker;
-        if (!picker || !vigente.current) return;
-        token.current = w.google.accounts.oauth2.initTokenClient({
-          client_id: conf.cliente_id, scope: "https://www.googleapis.com/auth/drive.file", include_granted_scopes: false,
-          error_callback: () => { if (vigente.current) { setEstado("listo"); setError("Google no dio permiso. Acepta la ventana de Google e inténtalo de nuevo."); } },
-          callback: ({ access_token }) => {
-            if (!vigente.current) return;
-            setEstado("listo");
-            if (!access_token) { setError("Google no dio permiso para abrir Drive."); return; }
-            try {
-              dialogo.current?.dispose?.();
-              const libres = Math.max(1, MAX_REFERENCIAS - actual.current.length);
-              const vista = new picker.DocsView().setIncludeFolders(true).setSelectFolderEnabled(true);
-              dialogo.current = new picker.PickerBuilder().addView(vista).setOAuthToken(access_token)
-                .enableFeature(picker.Feature.MULTISELECT_ENABLED).setMaxItems(libres)
-                .setOrigin(window.location.origin).setDeveloperKey(conf.clave).setAppId(conf.proyecto_id).setLocale("es")
-                .setCallback(r => {
-                  if (!vigente.current || r.action !== picker.Action.PICKED) return;
-                  const nuevos = (r.docs ?? []).filter(d => d.id && d.name).map(d => ({ id: d.id, nombre: d.name, url: d.url }));
-                  const ids = new Set(actual.current.map(x => x.id));
-                  onChange([...actual.current, ...nuevos.filter(n => !ids.has(n.id))].slice(0, MAX_REFERENCIAS));
-                }).build();
-              dialogo.current.setVisible(true);
-            } catch { setError("No pudimos abrir Google Drive."); }
-          },
-        });
-        setEstado("listo");
-      } catch (e) {
-        if (vigente.current) { setEstado("sin_drive"); setError(e instanceof Error ? e.message : "Google Drive no está disponible ahora."); }
-      }
-    })();
-    return () => { vigente.current = false; dialogo.current?.setVisible(false); dialogo.current?.dispose?.(); };
-  }, [onChange]);
+    api.adminGetDrive().then(drive => {
+      if (activo) setEstado(!drive.conectado ? "sin_drive" : !drive.organizado ? "sin_organizar" : "listo");
+    }).catch(() => { if (activo) setEstado("listo"); }); // El clic vuelve a consultar si falló la red.
+    return () => { activo = false; vigente.current = false; dialogo.current?.setVisible(false); dialogo.current?.dispose?.(); };
+  }, []);
 
-  function abrir() {
-    setError("");
-    if (!token.current) return;
-    try { setEstado("abriendo"); token.current.requestAccessToken(); }
-    catch { setEstado("listo"); setError("No pudimos abrir Google. Intenta otra vez."); }
+  async function abrir() {
+    setError(""); setEstado("abriendo");
+    try {
+      const conf = await api.adminGetDrivePickerToken(clienteId);
+      if (!vigente.current) return;
+      await cargarScript("https://apis.google.com/js/api.js");
+      const w = window as Google;
+      const gapi = w.gapi;
+      if (!gapi) throw new Error("Google Drive no está disponible ahora.");
+      if (!w.google?.picker) await new Promise<void>((resolve, reject) => {
+        const fallo = () => reject(new Error("No pudimos preparar Google Drive."));
+        gapi.load("picker", { callback: resolve, onerror: fallo, timeout: 10_000, ontimeout: fallo });
+      });
+      const picker = w.google?.picker;
+      if (!vigente.current) return;
+      if (!picker) throw new Error("No pudimos abrir Google Drive.");
+      dialogo.current?.setVisible(false);
+      dialogo.current?.dispose?.();
+      const vista = new picker.DocsView().setIncludeFolders(true).setSelectFolderEnabled(true).setParent(conf.carpeta_id);
+      dialogo.current = new picker.PickerBuilder().addView(vista).setOAuthToken(conf.access_token)
+        .enableFeature(picker.Feature.MULTISELECT_ENABLED).setMaxItems(Math.max(1, MAX_REFERENCIAS - actual.current.length))
+        .setOrigin(window.location.origin).setDeveloperKey(conf.clave).setAppId(conf.proyecto_id).setLocale("es")
+        .setCallback(r => {
+          if (!vigente.current || r.action !== picker.Action.PICKED) return;
+          const nuevos = (r.docs ?? []).filter(d => d.id && d.name).map(d => ({ id: d.id, nombre: d.name, url: d.url }));
+          const ids = new Set(actual.current.map(x => x.id));
+          onChange([...actual.current, ...nuevos.filter(n => { if (ids.has(n.id)) return false; ids.add(n.id); return true; })].slice(0, MAX_REFERENCIAS));
+        }).build();
+      dialogo.current.setVisible(true);
+      setEstado("listo");
+    } catch (e) {
+      if (!vigente.current) return;
+      const codigo = (e as ApiError).codigo;
+      setEstado(codigo === "drive_no_conectado" ? "sin_drive" : codigo === "drive_sin_organizar" ? "sin_organizar" : "listo");
+      if (codigo !== "drive_no_conectado" && codigo !== "drive_sin_organizar") setError(e instanceof Error ? e.message : "No pudimos abrir Google Drive.");
+    }
   }
 
   const lleno = valor.length >= MAX_REFERENCIAS;
-  const bloqueado = disabled || estado === "preparando" || estado === "sin_drive";
+  const bloqueado = disabled || estado === "preparando" || estado === "sin_drive" || estado === "sin_organizar";
   return <div className={styles.lista}>
     <strong>Referencias de Drive</strong>
     {valor.length === 0 ? <p className={styles.ayuda}>Archivos o carpetas con el material del cliente.</p> :
@@ -124,8 +114,8 @@ export function PickerDriveCliente({ valor, onChange, disabled }: { valor: Refer
           </div> : <>
             <FileText size={16} aria-hidden="true" className={styles.referenciaIcono} />
             <span className={styles.referenciaNombre} title={r.nombre}>{r.nombre}</span>
-            {r.url && /^https:\/\/(drive|docs)\.google\.com\//.test(r.url) && <a className={styles.referenciaAccion} href={r.url} target="_blank" rel="noreferrer" aria-label={`Abrir ${r.nombre} en Google Drive`}><ExternalLink size={15} aria-hidden="true" /><span>Abrir</span></a>}
-            <button type="button" className={styles.referenciaAccion} disabled={disabled} onClick={() => setConfirmar(r.id)} aria-label={`Quitar ${r.nombre}`}><Trash2 size={15} aria-hidden="true" /><span>Quitar</span></button>
+            {r.url && /^https:\/\/(drive|docs)\.google\.com\//.test(r.url) && <a className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.referenciaAccion}`} href={r.url} target="_blank" rel="noreferrer" aria-label={`Abrir ${r.nombre} en Google Drive`}><ExternalLink size={15} aria-hidden="true" /><span>Abrir</span></a>}
+            <Boton variante="secundario" tamano="sm" className={styles.referenciaAccion} disabled={disabled} onClick={() => setConfirmar(r.id)} aria-label={`Quitar ${r.nombre}`}><Trash2 size={15} aria-hidden="true" /><span>Quitar</span></Boton>
           </>}
         </li>)}
       </ul>}
@@ -134,6 +124,8 @@ export function PickerDriveCliente({ valor, onChange, disabled }: { valor: Refer
         ? <Boton variante="secundario" disabled={bloqueado} cargando={estado === "preparando" || estado === "abriendo"} onClick={abrir}>Seleccionar en Google Drive</Boton>
         : !lleno && <Boton variante="secundario" tamano="sm" disabled={bloqueado} cargando={estado === "abriendo"} onClick={abrir} aria-label="Añadir otra referencia de Google Drive"><Plus size={16} aria-hidden="true" /> Añadir</Boton>}
     </div>
+    {estado === "sin_drive" && <p className={styles.ayuda} role="status">Conecta el Drive del equipo en Gestión → Equipo</p>}
+    {estado === "sin_organizar" && <p className={styles.ayuda} role="status">Organiza el Drive del equipo en Gestión → Equipo</p>}
     {lleno && <p className={styles.ayuda}>Puedes tener hasta {MAX_REFERENCIAS} referencias.</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}
   </div>;

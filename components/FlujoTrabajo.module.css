@@ -10,7 +10,8 @@
 .identidad { flex-wrap: nowrap; min-width: 0; }
 .identidad strong, .ayuda, .fila { overflow-wrap: anywhere; }
 .fila { display: flex; align-items: center; justify-content: space-between; gap: var(--rc-esp-8); flex-wrap: wrap; padding: var(--rc-esp-12); border: 1px solid var(--rc-gris-100); border-radius: var(--rc-radio-md); }
-.enlace { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; color: var(--rc-azul-texto); }
+.enlace { min-height: 40px; justify-self: start; }
+.enlaceCliente { max-width: 100%; min-height: 40px; height: auto; max-height: none; white-space: normal; text-align: start; padding-block: 6px; }
 .error { color: var(--rc-rojo-texto); margin: 0; }
 @media (max-width: 600px) { .pagina { padding: var(--rc-esp-12); } .form input:not([type=checkbox]), .form select, .form textarea { font-size: 16px; } }
 
@@ -46,8 +47,7 @@
 .estadoTrabajo[data-estado=hecha] { color: var(--rc-azul-texto); background: var(--rc-azul-suave); }
 .estadoTrabajo[data-estado=aceptada] { color: var(--rc-verde-texto); }
 .estadoTrabajo[data-estado=vencido], .estadoTrabajo[data-estado=rechazada] { color: var(--rc-rojo-texto); }
-.abrir { grid-area: abrir; display: inline-flex; gap: 4px; min-height: 40px; padding-inline: 10px; align-items: center; justify-content: center; justify-self: start; color: var(--rc-azul-texto); background: var(--rc-azul-suave); border-radius: var(--rc-radio-md); font-weight: 600; white-space: nowrap; text-decoration: none; }
-.abrir:hover { text-decoration: underline; }
+.abrir { grid-area: abrir; min-height: 40px; justify-self: start; }
 @media (min-width: 1000px) {
   .filaTrabajo { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.1fr) 90px auto; grid-template-areas: "titulo persona meta estado abrir"; }
   .panel { padding: 18px; }
@@ -97,11 +97,7 @@
 .referencia { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 10px; border-radius: 10px; background: var(--rc-superficie-hundida); }
 .referenciaIcono { flex: none; opacity: .7; }
 .referenciaNombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.referenciaAccion { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--rc-azul-texto); font: inherit; font-size: 13px; cursor: pointer; transition: background-color 160ms cubic-bezier(.2,.8,.2,1); }
-.referenciaAccion:hover { background: var(--rc-superficie-clara); }
-.referenciaAccion:disabled { opacity: .5; cursor: default; }
-button.referenciaAccion { color: var(--rc-rojo-texto); }
+.referenciaAccion { flex: none; min-height: 40px; }
 .confirmarQuitar { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .confirmarQuitar > span { flex: 1; min-width: 0; }
-@media (max-width: 600px) { .referenciaAccion > span { display: none; } .referenciaAccion { padding: 0 10px; min-height: 36px; } }
-@media (prefers-reduced-motion: reduce) { .referenciaAccion { transition: none; } }
+@media (max-width: 600px) { .referenciaAccion > span { display: none; } .referenciaAccion { padding: 0 10px; min-width: 40px; } }

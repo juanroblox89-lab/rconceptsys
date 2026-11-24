@@ -127,7 +127,25 @@ export interface Corte {
   creado_por?: string | null;
 }
 
+export interface MovimientoDrive {
+  tarea_id: number;
+  carpeta_id: string;
+  nombre: string;
+  destino_id: string;
+  destino: string;
+}
+export interface PlanDrive {
+  huella: string;
+  movimientos: MovimientoDrive[];
+  omitidas: number[];
+}
+export interface ResultadoMovimientoDrive {
+  movidas: MovimientoDrive[];
+  fallidas: MovimientoDrive[];
+}
+
 export interface DriveEstado {
+  organizado: boolean;
   configurado: boolean;
   conectado: boolean;
   correo: string;

@@ -245,6 +245,7 @@
   gap: var(--rc-esp-6);
   transition: transform var(--rc-transicion-rapida), box-shadow var(--rc-transicion), background var(--rc-transicion), color var(--rc-transicion);
   user-select: none;
+  text-decoration: none;
   white-space: nowrap;
   position: relative;
 }
@@ -261,7 +262,8 @@
 }
 
 .rc-btn:focus-visible {
-  outline: none;
+  outline: 2px solid var(--rc-azul);
+  outline-offset: 2px;
   box-shadow: var(--rc-elev-foco-azul);
 }
 
@@ -308,9 +310,14 @@
   padding: 0 var(--rc-esp-12);
 }
 
-.rc-btn--peligro:hover:not(:disabled) {
+.rc-btn.rc-btn--peligro:hover:not(:disabled) {
   background: var(--rc-rojo-tinte);
   color: var(--rc-rojo-texto);
+}
+
+.rc-btn.rc-btn--peligro:active:not(:disabled) {
+  background: var(--rc-rojo-tinte);
+  box-shadow: var(--rc-elev-hundido-sm);
 }
 
 .rc-btn--peligro-vidrio {

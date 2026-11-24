@@ -849,7 +849,10 @@ func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTar
 		q.Set("cliente_id", fmt.Sprintf("eq.%d", *filtro.ClienteID))
 	}
 	q.Set("order", "creada_en.desc,id.desc")
-	if filtro.ClienteID == nil {
+	if filtro.ConCarpetaDrive {
+		q.Set("drive_carpeta_id", "not.is.null")
+	}
+	if filtro.ClienteID == nil && !filtro.ConCarpetaDrive {
 		var rows []dbTarea
 		if err := s.client.REST(ctx, "GET", "tareas", q, nil, "", &rows); err != nil {
 			return nil, err

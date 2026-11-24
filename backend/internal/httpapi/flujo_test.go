@@ -37,8 +37,8 @@ func TestF6AsignarEditarYEntregar(t *testing.T) {
 		}
 		return &tarea
 	}
-	if r := doRequest(rutas, "POST", "/api/admin/tareas", admin, datos); r.Code != 400 || !strings.Contains(r.Body.String(), "cliente_requerido") {
-		t.Fatalf("cliente obligatorio: %d %s", r.Code, r.Body.String())
+	if sinCliente := post(); sinCliente.ClienteID != nil {
+		t.Fatalf("el alta sin cliente asignó un cliente: %+v", sinCliente.ClienteID)
 	}
 	datos["cliente_id"] = 1
 	tarea := post()

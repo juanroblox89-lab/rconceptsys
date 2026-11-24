@@ -1006,11 +1006,17 @@ func (m *MemoryStore) ListarTareas(ctx context.Context, filtro FiltroTareas) ([]
 				continue
 			}
 		}
+		if filtro.ConCarpetaDrive && t.DriveCarpetaID == nil {
+			continue
+		}
 		res = append(res, m.clonarTareaLocked(t))
 	}
 
 	// Orden por CreadaEn desc
 	sort.Slice(res, func(i, j int) bool {
+		if res[i].CreadaEn.Equal(res[j].CreadaEn) {
+			return res[i].ID > res[j].ID
+		}
 		return res[i].CreadaEn.After(res[j].CreadaEn)
 	})
 	return res, nil

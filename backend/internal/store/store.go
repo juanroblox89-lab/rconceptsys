@@ -197,9 +197,10 @@ type ResumenFacturasPersona struct {
 }
 
 type FiltroTareas struct {
-	Estado    *EstadoTarea
-	AsignadoA *string
-	ClienteID *int
+	ConCarpetaDrive bool
+	Estado          *EstadoTarea
+	AsignadoA       *string
+	ClienteID       *int
 }
 
 // Modelos F3: Estadísticas

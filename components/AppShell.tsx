@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
@@ -13,6 +13,10 @@ import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
 import styles from "./AppShell.module.css";
 
+const PerfilActual = createContext<Perfil | null | undefined>(undefined);
+// undefined mientras se verifica; null si no se pudo verificar.
+export const usePerfilActual = () => useContext(PerfilActual);
+
 const STORAGE_KEY = "rc-sidebar";
 
 // Layout copiado de Globe: sidebar fija en desktop (se puede ocultar y queda un
@@ -22,7 +26,7 @@ const STORAGE_KEY = "rc-sidebar";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [yo, setYo] = useState<Perfil | null>(null);
+  const [yo, setYo] = useState<Perfil | null>();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -31,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .then((p) => {
         if (montado) setYo(p);
       })
-      .catch(() => {});
+      .catch(() => { if (montado) setYo(null); });
     return () => {
       montado = false;
     };
@@ -93,7 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className={styles.root} data-rc-shell>
+    <PerfilActual.Provider value={yo}><div className={styles.root} data-rc-shell>
       <FondoApariencia />
       {/* Pastilla: solo móvil, o desktop con la sidebar colapsada. */}
       <div className={`${styles.pill} ${collapsed ? styles.pillDesktop : ""}`}>
@@ -175,6 +179,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className={`${styles.main} ${collapsed ? styles.mainWithRail : ""}`}>
         <div key={pathname} data-rc-entrada className={styles.pantalla}>{children}</div>
       </main>
-    </div>
+    </div></PerfilActual.Provider>
   );
 }

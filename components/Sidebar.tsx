@@ -46,7 +46,7 @@ export const navItems: NavItemDef[] = [
   { id: "factura", title: "Mi factura", href: "/factura", icon: Receipt, workerOnly: true },
   { id: "equipo", title: "Equipo", href: "/equipo", icon: Users },
   { id: "asignaciones", title: "Trabajos", href: "/asignaciones", icon: Briefcase, adminOnly: true },
-  { id: "clientes", title: "Clientes", href: "/clientes", icon: Contact, adminOnly: true },
+  { id: "clientes", title: "Clientes", href: "/clientes", icon: Contact },
   { id: "admin", title: "Gestión", href: "/admin", icon: Shield, adminOnly: true },
 ];
 

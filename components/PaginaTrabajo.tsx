@@ -57,7 +57,7 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
   }
 
   return <section className={`${styles.pagina} ${styles.paginaDetalle}`}>
-    <Link className={styles.enlace} href={volver}><ArrowLeft size={16} aria-hidden="true" />{textoVolver}</Link>
+    <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={volver}><ArrowLeft size={16} aria-hidden="true" />{textoVolver}</Link>
     <header className={styles.cabecera}>
       <div><h1>{id === undefined ? "Asignar trabajo" : tarea?.titulo ?? "Trabajo"}</h1><p>{id === undefined ? "Define a quién va dirigido y qué debe entregar." : tarea?.cliente?.nombre ?? "Detalle de la asignación"}</p></div>
       {tarea && <EstadoTrabajo tarea={tarea} />}
@@ -93,8 +93,8 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
         {tarea.motivo_rechazo && <p className={styles.textoLargo}><strong>Motivo de devolución: </strong>{tarea.motivo_rechazo}</p>}
         {tarea.precio_congelado != null && <p><strong>Valor aprobado: </strong>${tarea.precio_congelado.toLocaleString("es-CO")}</p>}
         {tarea.enlace_medios && <EnlaceDrive enlace={tarea.enlace_medios} />}
-        {tarea.drive_carpeta_id && <CarpetaDriveTarea tarea={tarea} />}
-        {tarea.estado === "hecha" && <Link className={styles.abrir} href={`/tareas?tarea=${tarea.id}#tarea-${tarea.id}`}>Revisar entrega</Link>}
+        <CarpetaDriveTarea tarea={tarea} onActualizada={setRespuesta} />
+        {tarea.estado === "hecha" && <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={`/tareas?tarea=${tarea.id}#tarea-${tarea.id}`}>Revisar entrega</Link>}
       </section>}
       {editable && <Boton variante="peligro" onClick={() => { setError(""); setConfirmar(true); }}>Cancelar trabajo</Boton>}
     </>}

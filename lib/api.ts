@@ -22,6 +22,8 @@ import {
   Pieza,
   Corte,
   DriveEstado,
+  PlanDrive,
+  ResultadoMovimientoDrive,
   DriveArchivo,
   PushEstado,
   BandejaNotificaciones,
@@ -277,6 +279,9 @@ export const api = {
   adminConectarDrive: () => fetchApi<{ url: string }>('/api/admin/drive/conectar', { method: 'POST' }),
   adminDesconectarDrive: () =>
     fetchApi<{ mensaje: string }>('/api/admin/drive/desconectar', { method: 'POST' }),
+  adminOrganizarDrive: () => fetchApi<{ clientes_listos: number; clientes_pendientes: number[] }>('/api/admin/drive/organizar', { method: 'POST', body: '{}' }),
+  adminSimularMovimientosDrive: () => fetchApi<PlanDrive>('/api/admin/drive/migrar-carpetas', { method: 'POST', body: '{}' }),
+  adminMoverCarpetasDrive: (huella: string) => fetchApi<ResultadoMovimientoDrive>('/api/admin/drive/migrar-carpetas', { method: 'POST', body: JSON.stringify({ huella }) }),
   adminGetDriveArchivos: (filtros?: { carpeta?: string; buscar?: string }) => {
     const q = new URLSearchParams();
     if (filtros?.carpeta) q.set('carpeta', filtros.carpeta);
@@ -386,13 +391,14 @@ export const api = {
       body: JSON.stringify(campos),
     }),
 
-  adminGetCliente: (id: number) => fetchApi<FichaClienteDatos>(`/api/admin/clientes/${id}`),
+  getFichaCliente: (id: number) => fetchApi<FichaClienteDatos>(`/api/clientes/${id}`),
   adminSubirFotoCliente: (id: number, foto: File) => {
     const form = new FormData();
     form.append('foto', foto);
     return fetchApi<Cliente>(`/api/admin/clientes/${id}/foto`, { method: 'POST', body: form });
   },
-  adminGetDrivePicker: () => fetchApi<{ cliente_id: string; clave: string; proyecto_id: string }>('/api/admin/drive/picker'),
+  adminGetDrivePickerToken: (id?: number) => fetchApi<{ access_token: string; expires_in: number; carpeta_id: string; clave: string; proyecto_id: string }>(
+    `/api/admin/drive/picker-token${id === undefined ? '' : `?cliente_id=${id}`}`, { cache: 'no-store' }),
   adminGetClientes: () => fetchApi<Cliente[]>('/api/admin/clientes'),
   adminPostCliente: (nombre: string) =>
     fetchApi<Cliente>('/api/admin/clientes', {

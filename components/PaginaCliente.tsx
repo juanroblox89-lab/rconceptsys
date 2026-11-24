@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, ExternalLink, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Cliente, FichaClienteDatos, DriveArchivo } from "@/lib/types";
+import { usePerfilActual } from "./AppShell";
+import type { Cliente, FichaClienteDatos } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
 import { Campo } from "@/components/ui/Campo";
 import { Esqueleto } from "@/components/ui/Esqueleto";
@@ -21,36 +22,43 @@ function referenciasDe(c?: Cliente): ReferenciaDrive[] {
 }
 
 function EnlaceCliente({ href, children }: { href?: string | null; children: string }) {
-  return href && /^https:\/\/(drive|docs)\.google\.com\//.test(href) ? <a className={styles.enlace} href={href} target="_blank" rel="noreferrer">{children}<ExternalLink size={14} aria-hidden="true" /></a> : null;
+  return href && /^https:\/\/(drive|docs)\.google\.com\//.test(href) ? <a className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceCliente}`} href={href} target="_blank" rel="noreferrer">{children}<ExternalLink size={14} aria-hidden="true" /></a> : null;
 }
 
 export function PaginaCliente({ id, editar = false, admin = false }: { id?: number; editar?: boolean; admin?: boolean }) {
   const router = useRouter();
+  const perfil = usePerfilActual();
+  const puedeEditar = perfil?.estado === "aprobado" && perfil.es_admin;
+  const verEditor = editar && puedeEditar;
+  const desdeGestion = admin && puedeEditar;
   const [respuesta, setRespuesta] = useState<FichaClienteDatos | string | null>(null);
   const [intento, setIntento] = useState(0);
-  const desde = admin ? "?desde=admin" : "";
-  const lista = admin ? "/admin?pestana=clientes" : "/clientes";
+  const desde = desdeGestion ? "?desde=admin" : "";
+  const lista = desdeGestion ? "/admin?pestana=clientes" : "/clientes";
   const ficha = id === undefined ? lista : `/clientes/${id}${desde}`;
   const dato = typeof respuesta === "object" ? respuesta : null;
   const cliente = dato?.cliente;
   useEffect(() => {
     if (id === undefined) return;
     let vigente = true;
-    api.adminGetCliente(id).then(d => { if (vigente) setRespuesta(d); }).catch(e => { if (vigente) setRespuesta(e instanceof Error ? e.message : "No pudimos cargar la ficha."); });
+    api.getFichaCliente(id).then(d => { if (vigente) setRespuesta(d); }).catch(e => { if (vigente) setRespuesta(e instanceof Error ? e.message : "No pudimos cargar la ficha."); });
     return () => { vigente = false; };
   }, [id, intento]);
 
+  if ((editar || id === undefined) && perfil === undefined) return <Esqueleto filas={5} />;
+  if (id === undefined && !puedeEditar) return <section className={styles.pagina}><h1>Nuevo cliente</h1><p>Solo los administradores pueden crear clientes.</p><Link className="rc-btn rc-btn--secundario rc-btn--sm" href={lista}>Volver a clientes</Link></section>;
   return <section className={`${styles.pagina} ${styles.paginaDetalle}`}>
-    <Link className={styles.enlace} href={editar ? ficha : lista}><ArrowLeft size={16} aria-hidden="true" />{editar && cliente ? "Volver a la ficha" : "Volver a clientes"}</Link>
+    <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={verEditor ? ficha : lista}><ArrowLeft size={16} aria-hidden="true" />{verEditor && cliente ? "Volver a la ficha" : "Volver a clientes"}</Link>
     <header className={styles.cabecera}>
-      <div className={styles.identidad}>{cliente && !editar && <FotoCliente cliente={cliente} grande />}<div>
-        <h1>{id === undefined ? "Nuevo cliente" : editar ? "Editar cliente" : cliente?.nombre ?? "Cliente"}</h1>
-        <p>{id === undefined ? "Crea la ficha del cliente." : editar ? cliente?.nombre : cliente?.activo ? "Cliente activo" : cliente ? "Cliente inactivo" : "Ficha del cliente"}</p>
+      <div className={styles.identidad}>{cliente && !verEditor && <FotoCliente cliente={cliente} grande />}<div>
+        <h1>{id === undefined ? "Nuevo cliente" : verEditor ? "Editar cliente" : cliente?.nombre ?? "Cliente"}</h1>
+        <p>{id === undefined ? "Crea la ficha del cliente." : verEditor ? cliente?.nombre : cliente?.activo ? "Cliente activo" : cliente ? "Cliente inactivo" : "Ficha del cliente"}</p>
       </div></div>
-      {cliente && !editar && <Link className={styles.abrir} href={`/clientes/${cliente.id}/editar${desde}`}><Pencil size={15} aria-hidden="true" /> Editar</Link>}
+      {puedeEditar && cliente && !verEditor && <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={`/clientes/${cliente.id}/editar${desde}`}><Pencil size={15} aria-hidden="true" /> Editar</Link>}
     </header>
+    {editar && !puedeEditar && <p className={styles.ayuda}>Ficha de solo lectura. Solo los administradores pueden editarla.</p>}
     {typeof respuesta === "string" ? <div className={styles.panel}><p role="alert" className={styles.error}>{respuesta}</p><Boton variante="secundario" onClick={() => { setRespuesta(null); setIntento(n => n + 1); }}>Reintentar</Boton></div> :
-      id !== undefined && !dato ? <Esqueleto filas={5} /> : editar || id === undefined ?
+      id !== undefined && !dato ? <Esqueleto filas={5} /> : verEditor || id === undefined ?
       <EditorCliente cliente={cliente} onCerrar={() => router.push(ficha)} onGuardar={c => router.push(`/clientes/${c.id}${desde}`)} /> : dato && <>
         <section className={styles.panel}>
           <h2>Notas y referencias</h2>
@@ -75,7 +83,7 @@ export function PaginaCliente({ id, editar = false, admin = false }: { id?: numb
           </dl>
         </section>
         <section className={styles.panel}><h2>Trabajos ({dato.estadisticas.total})</h2>
-          {!dato.trabajos.length ? <p className={styles.ayuda}>Este cliente todavía no tiene trabajos.</p> : <ul className={styles.listaTrabajos}>{dato.trabajos.map(t => <FilaTrabajo key={t.id} tarea={t} origen={`cliente-${dato.cliente.id}`} />)}</ul>}
+          {!dato.trabajos.length ? <p className={styles.ayuda}>Este cliente todavía no tiene trabajos.</p> : <ul className={styles.listaTrabajos}>{dato.trabajos.map(t => <FilaTrabajo key={t.id} tarea={t} origen={`cliente-${dato.cliente.id}`} soloLectura={!puedeEditar} />)}</ul>}
         </section>
       </>}
   </section>;
@@ -88,22 +96,11 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
   const [notas, setNotas] = useState(cliente?.notas ?? "");
   const [activo, setActivo] = useState(cliente?.activo ?? true);
   const [referencias, setReferencias] = useState<ReferenciaDrive[]>(() => referenciasDe(cliente));
-  const [modo, setModo] = useState("");
-  const [carpetas, setCarpetas] = useState<DriveArchivo[] | null>(null);
-  const [carpeta, setCarpeta] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
   const inputFoto = useRef<HTMLInputElement>(null);
   const vistaPrevia = useMemo(() => (foto ? URL.createObjectURL(foto) : null), [foto]);
   useEffect(() => () => { if (vistaPrevia) URL.revokeObjectURL(vistaPrevia); }, [vistaPrevia]);
-  useEffect(() => {
-    if (modo !== "elegir") return;
-    let vigente = true;
-    api.adminGetDriveArchivos().then(r => { if (vigente) setCarpetas(r.filter(a => a.es_carpeta)); })
-      .catch(e => { if (vigente) { setCarpetas([]); setError(e instanceof Error ? e.message : "No pudimos cargar las carpetas."); } });
-    return () => { vigente = false; };
-  }, [modo]);
-
   async function guardar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (ocupado) return;
@@ -118,7 +115,6 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
         ...(cambiaron ? { drive_referencias: ids } : {}) });
       setBase(actual);
       if (foto) { actual = await api.adminSubirFotoCliente(actual.id, foto); setBase(actual); setFoto(null); }
-      if (modo) { actual = await api.adminClienteDrive(actual.id, modo === "crear" ? { crear: true } : { carpeta_id: carpeta }); setBase(actual); }
       onGuardar(actual);
     } catch (e) { setError(e instanceof Error ? e.message : "No pudimos guardar la ficha."); }
     finally { setOcupado(false); }
@@ -138,18 +134,13 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
       }} />
     </div>
     <Campo como="textarea" etiqueta="Notas" filas={5} maxLength={1000} value={notas} onChange={e => setNotas(e.target.value)} />
-    <PickerDriveCliente valor={referencias} onChange={setReferencias} disabled={ocupado} />
-    <Campo como="select" etiqueta="Carpeta operativa de Drive" value={modo} onChange={e => { setModo(e.target.value); setCarpetas(null); setCarpeta(""); setError(""); }}>
-      <option value="">{base?.drive_carpeta_id ? "Conservar carpeta vinculada" : "Vincular después"}</option>
-      <option value="elegir">Elegir carpeta existente</option><option value="crear">Crear carpeta del cliente</option>
-    </Campo>
-    {modo === "elegir" && <Campo como="select" etiqueta="Carpeta existente" value={carpeta} required onChange={e => setCarpeta(e.target.value)}>
-      <option value="">{!carpetas ? "Cargando carpetas…" : carpetas.length ? "Selecciona una carpeta" : "Sin carpetas disponibles"}</option>
-      {carpetas?.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-    </Campo>}
-    {modo !== "" && <p className={styles.ayuda}>La carpeta operativa se usa para organizar Material del lugar y Producto; no cambia la referencia seleccionada.</p>}
+    <PickerDriveCliente clienteId={base?.id} valor={referencias} onChange={setReferencias} disabled={ocupado} />
+    <div className={styles.acciones}>
+      <span className={styles.ayuda}>La carpeta operativa se prepara automáticamente con el Drive del equipo.</span>
+      <EnlaceCliente href={base?.drive_carpeta_id ? base.drive_url : null}>Abrir carpeta del cliente</EnlaceCliente>
+    </div>
     {cliente && <label><input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} /> Cliente activo</label>}
     {error && <p className={styles.error} role="alert">{error}</p>}
-    <div className={styles.accionesFormulario}><Boton variante="secundario" disabled={ocupado} onClick={onCerrar}>Volver sin guardar</Boton><Boton type="submit" cargando={ocupado} disabled={modo === "elegir" && !carpeta}>Guardar ficha</Boton></div>
+    <div className={styles.accionesFormulario}><Boton variante="secundario" disabled={ocupado} onClick={onCerrar}>Volver sin guardar</Boton><Boton type="submit" cargando={ocupado}>Guardar ficha</Boton></div>
   </form>;
 }

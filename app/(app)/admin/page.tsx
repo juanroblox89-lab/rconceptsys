@@ -40,6 +40,7 @@ import { ClientesPanel } from "@/components/ClientesPanel";
 import { AdminTareas } from "@/components/AdminTareas";
 import { useAviso } from "@/components/ui/Aviso";
 import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
+import { usePerfilActual } from "@/components/AppShell";
 import { AdminEquipo } from "@/components/admin/AdminEquipo";
 import { AdminPiezas } from "@/components/admin/AdminPiezas";
 import { AdminCortes } from "@/components/admin/AdminCortes";
@@ -86,6 +87,13 @@ function obtenerFechasPresetAdmin(preset: PresetFechaAdmin): { desde?: string; h
 }
 
 export default function AdminPage() {
+  const perfil = usePerfilActual();
+  if (perfil === undefined) return <p role="status">Comprobando acceso…</p>;
+  if (!perfil?.es_admin || perfil.estado !== "aprobado") return <section className={styles.container}><h1>Gestión</h1><p>Solo los administradores pueden editar el equipo y el Drive.</p></section>;
+  return <GestionAdmin />;
+}
+
+function GestionAdmin() {
   const [pestanaActiva, setPestanaActiva] = useState("trabajos");
   const [cargando, setCargando] = useState(true);
   const { mostrarAviso } = useAviso();
@@ -208,7 +216,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      const p = sp.get("pestana");
+      const p = sp.has("drive") ? "equipo" : sp.get("pestana");
       const pers = sp.get("persona");
 
       // Si viene a ?pestana=tareas, redirige a la sección propia de /tareas

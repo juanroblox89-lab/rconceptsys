@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowUp, ArrowDown, Check, ExternalLink, Link2, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { ConfigEquipo, DriveEstado } from "@/lib/types";
+import { ConfigEquipo, DriveEstado, PlanDrive, ResultadoMovimientoDrive } from "@/lib/types";
 import { useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
 import styles from "./admin-paneles.module.css";
@@ -24,6 +24,10 @@ export function AdminEquipo() {
 
   const [drive, setDrive] = useState<DriveEstado | null>(null);
   const [conectando, setConectando] = useState(false);
+  const [confirmar, setConfirmar] = useState(false);
+  const [accionDrive, setAccionDrive] = useState("");
+  const [plan, setPlan] = useState<PlanDrive | null>(null);
+  const [movimientos, setMovimientos] = useState<ResultadoMovimientoDrive | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -50,6 +54,7 @@ export function AdminEquipo() {
     const resultado = params.get("drive");
     if (!resultado) return;
     const mensajes: Record<string, { tipo: "exito" | "error" | "info"; titulo: string; texto: string }> = {
+      organizacion_pendiente: { tipo: "info", titulo: "Drive conectado", texto: "Falta preparar algunas carpetas. Pulsa Organizar Drive para reintentar." },
       conectado: { tipo: "exito", titulo: "Drive conectado", texto: "Las subcarpetas por tarea ya se crean en ese Drive." },
       cancelado: { tipo: "info", titulo: "Conexión cancelada", texto: "No se conectó ninguna cuenta de Google." },
       estado_invalido: { tipo: "error", titulo: "Enlace vencido", texto: "Vuelve a intentar la conexión desde Gestión." },
@@ -132,13 +137,41 @@ export function AdminEquipo() {
   };
 
   const desconectarDrive = async () => {
+    setAccionDrive("desconectar");
     try {
       await api.adminDesconectarDrive();
+      setConfirmar(false); setPlan(null); setMovimientos(null);
       await cargar();
       mostrarAviso({ tipo: "info", titulo: "Drive desconectado", texto: "Ya no se crean carpetas automáticas." });
     } catch {
       mostrarAviso({ tipo: "error", titulo: "No se pudo desconectar", texto: "Inténtalo de nuevo." });
-    }
+    } finally { setAccionDrive(""); }
+  };
+
+  const organizar = async () => {
+    setAccionDrive("organizar"); setPlan(null);
+    try {
+      const r = await api.adminOrganizarDrive();
+      await cargar();
+      mostrarAviso({ tipo: r.clientes_pendientes.length ? "info" : "exito", titulo: "Estructura de Drive preparada",
+        texto: `${r.clientes_listos} fichas listas.${r.clientes_pendientes.length ? ` Pendientes: ${r.clientes_pendientes.join(", ")}. Puedes reintentar.` : " No se movieron carpetas antiguas."}` });
+    } catch (e) { mostrarAviso({ tipo: "error", titulo: "No se pudo organizar", texto: (e as Error).message }); }
+    finally { setAccionDrive(""); }
+  };
+
+  const simular = async () => {
+    setAccionDrive("simular"); setPlan(null); setMovimientos(null);
+    try { setPlan(await api.adminSimularMovimientosDrive()); }
+    catch (e) { mostrarAviso({ tipo: "error", titulo: "No se pudo simular", texto: (e as Error).message }); }
+    finally { setAccionDrive(""); }
+  };
+
+  const aplicar = async () => {
+    if (!plan?.movimientos.length) return;
+    setAccionDrive("mover");
+    try { setMovimientos(await api.adminMoverCarpetasDrive(plan.huella)); setPlan(null); }
+    catch (e) { setPlan(null); mostrarAviso({ tipo: "error", titulo: "No se aplicaron los movimientos", texto: (e as Error).message }); }
+    finally { setAccionDrive(""); }
   };
 
   const enlaces = (config?.enlaces ?? []).slice().sort((a, b) => a.orden - b.orden);
@@ -187,8 +220,8 @@ export function AdminEquipo() {
                 <Link2 size={14} strokeWidth={1.75} aria-hidden="true" className={styles.enlaceIcono} />
                 <div className={styles.enlaceDatos}>
                   <span className={styles.enlaceNombre}>{enlace.nombre}</span>
-                  <a href={enlace.url} target="_blank" rel="noopener noreferrer" className={styles.enlaceUrl}>
-                    {enlace.url}
+                  <a href={enlace.url} target="_blank" rel="noopener noreferrer" className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceUrl}`} aria-label={`Abrir ${enlace.nombre}`} title={enlace.url}>
+                    Abrir
                     <ExternalLink size={11} strokeWidth={2} aria-hidden="true" />
                   </a>
                 </div>
@@ -276,27 +309,42 @@ export function AdminEquipo() {
               retorno es <code>https://&lt;dominio&gt;/api/drive/callback</code>.
             </p>
           </div>
-        ) : (
-          <div className={styles.driveAcciones}>
-            {drive?.conectado ? (
-              <Boton variante="secundario" onClick={desconectarDrive}>
-                Desconectar Drive
-              </Boton>
-            ) : (
-              <Boton variante="primario" onClick={conectarDrive} cargando={conectando} disabled={conectando}>
-                Conectar Drive del equipo
-              </Boton>
-            )}
-            {drive?.conectado && drive.carpeta_raiz_id ? (
-              <span className={styles.driveCarpeta}>Carpeta raíz: {drive.carpeta_raiz_id}</span>
-            ) : null}
-            {drive?.conectado && !drive.carpeta_raiz_id ? (
-              <span className={styles.driveCarpeta}>
-                Sin carpeta raíz fija: las subcarpetas se crean en el Drive de la cuenta conectada.
-              </span>
-            ) : null}
-          </div>
+        ) : !drive.conectado && (
+          <div><Boton variante="primario" onClick={conectarDrive} cargando={conectando}>Conectar Drive del equipo</Boton></div>
         )}
+        {drive?.conectado && <>
+          <div className={styles.driveAcciones}>
+            <span className={styles.driveCarpeta}>{drive.organizado ? "Carpeta raíz: RConcept" : "Drive conectado. Falta organizar las carpetas."}</span>
+            {drive.organizado && <a className="rc-btn rc-btn--secundario rc-btn--sm" href={`https://drive.google.com/drive/folders/${encodeURIComponent(drive.carpeta_raiz_id)}`} target="_blank" rel="noreferrer">Abrir en Drive <ExternalLink size={14} aria-hidden="true" /></a>}
+          </div>
+          {confirmar ? <div className={styles.confirmacionDrive} role="group" aria-labelledby="confirmar-drive">
+            <p id="confirmar-drive">¿Desconectar el Drive del equipo? Las tareas nuevas dejarán de crear carpetas.</p>
+            <Boton variante="peligro" tamano="sm" onClick={desconectarDrive} cargando={accionDrive === "desconectar"}>Sí</Boton>
+            <Boton variante="secundario" tamano="sm" disabled={!!accionDrive} onClick={() => setConfirmar(false)}>No</Boton>
+          </div> : <div className={styles.driveAcciones}>
+            <Boton variante="secundario" onClick={organizar} disabled={!drive.configurado || !!accionDrive} cargando={accionDrive === "organizar"}>Organizar Drive</Boton>
+            <Boton variante="peligro" onClick={() => setConfirmar(true)} disabled={!!accionDrive}>Desconectar Drive</Boton>
+          </div>}
+          {drive.organizado && <div className={styles.planDrive}>
+            <h3>Carpetas antiguas</h3>
+            <p className={styles.bloqueAyuda}>Simula primero el traslado de carpetas de la app que siguen sueltas en Mi unidad. No se borra nada.</p>
+            <div><Boton variante="secundario" tamano="sm" onClick={simular} disabled={!drive.configurado || !!accionDrive || confirmar} cargando={accionDrive === "simular"}>Simular movimientos</Boton></div>
+            {plan && <div className={styles.planDrive} role="region" aria-label="Resultado de la simulación">
+              <p>{plan.movimientos.length ? `${plan.movimientos.length} carpetas por mover. Aún no se movió nada.` : "No hay carpetas verificadas por mover."}</p>
+              {plan.movimientos.length > 0 && <ul>{plan.movimientos.map(m => <li key={m.tarea_id}><strong>{m.nombre}</strong> → {m.destino}</li>)}</ul>}
+              {plan.omitidas.length > 0 && <p className={styles.bloqueAyuda}>No se tocarán las tareas con carpetas no verificadas: {plan.omitidas.join(", ")}.</p>}
+              {plan.movimientos.length > 0 && <div className={styles.driveAcciones}>
+                <Boton tamano="sm" variante="primario" disabled={!!accionDrive || confirmar} cargando={accionDrive === "mover"} onClick={aplicar}>Aplicar movimientos</Boton>
+                <Boton tamano="sm" variante="secundario" disabled={!!accionDrive} onClick={() => setPlan(null)}>Cancelar</Boton>
+              </div>}
+            </div>}
+            {movimientos && <div className={styles.planDrive} role="status">
+              <p>{movimientos.movidas.length} carpetas movidas. {movimientos.fallidas.length} pendientes.</p>
+              {movimientos.movidas.length > 0 && <ul>{movimientos.movidas.map(m => <li key={m.tarea_id}><strong>{m.nombre}</strong> → {m.destino}</li>)}</ul>}
+              {movimientos.fallidas.length > 0 && <p>Simula de nuevo para reintentar: {movimientos.fallidas.map(m => m.nombre).join(", ")}.</p>}
+            </div>}
+          </div>}
+        </>}
       </section>
     </div>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays } from "lucide-react";
+import { ChevronRight, CalendarDays } from "lucide-react";
 import type { EstadoTarea, Tarea } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
 import styles from "./FlujoTrabajo.module.css";
@@ -28,7 +28,7 @@ export function EstadoTrabajo({ tarea }: { tarea: Tarea }) {
   return <span className={styles.estadoTrabajo} data-estado={vencido ? "vencido" : tarea.estado}>{vencido ? "Vencido" : ESTADOS_TRABAJO[tarea.estado]}</span>;
 }
 
-export function FilaTrabajo({ tarea, origen, id, novedad, resaltado }: { tarea: Tarea; origen: string; id?: string; novedad?: boolean; resaltado?: boolean }) {
+export function FilaTrabajo({ tarea, origen, id, novedad, resaltado, soloLectura }: { tarea: Tarea; origen: string; id?: string; novedad?: boolean; resaltado?: boolean; soloLectura?: boolean }) {
   const persona = tarea.asignado?.nombre ?? "Sin asignar";
   return <li id={id} className={styles.filaTrabajo} data-resaltado={resaltado || undefined}>
     <div className={styles.trabajoTitulo}>
@@ -44,6 +44,6 @@ export function FilaTrabajo({ tarea, origen, id, novedad, resaltado }: { tarea: 
       <small><CalendarDays size={13} aria-hidden="true" />{tarea.fecha_limite ? fechaTrabajo(tarea.fecha_limite) : "Sin fecha límite"}</small>
     </div>
     <EstadoTrabajo tarea={tarea} />
-    <Link className={styles.abrir} href={`/trabajos/${tarea.id}?desde=${encodeURIComponent(origen)}`} aria-label={`Abrir trabajo: ${tarea.titulo}`}>Abrir <ArrowUpRight size={14} aria-hidden="true" /></Link>
+    <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={soloLectura ? `/tareas?tarea=${tarea.id}#tarea-${tarea.id}` : `/trabajos/${tarea.id}?desde=${encodeURIComponent(origen)}`} aria-label={`Abrir trabajo: ${tarea.titulo}`}>Abrir <ChevronRight size={14} aria-hidden="true" /></Link>
   </li>;
 }

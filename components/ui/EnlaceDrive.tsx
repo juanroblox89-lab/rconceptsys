@@ -22,25 +22,15 @@ export function errorEnlaceDrive(enlace: string): string | null {
 }
 
 export function EnlaceDrive({ enlace, etiqueta = "Abrir en Drive" }: { enlace?: string | null; etiqueta?: string }) {
-  if (!enlace) return null;
+  if (!enlace || errorEnlaceDrive(enlace)) return null;
   return (
     <a
       href={enlace}
       target="_blank"
       rel="noopener noreferrer"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 12,
-        fontWeight: 600,
-        color: "var(--rc-azul-texto)",
-        textDecoration: "underline",
-        textUnderlineOffset: 3,
-        overflowWrap: "anywhere",
-      }}
+      className="rc-btn rc-btn--secundario rc-btn--sm"
     >
-      <ExternalLink size={13} strokeWidth={1.75} />
+      <ExternalLink size={13} strokeWidth={1.75} aria-hidden="true" />
       {etiqueta}
     </a>
   );

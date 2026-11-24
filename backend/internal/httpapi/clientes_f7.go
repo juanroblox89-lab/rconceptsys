@@ -46,12 +46,16 @@ type estadisticasCliente struct {
 	UltimaEntrega *time.Time `json:"ultima_entrega"`
 }
 
-func (a *API) handleAdminGetCliente(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleGetFichaCliente(w http.ResponseWriter, r *http.Request) {
 	c := a.clienteF7(w, r)
 	if c == nil {
 		return
 	}
-	trabajos, err := a.Store.ListarTareas(r.Context(), store.FiltroTareas{ClienteID: &c.ID})
+	filtro := store.FiltroTareas{ClienteID: &c.ID}
+	if yo := a.usuarioActual(r); !yo.EsAdmin {
+		filtro.AsignadoA = &yo.ID
+	}
+	trabajos, err := a.Store.ListarTareas(r.Context(), filtro)
 	if err != nil {
 		ResponderError(w, 500, "error_trabajos", "No pudimos cargar los trabajos del cliente.")
 		return
@@ -132,7 +136,7 @@ func (a *API) handleAdminPostClienteFoto(w http.ResponseWriter, r *http.Request)
 	ResponderJSON(w, 200, actual)
 }
 
-func (a *API) handleAdminGetClienteFoto(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleGetClienteFoto(w http.ResponseWriter, r *http.Request) {
 	c := a.clienteF7(w, r)
 	if c == nil {
 		return
@@ -157,18 +161,48 @@ func (a *API) handleAdminGetClienteFoto(w http.ResponseWriter, r *http.Request) 
 	_, _ = w.Write(datos)
 }
 
-func (a *API) handleAdminDrivePicker(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleAdminDrivePickerToken(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("Vary", "Cookie, Authorization")
 	conf := a.F5.Drive
+	conexion, err := a.conexionDrive(r.Context())
+	if err != nil {
+		responderFalloDrive(w, err)
+		return
+	}
 	if !conf.Configurado() || conf.PickerKey == "" || conf.PickerAppID == "" {
 		ResponderError(w, 503, "picker_no_configurado", "El selector de Google Drive aún no está configurado.")
 		return
 	}
-	if _, err := a.Store.ObtenerConexionDrive(r.Context()); err != nil {
-		ResponderError(w, 409, "drive_no_conectado", "Primero conecta el Drive del equipo desde Gestión.")
+	if conexion.CarpetaClientesID == "" || conexion.CarpetaRaizID == "" {
+		ResponderError(w, 409, "drive_sin_organizar", "Organiza el Drive del equipo en Gestión → Equipo.")
 		return
 	}
-	// El navegador autoriza su propio drive.file; el refresh token del equipo nunca sale del backend.
-	ResponderJSON(w, 200, map[string]string{"cliente_id": conf.ClientID, "clave": conf.PickerKey, "proyecto_id": conf.PickerAppID})
+	tok, err := a.refrescarTokenDrive(r.Context(), conexion)
+	if err != nil || tok.ExpiresIn <= 0 {
+		responderFalloDrive(w, err)
+		return
+	}
+	padre := conexion.CarpetaRaizID
+	if id := r.URL.Query().Get("cliente_id"); id != "" {
+		clienteID, err := strconv.Atoi(id)
+		if err != nil || clienteID <= 0 {
+			ResponderError(w, 400, "cliente_invalido", "Selecciona un cliente válido.")
+			return
+		}
+		cliente, err := a.Store.ObtenerClientePorID(r.Context(), clienteID)
+		if err != nil {
+			ResponderError(w, 404, "cliente_no_encontrado", "No encontramos al cliente.")
+			return
+		}
+		if id := textoDrive(cliente.DriveCarpetaID); driveIDValido(id) {
+			if f, err := a.metadatosCarpeta(r.Context(), tok.AccessToken, id); err == nil && f.carpetaEn(conexion.CarpetaClientesID) {
+				padre = id
+			}
+		}
+	}
+	// Nunca serializar tokenDriveResp: contiene el campo refresh_token.
+	ResponderJSON(w, 200, map[string]any{"access_token": tok.AccessToken, "expires_in": tok.ExpiresIn, "carpeta_id": padre, "clave": conf.PickerKey, "proyecto_id": conf.PickerAppID})
 }
 
 func (a *API) referenciaDriveCliente(ctx context.Context, id string) (nombre, enlace string, err error) {

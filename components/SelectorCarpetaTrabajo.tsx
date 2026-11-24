@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { DriveArchivo } from "@/lib/types";
+import { Boton } from "@/components/ui/Boton";
 import { Campo } from "@/components/ui/Campo";
 import styles from "./FlujoTrabajo.module.css";
 
@@ -30,13 +31,13 @@ export function SelectorCarpetaTrabajo({ padre, actual, valor, onChange }: {
     <Campo como="select" etiqueta="Carpeta de Drive" value={modo} onChange={(e) => {
       setModo(e.target.value);
       setConsulta(null);
-      onChange({ id: e.target.value === "existente" ? actual ?? "" : "", nombre: "" });
+      onChange({ id: e.target.value === "existente" ? actual ?? "" : "", nombre: e.target.value === "nueva" ? "automatica" : "" });
     }}>
-      <option value="">{actual ? "Conservar carpeta actual" : "Asignar sin carpeta por ahora"}</option>
+      <option value="">{actual ? "Conservar carpeta actual" : "Crear automáticamente si Drive está conectado"}</option>
       <option value="existente" disabled={!padre}>Elegir una subcarpeta existente</option>
-      <option value="nueva" disabled={!padre}>Crear una subcarpeta</option>
+      {actual && <option value="nueva" disabled={!padre}>Preparar carpeta con el nombre del trabajo</option>}
     </Campo>
-    {!padre && <p className={styles.ayuda}>Vincula el Drive del cliente en Clientes para elegir o crear una carpeta de trabajo.</p>}
+    {!padre && <p className={styles.ayuda}>Si Drive está conectado, la carpeta se prepara al asignar.</p>}
     {modo === "existente" && padre && <>
       <Campo como="select" etiqueta="Subcarpeta existente" value={valor.id} required disabled={!consulta || !!consulta.error}
         onChange={(e) => onChange({ id: e.target.value, nombre: "" })}>
@@ -44,9 +45,7 @@ export function SelectorCarpetaTrabajo({ padre, actual, valor, onChange }: {
         {actual && !consulta?.carpetas.some((f) => f.id === actual) && <option value={actual}>Carpeta actual</option>}
         {consulta?.carpetas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
       </Campo>
-      {consulta?.error && <p className={styles.error} role="alert">{consulta.error} <button type="button" onClick={() => { setConsulta(null); reintentar(intento + 1); }}>Reintentar</button></p>}
+      {consulta?.error && <p className={styles.error} role="alert">{consulta.error} <Boton variante="secundario" tamano="sm" onClick={() => { setConsulta(null); reintentar(intento + 1); }}>Reintentar</Boton></p>}
     </>}
-    {modo === "nueva" && padre && <Campo etiqueta="Nombre de la subcarpeta" maxLength={80} required value={valor.nombre}
-      onChange={(e) => onChange({ id: "", nombre: e.target.value })} />}
   </div>;
 }

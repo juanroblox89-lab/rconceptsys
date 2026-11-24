@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowUp, Mic, Square } from "lucide-react";
 import { MarcaRIA } from "@/components/MarcaRIA";
+import { Boton } from "@/components/ui/Boton";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { api } from "@/lib/api";
 import { PREGUNTA_AYUDA, transmitirRIA, type MensajeRIA } from "@/lib/ria";
@@ -143,7 +144,7 @@ export default function RIAPage() {
           <article className={`${styles.mensaje} ${styles.propia}`} aria-label="Tu mensaje"><p>{pregunta}</p></article>
           {respuesta ? <article className={styles.mensaje} aria-label="Respuesta de RIA"><p>{respuesta}</p></article> : <p role="status" className={styles.pensando}>Pensando</p>}
         </>}
-        {error && <div role="alert" className={styles.error}>{error} {!listo && <button type="button" onClick={() => { setError(""); setIntento(n => n + 1); }}>Reintentar</button>}</div>}
+        {error && <div role="alert" className={styles.error}>{error} {!listo && <Boton variante="secundario" tamano="sm" onClick={() => { setError(""); setIntento(n => n + 1); }}>Reintentar</Boton>}</div>}
       </div>
     </div>
     <div className={styles.pie}>

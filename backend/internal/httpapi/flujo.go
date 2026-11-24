@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"rconceptsys/backend/internal/store"
 	"strconv"
 	"strings"
@@ -176,9 +175,19 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if nuevaCarpeta != "" {
-		f, e := a.crearCarpetaDeTrabajo(r.Context(), t.ClienteID, nuevaCarpeta)
+		copia := *t
+		if v, ok := campos["tipo_id"].(int); ok {
+			copia.Tipo, _ = a.Store.ObtenerTipoTrabajoPorID(r.Context(), v)
+		}
+		if v, ok := campos["descripcion"].(string); ok {
+			copia.Descripcion = &v
+		}
+		if v, ok := campos["fecha_limite"].(string); ok {
+			copia.FechaLimite = &v
+		}
+		f, e := a.crearCarpetaDeTrabajo(r.Context(), &copia)
 		if e != nil {
-			ResponderError(w, 400, "carpeta_invalida", e.Error())
+			responderFalloDrive(w, e)
 			return
 		}
 		campos["drive_carpeta_id"], campos["drive_carpeta_url"] = f.ID, f.Enlace
@@ -255,70 +264,21 @@ func driveIDValido(s string) bool {
 }
 
 func (a *API) verificarCarpetaCliente(ctx context.Context, clienteID *int, carpetaID string) error {
-	if clienteID == nil {
-		return fmt.Errorf("Primero elige un cliente con carpeta de Drive.")
-	}
-	c, err := a.Store.ObtenerClientePorID(ctx, *clienteID)
-	if err != nil || c.DriveCarpetaID == nil {
-		return fmt.Errorf("Configura primero la carpeta de Drive del cliente.")
-	}
-	token, err := a.tokenDrive(ctx)
+	a.F5.DriveMu.Lock()
+	defer a.F5.DriveMu.Unlock()
+	c, token, err := a.contextoArbolDrive(ctx)
 	if err != nil {
 		return fmt.Errorf("Conecta el Drive del equipo para comprobar la carpeta.")
 	}
-	var f struct {
-		Mime    string   `json:"mimeType"`
-		Parents []string `json:"parents"`
-		Trashed bool     `json:"trashed"`
-	}
-	if a.pedirDrive(ctx, token, driveAPIBase+"/files/"+url.PathEscape(carpetaID)+"?fields=mimeType,parents,trashed", &f) != nil || f.Trashed || f.Mime != driveCarpetaMime {
-		return fmt.Errorf("No pudimos comprobar esa carpeta de Drive.")
-	}
-	for _, p := range f.Parents {
-		if p == *c.DriveCarpetaID {
-			return nil
-		}
-	}
-	return fmt.Errorf("La carpeta del trabajo debe estar dentro de la carpeta del cliente.")
-}
-
-func (a *API) crearCarpetaDeTrabajo(ctx context.Context, clienteID *int, nombre string) (*DriveArchivo, error) {
-	if clienteID == nil {
-		return nil, fmt.Errorf("Primero elige un cliente con carpeta de Drive.")
-	}
-	c, err := a.Store.ObtenerClientePorID(ctx, *clienteID)
-	if err != nil || c.DriveCarpetaID == nil {
-		return nil, fmt.Errorf("Configura primero la carpeta de Drive del cliente.")
-	}
-	tok, err := a.tokenDrive(ctx)
+	padre, err := a.padreDeTrabajoDrive(ctx, c, token, clienteID)
 	if err != nil {
-		return nil, fmt.Errorf("Conecta el Drive del equipo para crear la carpeta.")
+		return fmt.Errorf("No pudimos preparar la carpeta del cliente.")
 	}
-	f, err := a.asegurarSubcarpeta(ctx, tok, nombre, *c.DriveCarpetaID)
-	if err != nil {
-		return nil, fmt.Errorf("No pudimos crear la carpeta en Drive. Puedes reintentar.")
+	f, err := a.metadatosCarpeta(ctx, token, carpetaID)
+	if err != nil || !f.carpetaEn(padre) || f.Nombre == "Material del lugar" || f.Nombre == "Producto" {
+		return fmt.Errorf("Elige una carpeta de trabajo dentro de la carpeta correspondiente.")
 	}
-	return f, nil
-}
-
-// Crea o reutiliza una subcarpeta por nombre: reintentar no duplica Material/Producto.
-func (a *API) asegurarSubcarpeta(ctx context.Context, token, nombre, parent string) (*DriveArchivo, error) {
-	q := url.Values{"q": {"trashed = false and mimeType = '" + driveCarpetaMime + "' and name = '" + escaparQueryDrive(nombre) + "' and '" + escaparQueryDrive(parent) + "' in parents"}, "fields": {"files(id,name,webViewLink)"}}
-	var lista struct {
-		Files []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-			Link string `json:"webViewLink"`
-		} `json:"files"`
-	}
-	if err := a.pedirDrive(ctx, token, driveAPIBase+"/files?"+q.Encode(), &lista); err != nil {
-		return nil, err
-	}
-	if len(lista.Files) > 0 {
-		f := lista.Files[0]
-		return &DriveArchivo{ID: f.ID, Nombre: f.Name, Enlace: "https://drive.google.com/drive/folders/" + f.ID, EsCarpeta: true}, nil
-	}
-	return a.crearCarpetaDrive(ctx, token, nombre, parent)
+	return nil
 }
 
 func (a *API) handleAdminClienteDrive(w http.ResponseWriter, r *http.Request) {
@@ -340,55 +300,31 @@ func (a *API) handleAdminClienteDrive(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 400, "datos_invalidos", "Elige una carpeta o crea una nueva.")
 		return
 	}
-	token, err := a.tokenDrive(r.Context())
+	a.F5.DriveMu.Lock()
+	defer a.F5.DriveMu.Unlock()
+	ctx := r.Context()
+	conexion, token, err := a.contextoArbolDrive(ctx)
 	if err != nil {
-		ResponderError(w, 400, "drive_no_conectado", "Primero conecta el Drive del equipo desde Gestión.")
+		responderFalloDrive(w, err)
 		return
 	}
-	parent := req.CarpetaID
+	var actual *store.Cliente
 	if req.Crear {
-		conexion, e := a.Store.ObtenerConexionDrive(r.Context())
-		if e != nil {
-			ResponderError(w, 400, "drive_no_conectado", "Conecta el Drive del equipo.")
-			return
-		}
-		raiz := conexion.CarpetaRaizID
-		if raiz == "" {
-			raiz = "root"
-		}
-		f, e := a.asegurarSubcarpeta(r.Context(), token, c.Nombre, raiz)
-		if e != nil {
-			ResponderError(w, 502, "drive_error", "No pudimos crear la carpeta del cliente.")
-			return
-		}
-		parent = f.ID
+		actual, err = a.asegurarClienteDrive(ctx, token, conexion.CarpetaClientesID, c)
 	} else {
-		if !driveIDValido(parent) {
-			ResponderError(w, 400, "carpeta_invalida", "Selecciona una carpeta de Drive.")
+		if !driveIDValido(req.CarpetaID) {
+			ResponderError(w, 400, "carpeta_invalida", "Selecciona una carpeta válida.")
 			return
 		}
-		var f struct {
-			Mime    string `json:"mimeType"`
-			Trashed bool   `json:"trashed"`
-		}
-		if a.pedirDrive(r.Context(), token, driveAPIBase+"/files/"+url.PathEscape(parent)+"?fields=mimeType,trashed", &f) != nil || f.Mime != driveCarpetaMime || f.Trashed {
-			ResponderError(w, 400, "carpeta_invalida", "No pudimos comprobar esa carpeta.")
+		f, e := a.metadatosCarpeta(ctx, token, req.CarpetaID)
+		if e != nil || !f.carpetaEn(conexion.CarpetaClientesID) || f.Nombre != c.Nombre {
+			ResponderError(w, 400, "carpeta_invalida", "Elige la carpeta del cliente dentro de RConcept → Clientes.")
 			return
 		}
+		actual, err = a.guardarCarpetaCliente(ctx, token, c, f.ID)
 	}
-	material, e := a.asegurarSubcarpeta(r.Context(), token, "Material del lugar", parent)
-	if e != nil {
-		ResponderError(w, 502, "drive_error", "No pudimos preparar Material del lugar. Puedes reintentar.")
-		return
-	}
-	producto, e := a.asegurarSubcarpeta(r.Context(), token, "Producto", parent)
-	if e != nil {
-		ResponderError(w, 502, "drive_error", "No pudimos preparar Producto. Puedes reintentar.")
-		return
-	}
-	actual, e := a.Store.ActualizarCliente(r.Context(), id, map[string]any{"drive_carpeta_id": parent, "drive_url": "https://drive.google.com/drive/folders/" + parent, "material_carpeta_id": material.ID, "producto_carpeta_id": producto.ID})
-	if e != nil {
-		ResponderError(w, 500, "error_guardar", "Las carpetas están preparadas, pero no pudimos guardar la ficha. Reintenta.")
+	if err != nil {
+		responderFalloDrive(w, err)
 		return
 	}
 	ResponderJSON(w, 200, actual)

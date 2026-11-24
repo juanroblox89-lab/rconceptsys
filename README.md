@@ -73,6 +73,8 @@ npx next start -p 3310
 ## 8. Interfaz F7
 
 - Trabajos: `/trabajos/nuevo` y `/trabajos/[id]` desde Tareas, Trabajos o el perfil de un miembro. Las entregas se revisan en la bandeja de Tareas.
-- Clientes: `/clientes/[id]` y `/clientes/[id]/editar`. Aplicar `supabase/migrations/019_clientes_f7.sql` antes de habilitar referencias y fotos. El bucket `clientes-fotos` es privado, accesible únicamente mediante la API de administración.
+- Clientes: `/clientes/[id]` se puede consultar con sesión aprobada; solo un administrador puede editar en `/clientes/[id]/editar`. Las fotos se guardan en el bucket privado `clientes-fotos`; la API autenticada sirve únicamente la foto vigente.
 - Google Picker: habilitar **Google Picker API** en el proyecto `rconcept-systems`; configurar en el entorno de Go `GOOGLE_PICKER_APP_ID` (número de proyecto) y `GOOGLE_PICKER_API_KEY` (clave restringida a Picker API y a los orígenes web de RConcept). Autorizar esos orígenes en el cliente web `GOOGLE_CLIENT_ID` ya existente. En Gestión debe estar conectado el Drive del equipo y la referencia elegida debe ser visible para esa cuenta.
-- QA visual sin credenciales: con Next de demo en `127.0.0.1:3313`, `node scripts/qa-f7.mjs` usa Edge headless y fixtures para API, dictado y Google. Prueba Go por separado, sin levantar dos servidores a la vez.
+- F8: antes de desplegar, aplicar `supabase/migrations/021_drive_organizado.sql`. En Gestión → Equipo, **Organizar Drive** prepara `RConcept/Clientes`, `Recursos` y `Archivo` y las carpetas de los clientes. Los traslados históricos son independientes: **Simular movimientos** → revisar → **Aplicar movimientos**. No se eliminan archivos.
+- El selector usa un access token temporal del Drive del equipo, solo para administradores; el refresh token queda en Go. El token conserva el alcance del OAuth de la cuenta conectada.
+- QA visual F8 sin credenciales: con un único Next local en `127.0.0.1:3318`, `node scripts/qa-f8.mjs` usa Edge headless y dobles de la API y de Google Picker. Go se prueba por separado.

@@ -13,7 +13,6 @@ type ConfDrive struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
-	CarpetaRaiz  string
 	PickerKey    string
 	PickerAppID  string
 }
@@ -43,6 +42,7 @@ type oauthState struct {
 // EstadoF5 guarda lo que no vive en la base: estados de OAuth en curso y
 // configuración de Google Drive y Web Push leída del entorno.
 type EstadoF5 struct {
+	DriveMu sync.Mutex
 	Mu      sync.Mutex
 	Estados map[string]oauthState
 	Drive   ConfDrive
@@ -58,7 +58,6 @@ func NuevoEstadoF5() *EstadoF5 {
 			ClientID:     strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID")),
 			ClientSecret: strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")),
 			RedirectURI:  strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URI")),
-			CarpetaRaiz:  strings.TrimSpace(os.Getenv("GOOGLE_DRIVE_CARPETA_RAIZ")),
 			PickerKey:    strings.TrimSpace(os.Getenv("GOOGLE_PICKER_API_KEY")),
 			PickerAppID:  strings.TrimSpace(os.Getenv("GOOGLE_PICKER_APP_ID")),
 		},
