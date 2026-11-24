@@ -1,3 +1,17 @@
+# Informe F9 · RConcept Systems
+
+**F9 verificado y publicado solo en `origin/desde-cero`:** [`40895e4`](https://github.com/juanroblox89-lab/rconceptsys/commit/40895e4920a40783996aaa6af786c34115dfecfa). `main` quedó intacta.
+
+- **Asignaciones:** se agrega la carpeta del cliente automáticamente. El admin puede cambiarla, añadir archivos o carpetas hasta un total de tres y quitarlas con confirmación. El asignado puede abrir los enlaces, pero no editarlos. Los trabajos anteriores conservan su enlace.
+- **Drive:** se reutiliza la raíz configurada y se vinculan las carpetas existentes por nombre normalizado. Solo se crean las carpetas de clientes que falten. El panel muestra el nombre real y permite simular con raíz y clientes en la misma carpeta.
+- **QA:** pasaron lint, TypeScript, build/vet/tests Go y mapa. Hay 12 capturas en claro y oscuro a 375 y 1280 px. El QA fue simulado; no se operó sobre el Drive real.
+
+**Entregables:** [reporte técnico](HARNESS-REPORTE-F9.md) · [capturas](CAPTURAS-F9.zip) · [migración 022](supabase/migrations/022_tareas_referencias_drive.sql).
+
+**Pendiente de Elías:** aplicar la 022 (preparada en el portapapeles) antes de usar F9 con la base real y validar Picker y apertura con una cuenta autorizada. La migración no se aplicó desde esta sesión.
+
+---
+
 # Informe F8 · RConcept Systems
 
 **Código verificado y enviado solo a `origin/desde-cero`:** `f8413fedd0693e4f0b57969b78265de103c30398`. Sin publicación a producción.
