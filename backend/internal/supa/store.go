@@ -328,7 +328,7 @@ func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, d
 		q.Set("order", "id.desc")
 	}
 	q.Set("limit", strconv.Itoa(limite))
-	q.Set("select", "*,perfiles(*)")
+	q.Set("select", "*,perfiles!chat_mensajes_autor_id_fkey(*)")
 
 	var rows []dbChatMensaje
 	if err := s.client.REST(ctx, "GET", "chat_mensajes", q, nil, "", &rows); err != nil {
@@ -375,7 +375,7 @@ func (s *SupabaseStore) CrearMensajeChat(ctx context.Context, autorID string, cu
 	}
 
 	q := url.Values{}
-	q.Set("select", "*,perfiles(*)")
+	q.Set("select", "*,perfiles!chat_mensajes_autor_id_fkey(*)")
 
 	var rows []dbChatMensaje
 	if err := s.client.REST(ctx, "POST", "chat_mensajes", q, payload, "return=representation", &rows); err != nil {

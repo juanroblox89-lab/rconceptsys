@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoFecha } from "@/components/ui/CamposEspeciales";
 import { useCallback, useEffect, useState } from "react";
 import { Check, Download, FileText, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
@@ -24,22 +25,25 @@ export function AdminCortes() {
   const { mostrarAviso } = useAviso();
   const [cortes, setCortes] = useState<Corte[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [creando, setCreando] = useState<"quincena" | "mes" | null>(null);
   const [abierto, setAbierto] = useState<number | null>(null);
   const [desdeManual, setDesdeManual] = useState("");
   const [hastaManual, setHastaManual] = useState("");
 
   const cargar = useCallback(async () => {
+    setCargando(true);
+    setErrorCarga(false);
     try {
       const lista = await api.adminGetCortes();
-      setCortes(Array.isArray(lista) ? lista : []);
-      setAbierto((prev) => prev ?? (lista.length > 0 ? lista[0].id : null));
+      setCortes(lista);
+      setAbierto((prev) => lista.some((c) => c.id === prev) ? prev : (lista[0]?.id ?? null));
     } catch {
-      mostrarAviso({ tipo: "error", titulo: "No se pudieron cargar los cortes", texto: "Inténtalo de nuevo." });
+      setErrorCarga(true);
     } finally {
       setCargando(false);
     }
-  }, [mostrarAviso]);
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -121,14 +125,8 @@ export function AdminCortes() {
       <section className={styles.bloque}>
         <h3 className={styles.bloqueSubtitulo}>Rango a la medida</h3>
         <div className={styles.filaCampos}>
-          <label className={styles.campo}>
-            <span>Desde</span>
-            <input type="date" value={desdeManual} onChange={(e) => setDesdeManual(e.target.value)} />
-          </label>
-          <label className={styles.campo}>
-            <span>Hasta</span>
-            <input type="date" value={hastaManual} onChange={(e) => setHastaManual(e.target.value)} />
-          </label>
+          <div className={styles.campo}><CampoFecha etiqueta="Desde" valor={desdeManual} onCambio={setDesdeManual} /></div>
+          <div className={styles.campo}><CampoFecha etiqueta="Hasta" valor={hastaManual} onCambio={setHastaManual} /></div>
           <Boton
             variante="secundario"
             onClick={cerrarManual}
@@ -142,6 +140,11 @@ export function AdminCortes() {
 
       {cargando ? (
         <p className={styles.cargando}>Cargando cortes…</p>
+      ) : errorCarga ? (
+        <div className={styles.bloque} role="alert">
+          <p>No se pudieron cargar los cortes.</p>
+          <Boton variante="secundario" tamano="sm" onClick={() => void cargar()}>Reintentar</Boton>
+        </div>
       ) : cortes.length === 0 ? (
         <p className={styles.vacio}>
           Sin cortes.

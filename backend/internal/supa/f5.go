@@ -929,9 +929,13 @@ func (s *SupabaseStore) ActualizarPieza(ctx context.Context, id int, campos map[
 
 // ---------- Cortes de pago ----------
 
+// corte_lineas también referencia a perfiles por pagada_por. El participante
+// del corte siempre se obtiene por perfil_id para evitar un embed ambiguo.
+const seleccionCorte = "*,corte_lineas(*,perfiles!corte_lineas_perfil_id_fkey(*))"
+
 func (s *SupabaseStore) ListarCortes(ctx context.Context) ([]*store.Corte, error) {
 	q := url.Values{}
-	q.Set("select", "*,corte_lineas(*,perfiles(*))")
+	q.Set("select", seleccionCorte)
 	q.Set("order", "creado_en.desc")
 	var rows []dbCorte
 	if err := s.client.REST(ctx, "GET", "cortes", q, nil, "", &rows); err != nil {
@@ -947,7 +951,7 @@ func (s *SupabaseStore) ListarCortes(ctx context.Context) ([]*store.Corte, error
 func (s *SupabaseStore) ObtenerCorte(ctx context.Context, id int64) (*store.Corte, error) {
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,corte_lineas(*,perfiles(*))")
+	q.Set("select", seleccionCorte)
 	var rows []dbCorte
 	if err := s.client.REST(ctx, "GET", "cortes", q, nil, "", &rows); err != nil {
 		return nil, err
