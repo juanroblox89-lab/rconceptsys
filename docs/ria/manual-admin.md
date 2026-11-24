@@ -19,6 +19,9 @@
 - `POST /api/admin/tareas`: asigna un trabajo con fecha obligatoria; si no tiene cliente, la carpeta operativa queda bajo la raíz del equipo. La lista de referencias puede incluir la carpeta del cliente, archivos y otras carpetas.
 - `PATCH /api/admin/tareas/{id}`: cambia persona, tipo, fecha, especificaciones o referencias de Drive de un trabajo abierto. El asignado puede abrirlas, pero no editarlas.
 - `GET /api/admin/asignaciones`: lista Trabajos con filtros.
+- En las **Especificaciones**, **Adjuntar** permite hasta diez imágenes, videos o audios privados, sin cambiar las referencias de Drive. **Grabar audio** requiere permiso de micrófono. **Resumir con IA** es opcional; un fallo del resumen no afecta el archivo.
+- `POST /api/admin/tareas/{id}/adjuntos`: reserva un cupo; `PUT /api/admin/tareas/{id}/adjuntos/{adjunto}/partes/{parte}`: recibe un fragmento; `POST /api/admin/tareas/{id}/adjuntos/{adjunto}/finalizar`: valida el formato y publica el archivo.
+- `PATCH /api/admin/tareas/{id}/adjuntos/{adjunto}` cambia la preferencia de IA; `DELETE /api/admin/tareas/{id}/adjuntos/{adjunto}` quita un adjunto del trabajo.
 
 ## Miembros, catálogo y finanzas
 - `GET /api/admin/miembros`: lista miembros y solicitudes; `POST /api/admin/miembros/{id}/aprobar`: permite acceso; `POST /api/admin/miembros/{id}/suspender` y `POST /api/admin/miembros/{id}/reactivar`: controlan acceso.

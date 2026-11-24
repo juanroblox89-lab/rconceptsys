@@ -1,0 +1,29 @@
+.seccion { display: grid; gap: 8px; min-width: 0; }
+.cabecera, .acciones { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.cabecera { justify-content: space-between; }
+.cabecera h3 { margin: 0; font-size: 14px; }
+.acciones button { min-height: 40px; }
+.ayuda { color: var(--rc-texto-secundario); font-size: 13px; }
+.error { color: var(--rc-rojo-texto); font-size: 13px; overflow-wrap: anywhere; }
+.lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.lista > li { display: grid; gap: 6px; align-content: start; min-width: 0; padding: 9px; border: 1px solid var(--rc-border-subtle); border-radius: var(--rc-radio-md); background: var(--rc-superficie-clara); }
+.nombre { display: block; overflow-wrap: anywhere; font-size: 14px; }
+.visual, .miniatura, .marcoVideo { display: grid; place-items: center; width: 100%; min-width: 0; aspect-ratio: 16/9; max-height: 190px; overflow: hidden; border-radius: var(--rc-radio-md); background: var(--rc-superficie-hundida); color: var(--rc-texto-secundario); }
+.miniatura img, .marcoVideo video { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.marcoVideo { position: relative; }
+.marcoVideo video { position: absolute; inset: 0; }
+.audio { width: 100%; max-width: 100%; min-width: 0; height: 44px; }
+.progreso { width: 100%; height: 9px; appearance: none; border: 0; border-radius: 6px; background: var(--rc-superficie-hundida); accent-color: var(--rc-azul-texto); }
+.progreso::-webkit-progress-bar { border-radius: 6px; background: var(--rc-superficie-hundida); }
+.progreso::-webkit-progress-value { border-radius: 6px; background: var(--rc-azul-texto); }
+.progreso::-moz-progress-bar { background: var(--rc-azul-texto); }
+.confirmar, .resumen { display: grid; gap: 4px; font-size: 13px; }
+.resumen ul { padding-inline-start: 18px; margin: 0; }
+.resumen li { overflow-wrap: anywhere; }
+.resumen p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.visor { width: min(720px, calc(100% - 24px)); max-height: 90dvh; padding: 12px; border: 1px solid var(--rc-border-subtle); border-radius: var(--rc-radio-md); background: var(--rc-superficie-clara); color: var(--rc-texto); }
+.visor::backdrop { background: rgb(0 0 0 / 65%); }
+.visor img { display: block; width: 100%; max-height: 72dvh; object-fit: contain; }
+.visor .acciones { justify-content: space-between; margin-bottom: 6px; overflow-wrap: anywhere; }
+.lista > li button.miniatura { height: auto; max-height: 190px; padding: 0; border: 0; box-shadow: none; }
+@media (min-width: 800px) { .lista { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

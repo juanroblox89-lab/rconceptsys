@@ -678,6 +678,20 @@
           "descripcion": "El detalle y Mis tareas muestran botones Abrir. Los asignados no editan."
         }
       ]
+    },
+    {
+      "id": "adjuntos-asignacion-f10",
+      "nombre": "Adjuntos privados de la asignación",
+      "descripcion": "Imágenes, videos y audio en Supabase Storage, independientes de Drive. Resumen de audio opcional.",
+      "pasos": [
+        { "orden": 1, "archivo_funcion": "components/AdjuntosAsignacion.tsx:EditorAdjuntos", "descripcion": "Selección, vista previa local, grabación con MediaRecorder y opt-in por audio." },
+        { "orden": 2, "archivo_funcion": "lib/adjuntos-asignacion.ts:subirAdjunto", "descripcion": "Después de guardar el trabajo, carga piezas binarias de 2 MiB y muestra avance." },
+        { "orden": 3, "archivo_funcion": "supabase/migrations/023_asignaciones_adjuntos.sql:rc_reservar_adjunto", "descripcion": "Reserva un cupo entre diez de forma atómica para un trabajo editable." },
+        { "orden": 4, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto", "descripcion": "Valida el contenido, guarda el original en el bucket privado y encola el resumen si está habilitado." },
+        { "orden": 5, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:procesarResumenPendiente", "descripcion": "El cron protegido reclama la cola; intenta Gemini Flash, luego NVIDIA ASR y el respaldo de texto de RIA." },
+        { "orden": 6, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto", "descripcion": "Revalida admin/asignado y emite firma temporal de Supabase para un adjunto de ese trabajo." },
+        { "orden": 7, "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosGuardados", "descripcion": "Muestra vista previa, descarga, estados, viñetas, transcripción plegable y reintento." }
+      ]
     }
   ]
 }

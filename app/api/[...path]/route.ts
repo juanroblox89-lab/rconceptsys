@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 // compilar y no lo ve). En local, la API Go corre en el 8310.
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 const TIMEOUT_MS = 25_000;
 const MAX_BODY_BYTES = 3 * 1024 * 1024; // la foto de perfil pesa como maximo 1 MB; sobra margen
@@ -37,7 +38,8 @@ function error(status: number, codigo: string, mensaje: string): NextResponse {
 async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await ctx.params;
   if (!METODOS.has(req.method)) return error(405, "metodo_no_permitido", "Esa acción no está permitida.");
-  if (path.length === 0 || path.length > 6 || !path.every((s) => SEGMENTO.test(s) && s !== "." && s !== "..")) {
+  const esParteAdjunto = req.method === "PUT" && path.length === 7 && path[0] === "admin" && path[1] === "tareas" && path[3] === "adjuntos" && path[5] === "partes";
+  if (path.length === 0 || (!esParteAdjunto && path.length > 6) || !path.every((s) => SEGMENTO.test(s) && s !== "." && s !== "..")) {
     return error(404, "no_encontrado", "No encontramos lo que buscas.");
   }
 
@@ -66,7 +68,9 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
 
   const esRIA = req.method === "POST" && path.length === 1 && path[0] === "ria";
   const controlador = new AbortController();
-  const temporizador = setTimeout(() => controlador.abort(), esRIA ? 75_000 : TIMEOUT_MS);
+  const esFinalizarAdjunto = req.method === "POST" && path.length === 6 && path[0] === "admin" && path[1] === "tareas" && path[3] === "adjuntos" && path[5] === "finalizar";
+  const esCronAdjuntos = req.method === "GET" && path.join("/") === "cron/adjuntos";
+  const temporizador = setTimeout(() => controlador.abort(), esCronAdjuntos ? 108_000 : esFinalizarAdjunto ? 92_000 : esRIA ? 75_000 : TIMEOUT_MS);
   try {
     let cuerpo: ArrayBuffer | undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {

@@ -175,6 +175,19 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/notificaciones/preferencias", a.MiddlewareAuth(a.handlePreferenciasNotificaciones, true, false))
 	mux.HandleFunc("GET /api/cron/notificaciones", a.handleCronNotificaciones)
 
+	// F10: adjuntos privados de asignaciones.
+	mux.HandleFunc("GET /api/tareas/{id}/detalle", a.MiddlewareAuth(a.handleDetalleAsignacion, true, false))
+	mux.HandleFunc("GET /api/tareas/{id}/adjuntos", a.MiddlewareAuth(a.handleListarAdjuntos, true, false))
+	mux.HandleFunc("GET /api/tareas/{id}/adjuntos/{adjunto}/firma", a.MiddlewareAuth(a.handleFirmarAdjunto, true, false))
+	mux.HandleFunc("GET /api/tareas/{id}/adjuntos/{adjunto}/medio", a.MiddlewareAuth(a.handleMedioDemoAdjunto, true, false))
+	mux.HandleFunc("POST /api/tareas/{id}/adjuntos/{adjunto}/reintentar", a.MiddlewareAuth(a.handleReintentarResumenAdjunto, true, false))
+	mux.HandleFunc("POST /api/admin/tareas/{id}/adjuntos", a.MiddlewareAuth(a.handleReservarAdjunto, true, true))
+	mux.HandleFunc("PUT /api/admin/tareas/{id}/adjuntos/{adjunto}/partes/{parte}", a.MiddlewareAuth(a.handleParteAdjunto, true, true))
+	mux.HandleFunc("POST /api/admin/tareas/{id}/adjuntos/{adjunto}/finalizar", a.MiddlewareAuth(a.handleFinalizarAdjunto, true, true))
+	mux.HandleFunc("PATCH /api/admin/tareas/{id}/adjuntos/{adjunto}", a.MiddlewareAuth(a.handlePreferenciaAdjunto, true, true))
+	mux.HandleFunc("DELETE /api/admin/tareas/{id}/adjuntos/{adjunto}", a.MiddlewareAuth(a.handleBorrarAdjunto, true, true))
+	mux.HandleFunc("GET /api/cron/adjuntos", a.handleCronAdjuntos)
+
 	return a.corsMiddleware(mux)
 }
 

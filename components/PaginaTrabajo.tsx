@@ -14,10 +14,14 @@ import { CarpetaDriveTarea } from "@/components/ui/CarpetaDriveTarea";
 import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
 import { EstadoTrabajo, ESTADOS_TRABAJO, fechaTrabajo } from "./FilaTrabajo";
 import { FormularioAsignacion } from "./FormularioAsignacion";
+import { AdjuntosGuardados } from "./AdjuntosAsignacion";
+import { usePerfilActual } from "./AppShell";
 import styles from "./FlujoTrabajo.module.css";
 
 export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { id?: number; origen?: string; persona?: string }) {
   const router = useRouter();
+  const perfil = usePerfilActual();
+  const admin = perfil?.es_admin === true;
   const [respuesta, setRespuesta] = useState<Tarea | string | null>(null);
   const [cambio, setCambio] = useState(0);
   const [confirmar, setConfirmar] = useState(false);
@@ -26,19 +30,21 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
   const [exito, setExito] = useState("");
   const tarea = typeof respuesta === "object" ? respuesta : null;
   const clienteOrigen = /^cliente-(\d+)$/.exec(origen)?.[1];
-  const volver = origen === "tareas" ? "/tareas" : origen === "admin" ? "/admin?pestana=tareas" :
+  const volver = !admin || origen === "tareas" ? "/tareas" : origen === "admin" ? "/admin?pestana=tareas" :
     origen === "equipo" && persona ? `/equipo/${encodeURIComponent(persona)}` : clienteOrigen ? `/clientes/${clienteOrigen}` : "/asignaciones";
-  const textoVolver = origen === "equipo" ? "Volver al perfil" : clienteOrigen ? "Volver al cliente" : origen === "tareas" || origen === "admin" ? "Volver a tareas" : "Volver a trabajos";
-  const editable = tarea?.estado === "pendiente" || tarea?.estado === "rechazada";
+  const textoVolver = !admin ? "Volver a tareas" : origen === "equipo" ? "Volver al perfil" : clienteOrigen ? "Volver al cliente" : origen === "tareas" || origen === "admin" ? "Volver a tareas" : "Volver a trabajos";
+  const editable = admin && (tarea?.estado === "pendiente" || tarea?.estado === "rechazada");
 
   useEffect(() => {
     if (id === undefined) return;
     let activo = true;
-    api.adminGetTarea(id).then(t => { if (activo) setRespuesta(t); }).catch(e => {
+    if (!perfil) return;
+    const cargar = admin ? api.adminGetTarea(id) : api.getDetalleTarea(id);
+    cargar.then(t => { if (activo) setRespuesta(t); }).catch(e => {
       if (activo) setRespuesta(e instanceof Error ? e.message : "No pudimos cargar el trabajo.");
     });
     return () => { activo = false; };
-  }, [id, cambio]);
+  }, [id, cambio, perfil, admin]);
 
   useEffect(() => {
     if (!confirmar || cancelando) return;
@@ -65,8 +71,10 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
     </header>
     {exito && <p role="status">{exito}</p>}
     {typeof respuesta === "string" ? <div className={styles.panel}><p role="alert" className={styles.error}>{respuesta}</p><Boton variante="secundario" onClick={() => { setRespuesta(null); setCambio(n => n + 1); }}>Reintentar</Boton></div> :
-      id !== undefined && !tarea ? <Esqueleto filas={5} /> : <>
-      {(id === undefined || editable) && <section className={styles.panel} aria-label={tarea ? "Editar trabajo" : "Datos de asignación"}>
+      id !== undefined && !tarea ? (perfil === null ? <p role="alert">No pudimos comprobar tu sesión.</p> : <Esqueleto filas={5} />) : <>
+      {id === undefined && perfil === null && <p role="alert">No pudimos comprobar tu sesión.</p>}
+      {id === undefined && perfil && !admin && <p role="alert">Solo un administrador puede asignar trabajos.</p>}
+      {((id === undefined && admin) || editable) && <section className={styles.panel} aria-label={tarea ? "Editar trabajo" : "Datos de asignación"}>
         {tarea && <h2>Editar trabajo</h2>}
         <FormularioAsignacion key={tarea ? `${tarea.id}-${cambio}` : persona} tarea={tarea ?? undefined} personaInicial={persona}
           onCerrar={() => router.push(volver)} onGuardar={actual => {
@@ -82,6 +90,7 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
           {tarea.pieza && <div><dt>Pieza</dt><dd>{tarea.pieza.nombre}</dd></div>}
           <div><dt>Especificaciones</dt><dd className={styles.textoLargo}>{tarea.descripcion || tarea.titulo}</dd></div>
         </dl>
+        <AdjuntosGuardados key={tarea.id} tarea={tarea.id} />
       </section>}
       {tarea && <section className={styles.panel}>
         <h2>Historial y entregas</h2>

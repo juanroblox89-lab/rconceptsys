@@ -80,3 +80,11 @@ npx next start -p 3310
 - El selector usa un access token temporal del Drive del equipo, solo para administradores; el refresh token queda en Go. El token conserva el alcance del OAuth de la cuenta conectada.
 - QA visual F9: con un único Next local en `127.0.0.1:3319`, `node scripts/qa-f9.mjs` captura el formulario a 375 y 1280 px en claro y oscuro, con API y Picker simulados.
 - QA visual F8 sin credenciales: con un único Next local en `127.0.0.1:3318`, `node scripts/qa-f8.mjs` usa Edge headless y dobles de la API y de Google Picker. Go se prueba por separado.
+
+## 9. Adjuntos de la asignación (F10)
+
+- Aplicar [023](supabase/migrations/023_asignaciones_adjuntos.sql) después de la 022. La carga usa fragmentos de 2 MiB, valida tamaño y bytes en Go y guarda el original en un bucket privado de Supabase. Las referencias y las carpetas de Drive no cambian.
+- El asignado y los administradores pueden abrir el detalle; las descargas se firman por 90 s. Solo los administradores cambian adjuntos en trabajos pendientes o devueltos.
+- El resumen de audio es opt-in. El cron de Supabase reutiliza `rconcept_cron_url` y `rconcept_cron_secret` de la 018. `CRON_SECRET` debe coincidir en Go. La URL de Vault tiene que apuntar al `/api/cron/notificaciones` del mismo entorno; la 023 usa su ruta hermana `/api/cron/adjuntos`.
+- IA del backend: `NINEROUTER_BASE_URL`, `NINEROUTER_API_KEY` (Gemini Flash; opcional `ASIGNACIONES_MODELO_AUDIO_9ROUTER` o `ASIGNACIONES_FORMATO_AUDIO_9ROUTER=audio_url`), luego `NVIDIA_API_KEYS` / `NVIDIA_API_KEY` (ASR Parakeet; opcional `ASIGNACIONES_MODELO_ASR_NVIDIA`) y el respaldo de texto de RIA (`RIA_MODELO_RESPALDO`). Un fallo de IA no borra el audio.
+- QA sin base real: `node scripts/qa-f10.mjs` con un único Next escuchando en `127.0.0.1:3320` y `QA_MEDIA_DIR` con `foto.png`, `corte.webm` y `voz.wav` sintéticos. Go se prueba aparte.

@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-24T05:24:15.796Z",
+  "generado_en": "2026-11-24T13:58:22.665Z",
   "version": "1.0",
   "modulos": [
     {
@@ -815,6 +815,83 @@
       "handler": "backend/internal/httpapi/notificaciones.go:handleCronNotificaciones",
       "archivo_funcion": "backend/internal/httpapi/notificaciones.go:handleCronNotificaciones",
       "auth": "publico"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/tareas/{id}/detalle",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleDetalleAsignacion",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleDetalleAsignacion",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/tareas/{id}/adjuntos",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleListarAdjuntos",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleListarAdjuntos",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/tareas/{id}/adjuntos/{adjunto}/firma",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/tareas/{id}/adjuntos/{adjunto}/medio",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleMedioDemoAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleMedioDemoAdjunto",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/tareas/{id}/adjuntos/{adjunto}/reintentar",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleReintentarResumenAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleReintentarResumenAdjunto",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/admin/tareas/{id}/adjuntos",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleReservarAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleReservarAdjunto",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "PUT",
+      "ruta": "/api/admin/tareas/{id}/adjuntos/{adjunto}/partes/{parte}",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleParteAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleParteAdjunto",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/admin/tareas/{id}/adjuntos/{adjunto}/finalizar",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "PATCH",
+      "ruta": "/api/admin/tareas/{id}/adjuntos/{adjunto}",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handlePreferenciaAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handlePreferenciaAdjunto",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "DELETE",
+      "ruta": "/api/admin/tareas/{id}/adjuntos/{adjunto}",
+      "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleBorrarAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleBorrarAdjunto",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/cron/adjuntos",
+      "handler": "backend/internal/httpapi/asignacion_resumen.go:handleCronAdjuntos",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleCronAdjuntos",
+      "auth": "publico"
     }
   ],
   "tablas": [
@@ -1141,14 +1218,35 @@
         "retorno",
         "expira"
       ]
+    },
+    {
+      "nombre": "asignacion_adjuntos",
+      "migracion": "023_asignaciones_adjuntos.sql",
+      "numero_migracion": 23,
+      "columnas_principales": [
+        "id",
+        "tarea_id",
+        "tipo",
+        "ruta",
+        "nombre",
+        "tamano",
+        "mime",
+        "duracion_ms",
+        "estado_archivo",
+        "resumir"
+      ]
     }
   ],
   "variables_entorno": [
     "ADMIN_EMAILS",
+    "ASIGNACIONES_FORMATO_AUDIO_9ROUTER",
+    "ASIGNACIONES_MODELO_ASR_NVIDIA",
+    "ASIGNACIONES_MODELO_AUDIO_9ROUTER",
     "ASISTENTE_TOPE_DIA",
     "BACKEND_URL",
     "CRON_SECRET",
     "DATABASE_URL",
+    "F10_AUDIO_SINTETICO",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
     "GOOGLE_PICKER_API_KEY",
@@ -1164,6 +1262,7 @@
     "PORT",
     "QA_BASE",
     "QA_DIR",
+    "QA_MEDIA_DIR",
     "QA_MODE",
     "QA_WIDTH",
     "RC_MODO_DEMO",
@@ -1857,6 +1956,48 @@
           "descripcion": "El detalle y Mis tareas muestran botones Abrir. Los asignados no editan."
         }
       ]
+    },
+    {
+      "id": "adjuntos-asignacion-f10",
+      "nombre": "Adjuntos privados de la asignación",
+      "descripcion": "Imágenes, videos y audio en Supabase Storage, independientes de Drive. Resumen de audio opcional.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/AdjuntosAsignacion.tsx:EditorAdjuntos",
+          "descripcion": "Selección, vista previa local, grabación con MediaRecorder y opt-in por audio."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "lib/adjuntos-asignacion.ts:subirAdjunto",
+          "descripcion": "Después de guardar el trabajo, carga piezas binarias de 2 MiB y muestra avance."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "supabase/migrations/023_asignaciones_adjuntos.sql:rc_reservar_adjunto",
+          "descripcion": "Reserva un cupo entre diez de forma atómica para un trabajo editable."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto",
+          "descripcion": "Valida el contenido, guarda el original en el bucket privado y encola el resumen si está habilitado."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:procesarResumenPendiente",
+          "descripcion": "El cron protegido reclama la cola; intenta Gemini Flash, luego NVIDIA ASR y el respaldo de texto de RIA."
+        },
+        {
+          "orden": 6,
+          "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto",
+          "descripcion": "Revalida admin/asignado y emite firma temporal de Supabase para un adjunto de ese trabajo."
+        },
+        {
+          "orden": 7,
+          "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosGuardados",
+          "descripcion": "Muestra vista previa, descarga, estados, viñetas, transcripción plegable y reintento."
+        }
+      ]
     }
   ],
   "reglas_proyecto": [
@@ -1956,5 +2097,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "b0a14a70f73d314d459e73e2cd7c4c7fa769db5b"
+  "commit_hash": "0c5cbfec07dbaebd59bc7bda190aa5bbc6bb327c"
 }

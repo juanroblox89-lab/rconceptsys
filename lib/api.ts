@@ -412,6 +412,7 @@ export const api = {
       body: JSON.stringify(campos),
     }),
 
+  getDetalleTarea: (id: number) => fetchApi<Tarea>(`/api/tareas/${id}/detalle`),
   adminGetTarea: (id: number) => fetchApi<Tarea>(`/api/admin/tareas/${id}`),
   adminGetTareas: (filtros?: { estado?: string; persona?: string }) => {
     const q = new URLSearchParams();

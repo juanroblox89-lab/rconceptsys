@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { Check, Calendar, FolderOpen } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { diaBogota, fechaEntrega } from "@/lib/fecha-entrega";
@@ -344,8 +345,8 @@ function renderTarjeta(
       )}
 
       <ReferenciasDriveTrabajo tarea={t} />
-      {(activa || (t.drive_referencias != null && enlaceReferenciaDrive(t.drive_carpeta_url))) && (
-        <div className={styles.tareaFooter}>
+      <div className={styles.tareaFooter}>
+          <Link className="rc-btn rc-btn--secundario rc-btn--sm" href={`/trabajos/${t.id}?desde=tareas`}>Ver trabajo</Link>
           {t.drive_referencias != null && enlaceReferenciaDrive(t.drive_carpeta_url) && <a className={styles.carpetaTrabajo} href={t.drive_carpeta_url} target="_blank" rel="noopener noreferrer"><FolderOpen size={16} aria-hidden="true" /> Carpeta de entrega</a>}
           {activa && <Boton
             variante="primario"
@@ -355,8 +356,7 @@ function renderTarjeta(
             <Check size={14} strokeWidth={1.75} style={{ marginRight: 4 }} />
             {t.estado === "rechazada" ? "Volver a entregar" : "Entregar"}
           </Boton>}
-        </div>
-      )}
+      </div>
     </article>
   );
 }

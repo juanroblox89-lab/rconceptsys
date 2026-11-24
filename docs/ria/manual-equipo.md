@@ -5,6 +5,8 @@
 - `/tareas`: los avisos de asignación o cambios resaltan la tarea exacta. La tarjeta muestra el cliente, la fecha de entrega relativa y absoluta, el tipo y la descripción. El texto de fecha aparece en rojo si el trabajo vence hoy o ya venció.
 - Abre la carpeta de Drive del trabajo desde la tarjeta cuando exista. Usa **Entregar** para enviar el trabajo a revisión. Si el tipo se cobra por minuto, indica los minutos reales. Si te piden cambios, corrige lo indicado y usa **Volver a entregar**.
 
+- **Ver trabajo** abre el detalle de tu asignación. En **Adjuntos** puedes ampliar imágenes, reproducir o descargar archivos y consultar el resumen y la transcripción de los audios cuando estén disponibles. **Reintentar** vuelve a poner en cola un resumen fallido; el audio original sigue disponible.
+
 ## Avisos
 
 - La campana muestra avisos sin leer. Abre un aviso para ir a su mensaje, tarea, corte o cambio de Drive, o usa **Marcar todo leído**.

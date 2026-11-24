@@ -51,6 +51,8 @@ type MemoryStore struct {
 	nextPushID         int64
 	avisosEnviados     map[string]bool
 	notificaciones     *memoriaNotificaciones
+	adjuntosAsignacion map[string]*AdjuntoAsignacion
+	objetosAsignacion  map[string][]byte
 }
 
 func NewMemoryStore() *MemoryStore {
