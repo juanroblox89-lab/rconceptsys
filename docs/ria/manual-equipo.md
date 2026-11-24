@@ -24,7 +24,7 @@
 - `/api/[...path]`: conexión interna entre la interfaz y la API; no es una pantalla.
 
 ## Personalización
-- Abre el menú con tu avatar. Ofrece, en orden: **Personalización**, **Perfil**, **Configuración**, **Ayuda**, **Cerrar sesión**. Ayuda abre `/ria` y envía «Tengo una duda sobre cómo usar rconceptsys».
+- El modo de ayuda del chat privado ofrece preguntas sugeridas. Abrirlo no envía nada. En el chat privado se contesta la duda directamente sin reenviar al usuario a la ayuda.
 - `/personalizacion`: cambia modo, tema, colores y opciones avanzadas. Los ajustes se ven en directo; **Guardar apariencia** conserva los cambios en tu cuenta y **Restablecer** recupera los valores iniciales. Glass permite subir una imagen o un video (hasta 2,5 MB). El celular solo carga el primer fotograma del video.
 
 ## Celular

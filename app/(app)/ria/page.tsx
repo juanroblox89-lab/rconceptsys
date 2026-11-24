@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { usePerfilActual } from "@/components/AppShell";
+import { RespuestaRIA } from "@/components/RespuestaRIA";
+import { buscarRutasRIA, rutasVisiblesRIA, type RutaRIA } from "@/lib/rutas-ria";
 import { ArrowRight, ArrowUp, Mic, Square } from "lucide-react";
 import { MarcaRIA } from "@/components/MarcaRIA";
 import { Boton } from "@/components/ui/Boton";
 import { Esqueleto } from "@/components/ui/Esqueleto";
-import { api } from "@/lib/api";
-import { PREGUNTA_AYUDA, transmitirRIA, type MensajeRIA } from "@/lib/ria";
+
+import { preguntasAyudaRIA, transmitirRIA, type MensajeRIA } from "@/lib/ria";
 import type { Perfil } from "@/lib/types";
 import { useDictadoRIA } from "@/lib/use-dictado-ria";
 import styles from "./ria.module.css";
@@ -21,7 +25,18 @@ function sugerenciaPara(perfil: Perfil | null) {
 }
 
 export default function RIAPage() {
-  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  return <Suspense fallback={<Esqueleto filas={3} />}><ConversacionRIA /></Suspense>;
+}
+
+function ConversacionRIA() {
+  const perfil = usePerfilActual() ?? null;
+  const router = useRouter();
+  const params = useSearchParams();
+  const modoAyuda = params.get("ayuda") === "1";
+  const idMensaje = params.get("mensaje");
+  const [comandoCerrado, setComandoCerrado] = useState(false);
+  const [seleccion, setSeleccion] = useState(0);
+  const rutas = rutasVisiblesRIA(perfil);
   const [historial, setHistorial] = useState<MensajeRIA[]>([]);
   const [listo, setListo] = useState(false);
   const [intento, setIntento] = useState(0);
@@ -37,8 +52,18 @@ export default function RIAPage() {
   const dictado = useDictadoRIA(frase => setTexto(t => `${t.trimEnd()}${t.trim() ? " " : ""}${frase}`.slice(0, 2000)));
   const enviando = Boolean(pregunta);
   const microActivo = dictado.estado !== "listo";
+  const esComando = /^\/[a-z/-]*$/i.test(texto);
+  const opciones = esComando ? buscarRutasRIA(rutas, texto) : [];
+  const menuAbierto = esComando && !comandoCerrado && !microActivo && !enviando;
+  const actual = Math.min(seleccion, Math.max(0, opciones.length - 1));
 
-  const enviar = useCallback(async (valor: string) => {
+  function irA(ruta: RutaRIA) {
+    setTexto("");
+    setComandoCerrado(true);
+    router.push(ruta.href);
+  }
+
+  async function enviar(valor: string) {
     const q = valor.trim();
     if (!q || control.current) return;
     const c = new AbortController();
@@ -60,13 +85,7 @@ export default function RIAPage() {
         if (!c.signal.aborted) { setPregunta(""); setRespuesta(""); }
       }
     }
-  }, []);
-
-  useEffect(() => {
-    let activo = true;
-    api.getYo().then(p => { if (activo) setPerfil(p); }).catch(() => {});
-    return () => { activo = false; };
-  }, []);
+  }
 
   useEffect(() => {
     const carga = new AbortController();
@@ -75,37 +94,30 @@ export default function RIAPage() {
       return await r.json() as MensajeRIA[];
     }).then(h => {
       if (carga.signal.aborted) return;
-      const url = new URL(location.href);
-      const id = url.searchParams.get("mensaje");
-      saltarA.current = id && /^\d+$/.test(id) ? id : "";
       setHistorial(h); setListo(true);
-      if (url.searchParams.get("ayuda") === "1") {
-        url.searchParams.delete("ayuda");
-        history.replaceState(history.state, "", url.pathname + url.search);
-        void enviar(PREGUNTA_AYUDA);
-      }
     }).catch(() => { if (!carga.signal.aborted) setError("No pudimos cargar tu conversación."); });
     return () => {
       carga.abort();
       control.current?.abort();
       control.current = null;
     };
-  }, [enviar, intento]);
+  }, [intento]);
 
   useLayoutEffect(() => {
     const scroll = zona.current;
     if (!scroll) return;
-    if (saltarA.current) {
-      const mensaje = document.getElementById(`ria-${saltarA.current}`);
-      saltarA.current = "";
+    if (idMensaje && /^\d+$/.test(idMensaje) && saltarA.current !== idMensaje) {
+      const mensaje = document.getElementById(`ria-${idMensaje}`);
+
       if (mensaje && scroll.contains(mensaje)) {
+        saltarA.current = idMensaje;
         seguir.current = false;
         scroll.scrollTop += mensaje.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 20;
         return;
       }
     }
     if (seguir.current) scroll.scrollTop = scroll.scrollHeight;
-  }, [historial, pregunta, respuesta, error, listo]);
+  }, [historial, pregunta, respuesta, error, listo, idMensaje, modoAyuda]);
 
   useLayoutEffect(() => {
     const campo = entrada.current;
@@ -117,11 +129,13 @@ export default function RIAPage() {
   function publicar(valor: string) {
     if (!listo || microActivo || !valor.trim() || control.current) return;
     dictado.limpiarErrorVoz();
+    if (modoAyuda) router.replace("/ria", { scroll: false });
     void enviar(valor);
   }
   const sugerencia = sugerenciaPara(perfil);
   const primerNombre = perfil?.nombre.trim().split(/\s+/)[0];
   const vacio = listo && !historial.length && !enviando;
+  const mostrarAyuda = modoAyuda && !enviando;
 
   return <section className={styles.chat} aria-label="RIA">
     <header className={styles.cabecera}>
@@ -131,33 +145,67 @@ export default function RIAPage() {
       const scroll = e.currentTarget;
       seguir.current = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 48;
     }}>
-      <div className={`${styles.hilo} ${vacio ? styles.hiloVacio : ""}`}>
+      <div className={`${styles.hilo} ${vacio || mostrarAyuda ? styles.hiloVacio : ""}`}>
         {!listo && !error && <div role="status" aria-label="Cargando conversación"><Esqueleto filas={3} /></div>}
-        {vacio && <div className={styles.saludo}>
+        {mostrarAyuda && <div className={styles.saludo}>
+          <h2>¿Qué quieres saber de RConcept?</h2>
+          <div className={styles.fichas}>{preguntasAyudaRIA(perfil?.es_admin === true).map(ficha =>
+            <button key={ficha} type="button" className={styles.sugerencia} onClick={() => publicar(ficha)} disabled={!listo || !perfil || microActivo}>
+              {ficha}<ArrowRight size={15} aria-hidden="true" />
+            </button>
+          )}</div>
+          {historial.length > 0 && <Boton variante="fantasma" tamano="sm" onClick={() => router.replace("/ria", { scroll: false })}>Volver a la conversación</Boton>}
+        </div>}
+        {vacio && !mostrarAyuda && <div className={styles.saludo}>
           <h2>{primerNombre ? `¿En qué te ayudo, ${primerNombre}?` : "¿En qué te ayudo?"}</h2>
           <button type="button" className={styles.sugerencia} onClick={() => publicar(sugerencia)} disabled={microActivo}>
             {sugerencia}<ArrowRight size={16} aria-hidden="true" />
           </button>
         </div>}
-        {historial.map(m => <article id={`ria-${m.id}`} className={`${styles.mensaje} ${m.rol === "user" ? styles.propia : ""}`} aria-label={m.rol === "user" ? "Tu mensaje" : "Respuesta de RIA"} key={m.id}><p>{m.cuerpo}</p></article>)}
+        {!mostrarAyuda && historial.map(m => <article id={`ria-${m.id}`} className={`${styles.mensaje} ${m.rol === "user" ? styles.propia : ""}`} aria-label={m.rol === "user" ? "Tu mensaje" : "Respuesta de RIA"} key={m.id}>{m.rol === "assistant" ? <RespuestaRIA texto={m.cuerpo} rutas={rutas} /> : <p>{m.cuerpo}</p>}</article>)}
         {enviando && <>
           <article className={`${styles.mensaje} ${styles.propia}`} aria-label="Tu mensaje"><p>{pregunta}</p></article>
-          {respuesta ? <article className={styles.mensaje} aria-label="Respuesta de RIA"><p>{respuesta}</p></article> : <p role="status" className={styles.pensando}>Pensando</p>}
+          {respuesta ? <article className={styles.mensaje} aria-label="Respuesta de RIA"><RespuestaRIA texto={respuesta} rutas={rutas} /></article> : <p role="status" className={styles.pensando}>Pensando</p>}
         </>}
         {error && <div role="alert" className={styles.error}>{error} {!listo && <Boton variante="secundario" tamano="sm" onClick={() => { setError(""); setIntento(n => n + 1); }}>Reintentar</Boton>}</div>}
       </div>
     </div>
     <div className={styles.pie}>
-      <form className={styles.form} onSubmit={e => { e.preventDefault(); publicar(texto); }}>
-        <textarea ref={entrada} aria-label="Mensaje para RIA" placeholder="Escribe a RIA…" rows={1} maxLength={2000} value={texto}
-          onChange={e => setTexto(e.currentTarget.value)} onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); publicar(texto); }
+      {menuAbierto && <div className={styles.comandos}>
+        <p className={styles.comandosTitulo}>Ir a una sección</p>
+        <ul id="ria-rutas" role="listbox" aria-label="Secciones">
+          {opciones.map((ruta, i) => <li key={ruta.href} id={`ria-ruta-${i}`} role="option" aria-selected={i === actual}
+            onPointerMove={() => setSeleccion(i)} onMouseDown={e => e.preventDefault()} onClick={() => irA(ruta)}>
+            <strong>{ruta.href}</strong><span>{ruta.descripcion}</span>
+          </li>)}
+        </ul>
+        {!opciones.length && <p role="status">No hay secciones que coincidan.</p>}
+      </div>}
+      <form className={styles.form} onSubmit={e => { e.preventDefault(); if (menuAbierto && opciones[actual]) irA(opciones[actual]); else if (!esComando) publicar(texto); }}>
+        <textarea ref={entrada} aria-label="Mensaje para RIA" placeholder="Escribe a RIA… o usa / para ir a una sección" rows={1} maxLength={2000} value={texto}
+          aria-autocomplete="list" aria-controls={menuAbierto ? "ria-rutas" : undefined} aria-activedescendant={menuAbierto && opciones.length ? `ria-ruta-${actual}` : undefined}
+          onBlur={() => setComandoCerrado(true)} onFocus={() => setComandoCerrado(false)}
+          onChange={e => { setTexto(e.currentTarget.value); setComandoCerrado(false); setSeleccion(0); }} onKeyDown={e => {
+            if (e.nativeEvent.isComposing) return;
+            if (menuAbierto && e.key === "Escape") { e.preventDefault(); setComandoCerrado(true); return; }
+            if (menuAbierto && opciones.length && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+              e.preventDefault();
+              const i = (actual + (e.key === "ArrowDown" ? 1 : -1) + opciones.length) % opciones.length;
+              setSeleccion(i);
+              document.getElementById(`ria-ruta-${i}`)?.scrollIntoView({ block: "nearest" });
+              return;
+            }
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (menuAbierto && opciones[actual]) irA(opciones[actual]);
+              else if (!esComando) publicar(texto);
+            }
           }} />
         <button type="button" className={styles.micro} aria-label={dictado.estado === "grabando" ? "Detener dictado" : "Dictar mensaje"}
           aria-pressed={dictado.estado === "grabando"} disabled={!listo || enviando || dictado.estado === "iniciando" || dictado.estado === "procesando"} onClick={dictado.alternar}>
           {dictado.estado === "grabando" ? <Square size={17} aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
         </button>
-        <button type="submit" className={styles.enviar} aria-label="Enviar a RIA" disabled={!listo || !texto.trim() || enviando || microActivo}><ArrowUp size={20} aria-hidden="true" /></button>
+        <button type="submit" className={styles.enviar} aria-label="Enviar a RIA" disabled={!listo || !texto.trim() || esComando || enviando || microActivo}><ArrowUp size={20} aria-hidden="true" /></button>
       </form>
       {dictado.errorVoz ? <p role="alert" className={styles.error}>{dictado.errorVoz}</p> : microActivo && <p role="status" className={styles.voz}>{dictado.estado === "grabando" ? "Escuchando…" : dictado.estado === "iniciando" ? "Activando micrófono…" : "Transcribiendo…"}</p>}
     </div>

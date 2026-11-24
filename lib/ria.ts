@@ -1,5 +1,11 @@
 export interface MensajeRIA { id:number; rol:'user'|'assistant'; cuerpo:string; creado_en:string }
-export const PREGUNTA_AYUDA = 'Tengo una duda sobre cómo usar rconceptsys';
+export const preguntasAyudaRIA = (admin: boolean) => [
+  "¿Cómo entrego un trabajo?",
+  admin ? "¿Cómo veo los cortes del equipo?" : "¿Dónde veo mi corte?",
+  "¿Cómo cambio el tema?",
+  "¿Cómo adjunto archivos?",
+  "¿Cómo configuro mis avisos?",
+];
 export const mencionaRIA = (texto:string) => /(^|[^\p{L}\p{N}_])@ria([^\p{L}\p{N}_]|$)/iu.test(texto);
 export async function transmitirRIA<T>(datos:{pregunta?:string;mensaje_id?:number}, delta:(texto:string)=>void, signal:AbortSignal):Promise<T> {
   const r=await fetch('/api/ria',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify(datos),signal});
