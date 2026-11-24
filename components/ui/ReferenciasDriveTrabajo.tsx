@@ -1,3 +1,4 @@
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { ExternalLink, FileText, FolderOpen } from "lucide-react";
 import { enlaceReferenciaDrive, referenciasDelTrabajo } from "@/lib/referencias-trabajo";
 import type { ReferenciaDriveTrabajo, Tarea } from "@/lib/types";
@@ -5,10 +6,9 @@ import styles from "../FlujoTrabajo.module.css";
 
 export function AbrirReferenciaTrabajo({ referencia }: { referencia: ReferenciaDriveTrabajo }) {
   if (!enlaceReferenciaDrive(referencia.url)) return null;
-  return <a className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.botonReferenciaTrabajo}`} href={referencia.url}
-    target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${referencia.nombre}`}>
+  return <EnlaceExterno className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.botonReferenciaTrabajo}`} href={referencia.url} aria-label={`Abrir ${referencia.nombre}`}>
     <ExternalLink size={14} strokeWidth={1.75} aria-hidden="true" /><span>Abrir</span>
-  </a>;
+  </EnlaceExterno>;
 }
 
 export function ReferenciasDriveTrabajo({ tarea }: { tarea: Tarea }) {

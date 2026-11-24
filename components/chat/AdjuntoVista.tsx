@@ -1,5 +1,6 @@
 "use client";
 
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Download, FileText, FolderOpen, X } from "lucide-react";
 import { api } from "@/lib/api";
@@ -91,10 +92,8 @@ export function AdjuntoVista({ adjunto, propio = false }: AdjuntoVistaProps) {
 
   if (adjunto.tipo === "drive") {
     return (
-      <a
+      <EnlaceExterno
         href={url}
-        target="_blank"
-        rel="noopener noreferrer"
         className={styles.tarjeta}
         title="Abrir en Drive"
       >
@@ -106,7 +105,7 @@ export function AdjuntoVista({ adjunto, propio = false }: AdjuntoVistaProps) {
           <em className={styles.tarjetaMeta}>Carpeta de Drive · abrir en otra pestaña</em>
         </span>
         <ArrowUpRight size={14} strokeWidth={1.9} aria-hidden="true" className={styles.tarjetaAccion} />
-      </a>
+      </EnlaceExterno>
     );
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { ExternalLink } from "lucide-react";
 
 const HOSTS_PERMITIDOS = ["drive.google.com", "docs.google.com", "drive.usercontent.google.com"];
@@ -24,14 +25,12 @@ export function errorEnlaceDrive(enlace: string): string | null {
 export function EnlaceDrive({ enlace, etiqueta = "Abrir en Drive" }: { enlace?: string | null; etiqueta?: string }) {
   if (!enlace || errorEnlaceDrive(enlace)) return null;
   return (
-    <a
+    <EnlaceExterno
       href={enlace}
-      target="_blank"
-      rel="noopener noreferrer"
       className="rc-btn rc-btn--secundario rc-btn--sm"
     >
       <ExternalLink size={13} strokeWidth={1.75} aria-hidden="true" />
       {etiqueta}
-    </a>
+    </EnlaceExterno>
   );
 }

@@ -1,3 +1,4 @@
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import styles from "@/components/FlujoTrabajo.module.css";
@@ -9,7 +10,7 @@ export default async function DriveCambioPage({ searchParams }: { searchParams: 
   return <div className={styles.pagina}>
     <header className={styles.cabecera}><div><h1>Cambio en Drive</h1>{!id && <p>No encontramos el archivo de este aviso.</p>}</div></header>
     <div className={styles.acciones}>
-      {id && <a className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={`https://drive.google.com/open?id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">Abrir archivo en Drive <ExternalLink size={16} aria-hidden="true" /></a>}
+      {id && <EnlaceExterno className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={`https://drive.google.com/open?id=${encodeURIComponent(id)}`}>Abrir archivo en Drive <ExternalLink size={16} aria-hidden="true" /></EnlaceExterno>}
       <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={destino}>Volver al trabajo o cliente</Link>
     </div>
   </div>;

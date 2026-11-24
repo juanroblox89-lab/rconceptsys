@@ -1,5 +1,6 @@
 "use client";
 
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, FileText, Plus, Trash2 } from "lucide-react";
 import { api, type ApiError } from "@/lib/api";
@@ -73,7 +74,7 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
           </div> : <>
             <FileText size={16} aria-hidden="true" className={styles.referenciaIcono} />
             <span className={styles.referenciaNombre} title={r.nombre}>{r.nombre}</span>
-            {r.url && /^https:\/\/(drive|docs)\.google\.com\//.test(r.url) && <a className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.referenciaAccion}`} href={r.url} target="_blank" rel="noreferrer" aria-label={`Abrir ${r.nombre} en Google Drive`}><ExternalLink size={15} aria-hidden="true" /><span>Abrir</span></a>}
+            {r.url && /^https:\/\/(drive|docs)\.google\.com\//.test(r.url) && <EnlaceExterno className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.referenciaAccion}`} href={r.url} aria-label={`Abrir ${r.nombre} en Google Drive`}><ExternalLink size={15} aria-hidden="true" /><span>Abrir</span></EnlaceExterno>}
             <Boton variante="secundario" tamano="sm" className={styles.referenciaAccion} disabled={disabled} onClick={() => setConfirmar(r.id)} aria-label={`Quitar ${r.nombre}`}><Trash2 size={15} aria-hidden="true" /><span>Quitar</span></Boton>
           </>}
         </li>)}

@@ -1,5 +1,6 @@
 "use client";
 
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowUp, ArrowDown, Check, ExternalLink, Link2, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -24,6 +25,7 @@ export function AdminEquipo() {
 
   const [drive, setDrive] = useState<DriveEstado | null>(null);
   const [conectando, setConectando] = useState(false);
+  const [autorizacionDrive, setAutorizacionDrive] = useState("");
   const [confirmar, setConfirmar] = useState(false);
   const [accionDrive, setAccionDrive] = useState("");
   const [plan, setPlan] = useState<PlanDrive | null>(null);
@@ -125,7 +127,8 @@ export function AdminEquipo() {
     setConectando(true);
     try {
       const res = await api.adminConectarDrive();
-      window.location.href = res.url;
+      if (new URL(res.url).origin !== "https://accounts.google.com") throw new Error("Google Drive no devolvió un enlace válido.");
+      setAutorizacionDrive(res.url);
     } catch (err) {
       mostrarAviso({
         tipo: "error",
@@ -214,10 +217,10 @@ export function AdminEquipo() {
                 <Link2 size={14} strokeWidth={1.75} aria-hidden="true" className={styles.enlaceIcono} />
                 <div className={styles.enlaceDatos}>
                   <span className={styles.enlaceNombre}>{enlace.nombre}</span>
-                  <a href={enlace.url} target="_blank" rel="noopener noreferrer" className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceUrl}`} aria-label={`Abrir ${enlace.nombre}`} title={enlace.url}>
+                  <EnlaceExterno href={enlace.url} className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceUrl}`} aria-label={`Abrir ${enlace.nombre}`} title={enlace.url}>
                     Abrir
                     <ExternalLink size={11} strokeWidth={2} aria-hidden="true" />
-                  </a>
+                  </EnlaceExterno>
                 </div>
                 <div className={styles.enlaceAcciones}>
                   <button
@@ -297,12 +300,12 @@ export function AdminEquipo() {
             <p>Pide a soporte que habilite Google Drive.</p>
           </div>
         ) : !drive.conectado && (
-          <div><Boton variante="primario" onClick={conectarDrive} cargando={conectando}>Conectar Drive del equipo</Boton></div>
+          <div className={styles.driveAcciones}><Boton variante="primario" onClick={conectarDrive} cargando={conectando}>Conectar Drive del equipo</Boton>{autorizacionDrive && <EnlaceExterno className="rc-btn rc-btn--secundario" href={autorizacionDrive}>Autorizar en Google <ExternalLink size={14} aria-hidden="true" /></EnlaceExterno>}</div>
         )}
         {drive?.conectado && <>
           <div className={styles.driveAcciones}>
             <span className={styles.driveCarpeta}>{drive.carpeta_raiz_nombre ? `Carpeta raíz: ${drive.carpeta_raiz_nombre}` : drive.carpeta_raiz_id ? "Carpeta raíz: nombre no disponible" : "Carpetas sin organizar."}</span>
-            {drive.organizado && <a className="rc-btn rc-btn--secundario rc-btn--sm" href={`https://drive.google.com/drive/folders/${encodeURIComponent(drive.carpeta_raiz_id)}`} target="_blank" rel="noreferrer">Abrir en Drive <ExternalLink size={14} aria-hidden="true" /></a>}
+            {drive.organizado && <EnlaceExterno className="rc-btn rc-btn--secundario rc-btn--sm" href={`https://drive.google.com/drive/folders/${encodeURIComponent(drive.carpeta_raiz_id)}`}>Abrir en Drive <ExternalLink size={14} aria-hidden="true" /></EnlaceExterno>}
           </div>
           {confirmar ? <div className={styles.confirmacionDrive} role="group" aria-labelledby="confirmar-drive">
             <p id="confirmar-drive">¿Desconectar el Drive del equipo? Las tareas nuevas dejarán de crear carpetas.</p>

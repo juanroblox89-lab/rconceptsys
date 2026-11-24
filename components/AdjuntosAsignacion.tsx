@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, Download, Film, ImageIcon, Mic, Music2, Paperclip, Square, Trash2 } from "lucide-react";
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { Boton } from "@/components/ui/Boton";
 import { aceptarAdjuntos, adjuntos, limiteAdjunto, tipoDeArchivo, type AdjuntoAsignacion, type AdjuntoLocal, type TipoAdjunto } from "@/lib/adjuntos-asignacion";
 import styles from "./AdjuntosAsignacion.module.css";
@@ -162,6 +163,7 @@ function FilaGuardada({ tarea, a, editable, bloqueado, actualizar }: { tarea: nu
     <strong className={styles.nombre}>{a.nombre}</strong>
     <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
     <div className={styles.acciones}>
+      {medio && <EnlaceExterno href={medio.url} className="rc-btn rc-btn--secundario rc-btn--sm" aria-label={`Abrir ${a.nombre} fuera de RConcept`} onClick={e => { if (Date.now() >= medio.expira - 3000) { e.preventDefault(); renovar(); setError("Actualizamos el enlace. Pulsa Abrir de nuevo."); } }}>Abrir fuera</EnlaceExterno>}
       <Boton variante="secundario" tamano="sm" aria-label={`Descargar ${a.nombre}`} disabled={ocupado} onClick={() => void accion(descargar)}><Download size={15} aria-hidden="true" /> Descargar</Boton>
       {editable && a.tipo === "audio" && <BotonResumen activo={a.resumir} bloqueado={ocupado || bloqueado} onClick={() => void accion(async () => actualizar(id, await adjuntos.resumir(tarea, id, !a.resumir)))} />}
       {editable && <Quitar nombre={a.nombre} bloqueado={ocupado || bloqueado} onQuitar={() => void accion(async () => { await adjuntos.quitar(tarea, id); actualizar(id); })} />}

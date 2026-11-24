@@ -1,5 +1,6 @@
 "use client";
 
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Check, Calendar, FolderOpen } from "lucide-react";
@@ -347,7 +348,7 @@ function renderTarjeta(
       <ReferenciasDriveTrabajo tarea={t} />
       <div className={styles.tareaFooter}>
           <Link className="rc-btn rc-btn--secundario rc-btn--sm" href={`/trabajos/${t.id}?desde=tareas`}>Ver trabajo</Link>
-          {t.drive_referencias != null && enlaceReferenciaDrive(t.drive_carpeta_url) && <a className={styles.carpetaTrabajo} href={t.drive_carpeta_url} target="_blank" rel="noopener noreferrer"><FolderOpen size={16} aria-hidden="true" /> Carpeta de entrega</a>}
+          {t.drive_referencias != null && enlaceReferenciaDrive(t.drive_carpeta_url) && <EnlaceExterno className={styles.carpetaTrabajo} href={t.drive_carpeta_url}><FolderOpen size={16} aria-hidden="true" /> Carpeta de entrega</EnlaceExterno>}
           {activa && <Boton
             variante="primario"
             tamano="sm"

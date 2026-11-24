@@ -1,5 +1,6 @@
 "use client";
 
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, CircleAlert, Info, RefreshCw, X } from "lucide-react";
@@ -158,16 +159,14 @@ export function EquipoBarra({ abierta = false, onCerrar }: EquipoBarraProps) {
                     .sort((a, b) => a.orden - b.orden)
                     .map((enlace) => (
                       <li key={enlace.id}>
-                        <a
+                        <EnlaceExterno
                           href={enlace.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
                           className={styles.enlace}
                           title={enlace.url}
                         >
                           <span className={styles.enlaceNombre}>{enlace.nombre}</span>
                           <ArrowUpRight size={14} strokeWidth={1.75} aria-hidden="true" />
-                        </a>
+                        </EnlaceExterno>
                       </li>
                     ))}
                 </ul>

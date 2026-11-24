@@ -1,5 +1,6 @@
 "use client";
 
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useState } from "react";
 import { ExternalLink, FolderOpen, FolderPlus } from "lucide-react";
 import { api } from "@/lib/api";
@@ -39,17 +40,15 @@ export function CarpetaDriveTarea({ tarea, onActualizada }: CarpetaDriveTareaPro
 
   if (tarea.drive_carpeta_url && /^https:\/\/drive\.google\.com\//i.test(tarea.drive_carpeta_url)) {
     return (
-      <a
+      <EnlaceExterno
         href={tarea.drive_carpeta_url}
-        target="_blank"
-        rel="noopener noreferrer"
         className="rc-btn rc-btn--secundario rc-btn--sm"
         title="Abrir la carpeta de la tarea en Drive"
       >
         <FolderOpen size={13} strokeWidth={1.9} aria-hidden="true" />
         Carpeta de la tarea
         <ExternalLink size={11} strokeWidth={2} aria-hidden="true" />
-      </a>
+      </EnlaceExterno>
     );
   }
 
