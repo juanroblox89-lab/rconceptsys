@@ -53,7 +53,7 @@ func modeloRIADesdeEntorno() riaModelo {
 		respaldo = modeloRIARespaldo
 	}
 	return riaModelo{
-		principal:    riaProveedor{base: strings.TrimSpace(os.Getenv("NINEROUTER_BASE_URL")), clave: strings.TrimSpace(os.Getenv("NINEROUTER_API_KEY")), modelo: "ag/claude-sonnet-5-5-low", espera: 6 * time.Second},
+		principal:    riaProveedor{base: strings.TrimSpace(os.Getenv("NINEROUTER_BASE_URL")), clave: strings.TrimSpace(os.Getenv("NINEROUTER_API_KEY")), modelo: "ag/claude-sonnet-5-5-low", espera: 25 * time.Second}, // Sonnet por 9router tarda ~10 s en el primer fragmento: con 6 s casi siempre caía al respaldo.
 		respaldo:     riaProveedor{base: baseNVIDIA, modelo: respaldo, nvidia: true, espera: 12 * time.Second},
 		clavesNVIDIA: unirClavesNVIDIA(os.Getenv("NVIDIA_API_KEYS"), os.Getenv("NVIDIA_API_KEY")),
 		cliente:      &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
