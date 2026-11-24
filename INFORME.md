@@ -1,3 +1,17 @@
+# Informe F10 · RConcept Systems
+
+**Código publicado:** [`86c6410`](https://github.com/juanroblox89-lab/rconceptsys/commit/86c6410974264fa17d4d6bee617f8ebb7c47234e), solo en `desde-cero`. Vercel confirmó el despliegue de la rama. `main` no cambió.
+
+- Al crear o editar puedes adjuntar hasta diez imágenes, videos o audios sin usar Drive. El formulario muestra vista previa, avance y confirmación para quitar archivos. Puedes grabar audio si el navegador permite usar el micrófono.
+- El administrador y el asignado pueden ver, reproducir y descargar con enlaces temporales. El audio tiene resumen opcional en español y transcripción plegable. Si falla la IA, el original sigue disponible y se puede reintentar.
+- **Verificado:** límites y permisos en Go, firmas y respaldo con dobles, regresión F9, ocho capturas headless, lint, tipos, Go build/vet/test y mapa. Gemini Flash transcribió un WAV sintético y devolvió tres viñetas. NVIDIA no se probó en vivo porque sus claves no estaban disponibles en la sesión.
+
+**Para habilitarlo con datos reales:** confirmar la 022 y luego ejecutar la [migración 023](<supabase/migrations/023_asignaciones_adjuntos.sql>), que no se aplicó. Validar el cron, la firma, los límites y el respaldo en el entorno autorizado. Ningún servidor de QA quedó abierto.
+
+[Reporte técnico y estado para retomar](<HARNESS-REPORTE-F10.md>) · [Capturas y mediciones](<CAPTURAS-F10.zip>)
+
+---
+
 # Informe F9 · RConcept Systems
 
 **F9 verificado y publicado solo en `origin/desde-cero`:** [`40895e4`](https://github.com/juanroblox89-lab/rconceptsys/commit/40895e4920a40783996aaa6af786c34115dfecfa). `main` quedó intacta.
