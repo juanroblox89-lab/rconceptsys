@@ -75,7 +75,14 @@ func TestF8DriveOrganizacionPickerYMigracion(t *testing.T) {
 	}
 	api.F5.Drive = httpapi.ConfDrive{ClientID: "client", ClientSecret: "secret", PickerKey: "picker", PickerAppID: "123", RedirectURI: "https://demo.example/api/drive/callback"}
 	const mime = "application/vnd.google-apps.folder"
-	folders := map[string]carpetaPrueba{"root": {ID: "unidad_1", Name: "Mi unidad", Mime: mime}}
+	folders := map[string]carpetaPrueba{
+		"root":         {ID: "unidad_1", Name: "Mi unidad", Mime: mime},
+		"raiz_real":    {ID: "raiz_real", Name: "Rohlfing concept", Mime: mime, Parents: []string{"unidad_1"}},
+		"cliente_real": {ID: "cliente_real", Name: "ESTUDIO d'Ávila  ", Mime: mime, Parents: []string{"raiz_real"}},
+	}
+	if err := s.GuardarConexionDrive(ctx, &store.ConexionDrive{CarpetaRaizID: "raiz_real", CarpetaClientesID: "raiz_real", RefreshToken: "secreto-de-prueba"}); err != nil {
+		t.Fatal(err)
+	}
 	var posts, patches int
 	api.F5.HTTP = &http.Client{Transport: transporteDrivePruebas(func(r *http.Request) (*http.Response, error) {
 		send := func(code int, v any) (*http.Response, error) {
@@ -132,7 +139,7 @@ func TestF8DriveOrganizacionPickerYMigracion(t *testing.T) {
 					padre = "root"
 				}
 				query := q.Get("q")
-				match := strings.Contains(query, "name = '"+strings.ReplaceAll(f.Name, "'", `\'`)+"'") || (f.Props["rconcept_tarea"] != "" && strings.Contains(query, "value='"+f.Props["rconcept_tarea"]+"'"))
+				match := (!strings.Contains(query, "name =") && !strings.Contains(query, "appProperties has")) || strings.Contains(query, "name = '"+strings.ReplaceAll(f.Name, "'", `\'`)+"'") || (f.Props["rconcept_tarea"] != "" && strings.Contains(query, "value='"+f.Props["rconcept_tarea"]+"'"))
 				if match && strings.Contains(query, "'"+padre+"' in parents") {
 					out = append(out, f)
 				}
@@ -187,7 +194,7 @@ func TestF8DriveOrganizacionPickerYMigracion(t *testing.T) {
 	if err != nil || conexion.CarpetaClientesID == "" || conexion.Correo != "drive@example.test" {
 		t.Fatal("conexión no preparada", err)
 	}
-	if folders[conexion.CarpetaRaizID].Name != "RConcept" || folders[conexion.CarpetaClientesID].Name != "Clientes" {
+	if conexion.CarpetaRaizID != "raiz_real" || conexion.CarpetaClientesID != "raiz_real" || posts != 0 {
 		t.Fatal("estructura incorrecta")
 	}
 	n := posts
@@ -197,8 +204,21 @@ func TestF8DriveOrganizacionPickerYMigracion(t *testing.T) {
 	}
 	var c store.Cliente
 	decode(request("POST", "/api/admin/clientes", map[string]string{"nombre": "Estudio d'Ávila"}, 201), &c)
-	if c.DriveURL == nil || c.DriveCarpetaID == nil || c.MaterialCarpetaID == nil || c.ProductoCarpetaID == nil {
+	if c.DriveURL == nil || c.DriveCarpetaID == nil || *c.DriveCarpetaID != "cliente_real" || c.MaterialCarpetaID != nil || c.ProductoCarpetaID != nil || posts != 0 {
 		t.Fatal("cliente sin carpetas")
+	}
+	request("POST", "/api/admin/drive/organizar", nil, 200)
+	if posts != 0 || patches != 0 {
+		t.Fatal("organizar no debe escribir en Drive cuando la carpeta existe")
+	}
+	decode(request("GET", "/api/admin/drive", nil, 200), &estado)
+	if estado["carpeta_raiz_nombre"] != "Rohlfing concept" {
+		t.Fatal(estado)
+	}
+	var nueva store.Cliente
+	decode(request("POST", "/api/admin/clientes", map[string]string{"nombre": "Cliente sin carpeta"}, 201), &nueva)
+	if posts != 1 || nueva.DriveCarpetaID == nil || nueva.MaterialCarpetaID != nil || nueva.ProductoCarpetaID != nil || folders[*nueva.DriveCarpetaID].Parents[0] != "raiz_real" {
+		t.Fatal("solo se debe crear la carpeta directa del cliente")
 	}
 	if folders[*c.DriveCarpetaID].Parents[0] != conexion.CarpetaClientesID {
 		t.Fatal("padre del cliente")
@@ -224,7 +244,7 @@ func TestF8DriveOrganizacionPickerYMigracion(t *testing.T) {
 	}
 	sinCliente := altaTarea(nil)
 	if sinCliente.DriveCarpetaID == nil || folders[*sinCliente.DriveCarpetaID].Parents[0] != conexion.CarpetaRaizID {
-		t.Fatal("tarea sin cliente fuera de RConcept")
+		t.Fatal("tarea sin cliente fuera de la raíz")
 	}
 	repetir := altaTarea(c.ID)
 	if repetir.DriveCarpetaID == nil || *repetir.DriveCarpetaID == *tarea.DriveCarpetaID {
@@ -251,12 +271,12 @@ func TestF8DriveOrganizacionPickerYMigracion(t *testing.T) {
 	ruta := "/api/admin/drive/migrar-carpetas"
 	var plan struct {
 		Huella      string
-		Movimientos []struct{ Nombre string }
+		Movimientos []struct{ Nombre, Destino string }
 		Omitidas    []int64
 	}
 	n = posts
 	decode(request("POST", ruta, map[string]string{}, 200), &plan)
-	if len(plan.Movimientos) != 1 || !strings.Contains(plan.Movimientos[0].Nombre, "Rodaje anterior") || !reflect.DeepEqual(plan.Omitidas, []int64{ajena.ID}) || patches != 0 || posts != n {
+	if len(plan.Movimientos) != 1 || !strings.Contains(plan.Movimientos[0].Nombre, "Rodaje anterior") || plan.Movimientos[0].Destino != "Rohlfing concept/ESTUDIO d'Ávila  " || !reflect.DeepEqual(plan.Omitidas, []int64{ajena.ID}) || patches != 0 || posts != n {
 		t.Fatalf("plan o simulación: %+v", plan)
 	}
 	request("POST", ruta, map[string]string{"huella": "no-vigente"}, 409)

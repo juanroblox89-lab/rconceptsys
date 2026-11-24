@@ -877,6 +877,9 @@ func (m *MemoryStore) clonarTareaLocked(t *Tarea) *Tarea {
 		return nil
 	}
 	cp := *t
+	if t.DriveReferencias != nil {
+		cp.DriveReferencias = append([]ReferenciaDriveTrabajo{}, t.DriveReferencias...)
+	}
 	if tipo, ok := m.tiposTrabajo[t.TipoID]; ok {
 		cp.Tipo = m.clonarTipoTrabajoLocked(tipo)
 	}
@@ -961,18 +964,23 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 	}
 
 	nueva := &Tarea{
-		ID:          id,
-		TipoID:      t.TipoID,
-		ClienteID:   t.ClienteID,
-		PiezaID:     t.PiezaID,
-		Titulo:      strings.TrimSpace(t.Titulo),
-		Descripcion: t.Descripcion,
-		AsignadoA:   t.AsignadoA,
-		CreadoPor:   t.CreadoPor,
-		Estado:      estado,
-		FechaLimite: t.FechaLimite,
-		Cantidad:    t.Cantidad,
-		CreadaEn:    time.Now(),
+		ID:              id,
+		TipoID:          t.TipoID,
+		ClienteID:       t.ClienteID,
+		PiezaID:         t.PiezaID,
+		Titulo:          strings.TrimSpace(t.Titulo),
+		Descripcion:     t.Descripcion,
+		AsignadoA:       t.AsignadoA,
+		CreadoPor:       t.CreadoPor,
+		Estado:          estado,
+		FechaLimite:     t.FechaLimite,
+		Cantidad:        t.Cantidad,
+		DriveCarpetaID:  t.DriveCarpetaID,
+		DriveCarpetaURL: t.DriveCarpetaURL,
+		CreadaEn:        time.Now(),
+	}
+	if t.DriveReferencias != nil {
+		nueva.DriveReferencias = append([]ReferenciaDriveTrabajo{}, t.DriveReferencias...)
 	}
 	m.tareas[id] = nueva
 	return m.clonarTareaLocked(nueva), nil

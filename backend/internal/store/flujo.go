@@ -31,5 +31,8 @@ func (m *MemoryStore) ActualizarTarea(ctx context.Context, id int64, campos map[
 			}
 		}
 	}
+	if v, ok := campos["drive_referencias"].([]ReferenciaDriveTrabajo); ok {
+		t.DriveReferencias = append([]ReferenciaDriveTrabajo{}, v...)
+	}
 	return m.clonarTareaLocked(t), nil
 }

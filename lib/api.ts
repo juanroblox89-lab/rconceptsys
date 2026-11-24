@@ -7,6 +7,7 @@ import {
   Cliente,
   FichaClienteDatos,
   Tarea,
+  ReferenciaDriveTrabajo,
   Factura,
   FacturaMiaRespuesta,
   ResumenFacturasPersona,
@@ -429,12 +430,13 @@ export const api = {
     forzar?: boolean;
  drive_carpeta_id?: string;
  drive_crear?: string;
+    drive_referencias?: ReferenciaDriveTrabajo[];
   }) =>
     fetchApi<Tarea>('/api/admin/tareas', {
       method: 'POST',
       body: JSON.stringify(tarea),
     }),
-  adminPatchTarea: (id: number, campos: Partial<{ tipo_id: number; asignado_a: string; descripcion: string; fecha_limite: string; drive_carpeta_id: string; drive_crear: string; forzar: boolean }>) => fetchApi<Tarea>(`/api/admin/tareas/${id}`, { method: 'PATCH', body: JSON.stringify(campos) }),
+  adminPatchTarea: (id: number, campos: Partial<{ tipo_id: number; asignado_a: string; descripcion: string; fecha_limite: string; drive_carpeta_id: string; drive_crear: string; drive_referencias: ReferenciaDriveTrabajo[]; forzar: boolean }>) => fetchApi<Tarea>(`/api/admin/tareas/${id}`, { method: 'PATCH', body: JSON.stringify(campos) }),
  adminClienteDrive: (id: number, datos: {crear?: boolean; carpeta_id?: string}) => fetchApi<Cliente>(`/api/admin/clientes/${id}/drive`, {method: 'POST',body:JSON.stringify(datos)}),
  adminAceptarTarea: (id: number, cantidad?: number) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/aceptar`, {

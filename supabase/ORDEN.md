@@ -12,3 +12,4 @@ No se aplicaron desde el agente. Partir de una base que ya tenga 001–011 aplic
 8. `migrations/019_clientes_f7.sql` — referencia de Google Picker y bucket privado para fotos de clientes. Ejecutar antes del despliegue de F7; no altera `paquete`.
 9. `migrations/020_clientes_varias_referencias.sql` — lista `drive_referencias` (hasta 10) y paso de la referencia única anterior. Aplicar antes del despliegue que la usa.
 10. `migrations/021_drive_organizado.sql` — registra `carpeta_clientes_id` de la cuenta del equipo; no mueve archivos, ni cambia permisos. Aplicar antes de desplegar F8.
+11. `migrations/022_tareas_referencias_drive.sql` — lista de hasta tres referencias por trabajo. No rellena trabajos anteriores ni toca permisos. Aplicar antes de desplegar F9.

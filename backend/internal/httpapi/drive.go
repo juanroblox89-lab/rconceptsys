@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -83,20 +84,26 @@ func (a *API) redirectURI(r *http.Request) string {
 // GET /api/admin/drive
 func (a *API) handleAdminGetDrive(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{
-		"configurado":     a.F5.Drive.Configurado(),
-		"conectado":       false,
-		"correo":          "",
-		"carpeta_raiz_id": "",
-		"organizado":      false,
-		"conectado_en":    nil,
+		"configurado":         a.F5.Drive.Configurado(),
+		"conectado":           false,
+		"correo":              "",
+		"carpeta_raiz_id":     "",
+		"carpeta_raiz_nombre": "",
+		"organizado":          false,
+		"conectado_en":        nil,
 	}
 	conexion, err := a.Store.ObtenerConexionDrive(r.Context())
 	if err == nil && conexion != nil {
 		resp["conectado"] = true
 		resp["correo"] = conexion.Correo
-		if conexion.CarpetaClientesID != "" {
-			resp["carpeta_raiz_id"] = conexion.CarpetaRaizID
-			resp["organizado"] = conexion.CarpetaRaizID != ""
+		resp["carpeta_raiz_id"] = conexion.CarpetaRaizID
+		resp["organizado"] = conexion.CarpetaRaizID != "" && conexion.CarpetaClientesID != ""
+		if conexion.CarpetaRaizID != "" && a.F5.Drive.Configurado() {
+			if tok, err := a.refrescarTokenDrive(r.Context(), conexion); err == nil {
+				if raiz, err := a.metadatosCarpeta(r.Context(), tok.AccessToken, conexion.CarpetaRaizID); err == nil && raiz.carpetaActiva() {
+					resp["carpeta_raiz_nombre"] = raiz.Nombre
+				}
+			}
 		}
 		resp["conectado_en"] = conexion.ConectadoEn
 	}
@@ -190,6 +197,14 @@ func (a *API) handleDriveCallback(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: token.RefreshToken,
 		ConectadoEn:  time.Now(),
 		ConectadoPor: &adminID,
+	}
+	if previa, err := a.Store.ObtenerConexionDrive(r.Context()); err == nil && previa != nil {
+		// Una reconexión no sustituye una raíz elegida por el equipo.
+		conexion.CarpetaRaizID = previa.CarpetaRaizID
+		conexion.CarpetaClientesID = previa.CarpetaClientesID
+	} else if err != nil && !errors.Is(err, store.ErrNotFound) {
+		http.Redirect(w, r, "/admin?drive=error_guardar", http.StatusFound)
+		return
 	}
 	organizado := a.asegurarArbolDrive(r.Context(), token.AccessToken, conexion) == nil
 	if err := a.Store.GuardarConexionDrive(r.Context(), conexion); err != nil {
@@ -472,6 +487,7 @@ func (a *API) crearCarpetaDrive(ctx context.Context, token, nombre, padreID stri
 	}
 	q := url.Values{}
 	q.Set("fields", "id,name,mimeType,webViewLink")
+	q.Set("supportsAllDrives", "true")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, driveAPIBase+"/files?"+q.Encode(), bytes.NewReader(b))
 	if err != nil {
 		return nil, err

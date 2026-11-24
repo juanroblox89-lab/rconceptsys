@@ -2,10 +2,11 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
-import type { Cliente, Perfil, Pieza, Tarea, TipoTrabajo } from "@/lib/types";
+import type { Cliente, Perfil, Pieza, ReferenciaDriveTrabajo, Tarea, TipoTrabajo } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
 import { Campo } from "@/components/ui/Campo";
-import { SelectorCarpetaTrabajo, type EleccionCarpeta } from "./SelectorCarpetaTrabajo";
+import { SelectorCarpetaTrabajo } from "./SelectorCarpetaTrabajo";
+import { MAX_REFERENCIAS_TRABAJO, referenciaDelCliente, referenciasDelTrabajo } from "@/lib/referencias-trabajo";
 import styles from "./FlujoTrabajo.module.css";
 
 export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onGuardar }: {
@@ -18,7 +19,9 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
   const [pieza, setPieza] = useState("");
   const [fecha, setFecha] = useState(tarea?.fecha_limite ?? "");
   const [descripcion, setDescripcion] = useState(tarea?.descripcion ?? tarea?.titulo ?? "");
-  const [carpeta, setCarpeta] = useState<EleccionCarpeta>({ id: tarea?.drive_carpeta_id ?? "", nombre: "" });
+  const [referencias, setReferencias] = useState<ReferenciaDriveTrabajo[]>(() => tarea ? referenciasDelTrabajo(tarea) : []);
+  const [indiceAutomatico, setIndiceAutomatico] = useState<number | null>(null);
+  const [referenciasEditadas, setReferenciasEditadas] = useState(false);
   const [alta, setAlta] = useState(false);
   const [nombre, setNombre] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -37,6 +40,31 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
   }, [intento]);
 
   const clienteActual = catalogo?.clientes.find((c) => String(c.id) === cliente) ?? tarea?.cliente;
+  function elegirCliente(nuevo?: Cliente) {
+    const automatica = referenciaDelCliente(nuevo);
+    const personalizadas = referencias.filter((_, i) => i !== indiceAutomatico);
+    const agregar = automatica && !personalizadas.some(ref => ref.id === automatica.id);
+    if (agregar && personalizadas.length >= MAX_REFERENCIAS_TRABAJO) {
+      setError("Quita una referencia para cambiar a un cliente con carpeta de Drive.");
+      return false;
+    }
+    setError("");
+    setCliente(nuevo ? String(nuevo.id) : "");
+    setPieza("");
+    setReferencias(agregar ? [automatica, ...personalizadas] : personalizadas);
+    setIndiceAutomatico(agregar ? 0 : null);
+    return true;
+  }
+
+  function cambiarReferencias(lista: ReferenciaDriveTrabajo[], indice?: number) {
+    if (indice !== undefined && indiceAutomatico !== null) {
+      if (indice === indiceAutomatico) setIndiceAutomatico(null);
+      else if (lista.length < referencias.length && indice < indiceAutomatico) setIndiceAutomatico(indiceAutomatico - 1);
+    }
+    setReferencias(lista);
+    setReferenciasEditadas(true);
+  }
+
   async function guardar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (ocupado || !catalogo) return;
@@ -46,10 +74,9 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       if (alta) {
         const nuevo = await api.adminPostCliente(nombre.trim());
         setCatalogo({ ...catalogo, clientes: [...catalogo.clientes, nuevo] });
-        setCliente(String(nuevo.id));
-        setPieza("");
-        setCarpeta({ id: "", nombre: "" });
+        const elegido = elegirCliente(nuevo);
         setAlta(false);
+        if (!elegido) return;
         setNombre("");
         return;
       }
@@ -59,7 +86,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         return;
       }
       const datos = { asignado_a: persona, tipo_id: Number(tipo), fecha_limite: fecha, descripcion: texto, forzar,
-        ...(carpeta.nombre.trim() ? { drive_crear: carpeta.nombre.trim() } : carpeta.id && carpeta.id !== tarea?.drive_carpeta_id ? { drive_carpeta_id: carpeta.id } : {}) };
+        ...(!tarea || referenciasEditadas ? { drive_referencias: referencias } : {}) };
       if (tarea) {
         const { asignado_a, tipo_id, fecha_limite, descripcion, ...otros } = datos;
         onGuardar(await api.adminPatchTarea(tarea.id, { ...otros,
@@ -82,7 +109,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         <p className={styles.ayuda}>Tu asignación no se perderá.</p>
       </> : <>
         {tarea ? <p className={styles.ayuda}>Cliente: {clienteActual?.nombre ?? "Sin cliente"}</p> : <>
-          <Campo como="select" etiqueta="Cliente" value={cliente} onChange={(e) => { setCliente(e.target.value); setPieza(""); setCarpeta({ id: "", nombre: "" }); }}>
+          <Campo como="select" etiqueta="Cliente" value={cliente} onChange={(e) => elegirCliente(catalogo.clientes.find(c => String(c.id) === e.target.value))}>
             <option value="">Sin cliente</option>
             {catalogo.clientes.filter((c) => c.activo).map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </Campo>
@@ -98,7 +125,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
           {catalogo.tipos.filter((t) => t.activo || t.id === tarea?.tipo_id).map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
         </Campo>
         <Campo type="date" etiqueta="Fecha de entrega" required={!tarea || !!tarea.fecha_limite} value={fecha} onChange={(e) => setFecha(e.target.value)} />
-        <SelectorCarpetaTrabajo key={cliente} padre={clienteActual?.drive_carpeta_id ?? ""} actual={tarea?.drive_carpeta_id} valor={carpeta} onChange={setCarpeta} />
+        <SelectorCarpetaTrabajo key={cliente} clienteId={clienteActual?.id} valor={referencias} onChange={cambiarReferencias} deshabilitado={ocupado} />
         <Campo como="textarea" filas={5} etiqueta="Especificaciones" placeholder="En este video, coge los medios de..." required maxLength={1000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
         {!tarea && catalogo.piezas.some((p) => String(p.cliente_id) === cliente) && <Campo como="select" etiqueta="Pieza (opcional)" value={pieza} onChange={(e) => setPieza(e.target.value)}>
           <option value="">Sin pieza</option>

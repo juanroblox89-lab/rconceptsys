@@ -15,11 +15,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+
+	"golang.org/x/text/unicode/norm"
 
 	"rconceptsys/backend/internal/store"
 )
 
-const nombreRaizDrive = "RConcept"
 const propiedadTareaDrive = "rconcept_tarea"
 
 var errDriveDesconectado = errors.New("conecta el Drive del equipo en Gestión → Equipo")
@@ -34,47 +36,92 @@ func (a *API) conexionDrive(ctx context.Context) (*store.ConexionDrive, error) {
 	return c, err
 }
 
-// asegurarArbolDrive prepara las ramas fijas; un ID anterior no certifica que fuese RConcept.
+// asegurarArbolDrive verifica la raíz configurada. Si aún no hay una, usa Mi unidad sin crear ramas.
 func (a *API) asegurarArbolDrive(ctx context.Context, token string, c *store.ConexionDrive) error {
-	raiz, err := a.asegurarSubcarpeta(ctx, token, nombreRaizDrive, "root")
+	id := c.CarpetaRaizID
+	if id == "" {
+		id = "root"
+	}
+	raiz, err := a.metadatosCarpeta(ctx, token, id)
 	if err != nil {
 		return err
 	}
-	clientes, err := a.asegurarSubcarpeta(ctx, token, "Clientes", raiz.ID)
-	if err != nil {
-		return err
+	if !raiz.carpetaActiva() {
+		return errors.New("raíz de Drive no válida")
 	}
-	for _, nombre := range []string{"Recursos", "Archivo"} {
-		if _, err := a.asegurarSubcarpeta(ctx, token, nombre, raiz.ID); err != nil {
-			return err
-		}
-	}
-	c.CarpetaRaizID, c.CarpetaClientesID = raiz.ID, clientes.ID
+	c.CarpetaRaizID, c.CarpetaClientesID = raiz.ID, raiz.ID
 	return nil
 }
 
-func (a *API) asegurarClienteDrive(ctx context.Context, token, padre string, c *store.Cliente) (*store.Cliente, error) {
-	carpeta, err := a.asegurarSubcarpeta(ctx, token, c.Nombre, padre)
-	if err != nil {
-		return nil, err
-	}
-	return a.guardarCarpetaCliente(ctx, token, c, carpeta.ID)
+func normalizarNombreCarpetaDrive(nombre string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.Is(unicode.Mn, r) {
+			return -1
+		}
+		return r
+	}, norm.NFD.String(strings.ToLower(strings.TrimSpace(nombre))))
 }
 
-func (a *API) guardarCarpetaCliente(ctx context.Context, token string, c *store.Cliente, carpeta string) (*store.Cliente, error) {
-	material, err := a.asegurarSubcarpeta(ctx, token, "Material del lugar", carpeta)
-	if err != nil {
-		return nil, err
+func (a *API) asegurarClienteDrive(ctx context.Context, token, padre string, c *store.Cliente) (*store.Cliente, error) {
+	if strings.TrimSpace(c.Nombre) == "" || padre == "" {
+		return nil, errors.New("cliente o raíz sin configurar")
 	}
-	producto, err := a.asegurarSubcarpeta(ctx, token, "Producto", carpeta)
-	if err != nil {
-		return nil, err
+	nombre := normalizarNombreCarpetaDrive(c.Nombre)
+	actual := textoDrive(c.DriveCarpetaID)
+	q := url.Values{
+		"q":      {"trashed = false and mimeType = '" + driveCarpetaMime + "' and '" + escaparQueryDrive(padre) + "' in parents"},
+		"fields": {"nextPageToken,files(id,name)"}, "orderBy": {"createdTime asc"}, "pageSize": {"1000"},
+		"supportsAllDrives": {"true"}, "includeItemsFromAllDrives": {"true"},
 	}
-	enlace := urlCarpetaDrive(carpeta)
-	if textoDrive(c.DriveCarpetaID) == carpeta && textoDrive(c.DriveURL) == enlace && textoDrive(c.MaterialCarpetaID) == material.ID && textoDrive(c.ProductoCarpetaID) == producto.ID {
+	candidata := ""
+	for {
+		var listado struct {
+			Files     []struct{ ID, Name string } `json:"files"`
+			Siguiente string                      `json:"nextPageToken"`
+		}
+		if err := a.pedirDrive(ctx, token, driveAPIBase+"/files?"+q.Encode(), &listado); err != nil {
+			return nil, err
+		}
+		for _, f := range listado.Files {
+			if f.ID == "" || normalizarNombreCarpetaDrive(f.Name) != nombre {
+				continue
+			}
+			if f.ID == actual {
+				return a.guardarCarpetaCliente(ctx, c, actual)
+			}
+			if candidata == "" {
+				candidata = f.ID
+			}
+		}
+		if listado.Siguiente == "" || (candidata != "" && actual == "") {
+			break
+		}
+		q.Set("pageToken", listado.Siguiente)
+	}
+	if candidata == "" {
+		carpeta, err := a.crearCarpetaDrive(ctx, token, strings.TrimSpace(c.Nombre), padre, nil)
+		if err != nil {
+			return nil, err
+		}
+		candidata = carpeta.ID
+	}
+	return a.guardarCarpetaCliente(ctx, c, candidata)
+}
+
+func (a *API) guardarCarpetaCliente(ctx context.Context, c *store.Cliente, carpeta string) (*store.Cliente, error) {
+	if !driveIDValido(carpeta) {
+		return nil, errors.New("identificador de carpeta no válido")
+	}
+	misma := textoDrive(c.DriveCarpetaID) == carpeta
+	if misma && enlaceReferenciaDriveValido(textoDrive(c.DriveURL)) {
 		return c, nil
 	}
-	return a.Store.ActualizarCliente(ctx, c.ID, map[string]any{"drive_carpeta_id": carpeta, "drive_url": enlace, "material_carpeta_id": material.ID, "producto_carpeta_id": producto.ID})
+	campos := map[string]any{"drive_carpeta_id": carpeta, "drive_url": urlCarpetaDrive(carpeta)}
+	if !misma {
+		// Los IDs previos pertenecían a otra carpeta; no se altera ningún archivo en Drive.
+		campos["material_carpeta_id"], campos["producto_carpeta_id"] = nil, nil
+	}
+	return a.Store.ActualizarCliente(ctx, c.ID, campos)
 }
 
 func textoDrive(s *string) string {
@@ -94,7 +141,7 @@ func (a *API) contextoArbolDrive(ctx context.Context) (*store.ConexionDrive, str
 	if err != nil {
 		return nil, "", err
 	}
-	if c.CarpetaClientesID == "" || c.CarpetaRaizID == "" {
+	if c.CarpetaRaizID == "" || c.CarpetaClientesID != c.CarpetaRaizID {
 		if err := a.asegurarArbolDrive(ctx, tok.AccessToken, c); err != nil {
 			return nil, "", err
 		}
@@ -206,17 +253,12 @@ func (a *API) padreDeTrabajoDrive(ctx context.Context, c *store.ConexionDrive, t
 	if err != nil {
 		return "", err
 	}
-	// Confirmar el padre evita mezclar clientes de cuentas anteriores o vínculos manuales históricos.
-	archivo, err := a.asegurarSubcarpeta(ctx, token, cliente.Nombre, c.CarpetaClientesID)
+	// Verifica que el cliente siga en la raíz del equipo antes de crear una carpeta operativa.
+	actual, err := a.asegurarClienteDrive(ctx, token, c.CarpetaClientesID, cliente)
 	if err != nil {
 		return "", err
 	}
-	if textoDrive(cliente.DriveCarpetaID) != archivo.ID || cliente.MaterialCarpetaID == nil || cliente.ProductoCarpetaID == nil {
-		if _, err := a.guardarCarpetaCliente(ctx, token, cliente, archivo.ID); err != nil {
-			return "", err
-		}
-	}
-	return archivo.ID, nil
+	return textoDrive(actual.DriveCarpetaID), nil
 }
 
 func (a *API) crearCarpetaDeTrabajo(ctx context.Context, t *store.Tarea) (*DriveArchivo, error) {
@@ -298,12 +340,16 @@ type metadatosCarpetaDrive struct {
 
 func (a *API) metadatosCarpeta(ctx context.Context, token, id string) (metadatosCarpetaDrive, error) {
 	var f metadatosCarpetaDrive
-	err := a.pedirDrive(ctx, token, driveAPIBase+"/files/"+url.PathEscape(id)+"?fields=id,name,mimeType,trashed,parents,appProperties,ownedByMe,isAppAuthorized", &f)
+	err := a.pedirDrive(ctx, token, driveAPIBase+"/files/"+url.PathEscape(id)+"?supportsAllDrives=true&fields=id,name,mimeType,trashed,parents,appProperties,ownedByMe,isAppAuthorized", &f)
 	return f, err
 }
 
+func (f metadatosCarpetaDrive) carpetaActiva() bool {
+	return f.ID != "" && f.Mime == driveCarpetaMime && !f.EnPapelera
+}
+
 func (f metadatosCarpetaDrive) carpetaEn(padre string) bool {
-	return padre != "" && f.Mime == driveCarpetaMime && !f.EnPapelera && len(f.Padres) == 1 && f.Padres[0] == padre
+	return padre != "" && f.carpetaActiva() && len(f.Padres) == 1 && f.Padres[0] == padre
 }
 
 type movimientoDrive struct {
@@ -326,16 +372,19 @@ func (a *API) planearMovimientosDrive(ctx context.Context, token string, c *stor
 	if err != nil {
 		return plan, "", err
 	}
-	if unidad.ID == "" || c.CarpetaClientesID == "" || c.CarpetaRaizID == "" {
+	if unidad.ID == "" || c.CarpetaRaizID == "" || c.CarpetaClientesID == "" {
 		return plan, "", errors.New("estructura sin organizar")
 	}
 	raiz, err := a.metadatosCarpeta(ctx, token, c.CarpetaRaizID)
-	if err != nil || raiz.Nombre != nombreRaizDrive || !raiz.carpetaEn(unidad.ID) {
+	if err != nil || !raiz.carpetaActiva() {
 		return plan, "", errors.New("raíz no válida")
 	}
-	clientes, err := a.metadatosCarpeta(ctx, token, c.CarpetaClientesID)
-	if err != nil || clientes.Nombre != "Clientes" || !clientes.carpetaEn(raiz.ID) {
-		return plan, "", errors.New("rama Clientes no válida")
+	clientes := raiz
+	if c.CarpetaClientesID != c.CarpetaRaizID {
+		clientes, err = a.metadatosCarpeta(ctx, token, c.CarpetaClientesID)
+		if err != nil || clientes.Nombre != "Clientes" || !clientes.carpetaEn(raiz.ID) {
+			return plan, "", errors.New("rama Clientes no válida")
+		}
 	}
 	tareas, err := a.Store.ListarTareas(ctx, store.FiltroTareas{ConCarpetaDrive: true})
 	if err != nil {
@@ -364,7 +413,7 @@ func (a *API) planearMovimientosDrive(ctx context.Context, token string, c *stor
 			plan.Omitidas = append(plan.Omitidas, t.ID)
 			continue
 		}
-		destino, ruta := raiz, nombreRaizDrive
+		destino, ruta := raiz, raiz.Nombre
 		if t.ClienteID != nil {
 			var ok bool
 			destino, ok = destinos[*t.ClienteID]
@@ -372,11 +421,17 @@ func (a *API) planearMovimientosDrive(ctx context.Context, token string, c *stor
 				destino, _ = a.metadatosCarpeta(ctx, token, *t.Cliente.DriveCarpetaID)
 				destinos[*t.ClienteID] = destino
 			}
-			if t.Cliente == nil || destino.Nombre != t.Cliente.Nombre || !destino.carpetaEn(clientes.ID) {
+			if t.Cliente == nil || normalizarNombreCarpetaDrive(destino.Nombre) != normalizarNombreCarpetaDrive(t.Cliente.Nombre) || !destino.carpetaEn(clientes.ID) {
 				plan.Omitidas = append(plan.Omitidas, t.ID)
 				continue
 			}
-			ruta += "/Clientes/" + destino.Nombre
+			if clientes.ID != raiz.ID {
+				ruta += "/" + clientes.Nombre
+			}
+			ruta += "/" + destino.Nombre
+		}
+		if destino.ID == unidad.ID || destino.ID == f.ID {
+			continue
 		}
 		plan.Movimientos = append(plan.Movimientos, movimientoDrive{t.ID, id, f.Nombre, destino.ID, ruta})
 	}
@@ -467,8 +522,8 @@ func (a *API) handleAdminMigrarCarpetasDrive(w http.ResponseWriter, r *http.Requ
 			continue
 		}
 		d, dErr := a.metadatosCarpeta(ctx, tok.AccessToken, m.DestinoID)
-		if dErr != nil || (t.ClienteID == nil && (d.Nombre != nombreRaizDrive || !d.carpetaEn(raiz))) ||
-			(t.ClienteID != nil && (t.Cliente == nil || textoDrive(t.Cliente.DriveCarpetaID) != m.DestinoID || d.Nombre != t.Cliente.Nombre || !d.carpetaEn(c.CarpetaClientesID))) {
+		if dErr != nil || (t.ClienteID == nil && (d.ID != c.CarpetaRaizID || !d.carpetaActiva())) ||
+			(t.ClienteID != nil && (t.Cliente == nil || textoDrive(t.Cliente.DriveCarpetaID) != m.DestinoID || normalizarNombreCarpetaDrive(d.Nombre) != normalizarNombreCarpetaDrive(t.Cliente.Nombre) || !d.carpetaEn(c.CarpetaClientesID))) {
 			fallidas = append(fallidas, m)
 			continue
 		}

@@ -1,50 +1,118 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { FileText, FolderOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { DriveArchivo } from "@/lib/types";
+import { cargarGooglePicker, type DialogoPicker } from "@/lib/google-picker";
+import { enlaceReferenciaDrive, MAX_REFERENCIAS_TRABAJO } from "@/lib/referencias-trabajo";
+import type { ReferenciaDriveTrabajo } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
-import { Campo } from "@/components/ui/Campo";
+import { AbrirReferenciaTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
 import styles from "./FlujoTrabajo.module.css";
 
-export interface EleccionCarpeta { id: string; nombre: string }
-
-export function SelectorCarpetaTrabajo({ padre, actual, valor, onChange }: {
-  padre: string; actual?: string | null; valor: EleccionCarpeta;
-  onChange: (valor: EleccionCarpeta) => void;
+export function SelectorCarpetaTrabajo({ clienteId, valor, onChange, deshabilitado }: {
+  clienteId?: number;
+  valor: ReferenciaDriveTrabajo[];
+  onChange: (valor: ReferenciaDriveTrabajo[], indice?: number) => void;
+  deshabilitado: boolean;
 }) {
-  const [modo, setModo] = useState(actual ? "existente" : "");
-  const [intento, reintentar] = useState(0);
-  const [consulta, setConsulta] = useState<{ carpetas: DriveArchivo[]; error: string } | null>(null);
-  useEffect(() => {
-    if (!padre || modo !== "existente") return;
-    let vigente = true;
-    api.adminGetDriveArchivos({ carpeta: padre }).then((datos) => {
-      if (vigente) setConsulta({ carpetas: (datos ?? []).filter((f) => f.es_carpeta), error: "" });
-    }).catch((e: Error) => {
-      if (vigente) setConsulta({ carpetas: [], error: e.message || "No se pudieron listar las carpetas." });
-    });
-    return () => { vigente = false; };
-  }, [padre, modo, intento]);
+  const titulo = useId();
+  const [confirmar, setConfirmar] = useState<number | null>(null);
+  const [abriendo, setAbriendo] = useState<number | "nueva" | null>(null);
+  const [error, setError] = useState("");
+  const dialogo = useRef<DialogoPicker | null>(null);
+  const vigente = useRef(false);
 
-  return <div className={styles.form}>
-    <Campo como="select" etiqueta="Carpeta de Drive" value={modo} onChange={(e) => {
-      setModo(e.target.value);
-      setConsulta(null);
-      onChange({ id: e.target.value === "existente" ? actual ?? "" : "", nombre: e.target.value === "nueva" ? "automatica" : "" });
-    }}>
-      <option value="">{actual ? "Conservar carpeta actual" : "Crear automáticamente si Drive está conectado"}</option>
-      <option value="existente" disabled={!padre}>Elegir una subcarpeta existente</option>
-      {actual && <option value="nueva" disabled={!padre}>Preparar carpeta con el nombre del trabajo</option>}
-    </Campo>
-    {modo === "existente" && padre && <>
-      <Campo como="select" etiqueta="Subcarpeta existente" value={valor.id} required disabled={!consulta || !!consulta.error}
-        onChange={(e) => onChange({ id: e.target.value, nombre: "" })}>
-        <option value="">{consulta ? "Selecciona una carpeta" : "Cargando carpetas…"}</option>
-        {actual && !consulta?.carpetas.some((f) => f.id === actual) && <option value={actual}>Carpeta actual</option>}
-        {consulta?.carpetas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-      </Campo>
-      {consulta?.error && <p className={styles.error} role="alert">{consulta.error} <Boton variante="secundario" tamano="sm" onClick={() => { setConsulta(null); reintentar(intento + 1); }}>Reintentar</Boton></p>}
-    </>}
-  </div>;
+  useEffect(() => {
+    vigente.current = true;
+    return () => {
+      vigente.current = false;
+      dialogo.current?.setVisible(false);
+      dialogo.current?.dispose?.();
+      dialogo.current = null;
+    };
+  }, []);
+
+  async function abrir(indice?: number) {
+    if (deshabilitado || abriendo !== null || (indice === undefined && valor.length >= MAX_REFERENCIAS_TRABAJO)) return;
+    const boton = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setError("");
+    setConfirmar(null);
+    setAbriendo(indice ?? "nueva");
+    try {
+      const conf = await api.adminGetDrivePickerToken(clienteId);
+      if (!vigente.current) return;
+      const picker = await cargarGooglePicker();
+      if (!vigente.current) return;
+      const vista = new picker.DocsView().setIncludeFolders(true).setSelectFolderEnabled(true).setParent(conf.carpeta_id);
+      const cerrar = () => {
+        dialogo.current?.dispose?.();
+        dialogo.current = null;
+        setAbriendo(null);
+        requestAnimationFrame(() => boton?.focus());
+      };
+      dialogo.current = new picker.PickerBuilder().addView(vista).setOAuthToken(conf.access_token)
+        .setMaxItems(1).setOrigin(window.location.origin).setDeveloperKey(conf.clave).setAppId(conf.proyecto_id).setLocale("es")
+        .setCallback(r => {
+          if (!vigente.current) return;
+          if (r.action === picker.Action.CANCEL) { cerrar(); return; }
+          if (r.action !== picker.Action.PICKED) return;
+          const doc = r.docs?.[0];
+          if (!doc || !/^[\w-]{3,160}$/.test(doc.id) || !doc.name?.trim()) {
+            setError("No pudimos leer ese archivo o carpeta. Elige otra referencia.");
+          } else if (valor.some((ref, i) => ref.id === doc.id && i !== indice)) {
+            setError("Esa referencia ya está en la lista.");
+          } else {
+            const carpeta = doc.mimeType === "application/vnd.google-apps.folder" || doc.type === "folder" || !!doc.url?.includes("/folders/");
+            const ref: ReferenciaDriveTrabajo = { id: doc.id, nombre: doc.name, tipo: carpeta ? "carpeta" : "archivo",
+              url: enlaceReferenciaDrive(doc.url) ? doc.url : (carpeta ? `https://drive.google.com/drive/folders/${doc.id}` : `https://drive.google.com/open?id=${doc.id}`) };
+            onChange(indice === undefined ? [...valor, ref] : valor.map((anterior, i) => i === indice ? ref : anterior), indice);
+          }
+          cerrar();
+        }).build();
+      dialogo.current.setVisible(true);
+    } catch (e) {
+      if (!vigente.current) return;
+      setError(e instanceof Error ? e.message : "No pudimos abrir Google Drive.");
+      setAbriendo(null);
+      requestAnimationFrame(() => boton?.focus());
+    }
+  }
+
+  const bloqueado = deshabilitado || abriendo !== null;
+  return <section className={styles.referenciasTrabajo} aria-labelledby={titulo}>
+    <div className={styles.referenciasCabecera}>
+      <strong id={titulo}>Referencias de Drive</strong>
+      <span className={styles.ayuda} aria-live="polite">{valor.length} de {MAX_REFERENCIAS_TRABAJO}</span>
+    </div>
+    {valor.length ? <ul className={styles.referencias}>
+      {valor.map((ref, i) => {
+        const Icono = ref.tipo === "carpeta" ? FolderOpen : FileText;
+        return <li className={styles.referenciaTrabajo} key={`${ref.id}-${i}`}>
+          {confirmar === i ? <div className={styles.confirmarQuitar} role="group" aria-label={`Quitar ${ref.nombre}`}>
+            <span>¿Quitar «{ref.nombre}»?</span>
+            <Boton variante="secundario" tamano="sm" disabled={bloqueado} onClick={() => { onChange(valor.filter((_, j) => i !== j), i); setConfirmar(null); }}>Sí</Boton>
+            <Boton variante="fantasma" tamano="sm" disabled={bloqueado} onClick={() => setConfirmar(null)}>No</Boton>
+          </div> : <>
+            <Icono size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span className={styles.nombreReferenciaTrabajo} title={ref.nombre}>{ref.nombre}</span>
+            <div className={styles.accionesReferenciaTrabajo}>
+              <AbrirReferenciaTrabajo referencia={ref} />
+              <Boton variante="secundario" tamano="sm" className={styles.botonReferenciaTrabajo} disabled={bloqueado} cargando={abriendo === i} onClick={() => void abrir(i)} aria-label={`Cambiar ${ref.nombre}`}>
+                <Pencil size={14} strokeWidth={1.75} aria-hidden="true" /><span>Cambiar</span>
+              </Boton>
+              <Boton variante="fantasma" tamano="sm" className={styles.botonReferenciaTrabajo} disabled={bloqueado} onClick={() => setConfirmar(i)} aria-label={`Quitar ${ref.nombre}`}>
+                <Trash2 size={15} strokeWidth={1.75} aria-hidden="true" /><span>Quitar</span>
+              </Boton>
+            </div>
+          </>}
+        </li>;
+      })}
+    </ul> : <p className={styles.ayuda}>Sin referencias.</p>}
+    <div><Boton variante="secundario" tamano="sm" className={styles.botonReferenciaTrabajo}
+      disabled={bloqueado || valor.length >= MAX_REFERENCIAS_TRABAJO} cargando={abriendo === "nueva"} onClick={() => void abrir()}>
+      <Plus size={16} strokeWidth={1.75} aria-hidden="true" /> Añadir carpeta
+    </Boton></div>
+    {error && <p className={styles.error} role="alert">{error}</p>}
+  </section>;
 }

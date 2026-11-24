@@ -129,36 +129,45 @@ const (
 	EstadoTareaCancelada EstadoTarea = "cancelada"
 )
 
+// ReferenciaDriveTrabajo es una referencia de solo lectura para el asignado.
+type ReferenciaDriveTrabajo struct {
+	ID     string `json:"id"`
+	Nombre string `json:"nombre"`
+	URL    string `json:"url"`
+	Tipo   string `json:"tipo"`
+}
+
 type Tarea struct {
-	ID                      int64        `json:"id"`
-	TipoID                  int          `json:"tipo_id"`
-	Tipo                    *TipoTrabajo `json:"tipo,omitempty"`
-	ClienteID               *int         `json:"cliente_id,omitempty"`
-	Cliente                 *Cliente     `json:"cliente,omitempty"`
-	PiezaID                 *int         `json:"pieza_id,omitempty"`
-	Pieza                   *PiezaCorta  `json:"pieza,omitempty"`
-	Titulo                  string       `json:"titulo"`
-	Descripcion             *string      `json:"descripcion,omitempty"`
-	AsignadoA               string       `json:"asignado_a"`
-	Asignado                *Perfil      `json:"asignado,omitempty"`
-	CreadoPor               string       `json:"creado_por"`
-	Creador                 *Perfil      `json:"creador,omitempty"`
-	Estado                  EstadoTarea  `json:"estado"`
-	FechaLimite             *string      `json:"fecha_limite,omitempty"` // YYYY-MM-DD
-	NotaPersona             *string      `json:"nota_persona,omitempty"`
-	EnlaceMedios            *string      `json:"enlace_medios,omitempty"`
-	DriveCarpetaID          *string      `json:"drive_carpeta_id,omitempty"`
-	DriveCarpetaURL         *string      `json:"drive_carpeta_url,omitempty"`
-	MotivoRechazo           *string      `json:"motivo_rechazo,omitempty"`
-	Cantidad                *int         `json:"cantidad,omitempty"`
-	CantidadAceptada        *int         `json:"cantidad_aceptada,omitempty"`
-	PrecioUnitarioCongelado *int64       `json:"precio_unitario_congelado,omitempty"`
-	PrecioCongelado         *int64       `json:"precio_congelado,omitempty"`
-	FacturaID               *int64       `json:"factura_id,omitempty"`
-	CreadaEn                time.Time    `json:"creada_en"`
-	HechaEn                 *time.Time   `json:"hecha_en,omitempty"`
-	ResueltaEn              *time.Time   `json:"resuelta_en,omitempty"`
-	ResueltaPor             *string      `json:"resuelta_por,omitempty"`
+	DriveReferencias        []ReferenciaDriveTrabajo `json:"drive_referencias"`
+	ID                      int64                    `json:"id"`
+	TipoID                  int                      `json:"tipo_id"`
+	Tipo                    *TipoTrabajo             `json:"tipo,omitempty"`
+	ClienteID               *int                     `json:"cliente_id,omitempty"`
+	Cliente                 *Cliente                 `json:"cliente,omitempty"`
+	PiezaID                 *int                     `json:"pieza_id,omitempty"`
+	Pieza                   *PiezaCorta              `json:"pieza,omitempty"`
+	Titulo                  string                   `json:"titulo"`
+	Descripcion             *string                  `json:"descripcion,omitempty"`
+	AsignadoA               string                   `json:"asignado_a"`
+	Asignado                *Perfil                  `json:"asignado,omitempty"`
+	CreadoPor               string                   `json:"creado_por"`
+	Creador                 *Perfil                  `json:"creador,omitempty"`
+	Estado                  EstadoTarea              `json:"estado"`
+	FechaLimite             *string                  `json:"fecha_limite,omitempty"` // YYYY-MM-DD
+	NotaPersona             *string                  `json:"nota_persona,omitempty"`
+	EnlaceMedios            *string                  `json:"enlace_medios,omitempty"`
+	DriveCarpetaID          *string                  `json:"drive_carpeta_id,omitempty"`
+	DriveCarpetaURL         *string                  `json:"drive_carpeta_url,omitempty"`
+	MotivoRechazo           *string                  `json:"motivo_rechazo,omitempty"`
+	Cantidad                *int                     `json:"cantidad,omitempty"`
+	CantidadAceptada        *int                     `json:"cantidad_aceptada,omitempty"`
+	PrecioUnitarioCongelado *int64                   `json:"precio_unitario_congelado,omitempty"`
+	PrecioCongelado         *int64                   `json:"precio_congelado,omitempty"`
+	FacturaID               *int64                   `json:"factura_id,omitempty"`
+	CreadaEn                time.Time                `json:"creada_en"`
+	HechaEn                 *time.Time               `json:"hecha_en,omitempty"`
+	ResueltaEn              *time.Time               `json:"resuelta_en,omitempty"`
+	ResueltaPor             *string                  `json:"resuelta_por,omitempty"`
 }
 
 // PiezaCorta acompaña a la tarea para mostrar a qué pieza pertenece.

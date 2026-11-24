@@ -91,35 +91,36 @@ type dbTipoTrabajo struct {
 }
 
 type dbTarea struct {
-	ID                      int64          `json:"id"`
-	TipoID                  int            `json:"tipo_id"`
-	ClienteID               *int           `json:"cliente_id"`
-	PiezaID                 *int           `json:"pieza_id"`
-	Titulo                  string         `json:"titulo"`
-	Descripcion             *string        `json:"descripcion"`
-	AsignadoA               string         `json:"asignado_a"`
-	CreadoPor               string         `json:"creado_por"`
-	Estado                  string         `json:"estado"`
-	FechaLimite             *string        `json:"fecha_limite"`
-	NotaPersona             *string        `json:"nota_persona"`
-	EnlaceMedios            *string        `json:"enlace_medios"`
-	DriveCarpetaID          *string        `json:"drive_carpeta_id"`
-	DriveCarpetaURL         *string        `json:"drive_carpeta_url"`
-	MotivoRechazo           *string        `json:"motivo_rechazo"`
-	Cantidad                *int           `json:"cantidad"`
-	CantidadAceptada        *int           `json:"cantidad_aceptada"`
-	PrecioUnitarioCongelado *int64         `json:"precio_unitario_congelado"`
-	PrecioCongelado         *int64         `json:"precio_congelado"`
-	FacturaID               *int64         `json:"factura_id"`
-	CreadaEn                string         `json:"creada_en"`
-	HechaEn                 *string        `json:"hecha_en"`
-	ResueltaEn              *string        `json:"resuelta_en"`
-	ResueltaPor             *string        `json:"resuelta_por"`
-	Tipo                    *dbTipoTrabajo `json:"tipos_trabajo"`
-	Cliente                 *dbCliente     `json:"clientes"`
-	Pieza                   *dbPiezaCorta  `json:"piezas"`
-	Asignado                *dbPerfil      `json:"asignado"`
-	Creador                 *dbPerfil      `json:"creador"`
+	ID                      int64                          `json:"id"`
+	TipoID                  int                            `json:"tipo_id"`
+	ClienteID               *int                           `json:"cliente_id"`
+	PiezaID                 *int                           `json:"pieza_id"`
+	Titulo                  string                         `json:"titulo"`
+	Descripcion             *string                        `json:"descripcion"`
+	AsignadoA               string                         `json:"asignado_a"`
+	CreadoPor               string                         `json:"creado_por"`
+	Estado                  string                         `json:"estado"`
+	FechaLimite             *string                        `json:"fecha_limite"`
+	NotaPersona             *string                        `json:"nota_persona"`
+	EnlaceMedios            *string                        `json:"enlace_medios"`
+	DriveCarpetaID          *string                        `json:"drive_carpeta_id"`
+	DriveCarpetaURL         *string                        `json:"drive_carpeta_url"`
+	DriveReferencias        []store.ReferenciaDriveTrabajo `json:"drive_referencias"`
+	MotivoRechazo           *string                        `json:"motivo_rechazo"`
+	Cantidad                *int                           `json:"cantidad"`
+	CantidadAceptada        *int                           `json:"cantidad_aceptada"`
+	PrecioUnitarioCongelado *int64                         `json:"precio_unitario_congelado"`
+	PrecioCongelado         *int64                         `json:"precio_congelado"`
+	FacturaID               *int64                         `json:"factura_id"`
+	CreadaEn                string                         `json:"creada_en"`
+	HechaEn                 *string                        `json:"hecha_en"`
+	ResueltaEn              *string                        `json:"resuelta_en"`
+	ResueltaPor             *string                        `json:"resuelta_por"`
+	Tipo                    *dbTipoTrabajo                 `json:"tipos_trabajo"`
+	Cliente                 *dbCliente                     `json:"clientes"`
+	Pieza                   *dbPiezaCorta                  `json:"piezas"`
+	Asignado                *dbPerfil                      `json:"asignado"`
+	Creador                 *dbPerfil                      `json:"creador"`
 }
 
 type dbFactura struct {
@@ -704,6 +705,7 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 		PiezaID:                 dt.PiezaID,
 		DriveCarpetaID:          dt.DriveCarpetaID,
 		DriveCarpetaURL:         dt.DriveCarpetaURL,
+		DriveReferencias:        dt.DriveReferencias,
 	}
 	if dt.Pieza != nil {
 		res.Pieza = &store.PiezaCorta{ID: dt.Pieza.ID, Nombre: dt.Pieza.Nombre, Etapa: dt.Pieza.Etapa}
@@ -808,6 +810,7 @@ func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.
 		"fecha_limite":     t.FechaLimite,
 		"cantidad":         t.Cantidad,
 		"drive_carpeta_id": t.DriveCarpetaID, "drive_carpeta_url": t.DriveCarpetaURL,
+		"drive_referencias": t.DriveReferencias,
 	}
 	var rows []dbTarea
 	q := url.Values{}

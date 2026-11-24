@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-24T02:08:50.775Z",
+  "generado_en": "2026-11-24T05:24:15.796Z",
   "version": "1.0",
   "modulos": [
     {
@@ -1187,12 +1187,12 @@
         {
           "orden": 1,
           "archivo_funcion": "components/FormularioAsignacion.tsx:FormularioAsignacion",
-          "descripcion": "Formulario compartido en /trabajos/nuevo desde Tareas, Trabajos y perfil; Especificaciones, cliente, persona, tipo, fecha y carpeta operativa"
+          "descripcion": "Formulario compartido en /trabajos/nuevo: especificaciones, cliente, persona, tipo, fecha y hasta tres referencias de Drive."
         },
         {
           "orden": 2,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTarea",
-          "descripcion": "Admin envía POST /api/admin/tareas con tipo_id, titulo, descripcion, asignado_a, fecha_limite"
+          "descripcion": "POST /api/admin/tareas guarda la lista de Drive; si se omite, toma como referencia la carpeta registrada del cliente."
         },
         {
           "orden": 3,
@@ -1392,7 +1392,7 @@
     {
       "id": "drive",
       "nombre": "Google Drive (conector equipo)",
-      "descripcion": "Solo administradores conectan la cuenta, preparan RConcept y simulan antes de mover carpetas históricas.",
+      "descripcion": "Solo administradores conectan el Drive, reutilizan la raíz configurada y pueden simular movimientos históricos.",
       "pasos": [
         {
           "orden": 1,
@@ -1422,7 +1422,7 @@
         {
           "orden": 6,
           "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:crearCarpetaDeTrabajo",
-          "descripcion": "Localiza carpeta del cliente (o RConcept si no hay cliente) y prepara una carpeta por ID de tarea con Material y Entregas."
+          "descripcion": "Localiza la carpeta del cliente o usa la raíz configurada y prepara la carpeta operativa por ID de tarea con Material y Entregas."
         },
         {
           "orden": 7,
@@ -1787,32 +1787,74 @@
     {
       "id": "drive-organizado-f8",
       "nombre": "Organización y movimientos del Drive",
-      "descripcion": "Jerarquía RConcept y traslado conservador de las carpetas de trabajo verificadas.",
+      "descripcion": "Organización con la raíz existente y simulación de movimientos históricos sin escritura en Drive.",
       "pasos": [
         {
           "orden": 1,
           "archivo_funcion": "components/admin/AdminEquipo.tsx:AdminEquipo",
-          "descripcion": "Confirma desconexión en línea; organiza, presenta simulación y pide confirmación para aplicar el plan."
+          "descripcion": "Muestra el nombre real de la raíz, permite organizar y presenta el plan de movimientos históricos."
         },
         {
           "orden": 2,
           "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:handleAdminOrganizarDrive",
-          "descripcion": "Prepara RConcept/Clientes, Recursos y Archivo por nombre y padre."
+          "descripcion": "Verifica carpeta_raiz_id y usa esa carpeta directamente; si no hay raíz configurada, usa Mi unidad. No crea ramas fijas."
         },
         {
           "orden": 3,
           "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:asegurarClienteDrive",
-          "descripcion": "Prepara cada carpeta de cliente y persiste ID y URL, con Material del lugar y Producto."
+          "descripcion": "Busca subcarpetas directas por nombre normalizado (espacios externos, mayúsculas y tildes); solo crea si no hay coincidencia."
         },
         {
           "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:planearMovimientosDrive",
-          "descripcion": "Simula sin escribir; comprueba procedencia, pertenencia a Mi unidad y destino."
+          "descripcion": "Simula sin escribir; admite que carpeta_clientes_id y carpeta_raiz_id sean el mismo ID."
         },
         {
           "orden": 5,
           "archivo_funcion": "backend/internal/httpapi/drive_organizacion.go:handleAdminMigrarCarpetasDrive",
           "descripcion": "Exige la huella vigente de la simulación para trasladar carpetas por ID con addParents/removeParents."
+        }
+      ]
+    },
+    {
+      "id": "referencias-drive-trabajo",
+      "nombre": "Referencias de Drive por asignación",
+      "descripcion": "Hasta tres archivos o carpetas de referencia por tarea (migración 022), sin cambiar la carpeta operativa de entregas.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/FormularioAsignacion.tsx:FormularioAsignacion",
+          "descripcion": "Añade la carpeta del cliente y conserva las personalizadas al cambiar de cliente."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "components/SelectorCarpetaTrabajo.tsx:SelectorCarpetaTrabajo",
+          "descripcion": "Admin añade o cambia archivos y carpetas con Google Picker, o quita una referencia con confirmación en línea."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePickerToken",
+          "descripcion": "Emite token temporal del Drive del equipo y carpeta inicial del cliente o raíz."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/drive_referencias_trabajo.go:validarReferenciasTrabajo",
+          "descripcion": "POST y PATCH administrativos validan forma, tipo, IDs, máximo tres y URL HTTPS del dominio de Google Drive o Docs."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
+          "descripcion": "Guarda drive_referencias como JSONB en trabajos pendientes o devueltos."
+        },
+        {
+          "orden": 6,
+          "archivo_funcion": "lib/referencias-trabajo.ts:referenciasDelTrabajo",
+          "descripcion": "Si no existe lista, expone el vínculo antiguo sin reescribirlo."
+        },
+        {
+          "orden": 7,
+          "archivo_funcion": "components/ui/ReferenciasDriveTrabajo.tsx:ReferenciasDriveTrabajo",
+          "descripcion": "El detalle y Mis tareas muestran botones Abrir. Los asignados no editan."
         }
       ]
     }
@@ -1914,5 +1956,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "4d68189a7f8a0dc4289d8276aabdadfca9ed8fd5"
+  "commit_hash": "b0a14a70f73d314d459e73e2cd7c4c7fa769db5b"
 }

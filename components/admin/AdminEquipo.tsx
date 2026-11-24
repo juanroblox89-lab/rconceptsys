@@ -301,7 +301,7 @@ export function AdminEquipo() {
         )}
         {drive?.conectado && <>
           <div className={styles.driveAcciones}>
-            <span className={styles.driveCarpeta}>{drive.organizado ? "Carpeta raíz: RConcept" : "Carpetas sin organizar."}</span>
+            <span className={styles.driveCarpeta}>{drive.carpeta_raiz_nombre ? `Carpeta raíz: ${drive.carpeta_raiz_nombre}` : drive.carpeta_raiz_id ? "Carpeta raíz: nombre no disponible" : "Carpetas sin organizar."}</span>
             {drive.organizado && <a className="rc-btn rc-btn--secundario rc-btn--sm" href={`https://drive.google.com/drive/folders/${encodeURIComponent(drive.carpeta_raiz_id)}`} target="_blank" rel="noreferrer">Abrir en Drive <ExternalLink size={14} aria-hidden="true" /></a>}
           </div>
           {confirmar ? <div className={styles.confirmacionDrive} role="group" aria-labelledby="confirmar-drive">

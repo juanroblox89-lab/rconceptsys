@@ -2,9 +2,11 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"rconceptsys/backend/internal/store"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -64,24 +66,41 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 404, "tarea_no_encontrada", "No encontramos ese trabajo.")
 		return
 	}
-	var datos map[string]any
+	var datos map[string]json.RawMessage
 	if leerJSONCuerpo(r, 16*1024, &datos) != nil {
 		ResponderError(w, 400, "datos_invalidos", "Revisa los datos del trabajo.")
 		return
 	}
 	campos := map[string]any{}
-	forzar, _ := datos["forzar"].(bool)
+	var forzar bool
 	var nuevaCarpeta string
-	for k, v := range datos {
+	for k, raw := range datos {
+		if k == "drive_referencias" {
+			refs, err := validarReferenciasTrabajo(raw)
+			if err != nil {
+				ResponderError(w, 400, "referencias_invalidas", err.Error())
+				return
+			}
+			if t.DriveReferencias == nil || !slices.Equal(refs, t.DriveReferencias) {
+				campos[k] = refs
+			}
+			continue
+		}
+		var v any
+		if json.Unmarshal(raw, &v) != nil {
+			ResponderError(w, 400, "datos_invalidos", "Revisa los datos del trabajo.")
+			return
+		}
 		switch k {
 		case "forzar":
-			if _, ok := v.(bool); !ok {
+			var ok bool
+			if forzar, ok = v.(bool); !ok {
 				ResponderError(w, 400, "datos_invalidos", "Revisa la confirmación de rol.")
 				return
 			}
 		case "drive_crear":
 			s, ok := v.(string)
-			if !ok || strings.TrimSpace(s) == "" || len([]rune(s)) > 80 || datos["drive_carpeta_id"] != nil {
+			if !ok || strings.TrimSpace(s) == "" || len([]rune(s)) > 80 || (datos["drive_carpeta_id"] != nil && string(datos["drive_carpeta_id"]) != "null") {
 				ResponderError(w, 400, "carpeta_invalida", "Elige una sola carpeta y usa un nombre de hasta 80 caracteres.")
 				return
 			}
@@ -317,11 +336,11 @@ func (a *API) handleAdminClienteDrive(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f, e := a.metadatosCarpeta(ctx, token, req.CarpetaID)
-		if e != nil || !f.carpetaEn(conexion.CarpetaClientesID) || f.Nombre != c.Nombre {
-			ResponderError(w, 400, "carpeta_invalida", "Elige la carpeta del cliente dentro de RConcept → Clientes.")
+		if e != nil || !f.carpetaEn(conexion.CarpetaClientesID) || normalizarNombreCarpetaDrive(f.Nombre) != normalizarNombreCarpetaDrive(c.Nombre) {
+			ResponderError(w, 400, "carpeta_invalida", "Elige la carpeta del cliente dentro de la raíz de Drive del equipo.")
 			return
 		}
-		actual, err = a.guardarCarpetaCliente(ctx, token, c, f.ID)
+		actual, err = a.guardarCarpetaCliente(ctx, c, f.ID)
 	}
 	if err != nil {
 		responderFalloDrive(w, err)

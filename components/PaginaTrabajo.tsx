@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { CarpetaDriveTarea } from "@/components/ui/CarpetaDriveTarea";
+import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
 import { EstadoTrabajo, ESTADOS_TRABAJO, fechaTrabajo } from "./FilaTrabajo";
 import { FormularioAsignacion } from "./FormularioAsignacion";
 import styles from "./FlujoTrabajo.module.css";
@@ -93,7 +94,8 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
         {tarea.motivo_rechazo && <p className={styles.textoLargo}><strong>Motivo de devolución: </strong>{tarea.motivo_rechazo}</p>}
         {tarea.precio_congelado != null && <p><strong>Valor aprobado: </strong>${tarea.precio_congelado.toLocaleString("es-CO")}</p>}
         {tarea.enlace_medios && <EnlaceDrive enlace={tarea.enlace_medios} />}
-        <CarpetaDriveTarea tarea={tarea} onActualizada={setRespuesta} />
+        {!editable && <ReferenciasDriveTrabajo tarea={tarea} />}
+        {(tarea.drive_referencias != null || !(tarea.drive_carpeta_id || tarea.drive_carpeta_url)) && <CarpetaDriveTarea tarea={tarea} onActualizada={setRespuesta} />}
         {tarea.estado === "hecha" && <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={`/tareas?tarea=${tarea.id}#tarea-${tarea.id}`}>Revisar entrega</Link>}
       </section>}
       {editable && <Boton variante="peligro" onClick={() => { setError(""); setConfirmar(true); }}>Cancelar trabajo</Boton>}

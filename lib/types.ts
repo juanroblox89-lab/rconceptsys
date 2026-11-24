@@ -150,6 +150,7 @@ export interface DriveEstado {
   conectado: boolean;
   correo: string;
   carpeta_raiz_id: string;
+  carpeta_raiz_nombre?: string;
   conectado_en?: string | null;
 }
 
@@ -237,7 +238,15 @@ export interface TipoTrabajo {
 
 export type EstadoTarea = 'pendiente' | 'hecha' | 'aceptada' | 'rechazada' | 'cancelada';
 
+export interface ReferenciaDriveTrabajo {
+  id: string;
+  nombre: string;
+  url: string;
+  tipo: 'carpeta' | 'archivo';
+}
+
 export interface Tarea {
+  drive_referencias?: ReferenciaDriveTrabajo[] | null;
   id: number;
   tipo_id: number;
   tipo?: TipoTrabajo;

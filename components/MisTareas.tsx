@@ -14,6 +14,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
 import { EnlaceDrive, errorEnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useAviso } from "@/components/ui/Aviso";
+import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
+import { enlaceReferenciaDrive } from "@/lib/referencias-trabajo";
 import styles from "@/app/(app)/tareas/tareas.module.css";
 
 export function MisTareas() {
@@ -341,9 +343,10 @@ function renderTarjeta(
         </div>
       )}
 
-      {(activa || t.drive_carpeta_url) && (
+      <ReferenciasDriveTrabajo tarea={t} />
+      {(activa || (t.drive_referencias != null && enlaceReferenciaDrive(t.drive_carpeta_url))) && (
         <div className={styles.tareaFooter}>
-          {t.drive_carpeta_url && /^https:\/\/drive\.google\.com\//i.test(t.drive_carpeta_url) && <a className={styles.carpetaTrabajo} href={t.drive_carpeta_url} target="_blank" rel="noreferrer"><FolderOpen size={16} aria-hidden="true" /> Carpeta de Drive</a>}
+          {t.drive_referencias != null && enlaceReferenciaDrive(t.drive_carpeta_url) && <a className={styles.carpetaTrabajo} href={t.drive_carpeta_url} target="_blank" rel="noopener noreferrer"><FolderOpen size={16} aria-hidden="true" /> Carpeta de entrega</a>}
           {activa && <Boton
             variante="primario"
             tamano="sm"

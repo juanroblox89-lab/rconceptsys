@@ -101,3 +101,17 @@
 .confirmarQuitar { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .confirmarQuitar > span { flex: 1; min-width: 0; }
 @media (max-width: 600px) { .referenciaAccion > span { display: none; } .referenciaAccion { padding: 0 10px; min-width: 40px; } }
+
+.referenciasTrabajo { display: grid; gap: var(--rc-esp-8); min-width: 0; }
+.referenciasCabecera { display: flex; justify-content: space-between; align-items: center; gap: var(--rc-esp-8); }
+.referenciaTrabajo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; border-radius: var(--rc-radio-md); background: var(--rc-superficie-hundida); min-width: 0; }
+.referenciaTrabajo > svg { color: var(--rc-texto-secundario); }
+.referenciaTrabajo .confirmarQuitar { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.nombreReferenciaTrabajo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rc-fs-etiqueta); }
+.accionesReferenciaTrabajo { display: flex; align-items: center; gap: 4px; }
+.botonReferenciaTrabajo { min-height: 40px; }
+@media (max-width: 600px) {
+  .nombreReferenciaTrabajo { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .accionesReferenciaTrabajo .botonReferenciaTrabajo { min-width: 40px; padding-inline: 8px; }
+  .accionesReferenciaTrabajo button.botonReferenciaTrabajo span:not([aria-hidden]) { display: none; }
+}

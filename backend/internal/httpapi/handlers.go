@@ -1223,16 +1223,17 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*32)
 	var req struct {
-		TipoID         int     `json:"tipo_id"`
-		ClienteID      *int    `json:"cliente_id"`
-		PiezaID        *int    `json:"pieza_id"`
-		AsignadoA      string  `json:"asignado_a"`
-		Titulo         string  `json:"titulo"`
-		Descripcion    *string `json:"descripcion"`
-		FechaLimite    *string `json:"fecha_limite"`
-		Forzar         bool    `json:"forzar"`
-		DriveCarpetaID string  `json:"drive_carpeta_id"`
-		DriveCrear     string  `json:"drive_crear"`
+		TipoID           int             `json:"tipo_id"`
+		ClienteID        *int            `json:"cliente_id"`
+		PiezaID          *int            `json:"pieza_id"`
+		AsignadoA        string          `json:"asignado_a"`
+		Titulo           string          `json:"titulo"`
+		Descripcion      *string         `json:"descripcion"`
+		FechaLimite      *string         `json:"fecha_limite"`
+		Forzar           bool            `json:"forzar"`
+		DriveCarpetaID   string          `json:"drive_carpeta_id"`
+		DriveCrear       string          `json:"drive_crear"`
+		DriveReferencias json.RawMessage `json:"drive_referencias"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
@@ -1277,6 +1278,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 400, "fecha_invalida", "Selecciona una fecha de entrega válida.")
 		return
 	}
+	var cliente *store.Cliente
 	if req.ClienteID != nil {
 		cli, err := a.Store.ObtenerClientePorID(r.Context(), *req.ClienteID)
 		if err == store.ErrNotFound || (cli != nil && !cli.Activo) {
@@ -1285,6 +1287,16 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil || cli == nil {
 			ResponderError(w, http.StatusInternalServerError, "error_obtener_cliente", "No pudimos consultar el cliente.")
+			return
+		}
+		cliente = cli
+	}
+	referencias := referenciasInicialesTrabajo(cliente)
+	// Una lista explícita (incluso []) refleja la elección del administrador.
+	if req.DriveReferencias != nil {
+		referencias, err = validarReferenciasTrabajo(req.DriveReferencias)
+		if err != nil {
+			ResponderError(w, 400, "referencias_invalidas", err.Error())
 			return
 		}
 	}
@@ -1349,15 +1361,16 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tarea := &store.Tarea{
-		TipoID:      tipo.ID,
-		Tipo:        tipo,
-		ClienteID:   req.ClienteID,
-		PiezaID:     req.PiezaID,
-		Titulo:      titulo,
-		Descripcion: req.Descripcion,
-		AsignadoA:   asignado.ID,
-		CreadoPor:   admin.ID,
-		FechaLimite: req.FechaLimite,
+		TipoID:           tipo.ID,
+		Tipo:             tipo,
+		ClienteID:        req.ClienteID,
+		PiezaID:          req.PiezaID,
+		Titulo:           titulo,
+		Descripcion:      req.Descripcion,
+		AsignadoA:        asignado.ID,
+		CreadoPor:        admin.ID,
+		FechaLimite:      req.FechaLimite,
+		DriveReferencias: referencias,
 	}
 
 	if req.DriveCrear != "" && (strings.TrimSpace(req.DriveCrear) == "" || req.DriveCarpetaID != "" || len([]rune(req.DriveCrear)) > 80) {
