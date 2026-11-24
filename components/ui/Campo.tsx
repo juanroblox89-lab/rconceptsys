@@ -1,5 +1,6 @@
 "use client";
 
+import { Selector, opcionesSelector } from "./Selector";
 import React, { forwardRef, useId } from "react";
 
 export interface CampoProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
@@ -51,29 +52,11 @@ export const Campo = forwardRef<
   let controlNode: React.ReactNode = null;
 
   if (como === "select") {
-    controlNode = (
-      <span className="rc-select-contenedor">
-        <select
-          id={id}
-          ref={ref as React.Ref<HTMLSelectElement>}
-          className={`rc-select ${className}`.trim()}
-          aria-invalid={error ? "true" : undefined}
-          aria-describedby={error ? errorId : undefined}
-          {...(props as React.SelectHTMLAttributes<HTMLSelectElement>)}
-        >
-          {opciones
-            ? opciones.map((opt) => (
-                <option key={opt.valor} value={opt.valor} disabled={opt.disabled}>
-                  {opt.etiqueta}
-                </option>
-              ))
-            : children}
-        </select>
-        <svg className="rc-icono rc-icono--sm rc-select-icono" aria-hidden="true">
-          <use href="#rc-ico-chevron-abajo" />
-        </svg>
-      </span>
-    );
+    controlNode = <Selector id={id} etiqueta={props['aria-label'] ?? (typeof etiqueta === 'string' ? etiqueta : 'Seleccionar')}
+      valor={typeof props.value === 'string' || typeof props.value === 'number' ? props.value : undefined}
+      opciones={opciones ?? opcionesSelector(children)} className={className} disabled={props.disabled} requerido={props.required}
+      errorId={error ? errorId : undefined}
+      onCambio={valor => props.onChange?.({ target: { value: valor }, currentTarget: { value: valor } } as React.ChangeEvent<HTMLInputElement>)} />;
   } else if (como === "textarea") {
     controlNode = (
       <textarea

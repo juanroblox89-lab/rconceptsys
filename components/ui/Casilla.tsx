@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import React, { forwardRef } from "react";
 
 export interface CasillaProps
@@ -21,9 +22,7 @@ export const Casilla = forwardRef<HTMLInputElement, CasillaProps>(function Casil
         {...props}
       />
       <span className="rc-check__caja" aria-hidden="true">
-        <svg className="rc-icono rc-icono--sm">
-          <use href="#rc-ico-check" />
-        </svg>
+        <Check size={13} strokeWidth={2.5} />
       </span>
       {(etiqueta || children) && <span>{etiqueta || children}</span>}
     </label>

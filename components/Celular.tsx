@@ -1,4 +1,5 @@
 "use client";
+import { Selector } from "@/components/ui/Selector";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Logo } from "@/components/Logo";
@@ -12,7 +13,7 @@ export function CampoCelular({valor,cambiar}:{valor:DatosCelular;cambiar:(v:Dato
  return <div className={styles.campos}>
    <div className={styles.campo}>
      <label className={styles.etiqueta} htmlFor={`${id}-pais`}>País</label>
-     <span className="rc-select-contenedor"><select id={`${id}-pais`} value={valor.indicativo} onChange={e=>cambiar({...valor,indicativo:e.currentTarget.value})}>{paisesCelular.map(([c,n])=><option key={c} value={c}>{n} ({c})</option>)}</select></span>
+     <Selector id={`${id}-pais`} etiqueta="País" valor={valor.indicativo} onCambio={indicativo=>cambiar({...valor,indicativo})} opciones={paisesCelular.map(([valor,nombre])=>({valor,etiqueta:`${nombre} (${valor})`}))} />
    </div>
    <div className={styles.campo}>
      <label className={styles.etiqueta} htmlFor={`${id}-numero`}>Número de celular</label>
@@ -29,7 +30,7 @@ export function FormularioCelular({obligatorio=false,alGuardar,celularInicial}:{
  const [valor,setValor]=useState(()=>separar(celularInicial??''));const [listo,setListo]=useState(celularInicial!==undefined);const [ocupado,setOcupado]=useState(false);const [estado,setEstado]=useState('');const [error,setError]=useState('');
  useEffect(()=>{if(celularInicial!==undefined)return;let activo=true;celularPropio().then(c=>{if(activo){setValor(separar(c));setListo(true);}}).catch(e=>{if(activo)setError(e.message);});return()=>{activo=false;};},[celularInicial]);
  async function guardar(e:FormEvent){e.preventDefault();setOcupado(true);setEstado('');setError('');try{const c=await celularPropio(valor);setValor(separar(c));setEstado('Celular guardado.');alGuardar?.();}catch(e){setError(e instanceof Error?e.message:'No se pudo guardar.');}finally{setOcupado(false);}}
- return <form className={obligatorio?styles.tarjeta:styles.form} onSubmit={guardar}>
+ return <form data-rc-panel={obligatorio ? undefined : true} className={obligatorio?styles.tarjeta:styles.form} onSubmit={guardar}>
    {obligatorio?<div className={styles.encabezado}><Logo size={20}/><h1 className={styles.titulo}>Completa tu perfil</h1><p className={styles.subtitulo}>Solo falta tu número de celular para entrar.</p></div>
      :<><h2>Celular</h2><p>Tu número de celular solo está visible en tu cuenta.</p></>}
    {error&&<div role="alert" className={styles.error}>{error}</div>}

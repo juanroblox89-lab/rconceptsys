@@ -117,7 +117,7 @@ export function AvisosPush() {
   };
 
   return (
-    <section className={styles.caja} aria-label="Avisos push">
+    <section data-rc-panel className={styles.caja} aria-label="Avisos push">
       <div className={styles.cabecera}>
         <span className={styles.icono} aria-hidden="true">
           {suscrito ? <BellRing size={16} strokeWidth={1.85} /> : <Bell size={16} strokeWidth={1.85} />}

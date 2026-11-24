@@ -5,7 +5,9 @@ import { api } from "@/lib/api";
 import type { PreferenciasNotificaciones } from "@/lib/types";
 import { FormularioCelular } from "@/components/Celular";
 import { AvisosPush } from "@/components/AvisosPush";
-import { Campo } from "@/components/ui/Campo";
+import { CampoHora } from "@/components/ui/CamposEspeciales";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
+import { Casilla } from "@/components/ui/Casilla";
 import { Boton } from "@/components/ui/Boton";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import styles from "@/components/FlujoTrabajo.module.css";
@@ -37,27 +39,31 @@ export default function ConfiguracionPage() {
     catch (e) { setEstado({ texto: e instanceof Error ? e.message : "No se pudieron guardar.", error: true }); }
     finally { setOcupado(false); }
   }
-  return <div className={styles.pagina}>
-    <header className={styles.cabecera}><div><h1>Configuración</h1></div></header>
+  return <div className={`${styles.pagina} ${conf.pagina}`}>
+    <CabeceraPagina titulo="Configuración" />
     {!prefs ? (estado.error ? <><p role="alert">{estado.texto}</p><Boton onClick={() => { setEstado({ texto: "", error: false }); setIntento(intento + 1); }}>Reintentar</Boton></> : <Esqueleto filas={5} />) :
-      <form className={styles.form} onSubmit={guardar}>
-        <h2>Notificaciones</h2>
+      <form id="preferencias-avisos" className={styles.form} onSubmit={guardar}>
+        <fieldset className={conf.tarjeta} disabled={ocupado} data-rc-panel>
+        <legend>Notificaciones</legend>
         <p className={styles.ayuda}>Las menciones siempre llegan. El horario de silencio solo aplaza los avisos al dispositivo.</p>
-        <label className={conf.opcion}><input type="checkbox" checked={prefs.silenciar_chat} onChange={(e) => setPrefs({ ...prefs, silenciar_chat: e.target.checked })} /> Silenciar chat del equipo</label>
-        <fieldset className={conf.tarjeta} disabled={ocupado}>
-          <legend>Tipos de aviso</legend>
-          <div className={conf.opciones}>{tipos.filter(([k]) => admin || !["entrega-hecha", "solicitud"].includes(k)).map(([k, texto]) => <label key={k} className={conf.opcion}><input type="checkbox" checked={!prefs.tipos_silenciados.includes(k)} onChange={(e) => setPrefs({ ...prefs, tipos_silenciados: e.target.checked ? prefs.tipos_silenciados.filter((t) => t !== k) : [...prefs.tipos_silenciados, k] })} /> {texto}</label>)}</div>
+        <Casilla contenedorClassName={conf.opcion} etiqueta="Silenciar chat del equipo" checked={prefs.silenciar_chat} onChange={e => setPrefs({ ...prefs, silenciar_chat: e.target.checked })} />
         </fieldset>
-        <fieldset className={conf.tarjeta} disabled={ocupado}>
+        <fieldset className={conf.tarjeta} disabled={ocupado} data-rc-panel>
+          <legend>Tipos de aviso</legend>
+          <div className={conf.opciones}>{tipos.filter(([k]) => admin || !["entrega-hecha", "solicitud"].includes(k)).map(([k, texto]) => <Casilla key={k} contenedorClassName={conf.opcion} etiqueta={texto} checked={!prefs.tipos_silenciados.includes(k)} onChange={(e) => setPrefs({ ...prefs, tipos_silenciados: e.target.checked ? prefs.tipos_silenciados.filter((t) => t !== k) : [...prefs.tipos_silenciados, k] })} />)}</div>
+        </fieldset>
+        <fieldset className={conf.tarjeta} disabled={ocupado} data-rc-panel>
           <legend>Horario de silencio (hora de Bogotá)</legend>
-          <div className={conf.horario}><Campo etiqueta="Desde" type="time" value={prefs.silencio_desde} onChange={(e) => setPrefs({ ...prefs, silencio_desde: e.target.value })} />
-          <Campo etiqueta="Hasta" type="time" value={prefs.silencio_hasta} onChange={(e) => setPrefs({ ...prefs, silencio_hasta: e.target.value })} /></div>
+          <div className={conf.horario}><CampoHora etiqueta="Desde" valor={prefs.silencio_desde} onCambio={valor => setPrefs({ ...prefs, silencio_desde: valor })} disabled={ocupado} />
+          <CampoHora etiqueta="Hasta" valor={prefs.silencio_hasta} onCambio={valor => setPrefs({ ...prefs, silencio_hasta: valor })} disabled={ocupado} /></div>
           <div><Boton variante="fantasma" onClick={() => setPrefs({ ...prefs, silencio_desde: "", silencio_hasta: "" })}>Quitar horario</Boton></div>
         </fieldset>
-        <div><Boton type="submit" cargando={ocupado}>Guardar preferencias</Boton></div>
-        {estado.texto && <p role={estado.error ? "alert" : "status"}>{estado.texto}</p>}
       </form>}
     <FormularioCelular />
-      <AvisosPush />
+    <AvisosPush />
+    {prefs && <footer className={conf.acciones}>
+      {estado.texto && <p role={estado.error ? "alert" : "status"}>{estado.texto}</p>}
+      <Boton type="submit" form="preferencias-avisos" cargando={ocupado}>Guardar preferencias</Boton>
+    </footer>}
   </div>;
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { Selector, opcionesSelector } from "@/components/ui/Selector";
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight, FolderOpen, Layers, Plus } from "lucide-react";
 import { api } from "@/lib/api";
@@ -128,14 +130,12 @@ export function AdminPiezas() {
             </label>
             <label className={styles.campo}>
               <span>Cliente</span>
-              <select value={nuevaCliente} onChange={(e) => setNuevaCliente(e.target.value)}>
-                <option value="">Sin cliente</option>
+              <Selector etiqueta="Cliente" valor={nuevaCliente} onCambio={seleccion => setNuevaCliente(seleccion)}  opciones={opcionesSelector(<><option value="">Sin cliente</option>
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombre}
                   </option>
-                ))}
-              </select>
+                ))}</>)} />
             </label>
             <label className={styles.campo}>
               <span>Formato</span>
@@ -183,15 +183,13 @@ export function AdminPiezas() {
                           <p className={styles.piezaMeta}>Sale {fmtFecha(pieza.fecha_publicacion)}</p>
                         ) : null}
                         {pieza.drive_carpeta_url ? (
-                          <a
+                          <EnlaceExterno
                             href={pieza.drive_carpeta_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className={styles.piezaDrive}
                           >
                             <FolderOpen size={12} strokeWidth={1.75} aria-hidden="true" />
                             Carpeta de Drive
-                          </a>
+                          </EnlaceExterno>
                         ) : null}
                         <ul className={styles.piezaTareas}>
                           {(pieza.tareas ?? []).length === 0 ? (
@@ -208,17 +206,11 @@ export function AdminPiezas() {
                         </ul>
                         <label className={styles.piezaMover}>
                           <span>Etapa</span>
-                          <select
-                            value={pieza.etapa}
-                            onChange={(e) => mover(pieza, e.target.value as EtapaPieza)}
-                            aria-label={`Cambiar etapa de ${pieza.nombre}`}
-                          >
-                            {ETAPAS.map((e) => (
+                          <Selector etiqueta="Etapa" valor={pieza.etapa} onCambio={seleccion => mover(pieza, seleccion as EtapaPieza)}  opciones={opcionesSelector(<>{ETAPAS.map((e) => (
                               <option key={e.clave} value={e.clave}>
                                 {e.nombre}
                               </option>
-                            ))}
-                          </select>
+                            ))}</>)} />
                           <ChevronRight size={12} strokeWidth={2} aria-hidden="true" />
                         </label>
                       </article>

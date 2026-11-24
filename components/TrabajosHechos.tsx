@@ -1,12 +1,12 @@
 "use client";
 
+import { CampoFecha } from "@/components/ui/CamposEspeciales";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { TrendingUp, Calendar, BarChart3 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Boton } from "@/components/ui/Boton";
 import { Chip } from "@/components/ui/Chip";
-import { Campo } from "@/components/ui/Campo";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import styles from "./trabajos-hechos.module.css";
 
@@ -298,20 +298,10 @@ export function TrabajosHechos({
             {preset === "personalizado" && (
               <form onSubmit={handleAplicarPersonalizado} className={styles.personalizadoRow} style={{ marginTop: "6px" }}>
                 <div style={{ flex: 1, minWidth: "120px" }}>
-                  <Campo
-                    etiqueta="Desde"
-                    type="date"
-                    value={fechaDesde}
-                    onChange={(e) => setFechaDesde(e.target.value)}
-                  />
+                  <CampoFecha etiqueta="Desde" valor={fechaDesde} onCambio={setFechaDesde} />
                 </div>
                 <div style={{ flex: 1, minWidth: "120px" }}>
-                  <Campo
-                    etiqueta="Hasta"
-                    type="date"
-                    value={fechaHasta}
-                    onChange={(e) => setFechaHasta(e.target.value)}
-                  />
+                  <CampoFecha etiqueta="Hasta" valor={fechaHasta} onCambio={setFechaHasta} />
                 </div>
                 <Boton type="submit" variante="primario" tamano="sm" style={{ height: "36px" }}>
                   <Calendar size={13} style={{ marginRight: 4 }} />

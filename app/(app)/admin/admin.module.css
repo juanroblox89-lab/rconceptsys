@@ -402,3 +402,5 @@
   align-items: center;
   flex-wrap: wrap;
 }
+
+:global(html[data-rc-tema="glass"]) :is(.section,.mobileCard) { box-shadow: inset 0 0 0 1px var(--rc-gris-100), var(--rc-elev-relieve-sm); background: var(--rc-superficie-clara); }

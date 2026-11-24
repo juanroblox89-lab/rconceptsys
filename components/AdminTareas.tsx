@@ -1,5 +1,6 @@
 "use client";
 
+import { Selector, opcionesSelector } from "@/components/ui/Selector";
 import { useEffect, useState, useCallback } from "react";
 import {
   Check,
@@ -298,31 +299,19 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
 
               {/* Filtros */}
               <div className={flujo.filtrosTrabajo}>
-                <select
-                  aria-label="Filtrar por persona"
-                  value={filtroPersona}
-                  onChange={(e) => setFiltroPersona(e.target.value)}
-                >
-                  <option value="">Cualquier persona</option>
+                <Selector etiqueta="Filtrar por persona" valor={filtroPersona} onCambio={seleccion => setFiltroPersona(seleccion)}  opciones={opcionesSelector(<><option value="">Cualquier persona</option>
                   {miembrosAprobados.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.nombre}
                     </option>
-                  ))}
-                </select>
+                  ))}</>)} />
 
-                <select
-                  aria-label="Filtrar por estado"
-                  value={filtroEstado}
-                  onChange={(e) => setFiltroEstado(e.target.value)}
-                >
-                  <option value="">Todo estado</option>
+                <Selector etiqueta="Filtrar por estado" valor={filtroEstado} onCambio={seleccion => setFiltroEstado(seleccion)}  opciones={opcionesSelector(<><option value="">Todo estado</option>
                   <option value="pendiente">Pendiente</option>
                   <option value="hecha">Por revisar (hecha)</option>
                   <option value="aceptada">Aceptada</option>
                   <option value="rechazada">Rechazada</option>
-                  <option value="cancelada">Cancelada</option>
-                </select>
+                  <option value="cancelada">Cancelada</option></>)} />
               </div>
             </div>
 

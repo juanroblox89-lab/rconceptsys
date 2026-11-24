@@ -9,7 +9,7 @@ export function CampoFecha({ etiqueta, id, valor, onCambio, requerido, disabled 
   const generado = useId();
   const ref = useRef<HTMLInputElement>(null);
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(valor) ? new Date(`${valor}T12:00:00Z`) : null;
-  const texto = fecha && !Number.isNaN(fecha.getTime()) ? new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(fecha) : 'Elegir fecha';
+  const texto = fecha && !Number.isNaN(fecha.getTime()) ? new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).formatToParts(fecha).filter(p => p.type !== 'literal').map(p => p.value.replace(/\.$/, '')).join(' ') : 'Elegir fecha';
   return <span className={styles.fecha}>
     <span className={styles.etiqueta} aria-hidden="true">{etiqueta}</span>
     <span className={styles.control}><CalendarDays size={15} aria-hidden="true" /><span aria-hidden="true">{texto}</span>
@@ -29,10 +29,10 @@ export function CampoHora({ etiqueta, valor, onCambio, disabled }: { etiqueta: s
   </div>;
 }
 
-const moneda = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
+const moneda = (valor: number) => String(valor).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 export function CampoCOP({ etiqueta, valor, onCambio, onBlur, disabled }: { etiqueta: string; valor: number; onCambio: (n: number) => void; onBlur?: () => void; disabled?: boolean }) {
   return <span className={`${styles.control} ${styles.moneda}`}><span aria-hidden="true">$</span>
-    <input aria-label={etiqueta} type="text" inputMode="numeric" value={moneda.format(valor)} disabled={disabled} onBlur={onBlur}
+    <input aria-label={etiqueta} type="text" inputMode="numeric" value={moneda(valor)} disabled={disabled} onBlur={onBlur}
       onChange={e => onCambio(Math.min(100000000, Number(e.target.value.replace(/\D/g, '')) || 0))} /><span aria-hidden="true">COP</span>
   </span>;
 }

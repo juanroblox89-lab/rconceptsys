@@ -1,5 +1,6 @@
 "use client";
 
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Plus, Search } from "lucide-react";
@@ -36,11 +37,9 @@ export function ClientesPanel({ integrado = false }: { integrado?: boolean }) {
     return () => { vigente = false; };
   }, [intento, puedeEditar]);
   const clientes = datos?.filter(c => normalizar(c.nombre).includes(normalizar(filtro))) ?? [];
+  const accion = puedeEditar && <Link className="rc-btn rc-btn--primario" href={`/clientes/nuevo${origen}`}><Plus size={16} aria-hidden="true" /> Nuevo cliente</Link>;
   return <section className={integrado ? styles.clientes : `${styles.pagina} ${styles.clientes}`}>
-    <header className={styles.cabeceraClientes}>
-      <div>{integrado ? <h2>Clientes</h2> : <h1>Clientes</h1>}</div>
-      {puedeEditar && <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={`/clientes/nuevo${origen}`}><Plus size={16} aria-hidden="true" /> Nuevo cliente</Link>}
-    </header>
+    {integrado ? <header className={styles.cabeceraClientes}><h2>Clientes</h2>{accion}</header> : <CabeceraPagina titulo="Clientes" acciones={accion} />}
     {!datos ? (error ? <><p className={styles.error} role="alert">{error}</p><Boton variante="secundario" onClick={() => { setError(""); setIntento(n => n + 1); }}>Reintentar</Boton></> : <Esqueleto filas={4} />) : <>
       <div className={styles.buscarCliente}><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar clientes" placeholder="Buscar clientes" value={filtro} onChange={e => setFiltro(e.target.value)} /></div>
       <p className={styles.ayuda} role="status">{clientes.length} {clientes.length === 1 ? "cliente" : "clientes"}</p>

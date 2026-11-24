@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
+async function elegir(control, nombre) {
+  await control.click();
+  await control.page().getByRole('listbox').getByRole('option', { name: nombre, exact: true }).click();
+}
+
 const base = 'http://127.0.0.1:3313';
 const dir = 'capturas-f7';
 mkdirSync(dir, { recursive: true });
@@ -123,8 +128,8 @@ try {
     await page.getByRole('link', { name: 'Abrir trabajo: Entrevista en estudio' }).click(); await page.getByText('Entrevista entregada', { exact: false }).waitFor();
     await page.goto(`${base}/equipo/cam-1`); await page.getByRole('button', { name: 'Enviar trabajo' }).waitFor(); await captura('07-perfil');
     await page.getByRole('button', { name: 'Enviar trabajo' }).click();
-    const personaCampo = page.getByLabel('Persona', { exact: true }); await personaCampo.waitFor(); assert.equal(await personaCampo.inputValue(), 'cam-1');
-    await captura('08-asignar'); await page.getByLabel('Cliente', { exact: true }).selectOption('1'); await page.getByLabel('Tipo de trabajo').selectOption('1');
+    const personaCampo = page.getByLabel('Persona', { exact: true }); await personaCampo.waitFor(); assert.equal(await personaCampo.getAttribute('data-valor'), 'cam-1');
+    await captura('08-asignar'); await elegir(page.getByRole('combobox', { name: 'Cliente', exact: true }), 'Estudio Norte'); await elegir(page.getByRole('combobox', { name: 'Tipo de trabajo' }), tipo.nombre);
     await page.getByLabel('Fecha de entrega').fill('2026-12-05'); await page.getByLabel('Especificaciones').fill('Nuevo rodaje con equipo');
     await page.getByRole('button', { name: 'Asignar trabajo', exact: true }).click(); await page.waitForURL('**/trabajos/3?*');
     await page.goto(`${base}/clientes`); const buscar = page.getByRole('searchbox', { name: 'Buscar clientes' }); await buscar.fill('norte');

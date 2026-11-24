@@ -26,6 +26,7 @@ import { Logo } from "@/components/Logo";
 import { CampanaNotificaciones } from "@/components/CampanaNotificaciones";
 import { Avatar } from "@/components/ui/Avatar";
 import { api } from "@/lib/api";
+import { rutaVisible } from "@/lib/rutas-ria";
 import { AsignacionResumen, Perfil } from "@/lib/types";
 import styles from "./Sidebar.module.css";
 
@@ -173,12 +174,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
     window.location.replace("/login");
   };
 
-  const itemsVisibles = navItems.filter((item) => {
-    if (item.soloRiel) return false;
-    if (item.adminOnly && !yo?.es_admin) return false;
-    if (item.workerOnly && yo?.es_admin) return false;
-    return true;
-  });
+  const itemsVisibles = navItems.filter((item) => !item.soloRiel && rutaVisible(item, yo));
 
   const novedades = recientes.filter((r) => r.novedad).length;
   const rolEtiqueta = yo?.es_admin

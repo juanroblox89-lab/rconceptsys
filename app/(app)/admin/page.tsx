@@ -1,5 +1,8 @@
 "use client";
 
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
+import { CampoFecha, CampoCOP } from "@/components/ui/CamposEspeciales";
+import { Selector, opcionesSelector } from "@/components/ui/Selector";
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Check,
@@ -497,9 +500,7 @@ function GestionAdmin() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Panel de administración</h1>
-      </div>
+      <CabeceraPagina titulo="Panel de administración" />
 
       <Pestanas
         pestanas={tabsItems}
@@ -557,51 +558,21 @@ function GestionAdmin() {
                           </div>
                         </td>
                         <td>
-                          <select
-                            className={styles.selectCompacto}
-                            value={t.rol_id ?? ""}
-                            onChange={(e) =>
-                              handleCambiarRolTrabajo(t.id, e.target.value === "" ? null : Number(e.target.value))
-                            }
-                          >
-                            <option value="">Sin rol específico</option>
+                          <Selector etiqueta="Rol asignado" valor={t.rol_id ?? ""} onCambio={seleccion => handleCambiarRolTrabajo(t.id, seleccion === "" ? null : Number(seleccion))} className={styles.selectCompacto} opciones={opcionesSelector(<><option value="">Sin rol específico</option>
                             {roles.filter((r) => r.activo).map((r) => (
                               <option key={r.id} value={r.id}>
                                 {r.nombre}
                               </option>
-                            ))}
-                          </select>
+                            ))}</>)} />
                         </td>
                         <td>
-                          <select
-                            className={styles.selectCompacto}
-                            value={t.unidad || "trabajo"}
-                            onChange={(e) =>
-                              handleCambiarUnidadTrabajo(t.id, e.target.value as UnidadTrabajo)
-                            }
-                          >
-                            <option value="trabajo">Por trabajo</option>
-                            <option value="minuto">Por minuto</option>
-                          </select>
+                          <Selector etiqueta="Se cobra por" valor={t.unidad || "trabajo"} onCambio={seleccion => handleCambiarUnidadTrabajo(t.id, seleccion as UnidadTrabajo)} className={styles.selectCompacto} opciones={opcionesSelector(<><option value="trabajo">Por trabajo</option>
+                            <option value="minuto">Por minuto</option></>)} />
                         </td>
                         <td>
                           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span>$</span>
-                              <input
-                                type="number"
-                                min={0}
-                                max={100000000}
-                                className={styles.inputPrecio}
-                                value={preciosEditados[t.id] ?? t.precio}
-                                onChange={(e) =>
-                                  setPreciosEditados((prev) => ({
-                                    ...prev,
-                                    [t.id]: Math.max(0, parseInt(e.target.value, 10) || 0),
-                                  }))
-                                }
-                                onBlur={() => handleGuardarPrecio(t)}
-                              />
+                              <CampoCOP etiqueta={`Precio de ${t.nombre}`} valor={preciosEditados[t.id] ?? t.precio} onCambio={precio => setPreciosEditados(prev => ({ ...prev, [t.id]: precio }))} onBlur={() => handleGuardarPrecio(t)} />
                             </div>
                             <span style={{ fontSize: 10, color: "var(--rc-texto-secundario)", textAlign: "right" }}>
                               {t.unidad === "minuto" ? "COP por minuto" : "COP por trabajo"}
@@ -653,38 +624,20 @@ function GestionAdmin() {
                       <label style={{ fontSize: 11, color: "var(--rc-texto-secundario)", display: "block", marginBottom: 4 }}>
                         Rol asignado
                       </label>
-                      <select
-                        className={styles.selectCompacto}
-                        style={{ width: "100%" }}
-                        value={t.rol_id ?? ""}
-                        onChange={(e) =>
-                          handleCambiarRolTrabajo(t.id, e.target.value === "" ? null : Number(e.target.value))
-                        }
-                      >
-                        <option value="">Sin rol específico</option>
+                      <Selector etiqueta="Rol asignado" valor={t.rol_id ?? ""} onCambio={seleccion => handleCambiarRolTrabajo(t.id, seleccion === "" ? null : Number(seleccion))} className={styles.selectCompacto} estilo={{ width: "100%" }} opciones={opcionesSelector(<><option value="">Sin rol específico</option>
                         {roles.filter((r) => r.activo).map((r) => (
                           <option key={r.id} value={r.id}>
                             {r.nombre}
                           </option>
-                        ))}
-                      </select>
+                        ))}</>)} />
                     </div>
 
                     <div>
                       <label style={{ fontSize: 11, color: "var(--rc-texto-secundario)", display: "block", marginBottom: 4 }}>
                         Se cobra por
                       </label>
-                      <select
-                        className={styles.selectCompacto}
-                        style={{ width: "100%" }}
-                        value={t.unidad || "trabajo"}
-                        onChange={(e) =>
-                          handleCambiarUnidadTrabajo(t.id, e.target.value as UnidadTrabajo)
-                        }
-                      >
-                        <option value="trabajo">Por trabajo</option>
-                        <option value="minuto">Por minuto</option>
-                      </select>
+                      <Selector etiqueta="Se cobra por" valor={t.unidad || "trabajo"} onCambio={seleccion => handleCambiarUnidadTrabajo(t.id, seleccion as UnidadTrabajo)} className={styles.selectCompacto} estilo={{ width: "100%" }} opciones={opcionesSelector(<><option value="trabajo">Por trabajo</option>
+                        <option value="minuto">Por minuto</option></>)} />
                     </div>
 
                     <div>
@@ -693,22 +646,7 @@ function GestionAdmin() {
                       </label>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1 }}>
-                          <span>$</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={100000000}
-                            className={styles.inputPrecio}
-                            style={{ width: "100%" }}
-                            value={preciosEditados[t.id] ?? t.precio}
-                            onChange={(e) =>
-                              setPreciosEditados((prev) => ({
-                                ...prev,
-                                ...{ [t.id]: Math.max(0, parseInt(e.target.value, 10) || 0) },
-                              }))
-                            }
-                            onBlur={() => handleGuardarPrecio(t)}
-                          />
+                          <CampoCOP etiqueta={`Precio de ${t.nombre}`} valor={preciosEditados[t.id] ?? t.precio} onCambio={precio => setPreciosEditados(prev => ({ ...prev, [t.id]: precio }))} onBlur={() => handleGuardarPrecio(t)} />
                         </div>
                         <Boton
                           variante="secundario"
@@ -789,20 +727,10 @@ function GestionAdmin() {
                 {presetStats === "personalizado" && (
                   <div style={{ display: "flex", gap: "8px", alignItems: "flex-end", flexWrap: "wrap", marginTop: "4px" }}>
                     <div style={{ flex: 1, minWidth: "130px" }}>
-                      <Campo
-                        etiqueta="Desde"
-                        type="date"
-                        value={fechaDesdeStats}
-                        onChange={(e) => setFechaDesdeStats(e.target.value)}
-                      />
+                      <CampoFecha etiqueta="Desde" valor={fechaDesdeStats} onCambio={setFechaDesdeStats} />
                     </div>
                     <div style={{ flex: 1, minWidth: "130px" }}>
-                      <Campo
-                        etiqueta="Hasta"
-                        type="date"
-                        value={fechaHastaStats}
-                        onChange={(e) => setFechaHastaStats(e.target.value)}
-                      />
+                      <CampoFecha etiqueta="Hasta" valor={fechaHastaStats} onCambio={setFechaHastaStats} />
                     </div>
                     <Boton
                       variante="primario"
@@ -832,84 +760,60 @@ function GestionAdmin() {
                     <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
                       Agrupar por
                     </label>
-                    <select
-                      className={styles.selectCompacto}
-                      value={agruparStats}
-                      onChange={(e) => {
-                        setAgruparStats(e.target.value);
-                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, e.target.value, filtroPersonaStats, filtroClienteStats, filtroTipoStats);
-                      }}
-                    >
-                      <option value="">Automático</option>
+                    <Selector etiqueta="Agrupar por" valor={agruparStats} onCambio={seleccion => {
+                        setAgruparStats(seleccion);
+                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, seleccion, filtroPersonaStats, filtroClienteStats, filtroTipoStats);
+                      }} className={styles.selectCompacto} opciones={opcionesSelector(<><option value="">Automático</option>
                       <option value="dia">Por día</option>
                       <option value="semana">Por semana</option>
-                      <option value="mes">Por mes</option>
-                    </select>
+                      <option value="mes">Por mes</option></>)} />
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
                       Persona
                     </label>
-                    <select
-                      className={styles.selectCompacto}
-                      value={filtroPersonaStats}
-                      onChange={(e) => {
-                        setFiltroPersonaStats(e.target.value);
-                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, e.target.value, filtroClienteStats, filtroTipoStats);
-                      }}
-                    >
-                      <option value="">Todas las personas</option>
+                    <Selector etiqueta="Persona" valor={filtroPersonaStats} onCambio={seleccion => {
+                        setFiltroPersonaStats(seleccion);
+                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, seleccion, filtroClienteStats, filtroTipoStats);
+                      }} className={styles.selectCompacto} opciones={opcionesSelector(<><option value="">Todas las personas</option>
                       {miembrosAprobados.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.nombre}
                         </option>
-                      ))}
-                    </select>
+                      ))}</>)} />
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
                       Cliente
                     </label>
-                    <select
-                      className={styles.selectCompacto}
-                      value={filtroClienteStats}
-                      onChange={(e) => {
-                        setFiltroClienteStats(e.target.value);
-                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, filtroPersonaStats, e.target.value, filtroTipoStats);
-                      }}
-                    >
-                      <option value="">Todos los clientes</option>
+                    <Selector etiqueta="Cliente" valor={filtroClienteStats} onCambio={seleccion => {
+                        setFiltroClienteStats(seleccion);
+                        cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, filtroPersonaStats, seleccion, filtroTipoStats);
+                      }} className={styles.selectCompacto} opciones={opcionesSelector(<><option value="">Todos los clientes</option>
                       <option value="sin_cliente">Sin cliente asignado</option>
                       {clientes.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.nombre}
                         </option>
-                      ))}
-                    </select>
+                      ))}</>)} />
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--rc-texto-secundario)" }}>
                       Tipo de trabajo
                     </label>
-                    <select
-                      className={styles.selectCompacto}
-                      value={filtroTipoStats}
-                      onChange={(e) => {
-                        const val = e.target.value === "" ? "" : Number(e.target.value);
+                    <Selector etiqueta="Tipo de trabajo" valor={filtroTipoStats} onCambio={seleccion => {
+                        const val = seleccion === "" ? "" : Number(seleccion);
                         setFiltroTipoStats(val);
                         cargarEstadisticasAdmin(presetStats, fechaDesdeStats, fechaHastaStats, agruparStats, filtroPersonaStats, filtroClienteStats, val);
-                      }}
-                    >
-                      <option value="">Todos los tipos</option>
+                      }} className={styles.selectCompacto} opciones={opcionesSelector(<><option value="">Todos los tipos</option>
                       {trabajos.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.nombre}
                         </option>
-                      ))}
-                    </select>
+                      ))}</>)} />
                   </div>
                 </div>
               </div>
@@ -1436,13 +1340,7 @@ function GestionAdmin() {
                     onChange={(e) => setNuevaClave(e.target.value)}
                     required
                   />
-                  <input
-                    type="color"
-                    value={nuevoColor}
-                    onChange={(e) => setNuevoColor(e.target.value)}
-                    title="Color del rol"
-                    style={{ height: "32px", width: "36px", border: "none", cursor: "pointer", background: "none" }}
-                  />
+                  <Campo etiqueta="Color del rol" value={nuevoColor} onChange={e => setNuevoColor(e.target.value)} maxLength={7} pattern="#[0-9a-fA-F]{6}" required />
                   <Boton variante="primario" type="submit">
                     <Plus size={14} style={{ marginRight: "4px" }} />
                     Crear rol
@@ -1511,46 +1409,21 @@ function GestionAdmin() {
               <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
                 Rol que lo realiza (opcional)
               </label>
-              <select
-                className={styles.selectCompacto}
-                style={{ width: "100%", height: 36 }}
-                value={nuevoTrabRolId}
-                onChange={(e) => setNuevoTrabRolId(e.target.value === "" ? "" : Number(e.target.value))}
-                disabled={guardandoTrabajo}
-              >
-                <option value="">Cualquier rol</option>
+              <Selector etiqueta="Rol que lo realiza" valor={nuevoTrabRolId} onCambio={seleccion => setNuevoTrabRolId(seleccion === "" ? "" : Number(seleccion))} className={styles.selectCompacto} estilo={{ width: "100%", height: 36 }} disabled={guardandoTrabajo} opciones={opcionesSelector(<><option value="">Cualquier rol</option>
                 {roles.filter((r) => r.activo).map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.nombre}
                   </option>
-                ))}
-              </select>
+                ))}</>)} />
             </div>
             <div>
               <label style={{ fontSize: 13, fontWeight: "var(--rc-fw-medio)", display: "block", marginBottom: 4 }}>
                 Se cobra por
               </label>
-              <select
-                className={styles.selectCompacto}
-                style={{ width: "100%", height: 36 }}
-                value={nuevoTrabUnidad}
-                onChange={(e) => setNuevoTrabUnidad(e.target.value as UnidadTrabajo)}
-                disabled={guardandoTrabajo}
-              >
-                <option value="trabajo">Por trabajo (precio fijo por entrega)</option>
-                <option value="minuto">Por minuto (precio × minutos grabados)</option>
-              </select>
+              <Selector etiqueta="Se cobra por" valor={nuevoTrabUnidad} onCambio={seleccion => setNuevoTrabUnidad(seleccion as UnidadTrabajo)} className={styles.selectCompacto} estilo={{ width: "100%", height: 36 }} disabled={guardandoTrabajo} opciones={opcionesSelector(<><option value="trabajo">Por trabajo (precio fijo por entrega)</option>
+                <option value="minuto">Por minuto (precio × minutos grabados)</option></>)} />
             </div>
-            <Campo
-              etiqueta={nuevoTrabUnidad === "minuto" ? "Precio por minuto en pesos colombianos (COP)" : "Precio por trabajo en pesos colombianos (COP)"}
-              type="number"
-              min={0}
-              max={100000000}
-              placeholder="0"
-              value={nuevoTrabPrecio.toString()}
-              onChange={(e) => setNuevoTrabPrecio(parseInt(e.target.value, 10) || 0)}
-              disabled={guardandoTrabajo}
-            />
+            <label>Precio {nuevoTrabUnidad === "minuto" ? "por minuto" : "por trabajo"}<CampoCOP etiqueta="Precio en pesos colombianos" valor={nuevoTrabPrecio} onCambio={setNuevoTrabPrecio} disabled={guardandoTrabajo} /></label>
           </div>
         </Modal>
       )}

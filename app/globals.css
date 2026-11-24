@@ -110,3 +110,9 @@ a,
   scrollbar-width: thin;
   scrollbar-color: var(--rc-sombra-suave) transparent;
 }
+
+/* Los controles de la interfaz no heredan la apariencia de la plataforma. */
+:where(button, input, textarea, select, progress, meter) { appearance: none; }
+input[type="number"] { appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { appearance: none; margin: 0; }

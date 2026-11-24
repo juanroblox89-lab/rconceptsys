@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
+async function elegir(control, nombre) {
+  await control.click();
+  await control.page().getByRole('listbox').getByRole('option', { name: nombre, exact: true }).click();
+}
+
 const base = process.env.QA_BASE ?? 'http://127.0.0.1:3319';
 const dir = process.env.QA_DIR ?? 'capturas-f9';
 mkdirSync(dir, { recursive: true });
@@ -130,10 +135,10 @@ try {
         }
         console.log('QA', width, modo);
         await visita('/trabajos/nuevo');
-        await cliente.selectOption('1');
+        await elegir(cliente, clientes[0].nombre);
         await ref('Carpeta de Estudio Norte').waitFor();
-        await page.getByRole('combobox', { name: 'Persona', exact: true }).selectOption(miembro.id);
-        await page.getByRole('combobox', { name: 'Tipo de trabajo' }).selectOption('1');
+        await elegir(page.getByRole('combobox', { name: 'Persona', exact: true }), miembro.nombre);
+        await elegir(page.getByRole('combobox', { name: 'Tipo de trabajo' }), tipo.nombre);
         await page.getByLabel('Fecha de entrega').fill('2026-12-05');
         await page.getByLabel('Especificaciones').fill(datos.descripcion);
         assert.equal(peticionesPicker.length, 0);
@@ -154,7 +159,7 @@ try {
         await ref('Guion de edición').waitFor();
         assert.ok(await agregar.isDisabled());
         await captura(3);
-        await cliente.selectOption('2');
+        await elegir(cliente, clientes[1].nombre);
         await ref('Carpeta de Casa Ávila').waitFor();
         assert.equal(await ref('Carpeta de Estudio Norte').count(), 0);
         await clickRef('Quitar', 'Clips del rodaje');

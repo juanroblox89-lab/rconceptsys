@@ -7,6 +7,7 @@ import { PanelLeftOpen } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Sidebar, navItems } from "@/components/Sidebar";
+import { rutaVisible } from "@/lib/rutas-ria";
 import { CampanaNotificaciones } from "@/components/CampanaNotificaciones";
 import { FondoApariencia } from "@/components/FondoApariencia";
 import { api } from "@/lib/api";
@@ -97,8 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <PerfilActual.Provider value={yo}><div className={styles.root} data-rc-shell>
-      <FondoApariencia />
+    <PerfilActual.Provider value={yo}><FondoApariencia /><div className={styles.root} data-rc-shell>
       {/* Pastilla: solo móvil, o desktop con la sidebar colapsada. */}
       <div className={`${styles.pill} ${collapsed ? styles.pillDesktop : ""}`}>
         <button
@@ -120,11 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <nav className={`${styles.rail} ${collapsed ? styles.railVisible : ""}`} aria-label="Accesos">
         <div className={styles.railGroup}>
           {navItems
-            .filter((item) => {
-              if (item.adminOnly && !yo?.es_admin) return false;
-              if (item.workerOnly && yo?.es_admin) return false;
-              return true;
-            })
+            .filter((item) => rutaVisible(item, yo))
             .map(({ title, href, icon: Icon }) => (
               <Link
                 key={href}

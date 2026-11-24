@@ -26,7 +26,8 @@ export function Selector({ id, etiqueta, valor = '', opciones, onCambio, disable
     if (!r) return;
     const alto = window.visualViewport?.height ?? window.innerHeight;
     const arriba = alto - r.bottom < 170 && r.top > alto - r.bottom;
-    setMenu({ left: r.left, width: r.width, top: arriba ? undefined : r.bottom + 4, bottom: arriba ? window.innerHeight - r.top + 4 : undefined, maxHeight: Math.min(288, Math.max(45, arriba ? r.top - 10 : alto - r.bottom - 10)) });
+    const ancho = Math.min(Math.max(132, r.width), window.innerWidth - 16);
+    setMenu({ left: Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8)), width: ancho, top: arriba ? undefined : r.bottom + 4, bottom: arriba ? window.innerHeight - r.top + 4 : undefined, maxHeight: Math.min(288, Math.max(45, arriba ? r.top - 10 : alto - r.bottom - 10)) });
   }
   function abrir(indice = indices.includes(elegido) ? elegido : indices[0]) {
     if (disabled || !indices.length) return;
@@ -58,18 +59,25 @@ export function Selector({ id, etiqueta, valor = '', opciones, onCambio, disable
   useEffect(() => {
     if (!abierto) return;
     const fuera = (e: PointerEvent) => { const nodo = e.target as Node; if (!boton.current?.contains(nodo) && !lista.current?.contains(nodo)) setMenu(undefined); };
-    const cerrar = (e: Event) => { if (!(e.target instanceof Node && lista.current?.contains(e.target))) setMenu(undefined); };
+    const mover = (e: Event) => { if (!(e.target instanceof Node && lista.current?.contains(e.target))) posicion(); };
     document.addEventListener('pointerdown', fuera);
-    window.addEventListener('scroll', cerrar, true);
-    window.addEventListener('resize', cerrar);
-    return () => { document.removeEventListener('pointerdown', fuera); window.removeEventListener('scroll', cerrar, true); window.removeEventListener('resize', cerrar); };
+    window.addEventListener('scroll', mover, true);
+    window.addEventListener('resize', mover);
+    return () => { document.removeEventListener('pointerdown', fuera); window.removeEventListener('scroll', mover, true); window.removeEventListener('resize', mover); };
   }, [abierto]);
-  useEffect(() => { if (abierto) document.getElementById(`${listaId}-${activo}`)?.scrollIntoView({ block: 'nearest' }); }, [abierto, activo, listaId]);
+  useEffect(() => {
+    const menu = lista.current;
+    const opcion = document.getElementById(`${listaId}-${activo}`);
+    if (!abierto || !menu || !opcion) return;
+    const r = opcion.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    if (r.top < m.top) menu.scrollTop += r.top - m.top;
+    else if (r.bottom > m.bottom) menu.scrollTop += r.bottom - m.bottom;
+  }, [abierto, activo, listaId]);
 
   return <>
     <button ref={boton} id={id} type="button" role="combobox" aria-label={etiqueta} aria-haspopup="listbox" aria-expanded={abierto}
       aria-controls={abierto ? listaId : undefined} aria-activedescendant={abierto && activo >= 0 ? `${listaId}-${activo}` : undefined}
-      aria-required={requerido} aria-invalid={Boolean(errorId) || undefined} aria-describedby={errorId} disabled={disabled}
+      data-valor={valor} aria-required={requerido} aria-invalid={Boolean(errorId) || undefined} aria-describedby={errorId} disabled={disabled}
       className={`${styles.control} ${styles.selector} ${className}`} style={estilo} onBlur={() => setMenu(undefined)} onKeyDown={teclado} onClick={() => abierto ? setMenu(undefined) : abrir()}>
       <span>{opciones[elegido]?.etiqueta ?? 'Seleccionar'}</span><ChevronDown size={15} aria-hidden="true" />
     </button>

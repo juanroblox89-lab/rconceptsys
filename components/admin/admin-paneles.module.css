@@ -585,3 +585,5 @@
 .planDrive { display: grid; gap: var(--rc-esp-8); }
 .planDrive h3, .planDrive p, .planDrive ul, .confirmacionDrive p { margin: 0; }
 .planDrive ul { padding-inline-start: 1.25em; }
+
+:global(html[data-rc-tema="glass"]) :is(.bloque,.corte) { border: 1px solid var(--rc-gris-100); background: var(--rc-superficie-clara); }

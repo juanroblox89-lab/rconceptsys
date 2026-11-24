@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
+async function elegir(control, nombre) {
+  await control.click();
+  await control.page().getByRole('listbox').getByRole('option', { name: nombre, exact: true }).click();
+}
+
 const base = process.env.QA_BASE ?? 'http://127.0.0.1:3320';
 const dir = process.env.QA_DIR ?? 'capturas-f10';
 const media = process.env.QA_MEDIA_DIR;
@@ -126,9 +131,9 @@ try {
       }
       console.log(`F10 ${width} ${modo}`);
       await page.goto(`${base}/trabajos/nuevo`, { waitUntil: 'domcontentloaded' });
-      await page.getByLabel('Cliente', { exact: true }).selectOption('1');
-      await page.getByLabel('Persona', { exact: true }).selectOption(miembro.id);
-      await page.getByLabel('Tipo de trabajo', { exact: true }).selectOption('2');
+      await elegir(page.getByRole('combobox', { name: 'Cliente', exact: true }), cliente.nombre);
+      await elegir(page.getByRole('combobox', { name: 'Persona', exact: true }), miembro.nombre);
+      await elegir(page.getByRole('combobox', { name: 'Tipo de trabajo', exact: true }), tipo.nombre);
       await page.getByLabel('Fecha de entrega').fill('2026-12-05');
       await page.getByLabel('Especificaciones').fill(texto);
       const selector = root().locator('input[type=file]');

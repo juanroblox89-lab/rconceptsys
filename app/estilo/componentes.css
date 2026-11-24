@@ -2078,3 +2078,11 @@
   pointer-events: none;
   z-index: 4;
 }
+
+.rc-pestanas-marco { position: relative; min-width: 0; }
+.rc-pestanas-flecha { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; width: 26px; border: 0; border-radius: var(--rc-radio-pildora); background: var(--rc-menu-fondo, var(--rc-superficie-clara)); color: var(--rc-texto); box-shadow: 0 1px 6px #101b3633; z-index: 2; cursor: pointer; }
+.rc-pestanas-flecha--antes { inset-inline-start: 0; }
+.rc-pestanas-flecha--despues { inset-inline-end: 0; }
+.rc-check__input:focus-visible + .rc-check__caja { box-shadow: 0 0 0 2px var(--rc-azul-texto); }
+.rc-check__caja { width: 17px; height: 17px; border: 1px solid var(--rc-gris-300); }
+.rc-check__input:checked + .rc-check__caja { color: light-dark(#fff,#142136); }

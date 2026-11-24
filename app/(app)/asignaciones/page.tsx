@@ -1,5 +1,8 @@
 "use client";
 
+import { CampoFecha } from "@/components/ui/CamposEspeciales";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
+import { Selector, opcionesSelector } from "@/components/ui/Selector";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, CircleAlert, Filter, Plus } from "lucide-react";
@@ -104,58 +107,30 @@ export default function AsignacionesPage() {
 
   return (
     <div className={styles.pagina}>
-      <header className={styles.cabecera}>
-        <div>
-          <h1 className={styles.titulo}>Trabajos</h1>
-          <p className={styles.subtitulo}>
-            {cargando ? "Cargando…" : `${visibles.length} ${visibles.length === 1 ? "asignación" : "asignaciones"}`}
-            {conteo.vencida > 0 ? ` · ${conteo.vencida} vencida${conteo.vencida === 1 ? "" : "s"}` : ""}
-          </p>
-        </div>
-        <Boton onClick={() => router.push("/trabajos/nuevo?desde=asignaciones")} disabled={!yo}><Plus size={16} aria-hidden="true" /> Asignar trabajo</Boton>
-        <button
-          type="button"
-          className={styles.botonFiltros}
-          onClick={() => setFiltrosAbiertos((v) => !v)}
-          aria-expanded={filtrosAbiertos}
-        >
-          <Filter size={14} strokeWidth={1.85} aria-hidden="true" />
-          Filtros
-        </button>
-      </header>
+      <CabeceraPagina titulo="Trabajos" detalle={<>{cargando ? "Cargando…" : `${visibles.length} ${visibles.length === 1 ? "asignación" : "asignaciones"}`}{conteo.vencida > 0 ? ` · ${conteo.vencida} vencida${conteo.vencida === 1 ? "" : "s"}` : ""}</>} acciones={<><Boton onClick={() => router.push("/trabajos/nuevo?desde=asignaciones")} disabled={!yo}><Plus size={16} aria-hidden="true" /> Asignar trabajo</Boton><Boton variante="secundario" onClick={() => setFiltrosAbiertos(v => !v)} aria-expanded={filtrosAbiertos}><Filter size={14} aria-hidden="true" /> Filtros</Boton></>} />
 
       <div className={`${styles.filtros} ${filtrosAbiertos ? styles.filtrosAbiertos : ""}`}>
-        <label className={styles.campo}>
+        <div className={styles.campo}>
           <span className={styles.campoEtiqueta}>Persona</span>
-          <select value={persona} onChange={(e) => setPersona(e.target.value)}>
-            <option value="">Todas</option>
+          <Selector etiqueta="Persona" valor={persona} onCambio={seleccion => setPersona(seleccion)}  opciones={opcionesSelector(<><option value="">Todas</option>
             {miembros.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.nombre}
               </option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.campo}>
+            ))}</>)} />
+         </div>
+        <div className={styles.campo}>
           <span className={styles.campoEtiqueta}>Estado</span>
-          <select value={estado} onChange={(e) => setEstado(e.target.value)}>
-            <option value="">Todos</option>
+          <Selector etiqueta="Estado" valor={estado} onCambio={seleccion => setEstado(seleccion)}  opciones={opcionesSelector(<><option value="">Todos</option>
             <option value="pendiente">Pendiente</option>
             <option value="hecha">Entregada</option>
             <option value="aceptada">Aprobada</option>
             <option value="rechazada">Rechazada</option>
             <option value="vencida">Vencida</option>
-            <option value="cancelada">Cancelada</option>
-          </select>
-        </label>
-        <label className={styles.campo}>
-          <span className={styles.campoEtiqueta}>Desde</span>
-          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
-        </label>
-        <label className={styles.campo}>
-          <span className={styles.campoEtiqueta}>Hasta</span>
-          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-        </label>
+            <option value="cancelada">Cancelada</option></>)} />
+         </div>
+        <div className={styles.campo}><CampoFecha etiqueta="Desde" valor={desde} onCambio={setDesde} /></div>
+        <div className={styles.campo}><CampoFecha etiqueta="Hasta" valor={hasta} onCambio={setHasta} /></div>
         {hayFiltros && (
           <button
             type="button"

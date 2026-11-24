@@ -1,5 +1,7 @@
 "use client";
 
+import { Casilla } from "@/components/ui/Casilla";
+import { CampoFecha } from "@/components/ui/CamposEspeciales";
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
 import type { Cliente, Perfil, Pieza, ReferenciaDriveTrabajo, Tarea, TipoTrabajo } from "@/lib/types";
@@ -101,6 +103,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         setNombre("");
         return;
       }
+      if (!persona || !tipo) { setError("Elige una persona y un tipo de trabajo."); return; }
       const texto = descripcion.trim();
       if ((texto.match(/[\p{L}\p{N}]/gu) ?? []).length < 3) {
         setError("Escribe las especificaciones con al menos tres letras o números.");
@@ -164,7 +167,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
           <option value="">Selecciona un tipo</option>
           {catalogo.tipos.filter((t) => t.activo || t.id === tarea?.tipo_id).map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
         </Campo>
-        <Campo type="date" etiqueta="Fecha de entrega" required={!tarea || !!tarea.fecha_limite} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        <CampoFecha etiqueta="Fecha de entrega" requerido={!tarea || !!tarea.fecha_limite} valor={fecha} onCambio={setFecha} />
         <SelectorCarpetaTrabajo key={cliente} clienteId={clienteActual?.id} valor={referencias} onChange={cambiarReferencias} deshabilitado={ocupado} />
         <Campo como="textarea" filas={5} etiqueta="Especificaciones" placeholder="En este video, coge los medios de..." required maxLength={1000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
         <EditorAdjuntos locales={locales} cambiar={setLocales} quitar={a => void quitarLocal(a)} cantidad={guardados + locales.length} bloqueado={ocupado} onGrabando={setGrabando} />
@@ -175,7 +178,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         </Campo>}
         {!!catalogo.tipos.find((t) => String(t.id) === tipo)?.rol_id && !!persona &&
           !catalogo.personas.find((p) => p.id === persona)?.roles?.some((r) => r.id === catalogo.tipos.find((t) => String(t.id) === tipo)?.rol_id) &&
-          <label><input type="checkbox" checked={forzar} onChange={(e) => setForzar(e.target.checked)} /> Asignar aunque el rol no coincida</label>}
+          <Casilla etiqueta="Asignar aunque el rol no coincida" checked={forzar} onChange={(e) => setForzar(e.target.checked)} />}
       </>}
     {error && <p className={styles.error} role="alert">{error}</p>}
     {catalogo && <div className={styles.accionesFormulario}>

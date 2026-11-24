@@ -1,5 +1,7 @@
 "use client";
 
+import { Casilla } from "@/components/ui/Casilla";
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,7 +24,7 @@ function referenciasDe(c?: Cliente): ReferenciaDrive[] {
 }
 
 function EnlaceCliente({ href, children }: { href?: string | null; children: string }) {
-  return href && /^https:\/\/(drive|docs)\.google\.com\//.test(href) ? <a className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceCliente}`} href={href} target="_blank" rel="noreferrer">{children}<ExternalLink size={14} aria-hidden="true" /></a> : null;
+  return href && /^https:\/\/(drive|docs)\.google\.com\//.test(href) ? <EnlaceExterno className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceCliente}`} href={href}>{children}<ExternalLink size={14} aria-hidden="true" /></EnlaceExterno> : null;
 }
 
 export function PaginaCliente({ id, editar = false, admin = false }: { id?: number; editar?: boolean; admin?: boolean }) {
@@ -138,7 +140,7 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
     {base?.drive_carpeta_id && base.drive_url && <div className={styles.acciones}>
       <EnlaceCliente href={base.drive_url}>Abrir carpeta del cliente</EnlaceCliente>
     </div>}
-    {cliente && <label><input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} /> Cliente activo</label>}
+    {cliente && <Casilla etiqueta="Cliente activo" checked={activo} onChange={e => setActivo(e.target.checked)} />}
     {error && <p className={styles.error} role="alert">{error}</p>}
     <div className={styles.accionesFormulario}><Boton variante="secundario" disabled={ocupado} onClick={onCerrar}>Volver sin guardar</Boton><Boton type="submit" cargando={ocupado}>Guardar ficha</Boton></div>
   </form>;
