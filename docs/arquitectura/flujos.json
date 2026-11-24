@@ -692,6 +692,104 @@
         { "orden": 6, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto", "descripcion": "Revalida admin/asignado y emite firma temporal de Supabase para un adjunto de ese trabajo." },
         { "orden": 7, "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosGuardados", "descripcion": "Muestra vista previa, descarga, estados, viñetas, transcripción plegable y reintento." }
       ]
+    },
+    {
+      "id": "ria-ayuda-comandos-f11",
+      "nombre": "RIA: modo ayuda y rutas",
+      "descripcion": "Abrir Ayuda no consume cupo; las rutas se validan por rol.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "app/(app)/ria/page.tsx:ConversacionRIA",
+          "descripcion": "Muestra saludo, fichas y un menú / navegable sin enviar mensajes."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "lib/rutas-ria.ts:rutasVisiblesRIA",
+          "descripcion": "Deriva destinos reales según el perfil aprobado."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "backend/internal/httpapi/ria_ayuda.go:respuestaAyudaRIA",
+          "descripcion": "Resuelve las preguntas sugeridas; el resto recibe contexto sin recomendaciones circulares."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "components/RespuestaRIA.tsx:RespuestaRIA",
+          "descripcion": "Renderiza Markdown y enlaza rutas conocidas y permitidas."
+        }
+      ]
+    },
+    {
+      "id": "cortes-embed-f11",
+      "nombre": "Gestión: cortes de pago",
+      "descripcion": "Un listado vacío es válido; un error tiene reintento propio.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/admin/AdminCortes.tsx:AdminCortes",
+          "descripcion": "Pide la lista desde Gestión y muestra carga, datos, error o vacío por separado."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/f5.go:handleAdminGetCortes",
+          "descripcion": "Responde a administradores sin confundir errores con ausencia de cortes."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "backend/internal/supa/f5.go:ListarCortes",
+          "descripcion": "Indica el FK del participante; evita PGRST201 causado por la relación pagada_por."
+        }
+      ]
+    },
+    {
+      "id": "personalizacion-controles-f11",
+      "nombre": "Personalización y controles compartidos",
+      "descripcion": "Tema Glass de una sola capa y controles para claro, oscuro y Glass.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "app/(app)/personalizacion/page.tsx:Personalizacion",
+          "descripcion": "Paletas, hex validado, zona de fondo, vista previa y preferencias."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/apariencia.go:handleFondoApariencia",
+          "descripcion": "Guarda nombre y tamaño en el JSON existente junto a la imagen o el video."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/ui/Selector.tsx:Selector",
+          "descripcion": "Selector de la app con teclado y lista accesible."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "components/ui/CamposEspeciales.tsx:CampoFecha",
+          "descripcion": "Conserva el calendario de plataforma tras el campo personalizado."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "components/ui/CamposEspeciales.tsx:CampoHora",
+          "descripcion": "Representa la hora y los minutos con selectores, sin cambiar el formato de API."
+        }
+      ]
+    },
+    {
+      "id": "externos-f11",
+      "nombre": "Apertura externa",
+      "descripcion": "Drive, referencias y vistas externas no reemplazan la pantalla actual.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/ui/EnlaceExterno.tsx:EnlaceExterno",
+          "descripcion": "Enlace accesible con validación de URL y gesto del usuario."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "lib/abrir-externo.ts:abrirExterno",
+          "descripcion": "Abre _blank sin opener o _system cuando la WebView integra Cordova."
+        }
+      ]
     }
   ]
 }

@@ -88,3 +88,10 @@ npx next start -p 3310
 - El resumen de audio es opt-in. El cron de Supabase reutiliza `rconcept_cron_url` y `rconcept_cron_secret` de la 018. `CRON_SECRET` debe coincidir en Go. La URL de Vault tiene que apuntar al `/api/cron/notificaciones` del mismo entorno; la 023 usa su ruta hermana `/api/cron/adjuntos`.
 - IA del backend: `NINEROUTER_BASE_URL`, `NINEROUTER_API_KEY` (Gemini Flash; opcional `ASIGNACIONES_MODELO_AUDIO_9ROUTER` o `ASIGNACIONES_FORMATO_AUDIO_9ROUTER=audio_url`), luego `NVIDIA_API_KEYS` / `NVIDIA_API_KEY` (ASR Parakeet; opcional `ASIGNACIONES_MODELO_ASR_NVIDIA`) y el respaldo de texto de RIA (`RIA_MODELO_RESPALDO`). Un fallo de IA no borra el audio.
 - QA sin base real: `node scripts/qa-f10.mjs` con un único Next escuchando en `127.0.0.1:3320` y `QA_MEDIA_DIR` con `foto.png`, `corte.webm` y `voz.wav` sintéticos. Go se prueba aparte.
+
+## 10. Ayuda, Glass y controles (F11)
+
+- Ayuda abre RIA sin enviar; las fichas de orientación se resuelven sin llamar al proveedor. `/` muestra rutas según el rol.
+- Glass conserva un solo plano de desenfoque. El nombre y peso de los fondos nuevos se guardan en el JSON existente; no se necesita migración nueva. Las migraciones 022 y 023 ya están aplicadas en producción.
+- Las aperturas externas pasan por un componente común. La PWA tiene manifiesto `standalone`; el repositorio no contiene la APK ni una WebView nativa.
+- QA visual reproducible: con un único Next oculto en `127.0.0.1:3321`, ejecuta `node scripts/qa-f11.mjs`. No requiere credenciales; prueba tamaños, temas, controles y navegación con dobles de la API.
