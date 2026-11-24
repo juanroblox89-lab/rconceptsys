@@ -2,7 +2,7 @@ export type Apariencia = {
   modo:'sistema'|'claro'|'oscuro'; tema:'rconcept'|'rconcept-dark'|'glass';
   fondo?:string; texto?:string; acento?:string; interfaz?:number; contenido?:number;
   movimiento:'sistema'|'activado'|'desactivado'; contraste:boolean; oscurecido:number;
-  imagen?:string; video?:string;
+  imagen?:string; video?:string; fondo_nombre?:string; fondo_bytes?:number;
 };
 export const aparienciaInicial:Apariencia={modo:'sistema',tema:'rconcept',movimiento:'sistema',contraste:false,oscurecido:32};
 export const eventoApariencia='rc-apariencia';

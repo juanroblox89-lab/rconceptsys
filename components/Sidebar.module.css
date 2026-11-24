@@ -383,3 +383,8 @@
 .perfilMenuItem:hover {
   background: var(--rc-gris-50);
 }
+
+:global(html[data-rc-tema="glass"]) .root { background: var(--rc-menu-fondo); }
+:global(html[data-rc-tema="glass"]) .navItem:not(.navItemActive) { background: transparent; }
+:global(html[data-rc-tema="glass"]) .topRow, :global(html[data-rc-tema="glass"]) .navItemActive { background: var(--rc-superficie-clara); }
+@media (min-width: 768px) { :global(html[data-rc-tema="glass"]) .root { background: transparent; } }

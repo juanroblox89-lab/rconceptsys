@@ -3,18 +3,20 @@ package store
 import "context"
 
 type Apariencia struct {
-	Modo       string `json:"modo"`
-	Tema       string `json:"tema"`
-	Fondo      string `json:"fondo,omitempty"`
-	Texto      string `json:"texto,omitempty"`
-	Acento     string `json:"acento,omitempty"`
-	Interfaz   int    `json:"interfaz,omitempty"`
-	Contenido  int    `json:"contenido,omitempty"`
-	Movimiento string `json:"movimiento"`
-	Contraste  bool   `json:"contraste"`
-	Oscurecido int    `json:"oscurecido"`
-	Imagen     string `json:"imagen,omitempty"`
-	Video      string `json:"video,omitempty"`
+	Modo        string `json:"modo"`
+	Tema        string `json:"tema"`
+	Fondo       string `json:"fondo,omitempty"`
+	Texto       string `json:"texto,omitempty"`
+	Acento      string `json:"acento,omitempty"`
+	Interfaz    int    `json:"interfaz,omitempty"`
+	Contenido   int    `json:"contenido,omitempty"`
+	Movimiento  string `json:"movimiento"`
+	Contraste   bool   `json:"contraste"`
+	Oscurecido  int    `json:"oscurecido"`
+	Imagen      string `json:"imagen,omitempty"`
+	Video       string `json:"video,omitempty"`
+	FondoNombre string `json:"fondo_nombre,omitempty"`
+	FondoBytes  int    `json:"fondo_bytes,omitempty"`
 }
 
 func AparienciaInicial() Apariencia {

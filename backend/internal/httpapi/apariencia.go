@@ -42,6 +42,11 @@ func (a *API) handleApariencia(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 400, "fondo_invalido", "Un video necesita su imagen fija.")
 		return
 	}
+	// Los metadatos pertenecen al archivo guardado, no al formulario de ajustes.
+	v.FondoNombre, v.FondoBytes = "", 0
+	if v.Imagen != "" {
+		v.FondoNombre, v.FondoBytes = previa.FondoNombre, previa.FondoBytes
+	}
 	if e := a.Store.GuardarApariencia(ctx, p.ID, v); e != nil {
 		ResponderError(w, 503, "apariencia", "No pudimos guardar tu apariencia.")
 		return
@@ -86,14 +91,14 @@ func (a *API) handleFondoApariencia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
-	leer := func(campo string) ([]byte, string, error) {
-		f, _, e := r.FormFile(campo)
+	leer := func(campo string) ([]byte, string, string, error) {
+		f, archivo, e := r.FormFile(campo)
 		if e != nil {
-			return nil, "", e
+			return nil, "", "", e
 		}
 		defer f.Close()
 		d, e := io.ReadAll(f)
-		return d, http.DetectContentType(d), e
+		return d, http.DetectContentType(d), archivo.Filename, e
 	}
 	guardar := func(d []byte, mime string) (string, error) {
 		var id [16]byte
@@ -103,14 +108,14 @@ func (a *API) handleFondoApariencia(w http.ResponseWriter, r *http.Request) {
 		n := hex.EncodeToString(id[:]) + "." + mimeApariencia[mime]
 		return n, a.Store.GuardarMedioApariencia(ctx, p.ID, n, mime, d)
 	}
-	d, mime, e := leer("fondo")
+	d, mime, nombre, e := leer("fondo")
 	if e != nil || len(d) > 2500000 || mimeApariencia[mime] == "" {
 		ResponderError(w, 400, "fondo_invalido", "El fondo debe ser JPEG, PNG, WebP, MP4 o WebM y pesar hasta 2,5 MB.")
 		return
 	}
 	imagen, mimeImagen := d, mime
 	if strings.HasPrefix(mime, "video/") {
-		imagen, mimeImagen, e = leer("fotograma")
+		imagen, mimeImagen, _, e = leer("fotograma")
 		if e != nil || len(imagen) > 400000 || !strings.HasPrefix(mimeImagen, "image/") || mimeApariencia[mimeImagen] == "" {
 			ResponderError(w, 400, "fondo_invalido", "No pudimos generar el primer fotograma de tu video.")
 			return
@@ -122,6 +127,7 @@ func (a *API) handleFondoApariencia(w http.ResponseWriter, r *http.Request) {
 		v.Video, e = guardar(d, mime)
 	}
 	if e == nil {
+		v.FondoNombre, v.FondoBytes = recortar(strings.TrimSpace(nombre), 180), len(d)
 		e = a.Store.GuardarApariencia(ctx, p.ID, v)
 	}
 	if e != nil {

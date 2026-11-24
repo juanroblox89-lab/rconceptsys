@@ -10,7 +10,7 @@ export const maxDuration = 120;
 const TIMEOUT_MS = 25_000;
 const MAX_BODY_BYTES = 3 * 1024 * 1024; // la foto de perfil pesa como maximo 1 MB; sobra margen
 const SEGMENTO = /^[A-Za-z0-9_.-]{1,80}$/;
-const METODOS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+const METODOS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]);
 
 function baseUrl(): URL | null {
   let raw = process.env.BACKEND_URL;
@@ -37,7 +37,8 @@ function error(status: number, codigo: string, mensaje: string): NextResponse {
 
 async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await ctx.params;
-  if (!METODOS.has(req.method)) return error(405, "metodo_no_permitido", "Esa acción no está permitida.");
+  const esMedioApariencia = path.length === 4 && path[0] === "yo" && path[1] === "apariencia" && path[2] === "fondo";
+  if (!METODOS.has(req.method) || (req.method === "HEAD" && !esMedioApariencia)) return error(405, "metodo_no_permitido", "Esa acción no está permitida.");
   const esParteAdjunto = req.method === "PUT" && path.length === 7 && path[0] === "admin" && path[1] === "tareas" && path[3] === "adjuntos" && path[5] === "partes";
   if (path.length === 0 || (!esParteAdjunto && path.length > 6) || !path.every((s) => SEGMENTO.test(s) && s !== "." && s !== "..")) {
     return error(404, "no_encontrado", "No encontramos lo que buscas.");
@@ -82,8 +83,8 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
     const salida = sinCache();
     const tipo = res.headers.get("content-type");
     if (tipo !== null) salida.set("Content-Type", tipo);
-    if (path[0] === "yo" && path[1] === "apariencia" && path[2] === "fondo") {
-      for (const nombre of ["accept-ranges", "content-range", "x-content-type-options"]) {
+    if (esMedioApariencia) {
+      for (const nombre of ["accept-ranges", "content-range", "content-length", "x-content-type-options"]) {
         const v = res.headers.get(nombre);
         if (v !== null) salida.set(nombre, v);
       }
@@ -99,7 +100,7 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
       }
       return error(502, "retorno_invalido", "No pudimos volver a Gestión desde Google Drive.");
     }
-    if (res.status === 204 || res.status === 304) return new Response(null, { status: res.status, headers: salida });
+    if (req.method === "HEAD" || res.status === 204 || res.status === 304) return new Response(null, { status: res.status, headers: salida });
     if (esRIA && tipo?.startsWith("text/event-stream") && res.body) {
       salida.set("Cache-Control", "no-cache, no-transform");
       salida.set("X-Accel-Buffering", "no");
@@ -114,6 +115,7 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
 }
 
 export const GET = reenviar;
+export const HEAD = reenviar;
 export const POST = reenviar;
 export const PUT = reenviar;
 export const PATCH = reenviar;

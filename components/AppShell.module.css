@@ -1,4 +1,6 @@
 .root {
+  position: relative;
+  isolation: isolate;
   display: flex;
   height: 100vh;
   height: 100dvh;
@@ -291,3 +293,6 @@
 .railPerfil {
   padding: var(--rc-esp-4);
 }
+
+:global(html[data-rc-tema="glass"]) .main { background: transparent; }
+:global(html[data-rc-tema="glass"]) .pill, :global(html[data-rc-tema="glass"]) .sidebarWrap, :global(html[data-rc-tema="glass"]) .rail { background: var(--rc-glass-cromo); }
