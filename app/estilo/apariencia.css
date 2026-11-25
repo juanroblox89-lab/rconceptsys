@@ -57,7 +57,7 @@ html[data-rc-tema="glass"] {
   --rc-superficie-hundida: light-dark(rgb(255 255 255 / 78%),rgb(0 0 0 / 72%));
   --rc-glass-campo: light-dark(#fff,#212121);
   --rc-glass-icono-inverso: light-dark(#fff,#141414);
-  --rc-menu-fondo: light-dark(rgb(253 253 253 / 97%),rgb(24 24 24 / 97%));
+  --rc-menu-fondo: light-dark(rgb(253 253 253 / 97%),rgb(22 24 30 / 97%));
   --rc-glass-modal: light-dark(rgb(252 252 252 / 95%),rgb(24 24 24 / 95%));
   --rc-glass-velo-modal: rgb(8 8 8 / 50%);
   --rc-glass-borde-flotante: light-dark(rgb(0 0 0 / 16%),rgb(255 255 255 / 16%));
@@ -129,6 +129,9 @@ html[data-rc-tema="glass"] :is([role="menu"], .rc-tooltip, .rc-toast) {
   box-shadow: var(--rc-glass-sombra-flotante);
   color: var(--rc-texto);
 }
+/* El panel no debe transparentarse ni siquiera durante su entrada. */
+html[data-rc-tema="glass"] :is([role="menu"], .rc-toast) { animation: none; }
+html[data-rc-tema="glass"] .rc-tooltip { transition: none !important; }
 html[data-rc-tema="glass"] :is(.rc-menu,.rc-tooltip,.rc-toast)::before,
 html[data-rc-tema="glass"] :is(.rc-menu,.rc-tooltip,.rc-toast)::after { content: none; }
 html[data-rc-tema="glass"] :is(.rc-modal, dialog[open]) {
@@ -154,15 +157,19 @@ html[data-rc-tema="glass"] :is(.rc-modal, dialog) select option { background: va
 /* Mismas medidas para ambos chats; flex-end alinea los controles con la última línea. */
 html[data-rc-tema="glass"] {
   --rc-compositor-control: 44px;
-  --rc-compositor-linea: 22px;
+  --rc-compositor-fuente: max(16px, var(--rc-fs-cuerpo));
+  --rc-compositor-linea: calc(var(--rc-compositor-fuente) * 1.375);
   --rc-compositor-relleno: calc((var(--rc-compositor-control) - var(--rc-compositor-linea)) / 2);
+  --rc-compositor-borde: 1px;
+  --rc-compositor-marco: 4px;
+  --rc-compositor-relleno-inline: 8px;
 }
 html[data-rc-tema="glass"] [data-rc-compositor] {
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--rc-gris-300);
+  padding: var(--rc-compositor-marco);
+  border: var(--rc-compositor-borde) solid var(--rc-gris-300);
   border-radius: var(--rc-glass-radio);
   background: var(--rc-superficie-hundida);
 }
@@ -174,8 +181,9 @@ html[data-rc-tema="glass"] [data-rc-compositor] textarea {
   min-width: 0;
   min-height: var(--rc-compositor-control);
   max-height: min(132px, 23dvh);
-  padding: var(--rc-compositor-relleno) 8px;
-  font-size: max(16px, var(--rc-fs-cuerpo));
+  padding: var(--rc-compositor-relleno) var(--rc-compositor-relleno-inline);
+  font-size: var(--rc-compositor-fuente);
+  caret-color: var(--rc-texto);
   line-height: var(--rc-compositor-linea);
 }
 html[data-rc-tema="glass"] [data-rc-compositor] textarea:placeholder-shown { white-space: nowrap; overflow: hidden; }

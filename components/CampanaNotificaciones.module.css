@@ -23,5 +23,10 @@
   background: var(--rc-menu-fondo);
   border-color: var(--rc-glass-borde-flotante);
   box-shadow: var(--rc-glass-sombra-flotante);
+  isolation: isolate;
   animation: none;
+}
+:global(html[data-rc-tema="glass"]) .panel :is(header, a) { border-color: var(--rc-glass-borde-flotante); }
+@media (min-width: 768px) {
+  :global(html[data-rc-tema="glass"]) .panel { z-index: var(--rc-z-sheet); }
 }

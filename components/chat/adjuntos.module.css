@@ -536,6 +536,7 @@
   color: var(--rc-rojo-texto);
 }
 
+:global(html[data-rc-tema="glass"]) .grabando { height: var(--rc-compositor-control); }
 :global(html[data-rc-tema="glass"]) .zoomFondo {
   background: var(--rc-glass-velo-modal);
   -webkit-backdrop-filter: blur(10px) !important;

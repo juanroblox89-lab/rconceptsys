@@ -60,8 +60,9 @@
 :global(html[data-rc-tema="glass"]) .form { min-width: 0; position: relative; }
 :global(html[data-rc-tema="glass"]) .form:has(textarea:placeholder-shown)::before {
   content: attr(data-rc-placeholder); pointer-events: none; position: absolute;
-  inset-inline-start: 13px; inset-block-start: 16px;
-  color: var(--rc-texto-secundario); font-size: max(16px, var(--rc-fs-cuerpo)); line-height: var(--rc-compositor-linea);
+  inset-inline-start: calc(var(--rc-compositor-borde) + var(--rc-compositor-marco) + var(--rc-compositor-relleno-inline));
+  inset-block-start: calc(var(--rc-compositor-borde) + var(--rc-compositor-marco) + var(--rc-compositor-relleno));
+  color: var(--rc-texto-secundario); font-size: var(--rc-compositor-fuente); line-height: var(--rc-compositor-linea);
 }
 :global(html[data-rc-tema="glass"]) .form textarea::placeholder { color: transparent; }
 :global(html[data-rc-tema="glass"]) .cabecera { margin-block-start: 12px; padding-inline: 12px; }
