@@ -67,6 +67,7 @@
 .filaCliente > div:nth-child(2) { min-width: 0; display: grid; }
 .filaCliente strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .filaCliente small { color: var(--rc-texto-secundario); }
+.filaCliente small.notaCliente { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .filaCliente > .abrir { grid-area: auto; }
 .fotoGrande { width: 64px; height: 64px; font-size: 18px; flex: none; }
 .estadisticasCliente { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

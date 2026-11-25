@@ -45,7 +45,7 @@ export function ClientesPanel({ integrado = false }: { integrado?: boolean }) {
       <p className={styles.ayuda} role="status">{clientes.length} {clientes.length === 1 ? "cliente" : "clientes"}</p>
       {!clientes.length ? <div className={styles.panel}><p>{filtro ? "No encontramos clientes con ese nombre." : "Sin clientes."}</p></div> :
         <ul className={styles.listaTrabajos}>{clientes.map(c => <li className={styles.filaCliente} key={c.id}>
-          <FotoCliente cliente={c} /><div><strong title={c.nombre}>{c.nombre}</strong><small>{c.activo ? "Activo" : "Inactivo"}</small></div>
+          <FotoCliente cliente={c} /><div><strong title={c.nombre}>{c.nombre}</strong><small>{[c.activo ? "Activo" : "Inactivo", c.paquete?.trim()].filter(Boolean).join(" · ")}</small>{c.notas?.trim() ? <small className={styles.notaCliente} title={c.notas.trim()}>{c.notas.trim()}</small> : null}</div>
           <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} aria-label={`Ver cliente: ${c.nombre}`} href={`/clientes/${c.id}${origen}`}>Ver <ChevronRight size={14} aria-hidden="true" /></Link>
         </li>)}</ul>}
     </>}
