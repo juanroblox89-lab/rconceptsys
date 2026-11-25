@@ -388,3 +388,5 @@
 :global(html[data-rc-tema="glass"]) .navItem:not(.navItemActive) { background: transparent; }
 :global(html[data-rc-tema="glass"]) .topRow, :global(html[data-rc-tema="glass"]) .navItemActive { background: var(--rc-superficie-clara); }
 @media (min-width: 768px) { :global(html[data-rc-tema="glass"]) .root { background: transparent; } }
+
+:global(html[data-rc-tema="glass"]) :is(.root, .perfilMenu) { border-color: var(--rc-glass-borde-flotante); }

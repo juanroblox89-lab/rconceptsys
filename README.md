@@ -95,3 +95,8 @@ npx next start -p 3310
 - Glass conserva un solo plano de desenfoque. El nombre y peso de los fondos nuevos se guardan en el JSON existente; no se necesita migración nueva. Las migraciones 022 y 023 ya están aplicadas en producción.
 - Las aperturas externas pasan por un componente común. La PWA tiene manifiesto `standalone`; el repositorio no contiene la APK ni una WebView nativa.
 - QA visual reproducible: con un único Next oculto en `127.0.0.1:3321`, ejecuta `node scripts/qa-f11.mjs`. No requiere credenciales; prueba tamaños, temas, controles y navegación con dobles de la API.
+
+## 11. Transparencia de Glass (F12)
+
+- El fondo queda nítido alrededor del panel. Las tarjetas dan contraste al texto sin agregar desenfoque; los paneles flotantes son casi opacos.
+- Los perfiles nuevos empiezan con 5% de oscurecido. Cambia el valor en **Personalización → Fondo Glass**. Los porcentajes guardados no se reemplazan.

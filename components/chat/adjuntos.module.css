@@ -535,3 +535,13 @@
 .pendienteQuitar:hover {
   color: var(--rc-rojo-texto);
 }
+
+:global(html[data-rc-tema="glass"]) .zoomFondo {
+  background: var(--rc-glass-velo-modal);
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+}
+:global(html[data-rc-tema="glass"]) :is(.zoomCerrar, .zoomDescarga) {
+  background: var(--rc-menu-fondo); color: var(--rc-texto);
+  border: 1px solid var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante);
+}

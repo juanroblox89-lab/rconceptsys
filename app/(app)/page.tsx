@@ -477,7 +477,7 @@ export default function ChatPage() {
             </p>
           )}
 
-          <form className={styles.composer} onSubmit={enviarMensaje}>
+          <form className={styles.composer} data-rc-compositor onSubmit={enviarMensaje}>
             <MenuAdjuntos
               onArchivos={agregarArchivos}
               onDrive={agregarDrive}
@@ -506,6 +506,7 @@ export default function ChatPage() {
                 type="submit"
                 disabled={(!cuerpo.trim() && !pendientes.some((p) => p.estado === "listo")) || enviando}
                 className="rc-btn-enviar rc-vidrio rc-vidrio--azul"
+                 data-rc-compositor-boton
                 aria-label="Enviar mensaje"
                 style={{
                   width: "34px",
@@ -517,7 +518,7 @@ export default function ChatPage() {
               </button>
             </div>
           </form>
-          <span className={styles.composerHint}>
+          <span className={styles.composerHint} data-rc-compositor-ayuda>
             Enter envía · Shift+Enter baja de línea · El micrófono graba un audio
           </span>
         </div>

@@ -90,7 +90,8 @@ export function MenuAdjuntos({ onArchivos, onDrive, onError, deshabilitado = fal
           setModoDrive(false);
         }}
         disabled={deshabilitado}
-        aria-label="Adjuntar"
+        data-rc-compositor-boton
+         aria-label="Adjuntar"
         aria-expanded={abierto}
         aria-haspopup="menu"
         title="Adjuntar"

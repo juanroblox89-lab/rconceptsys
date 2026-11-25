@@ -49,3 +49,28 @@
 .comandos li[aria-selected=true] { background: var(--rc-superficie-hundida); outline: 1px solid var(--rc-border-subtle); outline-offset: -1px; }
 .comandos li strong { color: var(--rc-azul-texto); }
 @media (min-width: 768px) { .comandos { inset-inline: 24px; } }
+
+/* No dejamos párrafos de RIA ni el saludo directamente sobre el wallpaper. */
+:global(html[data-rc-tema="glass"]) :is(.cabecera, .saludo, .mensaje, .pensando, .voz, .error) {
+  background: var(--rc-superficie);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
+}
+:global(html[data-rc-tema="glass"]) :is(.chat, .pie) { grid-template-columns: minmax(0, 1fr); }
+:global(html[data-rc-tema="glass"]) .form { min-width: 0; position: relative; }
+:global(html[data-rc-tema="glass"]) .form:has(textarea:placeholder-shown)::before {
+  content: attr(data-rc-placeholder); pointer-events: none; position: absolute;
+  inset-inline-start: 13px; inset-block-start: 16px;
+  color: var(--rc-texto-secundario); font-size: max(16px, var(--rc-fs-cuerpo)); line-height: var(--rc-compositor-linea);
+}
+:global(html[data-rc-tema="glass"]) .form textarea::placeholder { color: transparent; }
+:global(html[data-rc-tema="glass"]) .cabecera { margin-block-start: 12px; padding-inline: 12px; }
+:global(html[data-rc-tema="glass"]) .saludo { padding: 16px 12px; }
+:global(html[data-rc-tema="glass"]) .mensaje { padding: 9px 12px; }
+:global(html[data-rc-tema="glass"]) .propia { background: var(--rc-superficie-hundida); }
+:global(html[data-rc-tema="glass"]) :is(.pensando, .voz, .error) { width: fit-content; padding: 4px 8px; }
+:global(html[data-rc-tema="glass"]) .enviar { color: var(--rc-glass-icono-inverso); }
+:global(html[data-rc-tema="glass"]) .comandos { border-color: var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante); }
+@supports (field-sizing: content) {
+  :global(html[data-rc-tema="glass"]) .form textarea { height: auto !important; }
+}

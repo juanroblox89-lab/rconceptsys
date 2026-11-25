@@ -18,3 +18,9 @@
 .moneda { font-variant-numeric: tabular-nums; }
 .moneda > span { color: var(--rc-texto-secundario); font-size: .85em; }
 .moneda input { flex: 1; min-width: 0; width: 100%; appearance: none; border: 0; background: none; font: inherit; color: inherit; }
+
+:global(html[data-rc-tema="glass"]) .lista {
+  border-color: var(--rc-glass-borde-flotante);
+  box-shadow: var(--rc-glass-sombra-flotante);
+}
+:global(html[data-rc-tema="glass"]) .lista li[data-activo=true] { background: var(--rc-glass-hover); }

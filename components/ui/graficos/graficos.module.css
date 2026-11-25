@@ -249,3 +249,10 @@
   color: var(--rc-texto-secundario);
   font-size: var(--rc-fs-secundario);
 }
+
+:global(html[data-rc-tema="glass"]) .tooltipCaja {
+  background: var(--rc-menu-fondo); border: 1px solid var(--rc-glass-borde-flotante);
+  box-shadow: var(--rc-glass-sombra-flotante); color: var(--rc-texto);
+}
+:global(html[data-rc-tema="glass"]) .tooltipFecha { color: var(--rc-texto-secundario); }
+:global(html[data-rc-tema="glass"]) .tooltipValor { color: var(--rc-azul-texto); }

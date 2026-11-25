@@ -63,3 +63,8 @@
 .acciones button { min-height: 40px; }
 .pagina .error { color: var(--rc-rojo-texto); }
 @media (min-width: 640px) { .editorColor { grid-template-columns: minmax(100px,1fr) 3fr; } .paleta { grid-template-columns: repeat(9,minmax(0,1fr)); } }
+
+:global(html[data-rc-tema="glass"]) .cabecera {
+  background: var(--rc-superficie); padding: 8px 12px;
+  border: 1px solid var(--rc-glass-borde); border-radius: var(--rc-glass-radio);
+}

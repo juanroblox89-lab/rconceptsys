@@ -365,3 +365,28 @@
     max-width: 86%;
   }
 }
+
+/* Glass: el fondo entre mensajes queda libre; solo texto y controles llevan tinte. */
+:global(html[data-rc-tema="glass"]) :is(.container, .messageList, .composerWrapper) { background: transparent; }
+:global(html[data-rc-tema="glass"]) .composerWrapper { border-top-color: transparent; }
+:global(html[data-rc-tema="glass"]) :is(.header, .bubble, .datePill, .groupHeader) {
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
+}
+:global(html[data-rc-tema="glass"]) .header { margin: 12px 12px 0; }
+:global(html[data-rc-tema="glass"]) :is(.datePill, .groupHeader) { background: var(--rc-superficie); padding: 2px 8px; }
+:global(html[data-rc-tema="glass"]) .groupHeader { width: fit-content; max-width: 100%; }
+:global(html[data-rc-tema="glass"]) .roleChip { color: var(--rc-texto-secundario) !important; border-color: var(--rc-gris-300) !important; }
+:global(html[data-rc-tema="glass"]) .newMsgNotice {
+  background: var(--rc-menu-fondo); border-color: var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante);
+}
+:global(html[data-rc-tema="glass"]) .composerCaja { min-width: 0; padding: 0; background: transparent; box-shadow: none; }
+:global(html[data-rc-tema="glass"]) .composer > :global(.rc-escena-vidrio) { display: flex; flex: none; align-self: flex-end; }
+:global(html[data-rc-tema="glass"]) .composer :global(.rc-mancha) { display: none; }
+:global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar) {
+  width: var(--rc-compositor-control) !important;
+  height: var(--rc-compositor-control) !important;
+  background: var(--rc-azul-fondo);
+}
+:global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar)::before,
+:global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar)::after { content: none; }

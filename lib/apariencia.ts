@@ -4,7 +4,7 @@ export type Apariencia = {
   movimiento:'sistema'|'activado'|'desactivado'; contraste:boolean; oscurecido:number;
   imagen?:string; video?:string; fondo_nombre?:string; fondo_bytes?:number;
 };
-export const aparienciaInicial:Apariencia={modo:'sistema',tema:'rconcept',movimiento:'sistema',contraste:false,oscurecido:32};
+export const aparienciaInicial:Apariencia={modo:'sistema',tema:'rconcept',movimiento:'sistema',contraste:false,oscurecido:5};
 export const eventoApariencia='rc-apariencia';
 export function aplicarApariencia(v:Apariencia, guardar=false) {
   const root=document.documentElement;
@@ -20,7 +20,7 @@ export function aplicarApariencia(v:Apariencia, guardar=false) {
   }
   const img=v.tema==='glass'&&/^[0-9a-f]{32}\.(jpg|png|webp)$/.test(v.imagen??'')?`url('/api/yo/apariencia/fondo/${v.imagen}')`:null;
   if(img)root.style.setProperty('--rc-personal-imagen',img);else root.style.removeProperty('--rc-personal-imagen');
-  root.style.setProperty('--rc-personal-oscurecido',`${Math.min(85,Math.max(0,v.oscurecido||0))}%`);
+  root.style.setProperty('--rc-personal-oscurecido',`${Math.min(85,Math.max(0,v.oscurecido??5))}%`);
   if(guardar===true){try{localStorage.setItem('rc-apariencia',JSON.stringify(v));}catch{}}
   window.dispatchEvent(new CustomEvent('rc-apariencia',{detail:v}));
 }
@@ -29,7 +29,7 @@ export const scriptApariencia=`try{const v=JSON.parse(localStorage.getItem('rc-a
 export async function preferenciasApariencia(metodo='GET',datos?:Apariencia|FormData):Promise<Apariencia>{
   const multipart=datos instanceof FormData;
   const r=await fetch('/api/yo/apariencia'+(multipart?'/fondo':''),{method:metodo,cache:'no-store',headers:multipart?undefined:{'Content-Type':'application/json'},body:datos&&(multipart?datos:JSON.stringify(datos))});
-  const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.error?.mensaje??'No se pudo guardar la apariencia.');return j;
+  const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.error?.mensaje??'No se pudo guardar la apariencia.');return { ...j, oscurecido: j.oscurecido ?? 5 };
 }
 export async function primerFotograma(f:File):Promise<Blob>{
   const video=document.createElement('video'); const u=URL.createObjectURL(f);

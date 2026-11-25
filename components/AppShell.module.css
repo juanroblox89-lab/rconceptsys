@@ -296,3 +296,6 @@
 
 :global(html[data-rc-tema="glass"]) .main { background: transparent; }
 :global(html[data-rc-tema="glass"]) .pill, :global(html[data-rc-tema="glass"]) .sidebarWrap, :global(html[data-rc-tema="glass"]) .rail { background: var(--rc-glass-cromo); }
+
+:global(html[data-rc-tema="glass"]) .rail { background: transparent; }
+:global(html[data-rc-tema="glass"]) .railGroup { background: var(--rc-menu-fondo); }

@@ -76,7 +76,7 @@ export default function Personalizacion() {
   });
   const temaBase = { fondo: 'light-dark(#eceef3,#171c25)', texto: 'light-dark(#1f2430,#eef1f8)', acento: 'light-dark(#2166ba,#89bfff)' };
   const valorColor = (id: Color) => hex.test(v[id] ?? '') ? v[id] : v.tema === 'glass'
-    ? { fondo: 'light-dark(#eff5ff,#182639)', texto: 'light-dark(#151e32,#f2f6ff)', acento: 'light-dark(#00376f,#cceaff)' }[id] : temaBase[id];
+    ? { fondo: 'var(--rc-glass-neutro)', texto: 'light-dark(#141414,#fafafa)', acento: 'light-dark(#003164,#ccedff)' }[id] : temaBase[id];
   const muestra = (id: Color) => ({ '--muestra': valorColor(id) } as CSSProperties);
   const bytes = v.fondo_bytes || (pesoAnterior?.archivo === archivo ? pesoAnterior?.bytes : undefined);
 

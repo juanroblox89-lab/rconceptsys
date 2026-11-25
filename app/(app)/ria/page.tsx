@@ -181,7 +181,7 @@ function ConversacionRIA() {
         </ul>
         {!opciones.length && <p role="status">No hay secciones que coincidan.</p>}
       </div>}
-      <form className={styles.form} onSubmit={e => { e.preventDefault(); if (menuAbierto && opciones[actual]) irA(opciones[actual]); else if (!esComando) publicar(texto); }}>
+      <form className={styles.form} data-rc-compositor data-rc-placeholder="Escribe a RIA…" onSubmit={e => { e.preventDefault(); if (menuAbierto && opciones[actual]) irA(opciones[actual]); else if (!esComando) publicar(texto); }}>
         <textarea ref={entrada} aria-label="Mensaje para RIA" placeholder="Escribe a RIA… o usa / para ir a una sección" rows={1} maxLength={2000} value={texto}
           aria-autocomplete="list" aria-controls={menuAbierto ? "ria-rutas" : undefined} aria-activedescendant={menuAbierto && opciones.length ? `ria-ruta-${actual}` : undefined}
           onBlur={() => setComandoCerrado(true)} onFocus={() => setComandoCerrado(false)}
@@ -201,12 +201,13 @@ function ConversacionRIA() {
               else if (!esComando) publicar(texto);
             }
           }} />
-        <button type="button" className={styles.micro} aria-label={dictado.estado === "grabando" ? "Detener dictado" : "Dictar mensaje"}
+        <button type="button" className={styles.micro} data-rc-compositor-boton aria-label={dictado.estado === "grabando" ? "Detener dictado" : "Dictar mensaje"}
           aria-pressed={dictado.estado === "grabando"} disabled={!listo || enviando || dictado.estado === "iniciando" || dictado.estado === "procesando"} onClick={dictado.alternar}>
           {dictado.estado === "grabando" ? <Square size={17} aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
         </button>
-        <button type="submit" className={styles.enviar} aria-label="Enviar a RIA" disabled={!listo || !texto.trim() || esComando || enviando || microActivo}><ArrowUp size={20} aria-hidden="true" /></button>
+        <button type="submit" className={styles.enviar} data-rc-compositor-boton aria-label="Enviar a RIA" disabled={!listo || !texto.trim() || esComando || enviando || microActivo}><ArrowUp size={20} aria-hidden="true" /></button>
       </form>
+      <p data-rc-compositor-ayuda="solo-glass">Enter envía · Shift+Enter baja de línea · / abre secciones</p>
       {dictado.errorVoz ? <p role="alert" className={styles.error}>{dictado.errorVoz}</p> : microActivo && <p role="status" className={styles.voz}>{dictado.estado === "grabando" ? "Escuchando…" : dictado.estado === "iniciando" ? "Activando micrófono…" : "Transcribiendo…"}</p>}
     </div>
   </section>;

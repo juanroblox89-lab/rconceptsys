@@ -289,3 +289,16 @@
     right: 8px;
   }
 }
+
+/* La columna fija es tarjeta; la hoja móvil tapa lo que queda detrás. */
+:global(html[data-rc-tema="glass"]) .barra:not(.abierta) { background: transparent; border: 0; box-shadow: none; }
+:global(html[data-rc-tema="glass"]) .barra.abierta {
+  background: var(--rc-menu-fondo); border-color: var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante);
+}
+:global(html[data-rc-tema="glass"]) :is(.tarjeta, .barra:not(.abierta) .cabecera, .barra:not(.abierta) .seccion) {
+  background: var(--rc-superficie);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
+}
+:global(html[data-rc-tema="glass"]) .barra:not(.abierta) :is(.cabecera, .seccion) { padding: 6px 8px; }
+:global(html[data-rc-tema="glass"]) .pieEnlace { display: inline-block; padding: 4px 8px; background: var(--rc-superficie); border-radius: var(--rc-radio-sm); }

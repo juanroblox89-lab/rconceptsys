@@ -111,7 +111,8 @@ export function GrabadorAudio({ onGrabado, onError, deshabilitado = false }: Gra
         className={styles.micBoton}
         onClick={empezar}
         disabled={deshabilitado}
-        aria-label="Grabar audio"
+        data-rc-compositor-boton
+         aria-label="Grabar audio"
         title="Grabar un audio"
       >
         <Mic size={16} strokeWidth={1.9} />
