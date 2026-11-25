@@ -1,0 +1,41 @@
+.campo { display: contents; }
+:global(html[data-rc-tema="glass"]) .campo { position: relative; display: flex; flex: 1; min-width: 0; }
+:global(html[data-rc-tema="glass"]) .campo > textarea { width: 100%; min-width: 0; }
+.ruta { color: var(--rc-azul-texto); text-decoration: underline; text-underline-offset: .16em; }
+:global(html[data-rc-tema="glass"]) .ruta { color: var(--rc-comando-texto); }
+
+/* Espejo no interactivo: el textarea conserva cursor, selección, pegado e IME. */
+:global(html[data-rc-tema="glass"]) .espejo {
+  position: absolute; inset: 0 auto 0 0; overflow: hidden; pointer-events: none;
+  padding: var(--rc-compositor-relleno) var(--rc-compositor-relleno-inline);
+  color: var(--rc-texto); font-family: inherit;
+  font-size: var(--rc-compositor-fuente); line-height: var(--rc-compositor-linea);
+  white-space: pre-wrap; overflow-wrap: break-word;
+}
+:global(html[data-rc-tema="glass"]) .campo > textarea[data-rc-resaltado] {
+  position: relative; color: transparent; caret-color: var(--rc-texto);
+  white-space: pre-wrap; overflow-wrap: break-word;
+}
+:global(html[data-rc-tema="glass"]) .campo > textarea[data-rc-resaltado]::selection {
+  color: transparent; background: color-mix(in srgb, var(--rc-azul-texto) 26%, transparent);
+}
+@media (forced-colors: active) {
+  :global(html[data-rc-tema="glass"]) .espejo { display: none; }
+  :global(html[data-rc-tema="glass"]) .campo > textarea[data-rc-resaltado] { color: CanvasText; caret-color: CanvasText; }
+  :global(html[data-rc-tema="glass"]) .campo > textarea[data-rc-resaltado]::selection { color: HighlightText; background: Highlight; }
+}
+
+.menu {
+  position: absolute; inset-inline: var(--rc-comandos-inset, 16px); bottom: 100%; z-index: var(--rc-z-menu);
+  background: var(--rc-menu-fondo, var(--rc-gris-50)); border: 1px solid var(--rc-border-subtle);
+  border-radius: var(--rc-radio-lg); padding: 8px; box-shadow: 0 8px 28px #101b3625;
+}
+.menu p { margin: 4px 8px; font-size: 12px; color: var(--rc-texto-secundario); }
+.titulo { font-weight: 600; }
+.menu ul { list-style: none; margin: 0; padding: 0; max-height: min(320px, 35dvh); overflow: auto; overscroll-behavior: contain; }
+.menu li { display: grid; align-content: center; min-height: 42px; padding: 4px 8px; border-radius: var(--rc-radio-sm); cursor: pointer; }
+.menu li span { font-size: 12px; color: var(--rc-texto-secundario); }
+.menu li[aria-selected=true] { background: var(--rc-superficie-hundida); outline: 1px solid var(--rc-border-subtle); outline-offset: -1px; }
+.menu li strong { color: var(--rc-azul-texto); }
+:global(html[data-rc-tema="glass"]) .menu { border-color: var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante); }
+:global(html[data-rc-tema="glass"]) .menu li strong { color: var(--rc-comando-texto); }

@@ -100,3 +100,4 @@ npx next start -p 3310
 
 - El fondo queda nítido alrededor del panel. Las tarjetas dan contraste al texto sin agregar desenfoque; los paneles flotantes son casi opacos.
 - Los perfiles nuevos empiezan con 5% de oscurecido. Cambia el valor en **Personalización → Fondo Glass**. Los porcentajes guardados no se reemplazan.
+- En Glass, escribe `/` en RIA o en el chat del equipo para ver las rutas disponibles para tu rol. **Enter** abre la sugerencia; **Escape** cierra la lista y permite enviar el comando como enlace con Enter. QA local: `node scripts/qa-f12-comandos.mjs` con un único Next oculto en `127.0.0.1:3332`.

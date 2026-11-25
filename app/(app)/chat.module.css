@@ -368,7 +368,7 @@
 
 /* Glass: el fondo entre mensajes queda libre; solo texto y controles llevan tinte. */
 :global(html[data-rc-tema="glass"]) :is(.container, .messageList, .composerWrapper) { background: transparent; }
-:global(html[data-rc-tema="glass"]) .composerWrapper { border-top-color: transparent; }
+:global(html[data-rc-tema="glass"]) .composerWrapper { border-top-color: transparent; position: relative; }
 :global(html[data-rc-tema="glass"]) :is(.header, .bubble, .datePill, .groupHeader) {
   border: 1px solid var(--rc-glass-borde);
   border-radius: var(--rc-glass-radio);

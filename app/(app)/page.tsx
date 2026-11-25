@@ -24,6 +24,8 @@ interface Pendiente {
 
 import { mencionaRIA, transmitirRIA } from "@/lib/ria";
 import { MarcaRIA } from "@/components/MarcaRIA";
+import { EntradaComandos, TextoComandos, useComandosChat, useGlassChat } from "@/components/ComandosChat";
+import { rutasVisiblesRIA } from "@/lib/rutas-ria";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -292,7 +294,12 @@ export default function ChatPage() {
     }
   };
 
+  const glass = useGlassChat();
+  const rutas = rutasVisiblesRIA(yo);
+  const comandos = useComandosChat(cuerpo, rutas, glass && rutas.length > 0, () => setCuerpo(""));
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing || comandos.teclado(e)) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       enviarMensaje();
@@ -395,7 +402,7 @@ export default function ChatPage() {
                             tieneAdjuntos ? styles.bubbleConAdjuntos : ""
                           } ${linea.enviando ? styles.bubbleSending : ""} ${linea.error ? styles.bubbleError : ""}`}
                         >
-                          {linea.cuerpo ? <p className={styles.bubbleTexto}>{linea.cuerpo}</p> : null}
+                          {linea.cuerpo ? <p className={styles.bubbleTexto}>{glass ? <TextoComandos texto={linea.cuerpo} rutas={rutas} /> : linea.cuerpo}</p> : null}
                           {tieneAdjuntos && (
                             <div className={styles.adjuntosLista}>
                               {linea.adjuntos?.map((adjunto) => (
@@ -477,6 +484,7 @@ export default function ChatPage() {
             </p>
           )}
 
+          {comandos.menu}
           <form className={styles.composer} data-rc-compositor onSubmit={enviarMensaje}>
             <MenuAdjuntos
               onArchivos={agregarArchivos}
@@ -484,14 +492,14 @@ export default function ChatPage() {
               onError={(m) => setErrorAdjunto(m)}
             />
             <div className={styles.composerCaja}>
-              <textarea
+              <EntradaComandos
                 className={styles.textarea}
                 rows={1}
                 placeholder="Escribe al equipo..."
                 aria-label="Escribe al equipo"
                 title="Enter para enviar, Shift+Enter para salto de línea"
-                value={cuerpo}
-                onChange={(e) => setCuerpo(e.target.value)}
+                texto={cuerpo} rutas={rutas} glass={glass} autoAltura={glass} {...comandos.propsEntrada}
+                onChange={e => { setCuerpo(e.currentTarget.value); comandos.editar(); }}
                 onKeyDown={handleKeyDown}
               />
             </div>
@@ -519,7 +527,7 @@ export default function ChatPage() {
             </div>
           </form>
           <span className={styles.composerHint} data-rc-compositor-ayuda>
-            Enter envía · Shift+Enter baja de línea · El micrófono graba un audio
+            Enter envía · Shift+Enter baja de línea · El micrófono graba un audio{glass && " · Usa / para abrir secciones"}
           </span>
         </div>
       </div>

@@ -71,7 +71,8 @@ html[data-rc-tema="glass"] {
   --rc-gris-100: var(--rc-glass-borde);
   --rc-gris-50: var(--rc-superficie-clara);
   --rc-border-subtle: var(--rc-gris-300);
-  --rc-azul-texto: var(--rc-personal-acento,light-dark(#003164,#ccedff));
+  --rc-comando-texto: light-dark(#003164,#ccedff);
+  --rc-azul-texto: var(--rc-personal-acento,var(--rc-comando-texto));
   --rc-azul: var(--rc-azul-texto);
   --rc-azul-fondo: color-mix(in srgb, var(--rc-azul-texto) 10%, var(--rc-glass-campo));
   --rc-azul-suave: var(--rc-azul-fondo);

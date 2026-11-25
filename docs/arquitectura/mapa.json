@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-25T02:09:28.727Z",
+  "generado_en": "2026-11-25T02:38:05.830Z",
   "version": "1.0",
   "modulos": [
     {
@@ -2028,6 +2028,33 @@
       ]
     },
     {
+      "id": "comandos-chat-f12",
+      "nombre": "Comandos de navegación en RIA y chat de equipo",
+      "descripcion": "En Glass, las rutas visibles se resaltan mientras se escriben y se enlazan al enviar. Abrir una sugerencia navega sin publicar.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "lib/rutas-ria.ts:rutasVisiblesRIA",
+          "descripcion": "Comparte el catálogo de rutas según el perfil aprobado."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "components/ComandosChat.tsx:useComandosChat",
+          "descripcion": "Filtra sugerencias; flechas y Enter navegan, Escape cierra el menú sin borrar el borrador."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/ComandosChat.tsx:EntradaComandos",
+          "descripcion": "Un espejo visual resalta el texto sin sustituir el textarea ni el editor nativo."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "components/ComandosChat.tsx:TextoComandos",
+          "descripcion": "Los mensajes siguen siendo texto; solo las rutas reconocidas y visibles para el lector se convierten en enlaces."
+        }
+      ]
+    },
+    {
       "id": "cortes-embed-f11",
       "nombre": "Gestión: cortes de pago",
       "descripcion": "Un listado vacío es válido; un error tiene reintento propio.",
@@ -2196,5 +2223,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "143386cd9ed182a06c3ca9dfed6ab9b995010f88"
+  "commit_hash": "8c415e35270b4ef21ddbc97125efceb1263f3407"
 }

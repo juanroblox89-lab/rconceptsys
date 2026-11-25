@@ -36,6 +36,16 @@ export function buscarRutasRIA(visibles: RutaRIA[], consulta: string) {
   return visibles.filter(ruta => [ruta.href, ...(ruta.alias ?? [])].some(ruta => ruta.startsWith(buscar)));
 }
 
+export function comandoRIA(texto: string) {
+  return /^\/[a-z0-9/-]*$/i.test(texto) ? texto.toLowerCase() : undefined;
+}
+
+export function fragmentosRutasRIA(texto: string, rutas: RutaRIA[]) {
+  // Solo tokens completos; no enlazar segmentos de URLs, rutas inventadas ni una barra suelta.
+  return texto.split(/(?<![\p{L}\p{N}:/.@_-])(\/[a-z0-9-]+(?:\/[a-z0-9-]+)*)(?![\p{L}\p{N}/_?&#=-]|\.[\p{L}\p{N}])/giu)
+    .map((parte, i) => ({ texto: parte, href: i % 2 === 1 ? destinoRIA(rutas, parte.toLowerCase()) : undefined }));
+}
+
 export function destinoRIA(visibles: RutaRIA[], ruta: string) {
   const destino = visibles.find(item => item.href === ruta || item.alias?.includes(ruta))?.href;
   if (destino) return destino;
