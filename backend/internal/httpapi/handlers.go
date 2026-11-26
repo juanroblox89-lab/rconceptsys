@@ -121,6 +121,7 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/admin/tareas/{id}/aceptar", a.MiddlewareAuth(a.handleAdminPostTareaAceptar, true, true))
 	mux.HandleFunc("POST /api/admin/tareas/{id}/rechazar", a.MiddlewareAuth(a.handleAdminPostTareaRechazar, true, true))
 	mux.HandleFunc("POST /api/admin/tareas/{id}/cancelar", a.MiddlewareAuth(a.handleAdminPostTareaCancelar, true, true))
+	mux.HandleFunc("POST /api/admin/tareas/{id}/pedir-de-nuevo", a.MiddlewareAuth(a.handleAdminPostTareaPedirDeNuevo, true, true))
 
 	mux.HandleFunc("GET /api/admin/facturas", a.MiddlewareAuth(a.handleAdminGetFacturas, true, true))
 	mux.HandleFunc("GET /api/admin/facturas/{id}", a.MiddlewareAuth(a.handleAdminGetFacturaDetalle, true, true))
@@ -1835,6 +1836,9 @@ func (a *API) handleAdminPostTareaCancelar(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if cancelada.AsignadoA != admin.ID {
+		a.avisar(r.Context(), cancelada.AsignadoA, AvisoPush{Titulo: "Se canceló un trabajo", Cuerpo: datosAvisoTarea(cancelada), URL: urlTarea(id), Etiqueta: "tarea-cancelada"}, fmt.Sprintf("tarea-cancelada:%d", id))
+	}
 	ResponderJSON(w, http.StatusOK, cancelada)
 }
 

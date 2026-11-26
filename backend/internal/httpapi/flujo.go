@@ -267,7 +267,11 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 	if yo != nil {
 		actorID = yo.ID
 	}
-	a.avisarPedidoActualizado(r.Context(), actualizado, actorID, "Cambios en el pedido")
+	if nuevo, ok := campos["asignado_a"].(string); ok && nuevo != t.AsignadoA {
+		a.avisarCambioAsignacion(r.Context(), actualizado, t.AsignadoA, actorID)
+	} else {
+		a.avisarPedidoActualizado(r.Context(), actualizado, actorID, "Cambios en el pedido")
+	}
 	a.enriquecerTareasReferencias(r.Context(), []*store.Tarea{actualizado})
 	ResponderJSON(w, 200, actualizado)
 }

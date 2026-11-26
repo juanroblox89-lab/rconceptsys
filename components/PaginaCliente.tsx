@@ -14,6 +14,7 @@ import { Campo } from "@/components/ui/Campo";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { FotoCliente } from "./ClientesPanel";
 import { FilaTrabajo, fechaTrabajo } from "./FilaTrabajo";
+import { BotonPedirDeNuevo } from "./PedirDeNuevoTrabajo";
 import { PickerDriveCliente, type ReferenciaDrive } from "./PickerDriveCliente";
 import { useCambiosSinGuardar } from "./CambiosSinGuardar";
 import styles from "./FlujoTrabajo.module.css";
@@ -99,7 +100,8 @@ export function PaginaCliente({ id, editar = false, admin = false }: { id?: numb
           </dl>
         </section>
         <section className={styles.panel}><h2>Trabajos ({dato.estadisticas.total})</h2>
-          {!dato.trabajos.length ? <p className={styles.ayuda}>Sin trabajos.</p> : <ul className={styles.listaTrabajos}>{dato.trabajos.map(t => <FilaTrabajo key={t.id} tarea={t} origen={`cliente-${dato.cliente.id}`} soloLectura={!puedeEditar} />)}</ul>}
+          {!dato.trabajos.length ? <p className={styles.ayuda}>Sin trabajos.</p> : <ul className={styles.listaTrabajos}>{dato.trabajos.map(t => <FilaTrabajo key={t.id} tarea={t} origen={`cliente-${dato.cliente.id}`} soloLectura={!puedeEditar}
+            accion={puedeEditar && t.estado === "aceptada" && <BotonPedirDeNuevo id={t.id} origen={`cliente-${dato.cliente.id}`} />} />)}</ul>}
         </section>
       </>}
   </section>;

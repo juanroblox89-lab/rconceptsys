@@ -260,6 +260,12 @@ Todos requieren `es_admin: true`. Cualquier usuario no administrador recibe `403
 
 ---
 
+### 3.8.1 Pedir de nuevo un trabajo aprobado
+- **Ruta:** `POST /api/admin/tareas/{id}/pedir-de-nuevo`, solo admin aprobado.
+- **Cuerpo:** `{ "motivo": "Actualizar el cierre" }` (opcional; hasta 500 caracteres Unicode y 32 KiB de cuerpo).
+- **200 OK:** trabajo en `pendiente`, sin datos de aprobación ni factura, con la entrega histórica y el evento `pedido_de_nuevo`. Si la fecha límite ya pasó, se ajusta al día civil de Bogotá. Se avisa al asignado y a los admins restantes, según sus preferencias.
+- **409 Conflict:** trabajo no aprobado, reapertura repetida o pago ya registrado. En este último caso hay que crear un trabajo nuevo.
+
 ### 3.9 Resumen de Facturas por Persona
 - **Ruta:** `GET /api/admin/facturas`
 - **Respuesta (200 OK):**

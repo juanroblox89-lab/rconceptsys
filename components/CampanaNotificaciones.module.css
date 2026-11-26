@@ -12,7 +12,8 @@
 .panel li a { display: grid; gap: 3px; border-top: 1px solid var(--rc-gris-100); padding: 9px 12px; text-decoration: none; color: var(--rc-texto); overflow-wrap: anywhere; }
 .panel li a:hover, .panel li a:focus-visible { background: var(--rc-superficie-hundida); }
 .panel li .noLeida { box-shadow: inset 3px 0 var(--rc-azul-texto); background: var(--rc-azul-tinte); }
-.panel li span, .panel time { color: var(--rc-texto-secundario); }
+.panel li span, .tipoAviso { display: flex; align-items: center; gap: 4px; font-size: var(--rc-fs-etiqueta); }
+.panel time { color: var(--rc-texto-secundario); }
 .panel time { font-size: var(--rc-fs-etiqueta); }
 .ajustes { display: block; border-top: 1px solid var(--rc-gris-100); padding: 10px 12px; color: var(--rc-azul-texto); }
 @keyframes entrada { from { opacity: .45; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }

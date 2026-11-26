@@ -18,6 +18,8 @@ No se aplicaron desde el agente. Partir de una base que ya tenga 001–011 aplic
 14. `migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql` — método/selección de entrega (`drive`/`whatsapp`), tablas `tarea_entregas` y `tarea_historial`, RPCs atómicas de entrega/reversión/rechazo/aprobación y soporte de `asignacion_adjuntos` en eventos de rechazo. Aplicar después de 024.
 15. [`migrations/026_ria_grupo.sql`](migrations/026_ria_grupo.sql) — autoría nativa de RIA, idempotencia persistente y RPC exclusivos de `service_role`. **Pendiente de aplicar.**
 
+16. [`migrations/027_pedido_de_nuevo.sql`](migrations/027_pedido_de_nuevo.sql) — habilita `reabierta` y `pedido_de_nuevo`; el PATCH de reapertura y su historial son atómicos y se serializan con el pago de la factura. Aplicar antes de desplegar la ruta nueva. **Pendiente de aplicar.**
+
 ## Aplicación de 026 · RIA en el grupo
 
 1. Valida primero en una base de pruebas aislada con 001–025 aplicadas y datos sintéticos. En el SQL Editor del proyecto autorizado, ejecuta **el archivo completo** como rol de migraciones (o `psql -v ON_ERROR_STOP=1 -f supabase/migrations/026_ria_grupo.sql` desde una conexión autorizada). Es transaccional e idempotente; no lo ejecutes aquí ni sobre una base sin verificar.

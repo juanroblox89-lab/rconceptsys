@@ -15,7 +15,7 @@ import (
 	"rconceptsys/backend/internal/store"
 )
 
-var tiposAviso = map[string]bool{"tarea-nueva": true, "tarea-editada": true, "chat": true, "drive": true, "ria": true, "entrega-hecha": true, "entrega-retirada": true, "entrega-aprobada": true, "entrega-devuelta": true, "vence-manana": true, "vencio": true, "corte-listo": true, "corte-pagado": true, "solicitud": true}
+var tiposAviso = map[string]bool{"tarea-nueva": true, "tarea-editada": true, "tarea-cancelada": true, "pedido-de-nuevo": true, "chat": true, "drive": true, "ria": true, "entrega-hecha": true, "entrega-retirada": true, "entrega-aprobada": true, "entrega-devuelta": true, "vence-manana": true, "vencio": true, "corte-listo": true, "corte-pagado": true, "solicitud": true}
 var errPushVencido = errors.New("suscripción vencida")
 
 func (a *API) encolarAviso(ctx context.Context, perfil string, aviso AvisoPush, clave, grupo string, ventana time.Duration) error {

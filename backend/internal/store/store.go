@@ -14,6 +14,7 @@ var (
 	ErrLastAdmin    = errors.New("no se puede degradar o remover al último administrador")
 	ErrValidation   = errors.New("error de validación")
 	ErrRateLimited  = errors.New("límite de velocidad excedido")
+	ErrCortePagado  = errors.New("trabajo incluido en un corte pagado")
 )
 
 type EstadoPerfil string
@@ -474,6 +475,7 @@ type Store interface {
 	EntregarTarea(ctx context.Context, id int64, asignadoID string, entrada EntregaInput) (*Tarea, error)
 	RevertirEntregaTarea(ctx context.Context, id int64, asignadoID string) (*ResultadoReversionEntrega, error)
 	AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*Tarea, error)
+	PedirDeNuevoTarea(ctx context.Context, id int64, adminID string, motivo string) (*Tarea, error)
 	RechazarTarea(ctx context.Context, id int64, adminID string, motivo string) (*Tarea, error)
 	RechazarTareaConDetalle(ctx context.Context, id int64, adminID string, motivo string, driveAdjuntos []ReferenciaDriveTrabajo) (*Tarea, error)
 	ObtenerHistorialTarea(ctx context.Context, tareaID int64) ([]*TareaHistorialItem, error)

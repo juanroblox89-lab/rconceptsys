@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ChevronRight, CalendarDays } from "lucide-react";
 import type { EstadoTarea, Tarea } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
@@ -28,9 +29,9 @@ export function EstadoTrabajo({ tarea }: { tarea: Tarea }) {
   return <span className={styles.estadoTrabajo} data-estado={vencido ? "vencido" : tarea.estado}>{vencido ? "Vencido" : ESTADOS_TRABAJO[tarea.estado]}</span>;
 }
 
-export function FilaTrabajo({ tarea, origen, id, novedad, resaltado, soloLectura }: { tarea: Tarea; origen: string; id?: string; novedad?: boolean; resaltado?: boolean; soloLectura?: boolean }) {
+export function FilaTrabajo({ tarea, origen, id, novedad, resaltado, soloLectura, accion }: { tarea: Tarea; origen: string; id?: string; novedad?: boolean; resaltado?: boolean; soloLectura?: boolean; accion?: ReactNode }) {
   const persona = tarea.asignado?.nombre ?? "Sin asignar";
-  return <li id={id} className={styles.filaTrabajo} data-resaltado={resaltado || undefined}>
+  return <li id={id} className={styles.filaTrabajo} data-resaltado={resaltado || undefined} data-acciones={accion ? true : undefined}>
     <div className={styles.trabajoTitulo}>
       <strong title={tarea.titulo}>{tarea.titulo}{novedad && <span className={styles.novedad} aria-label="Nuevo" />}</strong>
       <span title={tarea.cliente?.nombre}>{tarea.cliente?.nombre ?? "Sin cliente"}</span>
@@ -44,6 +45,6 @@ export function FilaTrabajo({ tarea, origen, id, novedad, resaltado, soloLectura
       <small><CalendarDays size={13} aria-hidden="true" />{tarea.fecha_limite ? fechaTrabajo(tarea.fecha_limite) : "Sin fecha límite"}</small>
     </div>
     <EstadoTrabajo tarea={tarea} />
-    <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={soloLectura ? `/tareas?tarea=${tarea.id}#tarea-${tarea.id}` : `/trabajos/${tarea.id}?desde=${encodeURIComponent(origen)}`} aria-label={`Abrir trabajo: ${tarea.titulo}`}>Abrir <ChevronRight size={14} aria-hidden="true" /></Link>
+    <div className={styles.filaAcciones}><Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={soloLectura ? `/tareas?tarea=${tarea.id}#tarea-${tarea.id}` : `/trabajos/${tarea.id}?desde=${encodeURIComponent(origen)}`} aria-label={`Abrir trabajo: ${tarea.titulo}`}>Abrir <ChevronRight size={14} aria-hidden="true" /></Link>{accion}</div>
   </li>;
 }

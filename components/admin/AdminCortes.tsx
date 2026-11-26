@@ -4,6 +4,7 @@ import { CampoFecha } from "@/components/ui/CamposEspeciales";
 import { useCallback, useEffect, useState } from "react";
 import { Check, Download, FileText, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
+import Link from "next/link";
 import { Corte } from "@/lib/types";
 import { useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
@@ -116,6 +117,7 @@ export function AdminCortes() {
           </p>
         </div>
         <div className={styles.botonesGrupo}>
+          <Link className="rc-btn rc-btn--secundario" href="/admin?pestana=facturas">Ver facturas abiertas</Link>
           <Boton variante="primario" onClick={() => cerrar("quincena")} cargando={creando === "quincena"} disabled={creando !== null}>
             Cerrar quincena
           </Boton>

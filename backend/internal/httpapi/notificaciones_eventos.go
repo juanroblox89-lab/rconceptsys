@@ -114,6 +114,46 @@ func (a *API) avisarSolicitud(ctx context.Context, p *store.Perfil) {
 	a.avisarAdmins(ctx, AvisoPush{Titulo: "Nueva solicitud para unirse", Cuerpo: p.Nombre, URL: "/admin?pestana=miembros&solicitud=" + url.QueryEscape(p.ID) + "#solicitud-" + url.PathEscape(p.ID), Etiqueta: "solicitud"}, "solicitud:"+p.ID)
 }
 
+func (a *API) avisarPedidoDeNuevo(ctx context.Context, tarea *store.Tarea, actorID, motivo string) {
+	cuerpo := datosAvisoTarea(tarea)
+	if motivo != "" {
+		cuerpo = motivo + " · " + cuerpo
+	}
+	runas := []rune(cuerpo)
+	cuerpo = string(runas[:min(len(runas), 160)])
+	clave := fmt.Sprintf("pedido-de-nuevo:%d:%d", tarea.ID, time.Now().UnixNano())
+	aviso := AvisoPush{Titulo: "Te pidieron rehacer un trabajo", Cuerpo: cuerpo, URL: urlTarea(tarea.ID), Etiqueta: "pedido-de-nuevo"}
+	miembros, err := a.Store.ListarEquipo(ctx)
+	if err != nil {
+		log.Printf("[avisos] destinatarios de reapertura: %v", err)
+	}
+	for _, m := range miembros {
+		if m.EsAdmin && m.ID != actorID && m.ID != tarea.AsignadoA {
+			avisoAdmin := aviso
+			avisoAdmin.Titulo = "Se pidió rehacer un trabajo"
+			a.encolarSinEnviar(ctx, m.ID, avisoAdmin, clave)
+		}
+	}
+	if tarea.AsignadoA != "" && tarea.AsignadoA != actorID {
+		a.avisar(ctx, tarea.AsignadoA, aviso, clave)
+	} else {
+		a.despacharYa(ctx)
+	}
+}
+
+func (a *API) avisarCambioAsignacion(ctx context.Context, tarea *store.Tarea, anteriorID, actorID string) {
+	evento := fmt.Sprintf("reasignacion:%d:%d", tarea.ID, time.Now().UnixNano())
+	if anteriorID != "" && anteriorID != actorID {
+		// La tarea ya no es visible para el anterior asignado; el enlace lleva a su lista.
+		a.encolarSinEnviar(ctx, anteriorID, AvisoPush{Titulo: "Este trabajo pasó a otra persona", Cuerpo: datosAvisoTarea(tarea), URL: "/tareas", Etiqueta: "tarea-cancelada"}, evento)
+	}
+	if tarea.AsignadoA != actorID {
+		a.avisarTareaNueva(ctx, tarea, evento)
+	} else {
+		a.despacharYa(ctx)
+	}
+}
+
 func (a *API) avisarPedidoActualizado(ctx context.Context, tarea *store.Tarea, actorID, detalle string) {
 	if tarea == nil || tarea.AsignadoA == "" || tarea.AsignadoA == actorID {
 		return

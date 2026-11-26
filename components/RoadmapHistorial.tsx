@@ -73,6 +73,7 @@ export function construirPasosRoadmap(tarea: Tarea): PasoRoadmap[] {
   const historial = tarea.historial ?? [];
   if (historial.length > 0) {
     let huboEntrega = false;
+    const aprobacionVigente = tarea.estado === "aceptada" ? historial.findLast(h => h.evento === "entrega_aceptada") : undefined;
     for (const h of historial) {
       const orden = pasos.length + 1;
       if (h.evento === "entrega_enviada") {
@@ -127,11 +128,18 @@ export function construirPasosRoadmap(tarea: Tarea): PasoRoadmap[] {
           tono: "aprobado",
           fecha: h.creado_en,
           actor: h.actor_nombre,
-          valorAprobado: tarea.precio_congelado ?? null,
+          valorAprobado: h === aprobacionVigente ? (tarea.precio_congelado ?? null) : null,
           minutosAprobados:
             tarea.tipo?.unidad === "minuto"
-              ? (h.cantidad ?? tarea.cantidad_aceptada ?? null)
+              ? (h.cantidad ?? (h === aprobacionVigente ? tarea.cantidad_aceptada : null) ?? null)
               : null,
+        });
+      } else if (h.evento === "pedido_de_nuevo") {
+        pasos.push({
+          id: `hist-${h.id}`, orden, titulo: "Se pidió rehacer", tono: "retirada",
+          fecha: h.creado_en, actor: h.actor_nombre, motivo: h.motivo,
+          // Si no hay entrega previa registrada (trabajos antiguos), mostrar su copia histórica aquí.
+          ...(!huboEntrega && { nota: h.nota, metodoEntrega: h.metodo_entrega, enlaceMedios: h.enlace_medios, entregaNombre: h.entrega_nombre, entregaTipo: h.entrega_tipo }),
         });
       } else {
         pasos.push({

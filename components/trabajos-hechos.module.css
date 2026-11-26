@@ -249,3 +249,8 @@
 :global(html[data-rc-tema="glass"]) .btnPresetActivo {
   background: var(--rc-azul-fondo);
 }
+
+.historialAprobados { display: grid; gap: var(--rc-esp-6); list-style: none; margin: 0; padding: 0; }
+.aprobadoTexto { display: grid; min-width: 0; overflow-wrap: anywhere; }
+.aprobadoTexto small { color: var(--rc-texto-secundario); }
+.historialAprobados .itemDesgloseTop { flex-wrap: wrap; }

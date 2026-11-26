@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, RotateCcw } from "lucide-react";
+import { tiposAviso } from "@/lib/tipos-aviso";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { Boton } from "@/components/ui/Boton";
@@ -60,7 +61,8 @@ export function CampanaNotificaciones({ barra = false }: { barra?: boolean }) {
       {datos && datos.notificaciones.length > 0 && <ul>{datos.notificaciones.map((n) => <li key={n.id}>
         <Link href={n.url.startsWith("/") && !n.url.startsWith("//") ? n.url : "/"} className={n.leida_en ? undefined : styles.noLeida} onClick={() => {
           setAbierta(false); if (!n.leida_en) void api.leerNotificaciones(n.id).then(cargar, () => setError(true));
-        }}><strong>{n.titulo}</strong><span>{n.cuerpo}</span><time dateTime={n.creada_en}>{new Date(n.creada_en).toLocaleString("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</time></Link>
+        }}><strong>{n.titulo}</strong>{(n.tipo === "pedido-de-nuevo" || n.tipo === "tarea-cancelada") &&
+          <span className={styles.tipoAviso}>{n.tipo === "pedido-de-nuevo" && <RotateCcw size={13} aria-hidden="true" />}{tiposAviso[n.tipo]}</span>}<span>{n.cuerpo}</span><time dateTime={n.creada_en}>{new Date(n.creada_en).toLocaleString("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</time></Link>
       </li>)}</ul>}
       <Link href="/configuracion" className={styles.ajustes} onClick={() => setAbierta(false)}>Preferencias de notificaciones</Link>
     </section>;
