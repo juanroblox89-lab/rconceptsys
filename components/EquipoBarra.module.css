@@ -301,4 +301,9 @@
   border-radius: var(--rc-glass-radio);
 }
 :global(html[data-rc-tema="glass"]) .barra:not(.abierta) :is(.cabecera, .seccion) { padding: 6px 8px; }
-:global(html[data-rc-tema="glass"]) .pieEnlace { display: inline-block; padding: 4px 8px; background: var(--rc-superficie); border-radius: var(--rc-radio-sm); }
+:global(html[data-rc-tema="glass"]) .pie { margin-top: 0; }
+:global(html[data-rc-tema="glass"]) .pieEnlace {
+  display: block; padding: 8px; text-align: center; font-weight: 600;
+  background: var(--rc-superficie); border: 1px solid var(--rc-glass-borde); border-radius: var(--rc-glass-radio);
+}
+:global(html[data-rc-tema="glass"]) .pieEnlace:hover { text-decoration: none; background: var(--rc-superficie-clara); }
