@@ -102,7 +102,7 @@ export default function LoginPage() {
             variante="vidrio"
             cargando={cargando}
             envoltorioClassName="rc-escena-vidrio--bloque"
-            style={{ width: "100%", height: "34px", marginTop: "var(--rc-esp-4)" }}
+            style={{ width: "100%", marginTop: "var(--rc-esp-4)" }}
           >
             Entrar al sistema
           </Boton>

@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Boton } from "@/components/ui/Boton";
 import { Chip } from "@/components/ui/Chip";
 import { Aviso, useAviso } from "@/components/ui/Aviso";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { TrabajosHechos } from "@/components/TrabajosHechos";
 import { FormularioCelular } from "@/components/Celular";
 import { AvisosPush } from "@/components/AvisosPush";
@@ -120,9 +121,7 @@ export default function MiPerfilPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Mi perfil</h1>
-      </div>
+      <CabeceraPagina titulo="Mi perfil" />
 
       {errorLocal && (
         <Aviso
@@ -183,7 +182,6 @@ export default function MiPerfilPage() {
               tamano="sm"
               onClick={() => fileInputRef.current?.click()}
               cargando={subiendoFoto}
-              style={{ height: "30px" }}
             >
               <Camera size={14} strokeWidth={1.75} style={{ marginRight: 6 }} />
               {subiendoFoto ? "Subiendo..." : "Cambiar foto"}
@@ -233,7 +231,7 @@ export default function MiPerfilPage() {
                 variante="vidrio"
                 cargando={guardando}
                 disabled={guardando || sinCambios}
-                style={{ height: "30px", whiteSpace: "nowrap" }}
+                style={{ whiteSpace: "nowrap" }}
               >
                 <Check size={14} strokeWidth={1.75} style={{ marginRight: 4 }} />
                 {guardando ? "Guardando..." : "Guardar"}

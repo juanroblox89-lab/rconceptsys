@@ -6,7 +6,7 @@
 .etiqueta { font-size: var(--rc-fs-etiqueta); line-height: var(--rc-lh-etiqueta); font-weight: var(--rc-fw-medio); color: var(--rc-gris-700); }
 
 /* Uso en Ajustes (sección dentro de una página) */
-.form { padding: var(--rc-esp-16); display: grid; gap: var(--rc-esp-12); align-items: start; border-radius: var(--rc-radio-md); background: var(--rc-superficie); box-shadow: var(--rc-elev-relieve-sm, var(--rc-elev-relieve-md)); max-width: 540px; }
+.form { padding: var(--rc-esp-16); display: grid; gap: var(--rc-esp-12); align-items: start; border-radius: var(--rc-radio-xl); background: var(--rc-superficie); box-shadow: var(--rc-elev-relieve-md); width: 100%; }
 .form h2,.form p { margin: 0; }
 .form p { color: var(--rc-texto-secundario); font-size: var(--rc-fs-secundario); }
 .form fieldset,.tarjeta fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }

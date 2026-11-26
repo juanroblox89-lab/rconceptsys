@@ -65,7 +65,7 @@ export default function MiembroDetallePage({ params }: PageProps) {
 
   return (
     <div className={styles.container}>
-      <Link href="/equipo" className={styles.backBtn}>
+      <Link href="/equipo" className="rc-btn rc-btn--secundario rc-btn--sm" style={{ alignSelf: "flex-start" }}>
         <ArrowLeft size={16} strokeWidth={1.75} /> Volver al equipo
       </Link>
 
@@ -122,14 +122,14 @@ export default function MiembroDetallePage({ params }: PageProps) {
                   onClick={() => router.push("/")}
                   variante="vidrio"
                   envoltorioClassName="rc-escena-vidrio--bloque"
-                  style={{ width: "100%", height: "34px" }}
+                  style={{ width: "100%" }}
                 >
                   <MessagesSquare size={16} strokeWidth={1.75} style={{ marginRight: 6 }} />
                   Enviar mensaje en el chat
                 </Boton>
               {yo?.es_admin && !miembro.es_admin && (
                 <div style={{ marginTop: "var(--rc-esp-8)" }}>
-                  <Boton variante="primario" style={{ width: "100%", height: "34px" }} onClick={() => router.push(`/trabajos/nuevo?desde=equipo&persona=${encodeURIComponent(miembro.id)}`)}>
+                  <Boton variante="primario" style={{ width: "100%" }} onClick={() => router.push(`/trabajos/nuevo?desde=equipo&persona=${encodeURIComponent(miembro.id)}`)}>
                     <ClipboardList size={16} strokeWidth={1.75} style={{ marginRight: 6 }} />
                     Enviar trabajo
                   </Boton>

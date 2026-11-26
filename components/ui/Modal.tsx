@@ -104,17 +104,7 @@ export function Modal({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(31, 36, 48, 0.45)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "var(--rc-esp-16)",
-        zIndex: 900,
-      }}
+      className="rc-modal-velo"
       onClick={(e) => {
         if (e.target === e.currentTarget && onCerrar) onCerrar();
       }}

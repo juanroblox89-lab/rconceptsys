@@ -111,6 +111,28 @@ a,
   scrollbar-color: var(--rc-sombra-suave) transparent;
 }
 
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--rc-sombra-suave);
+  border-radius: var(--rc-radio-pildora);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--rc-sombra-fuerte);
+  border: 1.5px solid transparent;
+  background-clip: content-box;
+}
+
 /* Los controles de la interfaz no heredan la apariencia de la plataforma. */
 :where(button, input, textarea, select, progress, meter) { appearance: none; }
 input[type="number"] { appearance: textfield; }

@@ -33,6 +33,66 @@ html:root {
   --rc-ambar-suave: light-dark(#fdf3e4,#453729);
   --rc-elev-hundido-sm: inset 2px 2px 5px var(--rc-sombra-suave), inset -2px -2px 5px var(--rc-luz-suave);
   --rc-elev-hundido-md: inset 3px 3px 7px var(--rc-sombra-fuerte), inset -3px -3px 7px var(--rc-luz-fuerte);
+  --rc-elev-plano: 0 0 0 rgba(0, 0, 0, 0), inset 0 0 0 1px var(--rc-gris-100);
+  --rc-elev-foco-azul: inset 2px 2px 5px var(--rc-sombra-suave), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1.5px var(--rc-azul-texto), 0 0 10px var(--rc-azul-halo);
+  --rc-elev-foco: var(--rc-elev-foco-azul);
+  --rc-elev-error-rojo: inset 2px 2px 5px var(--rc-sombra-suave), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1px var(--rc-rojo), 0 0 8px var(--rc-rojo-halo);
+  --rc-elev-perilla: 0 2px 4px light-dark(rgba(31, 36, 48, 0.22), rgba(0, 0, 0, 0.55)), 0 1px 2px var(--rc-sombra-suave);
+  --rc-borde-perilla: light-dark(rgba(163, 172, 190, 0.70), rgba(255, 255, 255, 0.16));
+  --rc-borde-linea: var(--rc-gris-100);
+  --rc-azul-fondo: var(--rc-azul-suave);
+  --rc-verde-fondo: var(--rc-verde-suave);
+  --rc-rojo-fondo: var(--rc-rojo-suave);
+  --rc-ambar-fondo: var(--rc-ambar-suave);
+  --rc-fw-medium: var(--rc-fw-medio);
+  --rc-vidrio-bg: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.18) 55%, rgba(255, 255, 255, 0.08) 100%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 55%, rgba(9, 14, 23, 0.36) 100%)
+  );
+  --rc-vidrio-azul-bg: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.48) 0%, rgba(162, 208, 255, 0.28) 52%, rgba(90, 169, 255, 0.22) 100%),
+    linear-gradient(135deg, rgba(90, 169, 255, 0.28) 0%, rgba(47, 127, 224, 0.18) 52%, rgba(19, 78, 155, 0.28) 100%)
+  );
+  --rc-vidrio-rojo-bg: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 182, 185, 0.28) 52%, rgba(229, 72, 77, 0.20) 100%),
+    linear-gradient(135deg, rgba(229, 72, 77, 0.26) 0%, rgba(194, 56, 61, 0.18) 52%, rgba(69, 38, 45, 0.36) 100%)
+  );
+  --rc-vidrio-verde-bg: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.48) 0%, rgba(176, 234, 205, 0.28) 55%, rgba(47, 166, 106, 0.16) 100%),
+    linear-gradient(135deg, rgba(47, 166, 106, 0.24) 0%, rgba(30, 62, 53, 0.42) 100%)
+  );
+  --rc-vidrio-ambar-bg: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.48) 0%, rgba(250, 218, 170, 0.28) 55%, rgba(232, 163, 61, 0.16) 100%),
+    linear-gradient(135deg, rgba(232, 163, 61, 0.24) 0%, rgba(69, 55, 41, 0.42) 100%)
+  );
+  --rc-vidrio-borde: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.42) 48%, rgba(255, 255, 255, 0.12) 100%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.08) 48%, rgba(255, 255, 255, 0.03) 100%)
+  );
+  --rc-vidrio-borde-azul: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(90, 169, 255, 0.65) 55%, rgba(90, 169, 255, 0.25) 100%),
+    linear-gradient(135deg, rgba(137, 191, 255, 0.48) 0%, rgba(90, 169, 255, 0.24) 55%, rgba(90, 169, 255, 0.10) 100%)
+  );
+  --rc-vidrio-borde-rojo: light-dark(
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(229, 72, 77, 0.55) 55%, rgba(229, 72, 77, 0.22) 100%),
+    linear-gradient(135deg, rgba(255, 146, 152, 0.44) 0%, rgba(229, 72, 77, 0.24) 55%, rgba(229, 72, 77, 0.10) 100%)
+  );
+  --rc-vidrio-brillo-esquina: light-dark(
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 62%),
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 62%)
+  );
+  --rc-elev-vidrio: light-dark(
+    inset 1px 1px 1px rgba(255, 255, 255, 0.9), inset -1px -1px 2px rgba(255, 255, 255, 0.35), 0 8px 24px rgba(30, 40, 60, 0.10),
+    inset 1px 1px 1px rgba(255, 255, 255, 0.14), inset -1px -1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.38)
+  );
+  --rc-elev-vidrio-azul: light-dark(
+    inset 1px 1px 1px rgba(255, 255, 255, 0.92), inset -1px -1px 2px rgba(90, 169, 255, 0.35), 0 8px 20px rgba(47, 127, 224, 0.22),
+    inset 1px 1px 1px rgba(137, 191, 255, 0.24), inset -1px -1px 2px rgba(9, 14, 23, 0.45), 0 8px 20px rgba(9, 14, 23, 0.45)
+  );
+  --rc-elev-vidrio-rojo: light-dark(
+    inset 1px 1px 1px rgba(255, 255, 255, 0.92), inset -1px -1px 2px rgba(229, 72, 77, 0.30), 0 8px 20px rgba(229, 72, 77, 0.20),
+    inset 1px 1px 1px rgba(255, 146, 152, 0.24), inset -1px -1px 2px rgba(9, 14, 23, 0.45), 0 8px 20px rgba(9, 14, 23, 0.45)
+  );
   --rc-fs-interfaz: var(--rc-personal-interfaz, 13px);
   --rc-fs-cuerpo: var(--rc-personal-contenido, 13px);
   --rc-lh-cuerpo: calc(var(--rc-fs-cuerpo) * 1.5);
@@ -109,7 +169,7 @@ html[data-rc-tema="glass"] [data-rc-shell]::before {
   backdrop-filter: blur(var(--rc-glass-blur)) saturate(1.15);
 }
 @media (max-width: 767px) {
-  html[data-rc-tema="glass"] [data-rc-shell]::before { inset: 48px 4px 4px; }
+  html[data-rc-tema="glass"] [data-rc-shell]::before { inset: calc(56px + env(safe-area-inset-top, 0px)) 4px 4px; }
 }
 html[data-rc-tema="glass"] :where([data-rc-shell] *, [data-rc-shell] *::before, [data-rc-shell] *::after, .rc-vidrio, .rc-vidrio::before, .rc-vidrio::after) {
   -webkit-backdrop-filter: none !important;
@@ -250,3 +310,12 @@ html[data-rc-tema="glass"] [data-rc-shell] .rc-escena-vidrio--bloque > .rc-manch
 html[data-rc-tema="glass"] [data-rc-shell] .rc-tabs::before, html[data-rc-tema="glass"] [data-rc-shell] .rc-tabs::after { content: none; }
 html[data-rc-tema="glass"] [data-rc-shell] .rc-tab[aria-selected=true] { background: var(--rc-azul-fondo); color: var(--rc-azul-texto); }
 html[data-rc-tema="glass"] [data-rc-shell] .rc-input-contenedor { background-color: var(--rc-superficie-clara); }
+html[data-rc-tema="glass"] :is(.rc-segmentos) { background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm); border: 1px solid var(--rc-glass-borde); }
+html[data-rc-tema="glass"] :is(.rc-segmento[aria-selected="true"], .rc-segmento[aria-checked="true"]) { background: var(--rc-azul-fondo); color: var(--rc-azul-texto); box-shadow: var(--rc-elev-relieve-sm); }
+html:not([data-rc-tema="glass"]) [data-rc-shell] .rc-tabs { background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm); }
+html:not([data-rc-tema="glass"]) [data-rc-shell] .rc-tabs::before,
+html:not([data-rc-tema="glass"]) [data-rc-shell] .rc-tabs::after,
+html:not([data-rc-tema="glass"]) [data-rc-shell] .rc-pestanas-marco > .rc-mancha { content: none; display: none; }
+html:not([data-rc-tema="glass"]) [data-rc-shell] .rc-tab[aria-selected=true] { background: var(--rc-superficie-clara); box-shadow: var(--rc-elev-relieve-sm); color: var(--rc-azul-texto); }
+html[data-rc-tema="oscuro"], html[data-rc-modo="oscuro"] { --rc-mancha-opacidad: 0.34; }
+html[data-rc-modo="oscuro"] .rc-mancha { opacity: 0.34; }

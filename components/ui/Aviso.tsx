@@ -133,18 +133,7 @@ export function ProveedorAvisos({ children }: { children: React.ReactNode }) {
         <aside
           aria-live="polite"
           data-rc-avisos-flotantes
-          style={{
-            position: "fixed",
-            top: "var(--rc-esp-16)",
-            right: "var(--rc-esp-16)",
-            zIndex: 9999,
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--rc-esp-10)",
-            maxWidth: "360px",
-            width: "calc(100vw - 32px)",
-            pointerEvents: "none",
-          }}
+          className="rc-avisos-flotantes"
         >
           {avisos.map((item) => (
             <div key={item.id} style={{ pointerEvents: "auto" }}>

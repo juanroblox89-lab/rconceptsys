@@ -9,6 +9,7 @@ import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Chip } from "@/components/ui/Chip";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Tabla, TablaFila } from "@/components/ui/Tabla";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { useAviso } from "@/components/ui/Aviso";
 import styles from "./factura.module.css";
 
@@ -67,9 +68,7 @@ export default function MiFacturaPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Mi factura</h1>
-      </div>
+      <CabeceraPagina titulo="Mi factura" />
 
       <CortePropio />
       {cargando ? (
@@ -269,7 +268,7 @@ export default function MiFacturaPage() {
                                       </span>
                                     )}
                                   </span>
-                                  <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: "var(--rc-fw-medium)" }}>
+                                  <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: "var(--rc-fw-medio)" }}>
                                     {linea.tipo?.unidad === "minuto" && linea.cantidad_aceptada && linea.precio_unitario_congelado
                                       ? `${linea.cantidad_aceptada} min × $ ${linea.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(linea.precio_congelado || 0).toLocaleString("es-CO")}`
                                       : `$ ${(linea.precio_congelado || 0).toLocaleString("es-CO")}`}

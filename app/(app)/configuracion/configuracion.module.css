@@ -2,10 +2,11 @@
 .tarjeta {
   margin: 0;
   min-width: 0;
-  border: 1px solid var(--rc-gris-100);
-  border-radius: var(--rc-radio-lg);
+  border: 1px solid transparent;
+  border-radius: var(--rc-radio-xl);
   background: var(--rc-superficie);
-  padding: var(--rc-esp-12) var(--rc-esp-16) var(--rc-esp-16);
+  box-shadow: var(--rc-elev-relieve-md);
+  padding: var(--rc-esp-16) var(--rc-esp-16) var(--rc-esp-20);
   display: grid;
   gap: var(--rc-esp-8);
   grid-auto-rows: max-content;
@@ -43,6 +44,7 @@
 
 .opcion:hover {
   background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
 }
 
 
@@ -54,7 +56,13 @@
 }
 
 .pagina { display: grid; gap: var(--rc-esp-12); }
-.pagina > [data-rc-panel] { width: 100%; max-width: none; padding: var(--rc-esp-16); border: 1px solid var(--rc-gris-100); border-radius: var(--rc-radio-lg); }
+.pagina > [data-rc-panel] { width: 100%; max-width: none; padding: var(--rc-esp-16); border: 1px solid transparent; border-radius: var(--rc-radio-xl); box-shadow: var(--rc-elev-relieve-md); }
 .opcion { white-space: normal; min-height: 40px; }
 .opcion > span:first-of-type { flex: none; }
 .acciones { display: flex; justify-content: end; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+:global(html[data-rc-tema="glass"]) .tarjeta,
+:global(html[data-rc-tema="glass"]) .pagina > [data-rc-panel] {
+  border-color: var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
+}

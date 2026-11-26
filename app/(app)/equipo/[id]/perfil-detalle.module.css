@@ -1,5 +1,5 @@
 .container {
-  padding: var(--rc-esp-20) var(--rc-esp-16);
+  padding: var(--rc-esp-20) var(--rc-esp-16) calc(var(--rc-esp-20) + env(safe-area-inset-bottom, 0px));
   max-width: 560px;
   margin: 0 auto;
   display: flex;
@@ -69,4 +69,10 @@
   font-size: var(--rc-fs-secundario);
   line-height: var(--rc-lh-secundario);
   color: var(--rc-texto-secundario);
+}
+
+:global(html[data-rc-tema="glass"]) .card {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
 }

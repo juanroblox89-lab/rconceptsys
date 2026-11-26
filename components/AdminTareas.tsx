@@ -33,6 +33,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
 import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { CarpetaDriveTarea } from "@/components/ui/CarpetaDriveTarea";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { useAviso } from "@/components/ui/Aviso";
 import styles from "@/app/(app)/admin/admin.module.css";
 
@@ -311,11 +312,9 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   return (
     <div className={embedded ? "" : styles.container}>
       {!embedded && (
-        <div className={styles.header}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
-            <div>
-              <h1 className={styles.title}>Gestión de tareas</h1>
-            </div>
+        <CabeceraPagina
+          titulo="Gestión de tareas"
+          acciones={
             <Boton
               variante="primario"
               onClick={() => router.push("/trabajos/nuevo?desde=tareas")}
@@ -323,8 +322,8 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               <Plus size={15} style={{ marginRight: 6 }} />
               Asignar trabajo
             </Boton>
-          </div>
-        </div>
+          }
+        />
       )}
 
       {embedded && (

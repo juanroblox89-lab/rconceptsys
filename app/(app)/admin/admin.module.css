@@ -1,10 +1,11 @@
 .container {
-  padding: var(--rc-esp-20) var(--rc-esp-16);
+  padding: var(--rc-esp-20) var(--rc-esp-16) calc(var(--rc-esp-20) + env(safe-area-inset-bottom, 0px));
   max-width: 1040px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--rc-esp-20);
+  min-width: 0;
 }
 
 .header {
@@ -107,8 +108,8 @@
 }
 
 .roleToggle {
-  height: 24px;
-  padding: 0 var(--rc-esp-8);
+  min-height: 28px;
+  padding: 0 var(--rc-esp-10);
   border-radius: var(--rc-radio-pildora);
   font-size: var(--rc-fs-micro);
   font-weight: var(--rc-fw-semibold);
@@ -116,7 +117,10 @@
   background: var(--rc-superficie);
   box-shadow: var(--rc-elev-relieve-sm);
   color: var(--rc-texto-secundario);
-  transition: all var(--rc-transicion);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rc-esp-6);
+  transition: box-shadow var(--rc-transicion), color var(--rc-transicion), background var(--rc-transicion);
   border: none;
 }
 
@@ -125,8 +129,9 @@
 }
 
 .roleToggleActive {
-  background: var(--rc-superficie);
+  background: var(--rc-superficie-hundida);
   box-shadow: var(--rc-elev-hundido-sm);
+  color: var(--rc-gris-900);
   font-weight: var(--rc-fw-bold);
 }
 
@@ -169,22 +174,22 @@
 }
 
 .muestraRol {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: 2px solid transparent;
+  box-shadow: var(--rc-elev-relieve-sm);
   padding: 0;
   cursor: pointer;
 }
 
 .muestraRolActiva {
-  outline: 2px solid var(--rc-gris-900);
-  outline-offset: 2px;
+  box-shadow: var(--rc-elev-hundido-sm), 0 0 0 2px var(--rc-gris-900);
 }
 
 .roleInput:focus {
   outline: none;
-  box-shadow: var(--rc-elev-foco);
+  box-shadow: var(--rc-elev-foco-azul);
 }
 
 /* Estilos de gestión F2 */
@@ -192,9 +197,11 @@
   font-size: var(--rc-fs-secundario);
   color: var(--rc-texto-secundario);
   line-height: var(--rc-lh-secundario);
-  background-color: var(--rc-azul-fondo);
+  background-color: var(--rc-azul-suave);
+  box-shadow: var(--rc-elev-hundido-sm);
   padding: var(--rc-esp-10) var(--rc-esp-12);
   border-radius: var(--rc-radio-sm);
+  margin-top: var(--rc-esp-4);
 }
 
 .inputPrecio {
@@ -213,7 +220,7 @@
 
 .inputPrecio:focus {
   outline: none;
-  box-shadow: var(--rc-elev-foco);
+  box-shadow: var(--rc-elev-foco-azul);
 }
 
 .selectCompacto {
@@ -222,14 +229,14 @@
   padding: 0 var(--rc-esp-8);
   border-radius: var(--rc-radio-sm);
   background: var(--rc-superficie);
-  box-shadow: var(--rc-elev-hundido-sm);
+  box-shadow: var(--rc-elev-relieve-sm);
   border: none;
   color: var(--rc-gris-900);
 }
 
 .selectCompacto:focus {
   outline: none;
-  box-shadow: var(--rc-elev-foco);
+  box-shadow: var(--rc-elev-foco-azul);
 }
 
 .filtrosRow {
@@ -242,7 +249,7 @@
 
 .bandejaReviewGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: var(--rc-esp-12);
 }
 
@@ -255,6 +262,7 @@
   flex-direction: column;
   gap: var(--rc-esp-10);
   border-left: 3px solid var(--rc-azul);
+  min-width: 0;
 }
 
 .reviewHeader {
@@ -277,8 +285,8 @@
 }
 
 .reviewNota {
-  background-color: var(--rc-azul-fondo, var(--rc-azul-suave));
-  border: 1px solid color-mix(in srgb, var(--rc-azul-texto) 24%, transparent);
+  background-color: var(--rc-azul-suave);
+  box-shadow: var(--rc-elev-hundido-sm);
   color: var(--rc-texto);
   padding: var(--rc-esp-8);
   border-radius: var(--rc-radio-sm);
@@ -288,7 +296,7 @@
 }
 
 .reviewNota strong {
-  color: var(--rc-comando-texto, light-dark(#134e9b, #cfe5ff));
+  color: var(--rc-comando-texto, var(--rc-azul-texto));
   font-weight: var(--rc-fw-bold);
 }
 
@@ -298,9 +306,9 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--rc-radio-pildora);
-  background-color: var(--rc-verde-fondo, var(--rc-verde-suave));
+  background-color: var(--rc-verde-suave);
   color: var(--rc-verde-texto);
-  border: 1px solid color-mix(in srgb, var(--rc-verde-texto) 24%, transparent);
+  box-shadow: var(--rc-elev-relieve-sm);
   font-size: var(--rc-fs-etiqueta);
   font-weight: var(--rc-fw-semibold);
 }
@@ -327,7 +335,7 @@
   flex-direction: column;
   gap: var(--rc-esp-8);
   padding-top: var(--rc-esp-6);
-  border-top: 1px solid var(--rc-borde-linea, var(--rc-gris-100));
+  border-top: 1px solid var(--rc-gris-100);
 }
 
 .rechazoDriveCabecera {
@@ -397,7 +405,7 @@
   color: var(--rc-texto-secundario);
   margin-top: auto;
   padding-top: var(--rc-esp-4);
-  border-top: 1px solid var(--rc-borde-linea, var(--rc-gris-100));
+  border-top: 1px solid var(--rc-gris-100);
 }
 
 .reviewValorMonto {
@@ -424,8 +432,9 @@
 }
 
 .advertenciaRol {
-  background-color: var(--rc-ambar-fondo);
+  background-color: var(--rc-ambar-suave);
   color: var(--rc-ambar-texto);
+  box-shadow: var(--rc-elev-hundido-sm);
   padding: var(--rc-esp-10);
   border-radius: var(--rc-radio-sm);
   font-size: var(--rc-fs-etiqueta);
@@ -459,7 +468,7 @@
 .lineasDesplegadas {
   margin-top: var(--rc-esp-8);
   padding-top: var(--rc-esp-8);
-  border-top: 1px solid var(--rc-borde-linea);
+  border-top: 1px solid var(--rc-gris-100);
   display: flex;
   flex-direction: column;
   gap: var(--rc-esp-8);
@@ -468,14 +477,20 @@
 /* Estilos Estadísticas F3 */
 .statsTotalesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
   gap: var(--rc-esp-12);
 }
 
+.statsTotalesGrid > *,
+.statsPanelesGrid > * {
+  min-width: 0;
+}
+
 .statsTotalCard {
-  background: var(--rc-superficie-clara);
-  border: 1px solid rgba(199, 205, 216, 0.45);
+  background: var(--rc-superficie);
+  border: 1px solid transparent;
   border-radius: var(--rc-radio-lg);
+  box-shadow: var(--rc-elev-relieve-sm);
   padding: var(--rc-esp-12) var(--rc-esp-14);
   display: flex;
   flex-direction: column;
@@ -499,18 +514,19 @@
 
 .statsPanelesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--rc-esp-16);
 }
 
 .statsFiltrosContenedor {
-  background: var(--rc-superficie-clara);
-  border: 1px solid rgba(199, 205, 216, 0.4);
-  border-radius: var(--rc-radio-lg);
-  padding: var(--rc-esp-12) var(--rc-esp-14);
+  background: var(--rc-superficie);
+  border: 1px solid transparent;
+  border-radius: var(--rc-radio-xl);
+  box-shadow: var(--rc-elev-relieve-md);
+  padding: var(--rc-esp-14) var(--rc-esp-16);
   display: flex;
   flex-direction: column;
-  gap: var(--rc-esp-10);
+  gap: var(--rc-esp-12);
 }
 
 .statsPresetsBar {
@@ -519,8 +535,9 @@
   gap: 4px;
   background: var(--rc-superficie-hundida);
   box-shadow: var(--rc-elev-hundido-sm);
-  padding: 3px;
+  padding: 4px;
   border-radius: var(--rc-radio-md);
+  max-width: 100%;
 }
 
 .statsFiltrosComb {
@@ -530,4 +547,8 @@
   flex-wrap: wrap;
 }
 
-:global(html[data-rc-tema="glass"]) :is(.section,.mobileCard) { box-shadow: inset 0 0 0 1px var(--rc-gris-100), var(--rc-elev-relieve-sm); background: var(--rc-superficie-clara); }
+:global(html[data-rc-tema="glass"]) :is(.section, .mobileCard, .reviewCard, .facturaPersonaCard, .statsTotalCard, .statsFiltrosContenedor) {
+  box-shadow: inset 0 0 0 1px var(--rc-gris-100), var(--rc-elev-relieve-sm);
+  background: var(--rc-superficie-clara);
+  border-radius: var(--rc-glass-radio);
+}

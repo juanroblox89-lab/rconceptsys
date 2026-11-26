@@ -2,6 +2,7 @@
 
 import { Casilla } from "@/components/ui/Casilla";
 import { Selector, opcionesSelector } from "@/components/ui/Selector";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronDown, ImagePlus, Monitor, Moon, Sun, Trash2 } from "lucide-react";
 import { aparienciaInicial, aplicarApariencia, preferenciasApariencia, primerFotograma, type Apariencia } from "@/lib/apariencia";
@@ -81,7 +82,7 @@ export default function Personalizacion() {
   const bytes = v.fondo_bytes || (pesoAnterior?.archivo === archivo ? pesoAnterior?.bytes : undefined);
 
   return <div className={styles.pagina}>
-    <header className={styles.cabecera}><h1>Personalización</h1></header>
+    <div className={styles.cabecera}><CabeceraPagina titulo="Personalización" /></div>
     <fieldset disabled={!listo || ocupado} className={styles.contenido}>
       <section className={styles.panel} data-rc-panel>
         <h2>Apariencia</h2>

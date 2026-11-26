@@ -4,10 +4,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--rc-esp-8);
-  padding: var(--rc-esp-12);
-  border-radius: var(--rc-radio-md);
+  padding: var(--rc-esp-16);
+  border-radius: var(--rc-radio-xl);
   background: var(--rc-superficie);
-  box-shadow: var(--rc-elev-relieve-sm);
+  box-shadow: var(--rc-elev-relieve-md);
 }
 
 .cabecera {
@@ -19,11 +19,12 @@
 .icono {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   flex: none;
   border-radius: var(--rc-radio-sm);
-  background: var(--rc-gris-50);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-hundido-sm);
   color: var(--rc-icono);
 }
 

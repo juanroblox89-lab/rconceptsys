@@ -1,5 +1,5 @@
 .container {
-  padding: var(--rc-esp-20) var(--rc-esp-16);
+  padding: var(--rc-esp-20) var(--rc-esp-16) calc(var(--rc-esp-20) + env(safe-area-inset-bottom, 0px));
   max-width: 1040px;
   margin: 0 auto;
   display: flex;
@@ -28,7 +28,7 @@
 
 .statsRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: var(--rc-esp-14);
 }
 
@@ -142,7 +142,7 @@
 .historialDetalle {
   margin-top: var(--rc-esp-10);
   padding-top: var(--rc-esp-10);
-  border-top: 1px solid var(--rc-borde-linea);
+  border-top: 1px solid var(--rc-gris-100);
 }
 
 @media (max-width: 767px) {
@@ -154,4 +154,10 @@
     flex-direction: column;
     gap: var(--rc-esp-10);
   }
+}
+
+:global(html[data-rc-tema="glass"]) :is(.statCard, .section, .lineaCard, .historialItem) {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
 }

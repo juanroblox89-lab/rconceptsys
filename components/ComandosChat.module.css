@@ -27,8 +27,8 @@
 
 .menu {
   position: absolute; inset-inline: var(--rc-comandos-inset, 16px); bottom: 100%; z-index: var(--rc-z-menu);
-  background: var(--rc-menu-fondo, var(--rc-gris-50)); border: 1px solid var(--rc-border-subtle);
-  border-radius: var(--rc-radio-lg); padding: 8px; box-shadow: 0 8px 28px #101b3625;
+  background: var(--rc-menu-fondo, var(--rc-superficie-clara)); border: 1px solid var(--rc-sombra-suave);
+  border-radius: var(--rc-radio-lg); padding: 8px; box-shadow: var(--rc-elev-relieve-lg);
 }
 .menu p { margin: 4px 8px; font-size: 12px; color: var(--rc-texto-secundario); }
 .titulo { font-weight: 600; }

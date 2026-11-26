@@ -70,5 +70,11 @@
 }
 
 .spin {
-  animation: rc-spin 1s linear infinite;
+  animation: rc-girar 1s linear infinite;
+}
+
+@keyframes rc-girar {
+  to {
+    transform: rotate(360deg);
+  }
 }

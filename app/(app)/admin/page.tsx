@@ -679,7 +679,7 @@ function GestionAdmin() {
                   <span style={{ fontSize: "var(--rc-fs-titulo-seccion)", fontWeight: 600, color: "var(--rc-texto)" }}>
                     Período de análisis
                   </span>
-                  <div className={styles.statsPresetsBar} role="tablist">
+                  <div className="rc-segmentos" role="tablist" aria-label="Período de análisis">
                     {(
                       [
                         { id: "hoy", label: "Hoy" },
@@ -696,20 +696,7 @@ function GestionAdmin() {
                         type="button"
                         role="tab"
                         aria-selected={presetStats === p.id}
-                        style={{
-                          background: presetStats === p.id ? "var(--rc-luz)" : "transparent",
-                          color: presetStats === p.id ? "var(--rc-azul-texto)" : "var(--rc-texto-secundario)",
-                          fontWeight: presetStats === p.id ? 600 : 500,
-                          border: "none",
-                          borderRadius: "var(--rc-radio-sm)",
-                          padding: "4px 8px",
-                          fontSize: "var(--rc-fs-etiqueta)",
-                          cursor: "pointer",
-                          height: "26px",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          boxShadow: presetStats === p.id ? "0 1px 3px rgba(31, 36, 48, 0.12)" : "none",
-                        }}
+                        className="rc-segmento"
                         onClick={() => {
                           setPresetStats(p.id);
                           if (p.id !== "personalizado") {
@@ -983,7 +970,7 @@ function GestionAdmin() {
                                       <span>
                                         {linea.titulo} ({linea.tipo?.nombre})
                                       </span>
-                                      <span style={{ fontWeight: "var(--rc-fw-medium)" }}>
+                                      <span style={{ fontWeight: "var(--rc-fw-medio)" }}>
                                         $ {(linea.precio_congelado || 0).toLocaleString("es-CO")}
                                       </span>
                                     </div>
@@ -1081,12 +1068,10 @@ function GestionAdmin() {
                                           key={rol.id}
                                           type="button"
                                           className={`${styles.roleToggle} ${seleccionado ? styles.roleToggleActive : ""}`}
-                                          style={{
-                                            borderLeft: seleccionado ? `3px solid ${rol.color}` : "none",
-                                            color: seleccionado ? "var(--rc-gris-900)" : "inherit",
-                                          }}
+                                          aria-pressed={seleccionado}
                                           onClick={() => handleToggleRolPendiente(m.id, rol.id)}
                                         >
+                                          <span className="rc-punto" style={{ background: seleccionado ? rol.color : "var(--rc-gris-300)" }} aria-hidden="true" />
                                           {rol.nombre}
                                         </button>
                                       );
@@ -1129,12 +1114,10 @@ function GestionAdmin() {
                                       key={rol.id}
                                       type="button"
                                       className={`${styles.roleToggle} ${seleccionado ? styles.roleToggleActive : ""}`}
-                                      style={{
-                                        borderLeft: seleccionado ? `3px solid ${rol.color}` : "none",
-                                        color: seleccionado ? "var(--rc-gris-900)" : "inherit",
-                                      }}
+                                      aria-pressed={seleccionado}
                                       onClick={() => handleToggleRolPendiente(m.id, rol.id)}
                                     >
+                                      <span className="rc-punto" style={{ background: seleccionado ? rol.color : "var(--rc-gris-300)" }} aria-hidden="true" />
                                       {rol.nombre}
                                     </button>
                                   );
@@ -1198,12 +1181,10 @@ function GestionAdmin() {
                                         key={rol.id}
                                         type="button"
                                         className={`${styles.roleToggle} ${activo ? styles.roleToggleActive : ""}`}
-                                        style={{
-                                          borderLeft: activo ? `3px solid ${rol.color}` : "none",
-                                          color: activo ? "var(--rc-gris-900)" : "inherit",
-                                        }}
+                                        aria-pressed={activo}
                                         onClick={() => handleToggleRol(m, rol.id)}
                                       >
+                                        <span className="rc-punto" style={{ background: activo ? rol.color : "var(--rc-gris-300)" }} aria-hidden="true" />
                                         {rol.nombre}
                                       </button>
                                     );
@@ -1214,11 +1195,9 @@ function GestionAdmin() {
                               <button
                                 type="button"
                                 className={`${styles.roleToggle} ${m.es_admin ? styles.roleToggleActive : ""}`}
+                                aria-pressed={m.es_admin}
                                 style={{
-                                  borderLeft: m.es_admin ? "3px solid #7C3AED" : "none",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "4px",
+                                  color: m.es_admin ? "var(--rc-morado)" : undefined,
                                 }}
                                 onClick={() => handleToggleAdmin(m.id, m.es_admin)}
                               >
@@ -1275,12 +1254,10 @@ function GestionAdmin() {
                                     key={rol.id}
                                     type="button"
                                     className={`${styles.roleToggle} ${activo ? styles.roleToggleActive : ""}`}
-                                    style={{
-                                      borderLeft: activo ? `3px solid ${rol.color}` : "none",
-                                      color: activo ? "var(--rc-gris-900)" : "inherit",
-                                    }}
+                                    aria-pressed={activo}
                                     onClick={() => handleToggleRol(m, rol.id)}
                                   >
+                                    <span className="rc-punto" style={{ background: activo ? rol.color : "var(--rc-gris-300)" }} aria-hidden="true" />
                                     {rol.nombre}
                                   </button>
                                 );
@@ -1291,11 +1268,9 @@ function GestionAdmin() {
                           <button
                             type="button"
                             className={`${styles.roleToggle} ${m.es_admin ? styles.roleToggleActive : ""}`}
+                            aria-pressed={m.es_admin}
                             style={{
-                              borderLeft: m.es_admin ? "3px solid #7C3AED" : "none",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
+                              color: m.es_admin ? "var(--rc-morado)" : undefined,
                             }}
                             onClick={() => handleToggleAdmin(m.id, m.es_admin)}
                           >

@@ -39,11 +39,11 @@
   right: 8px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   width: min(320px, calc(100vw - 24px));
-  z-index: calc(var(--rc-z-pill) + 2);
+  z-index: var(--rc-z-sheet);
   padding: var(--rc-esp-12);
   overflow-y: auto;
   border-radius: var(--rc-radio-lg);
-  border: 1px solid var(--rc-gris-100);
+  border: 1px solid transparent;
   background: var(--rc-superficie);
   box-shadow: var(--rc-elev-relieve-lg);
 }
@@ -51,8 +51,8 @@
 .fondo {
   position: fixed;
   inset: 0;
-  z-index: calc(var(--rc-z-pill) + 1);
-  background: rgba(31, 36, 48, 0.3);
+  z-index: calc(var(--rc-z-sheet) - 1);
+  background: rgba(16, 20, 30, 0.35);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
 }
@@ -80,19 +80,24 @@
 .iconoBoton {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: var(--rc-radio-pildora);
-  background: none;
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
   color: var(--rc-icono);
   cursor: pointer;
-  transition: background var(--rc-transicion-rapida), color var(--rc-transicion-rapida);
+  transition: box-shadow var(--rc-transicion-rapida), color var(--rc-transicion-rapida);
 }
 
 .iconoBoton:hover {
   color: var(--rc-gris-900);
-  background: var(--rc-gris-50);
+  background: var(--rc-azul-suave);
+}
+
+.iconoBoton:active {
+  box-shadow: var(--rc-elev-hundido-sm);
 }
 
 .tarjeta {
@@ -284,7 +289,7 @@
 
 @media (max-width: 767px) {
   .barra.abierta {
-    top: calc(env(safe-area-inset-top, 0px) + 52px);
+    top: calc(env(safe-area-inset-top, 0px) + 56px);
     width: calc(100vw - 16px);
     right: 8px;
   }

@@ -27,6 +27,7 @@ import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
 import { EnlaceDrive, errorEnlaceDrive } from "@/components/ui/EnlaceDrive";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { useAviso } from "@/components/ui/Aviso";
 import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
 import { AdjuntosRechazoVista } from "@/components/AdjuntosAsignacion";
@@ -380,9 +381,7 @@ export function MisTareas() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Mis tareas</h1>
-      </div>
+      <CabeceraPagina titulo="Mis tareas" />
 
       {cargando ? (
         <div style={{ maxWidth: 640, margin: "2rem auto", width: "100%" }}>

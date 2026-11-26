@@ -34,7 +34,7 @@ export function Tarjeta({
             strokeWidth="2"
             strokeLinecap="round"
           />
-          <circle cx="33" cy="31" r="5" fill="#ECEEF3" stroke="currentColor" strokeWidth="2" />
+          <circle cx="33" cy="31" r="5" fill="var(--rc-superficie)" stroke="currentColor" strokeWidth="2" />
           <path d="M36.5 34.5L40 38" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
         {children ? (

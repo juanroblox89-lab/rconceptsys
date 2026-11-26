@@ -30,10 +30,10 @@
 .infoBoton {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   flex: none;
-  border: 1px solid var(--rc-gris-100);
+  border: 1px solid transparent;
   border-radius: var(--rc-radio-pildora);
   background: var(--rc-superficie);
   box-shadow: var(--rc-elev-relieve-sm);
@@ -296,9 +296,10 @@
 }
 
 .composerWrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: var(--rc-esp-8) var(--rc-esp-16) var(--rc-esp-12);
+  padding: var(--rc-esp-8) var(--rc-esp-16) max(var(--rc-esp-12), env(safe-area-inset-bottom, 0px));
   background-color: var(--rc-superficie);
   border-top: 1px solid var(--rc-gris-100);
 }
