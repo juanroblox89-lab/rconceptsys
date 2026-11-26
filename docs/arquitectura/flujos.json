@@ -712,15 +712,17 @@
     {
       "id": "adjuntos-asignacion-f10",
       "nombre": "Adjuntos privados de la asignación",
-      "descripcion": "Imágenes, videos y audio en Supabase Storage, independientes de Drive. Resumen de audio opcional.",
+      "descripcion": "Imágenes, videos y audio en Supabase Storage, independientes de Drive. Resumen inmediato en borrador y al pulsar en audio guardado.",
       "pasos": [
-        { "orden": 1, "archivo_funcion": "components/AdjuntosAsignacion.tsx:EditorAdjuntos", "descripcion": "Selección, vista previa local, grabación con MediaRecorder y opt-in por audio." },
-        { "orden": 2, "archivo_funcion": "lib/adjuntos-asignacion.ts:subirAdjunto", "descripcion": "Después de guardar el trabajo, carga piezas binarias de 2 MiB y muestra avance." },
-        { "orden": 3, "archivo_funcion": "supabase/migrations/023_asignaciones_adjuntos.sql:rc_reservar_adjunto", "descripcion": "Reserva un cupo entre diez de forma atómica para un trabajo editable." },
-        { "orden": 4, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto", "descripcion": "Valida el contenido, guarda el original en el bucket privado y encola el resumen si está habilitado." },
-        { "orden": 5, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:procesarResumenPendiente", "descripcion": "El cron protegido reclama la cola; intenta Gemini Flash, luego NVIDIA ASR y el respaldo de texto de RIA." },
-        { "orden": 6, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto", "descripcion": "Revalida admin/asignado y emite firma temporal de Supabase para un adjunto de ese trabajo." },
-        { "orden": 7, "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosGuardados", "descripcion": "Muestra vista previa, descarga, estados, viñetas, transcripción plegable y reintento." }
+        { "orden": 1, "archivo_funcion": "components/AdjuntosAsignacion.tsx:EditorAdjuntos", "descripcion": "Selección (con detección EBML de audio WebM), vista previa local, grabación con MediaRecorder y resumen inmediato en borrador." },
+        { "orden": 2, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleResumenBorradorDirecto", "descripcion": "Resume un audio en borrador (directo hasta 2 MiB o por partes) sin guardar el trabajo y devuelve token firmado." },
+        { "orden": 3, "archivo_funcion": "lib/adjuntos-asignacion.ts:subirAdjunto", "descripcion": "Después de guardar el trabajo, carga piezas binarias de 2 MiB, muestra avance y reutiliza el resumen de borrador si existe." },
+        { "orden": 4, "archivo_funcion": "supabase/migrations/023_asignaciones_adjuntos.sql:rc_reservar_adjunto", "descripcion": "Reserva un cupo entre diez de forma atómica para un trabajo editable." },
+        { "orden": 5, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto", "descripcion": "Valida el contenido, guarda el original en el bucket privado y aplica el resumen del borrador o lo marca pendiente." },
+        { "orden": 6, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleProcesarResumenAdjunto", "descripcion": "Procesa de inmediato audios guardados pendientes con reclamo atómico sin duplicados (Gemini vía 9router, respaldo NVIDIA Omni con reempaque WebM→Ogg Opus y texto de RIA)." },
+        { "orden": 7, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:procesarResumenPendiente", "descripcion": "El cron protegido procesa pendientes rezagados y limpia subidas incompletas." },
+        { "orden": 8, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto", "descripcion": "Revalida admin/asignado y emite firma temporal de Supabase para un adjunto de ese trabajo." },
+        { "orden": 9, "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosGuardados", "descripcion": "Dispara el procesamiento de pendientes, muestra vista previa, descarga, estados, viñetas, transcripción plegable, error legible y reintento." }
       ]
     },
     {

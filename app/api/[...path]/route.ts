@@ -70,8 +70,13 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
   const esRIA = req.method === "POST" && path.length === 1 && path[0] === "ria";
   const controlador = new AbortController();
   const esFinalizarAdjunto = req.method === "POST" && path.length === 6 && path[0] === "admin" && path[1] === "tareas" && path[3] === "adjuntos" && path[5] === "finalizar";
+  const esResumenAdjunto = req.method === "POST" && (
+    (path.length === 5 && path[0] === "tareas" && path[2] === "adjuntos" && path[4] === "procesar-resumen") ||
+    (path.length === 3 && path[0] === "admin" && path[1] === "adjuntos" && path[2] === "resumen-borrador") ||
+    (path.length === 5 && path[0] === "admin" && path[1] === "adjuntos" && path[2] === "borrador" && path[4] === "resumir")
+  );
   const esCronAdjuntos = req.method === "GET" && path.join("/") === "cron/adjuntos";
-  const temporizador = setTimeout(() => controlador.abort(), esCronAdjuntos ? 108_000 : esFinalizarAdjunto ? 92_000 : esRIA ? 75_000 : TIMEOUT_MS);
+  const temporizador = setTimeout(() => controlador.abort(), esCronAdjuntos ? 108_000 : (esFinalizarAdjunto || esResumenAdjunto) ? 92_000 : esRIA ? 75_000 : TIMEOUT_MS);
   try {
     let cuerpo: ArrayBuffer | undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {

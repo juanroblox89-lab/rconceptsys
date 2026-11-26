@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T06:26:50.834Z",
+  "generado_en": "2026-11-26T07:06:09.936Z",
   "version": "1.0",
   "modulos": [
     {
@@ -916,6 +916,34 @@
     },
     {
       "metodo": "POST",
+      "ruta": "/api/tareas/{id}/adjuntos/{adjunto}/procesar-resumen",
+      "handler": "backend/internal/httpapi/asignacion_resumen.go:handleProcesarResumenAdjunto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleProcesarResumenAdjunto",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/admin/adjuntos/resumen-borrador",
+      "handler": "backend/internal/httpapi/asignacion_resumen.go:handleResumenBorradorDirecto",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleResumenBorradorDirecto",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "PUT",
+      "ruta": "/api/admin/adjuntos/borrador/{borrador}/partes/{parte}",
+      "handler": "backend/internal/httpapi/asignacion_resumen.go:handleParteBorrador",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleParteBorrador",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/admin/adjuntos/borrador/{borrador}/resumir",
+      "handler": "backend/internal/httpapi/asignacion_resumen.go:handleResumirBorradorPartes",
+      "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleResumirBorradorPartes",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "POST",
       "ruta": "/api/admin/tareas/{id}/adjuntos",
       "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleReservarAdjunto",
       "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleReservarAdjunto",
@@ -1336,9 +1364,11 @@
   ],
   "variables_entorno": [
     "ADMIN_EMAILS",
+    "ASIGNACIONES_ASR_NVIDIA_URL",
     "ASIGNACIONES_FORMATO_AUDIO_9ROUTER",
     "ASIGNACIONES_MODELO_ASR_NVIDIA",
     "ASIGNACIONES_MODELO_AUDIO_9ROUTER",
+    "ASIGNACIONES_MODELO_AUDIO_NVIDIA",
     "ASISTENTE_TOPE_DIA",
     "BACKEND_URL",
     "CRON_SECRET",
@@ -1366,6 +1396,11 @@
     "QA_MODE",
     "QA_WIDTH",
     "RC_MODO_DEMO",
+    "RC_SONDA_REAL",
+    "RC_SONDA_WEBM_SILENCIO",
+    "RC_SONDA_WEBM_VOZ",
+    "RC_TEST_OGG_OUT",
+    "RC_TEST_WEBM_REAL",
     "RIA_MODELO_RESPALDO",
     "SUPABASE_ANON_KEY",
     "SUPABASE_DB_URL",
@@ -2090,42 +2125,52 @@
     {
       "id": "adjuntos-asignacion-f10",
       "nombre": "Adjuntos privados de la asignación",
-      "descripcion": "Imágenes, videos y audio en Supabase Storage, independientes de Drive. Resumen de audio opcional.",
+      "descripcion": "Imágenes, videos y audio en Supabase Storage, independientes de Drive. Resumen inmediato en borrador y al pulsar en audio guardado.",
       "pasos": [
         {
           "orden": 1,
           "archivo_funcion": "components/AdjuntosAsignacion.tsx:EditorAdjuntos",
-          "descripcion": "Selección, vista previa local, grabación con MediaRecorder y opt-in por audio."
+          "descripcion": "Selección (con detección EBML de audio WebM), vista previa local, grabación con MediaRecorder y resumen inmediato en borrador."
         },
         {
           "orden": 2,
-          "archivo_funcion": "lib/adjuntos-asignacion.ts:subirAdjunto",
-          "descripcion": "Después de guardar el trabajo, carga piezas binarias de 2 MiB y muestra avance."
+          "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleResumenBorradorDirecto",
+          "descripcion": "Resume un audio en borrador (directo hasta 2 MiB o por partes) sin guardar el trabajo y devuelve token firmado."
         },
         {
           "orden": 3,
+          "archivo_funcion": "lib/adjuntos-asignacion.ts:subirAdjunto",
+          "descripcion": "Después de guardar el trabajo, carga piezas binarias de 2 MiB, muestra avance y reutiliza el resumen de borrador si existe."
+        },
+        {
+          "orden": 4,
           "archivo_funcion": "supabase/migrations/023_asignaciones_adjuntos.sql:rc_reservar_adjunto",
           "descripcion": "Reserva un cupo entre diez de forma atómica para un trabajo editable."
         },
         {
-          "orden": 4,
-          "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto",
-          "descripcion": "Valida el contenido, guarda el original en el bucket privado y encola el resumen si está habilitado."
-        },
-        {
           "orden": 5,
-          "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:procesarResumenPendiente",
-          "descripcion": "El cron protegido reclama la cola; intenta Gemini Flash, luego NVIDIA ASR y el respaldo de texto de RIA."
+          "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto",
+          "descripcion": "Valida el contenido, guarda el original en el bucket privado y aplica el resumen del borrador o lo marca pendiente."
         },
         {
           "orden": 6,
+          "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleProcesarResumenAdjunto",
+          "descripcion": "Procesa de inmediato audios guardados pendientes con reclamo atómico sin duplicados (Gemini vía 9router, respaldo NVIDIA Omni con reempaque WebM→Ogg Opus y texto de RIA)."
+        },
+        {
+          "orden": 7,
+          "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:procesarResumenPendiente",
+          "descripcion": "El cron protegido procesa pendientes rezagados y limpia subidas incompletas."
+        },
+        {
+          "orden": 8,
           "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto",
           "descripcion": "Revalida admin/asignado y emite firma temporal de Supabase para un adjunto de ese trabajo."
         },
         {
-          "orden": 7,
+          "orden": 9,
           "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosGuardados",
-          "descripcion": "Muestra vista previa, descarga, estados, viñetas, transcripción plegable y reintento."
+          "descripcion": "Dispara el procesamiento de pendientes, muestra vista previa, descarga, estados, viñetas, transcripción plegable, error legible y reintento."
         }
       ]
     },
@@ -2463,5 +2508,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "47d8b68ca5ede2c62b891676c4b1c96dbf567086"
+  "commit_hash": "f849d6ac6eba7d5fd863fc2c563f1325b5020bb3"
 }

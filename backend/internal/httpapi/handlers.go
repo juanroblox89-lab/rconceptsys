@@ -25,6 +25,7 @@ type API struct {
 	AuthLimiter    *RateLimiter
 	ModoDemoActivo bool
 	F5             *EstadoF5
+	claveBorrador  []byte
 }
 
 func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
@@ -35,6 +36,7 @@ func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
 		AuthLimiter:    NewRateLimiter(25, 5*time.Minute), // 25 intentos por 5 minutos por IP o correo
 		ModoDemoActivo: modoDemoActivo,
 		F5:             NuevoEstadoF5(),
+		claveBorrador:  claveBorradorResumen(),
 	}
 }
 
@@ -192,6 +194,10 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /api/tareas/{id}/adjuntos/{adjunto}/firma", a.MiddlewareAuth(a.handleFirmarAdjunto, true, false))
 	mux.HandleFunc("GET /api/tareas/{id}/adjuntos/{adjunto}/medio", a.MiddlewareAuth(a.handleMedioDemoAdjunto, true, false))
 	mux.HandleFunc("POST /api/tareas/{id}/adjuntos/{adjunto}/reintentar", a.MiddlewareAuth(a.handleReintentarResumenAdjunto, true, false))
+	mux.HandleFunc("POST /api/tareas/{id}/adjuntos/{adjunto}/procesar-resumen", a.MiddlewareAuth(a.handleProcesarResumenAdjunto, true, false))
+	mux.HandleFunc("POST /api/admin/adjuntos/resumen-borrador", a.MiddlewareAuth(a.handleResumenBorradorDirecto, true, true))
+	mux.HandleFunc("PUT /api/admin/adjuntos/borrador/{borrador}/partes/{parte}", a.MiddlewareAuth(a.handleParteBorrador, true, true))
+	mux.HandleFunc("POST /api/admin/adjuntos/borrador/{borrador}/resumir", a.MiddlewareAuth(a.handleResumirBorradorPartes, true, true))
 	mux.HandleFunc("POST /api/admin/tareas/{id}/adjuntos", a.MiddlewareAuth(a.handleReservarAdjunto, true, true))
 	mux.HandleFunc("PUT /api/admin/tareas/{id}/adjuntos/{adjunto}/partes/{parte}", a.MiddlewareAuth(a.handleParteAdjunto, true, true))
 	mux.HandleFunc("POST /api/admin/tareas/{id}/adjuntos/{adjunto}/finalizar", a.MiddlewareAuth(a.handleFinalizarAdjunto, true, true))
