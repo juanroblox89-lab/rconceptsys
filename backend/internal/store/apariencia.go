@@ -20,7 +20,7 @@ type Apariencia struct {
 }
 
 func AparienciaInicial() Apariencia {
-	return Apariencia{Modo: "sistema", Tema: "rconcept", Movimiento: "sistema", Oscurecido: 5}
+	return Apariencia{Modo: "claro", Tema: "rconcept", Movimiento: "sistema", Oscurecido: 5}
 }
 
 type StoreApariencia interface {

@@ -12,11 +12,12 @@ export default function PendientePage() {
   const router = useRouter();
   const [comprobando, setComprobando] = useState(false);
 
-  // Polling automático cada 4 segundos
+  // Polling automático cada 15 segundos solo si la pestaña está visible
   useEffect(() => {
     let activo = true;
 
     const verificar = async () => {
+      if (document.hidden) return;
       try {
         const perfil = await api.getYo();
         if (perfil.estado === "aprobado" && activo) {
@@ -27,7 +28,7 @@ export default function PendientePage() {
       }
     };
 
-    const interval = setInterval(verificar, 4000);
+    const interval = setInterval(verificar, 15000);
     return () => {
       activo = false;
       clearInterval(interval);

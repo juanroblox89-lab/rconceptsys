@@ -22,9 +22,16 @@ export function CampanaNotificaciones({ barra = false }: { barra?: boolean }) {
     try { setDatos(await api.getNotificaciones()); setError(false); } catch { setError(true); }
   }, []);
   useEffect(() => {
-    const visible = () => { if (!document.hidden) void cargar(); };
+    let ultima = 0;
+    const visible = () => {
+      if (document.hidden) return;
+      const ahora = Date.now();
+      if (ahora - ultima < 30000) return;
+      ultima = ahora;
+      void cargar();
+    };
     visible();
-    const timer = setInterval(visible, 30000);
+    const timer = setInterval(visible, 120000);
     document.addEventListener("visibilitychange", visible);
     return () => { clearInterval(timer); document.removeEventListener("visibilitychange", visible); };
   }, [cargar]);
