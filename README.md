@@ -101,3 +101,9 @@ npx next start -p 3310
 - El fondo queda nítido alrededor del panel. Las tarjetas dan contraste al texto sin agregar desenfoque; los paneles flotantes son casi opacos.
 - Los perfiles nuevos empiezan con 5% de oscurecido. Cambia el valor en **Personalización → Fondo Glass**. Los porcentajes guardados no se reemplazan.
 - En Glass, escribe `/` en RIA o en el chat del equipo para ver las rutas disponibles para tu rol. **Enter** abre la sugerencia; **Escape** cierra la lista y permite enviar el comando como enlace con Enter. QA local: `node scripts/qa-f12-comandos.mjs` con un único Next oculto en `127.0.0.1:3332`.
+
+## 12. Pedir de nuevo un trabajo
+
+- Administración puede reabrir un trabajo aprobado desde Tareas, su detalle, el historial de la persona o el cliente. Gestión → Facturas enlaza al detalle desde una factura abierta. El trabajo vuelve a pendiente, conserva el historial de la entrega y sale de la factura abierta; no se permite reabrir uno ya pagado.
+- El asignado y los demás admins reciben «Trabajo para rehacer», salvo quien ejecutó la acción. Configuración controla este aviso y los de cancelación o reasignación.
+- Aplicar [027](supabase/migrations/027_pedido_de_nuevo.sql) antes de desplegar el backend. No hace falta una RPC nueva ni mover archivos de Drive.

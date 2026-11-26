@@ -294,7 +294,7 @@ export interface TareaHistorialItem {
   tarea_id: number;
   actor_id?: string | null;
   actor_nombre?: string;
-  evento: 'entrega_enviada' | 'entrega_retirada' | 'entrega_rechazada' | 'entrega_aceptada';
+  evento: 'entrega_enviada' | 'entrega_retirada' | 'entrega_rechazada' | 'entrega_aceptada' | 'pedido_de_nuevo';
   detalle: string;
   metodo_entrega?: MetodoEntrega | null;
   enlace_medios?: string | null;

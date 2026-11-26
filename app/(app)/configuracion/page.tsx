@@ -14,11 +14,9 @@ import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import styles from "@/components/FlujoTrabajo.module.css";
 import conf from "./configuracion.module.css";
 
-const tipos: Array<[string, string]> = [
-  ["tarea-nueva", "Trabajo asignado"], ["tarea-editada", "Trabajo actualizado"], ["chat", "Mensajes del equipo"], ["drive", "Cambios en Drive"], ["ria", "Respuesta de RIA"],
-  ["entrega-hecha", "Entrega por revisar"], ["entrega-aprobada", "Entrega aprobada"], ["entrega-devuelta", "Entrega devuelta"], ["vence-manana", "Vence mañana"], ["vencio", "Trabajo vencido"],
-  ["corte-listo", "Corte listo"], ["corte-pagado", "Corte pagado"], ["solicitud", "Solicitud para unirse"],
-];
+import { tiposAviso } from "@/lib/tipos-aviso";
+
+const tipos = Object.entries(tiposAviso);
 
 export default function ConfiguracionPage() {
   const [prefs, setPrefs] = useState<PreferenciasNotificaciones | null>(null);

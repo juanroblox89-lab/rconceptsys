@@ -508,6 +508,8 @@ export const api = {
         ...(driveAdjuntos && driveAdjuntos.length > 0 ? { drive_adjuntos: driveAdjuntos } : {}),
       }),
     }),
+  adminPedirDeNuevoTarea: (id: number, motivo?: string) =>
+    fetchApi<Tarea>(`/api/admin/tareas/${id}/pedir-de-nuevo`, { method: 'POST', body: JSON.stringify({ motivo }) }),
   adminCancelarTarea: (id: number) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/cancelar`, { method: 'POST' }),
 

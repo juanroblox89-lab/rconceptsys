@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Receipt, ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "@/lib/api";
 import { CortePropio } from "@/components/CortePropio";
+import { usePerfilActual } from "@/components/AppShell";
+import Link from "next/link";
 import { FacturaMiaRespuesta } from "@/lib/types";
 import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Chip } from "@/components/ui/Chip";
@@ -14,6 +16,8 @@ import { useAviso } from "@/components/ui/Aviso";
 import styles from "./factura.module.css";
 
 export default function MiFacturaPage() {
+  const perfil = usePerfilActual();
+  const admin = perfil?.es_admin === true && perfil.estado === "aprobado";
   const [datos, setDatos] = useState<FacturaMiaRespuesta | null>(null);
   const [cargando, setCargando] = useState(true);
   const [facturaExpandida, setFacturaExpandida] = useState<number | null>(null);
@@ -68,7 +72,7 @@ export default function MiFacturaPage() {
 
   return (
     <div className={styles.container}>
-      <CabeceraPagina titulo="Mi factura" />
+      <CabeceraPagina titulo="Mi factura" acciones={admin && <Link className="rc-btn rc-btn--secundario rc-btn--sm" href="/admin?pestana=facturas">Ver facturas del equipo</Link>} />
 
       <CortePropio />
       {cargando ? (
@@ -143,7 +147,7 @@ export default function MiFacturaPage() {
                             </div>
                           </td>
                           <td>
-                            <strong>{t.titulo}</strong>
+                            <strong>{admin ? <Link href={`/trabajos/${t.id}?origen=factura`}>{t.titulo}</Link> : t.titulo}</strong>
                           </td>
                           <td style={{ textAlign: "right" }}>
                             <span className={styles.monto}>
@@ -163,7 +167,7 @@ export default function MiFacturaPage() {
                   {lineas.map((t) => (
                     <article key={t.id} className={styles.lineaCard}>
                       <div className={styles.lineaCardTop}>
-                        <strong>{t.titulo}</strong>
+                        <strong>{admin ? <Link href={`/trabajos/${t.id}?origen=factura`}>{t.titulo}</Link> : t.titulo}</strong>
                         <span className={styles.lineaCardPrecio}>
                           {t.tipo?.unidad === "minuto" && t.cantidad_aceptada && t.precio_unitario_congelado
                             ? `${t.cantidad_aceptada} min × $ ${t.precio_unitario_congelado.toLocaleString("es-CO")} = $ ${(t.precio_congelado || 0).toLocaleString("es-CO")}`

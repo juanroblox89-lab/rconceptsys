@@ -15,6 +15,7 @@ import estilosTarea from "@/app/(app)/tareas/tareas.module.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FilaTrabajo } from "@/components/FilaTrabajo";
+import { BotonPedirDeNuevo, ModalPedirDeNuevo } from "@/components/PedirDeNuevoTrabajo";
 import flujo from "@/components/FlujoTrabajo.module.css";
 import {
   Perfil,
@@ -51,6 +52,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
 
   const [miembros, setMiembros] = useState<Perfil[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
+  const [tareaAReabrir, setTareaAReabrir] = useState<Tarea | null>(null);
 
   // Filtros
   const [filtroPersona, setFiltroPersona] = useState<string>("");
@@ -509,7 +511,8 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
             ) : (
               <ul className={flujo.listaTrabajos}>
                 {tareasFiltradas.map(t => <FilaTrabajo key={t.id} tarea={t} origen={embedded ? "admin" : "tareas"}
-                  id={t.estado === "hecha" ? undefined : `tarea-${t.id}`} resaltado={destino === String(t.id)} />)}
+                  id={t.estado === "hecha" ? undefined : `tarea-${t.id}`} resaltado={destino === String(t.id)}
+                  accion={t.estado === "aceptada" && <BotonPedirDeNuevo id={t.id} onClick={() => setTareaAReabrir(t)} />} />)}
               </ul>
             )}
           </section>
@@ -519,6 +522,11 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       {/* ========================================================= */}
       {/* MODAL: ACEPTAR TAREA (con ajuste de minutos si aplica)    */}
       {/* ========================================================= */}
+      {tareaAReabrir && <ModalPedirDeNuevo tarea={tareaAReabrir} onCerrar={() => setTareaAReabrir(null)} onGuardado={actual => {
+        setTareas(prev => prev.map(t => t.id === actual.id ? actual : t));
+        setTareaAReabrir(null);
+        mostrarAviso({ tipo: "exito", titulo: "El trabajo volvió a pendiente" });
+      }} />}
       {modalAceptarTarea && (
         <Modal
           abierto={true}

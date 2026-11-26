@@ -211,4 +211,13 @@ test("RoadmapHistorial construye flujo cronológico completo con flechas, notas 
   assert.ok(html.includes("roadmapConector"));
   assert.ok(html.includes("roadmapFlechaDer"));
   assert.ok(html.includes("roadmapFlechaAbajo"));
+
+  const reabierta: Tarea = { ...tarea, estado: "pendiente", precio_congelado: null, historial: [
+    ...(tarea.historial ?? []),
+    { id: 5, tarea_id: tarea.id, evento: "pedido_de_nuevo", detalle: "Se pidió rehacer", motivo: "Cambiar el cierre", creado_en: "2026-11-25T16:00:00Z" },
+  ] };
+  assert.equal(construirPasosRoadmap(reabierta).at(-1)?.titulo, "Se pidió rehacer");
+  const htmlReapertura = renderToStaticMarkup(React.createElement(RoadmapHistorial, { tarea: reabierta }));
+  assert.match(htmlReapertura, /Cambiar el cierre/);
+  assert.match(htmlReapertura, /drive\.google\.com\/drive\/folders\/ent1/);
 });

@@ -1,3 +1,16 @@
+# Informe · Pedir de nuevo y avisos
+
+**Rama `desde-cero` · cambios locales, sin commit ni push.**
+
+- Un admin puede devolver a pendiente un trabajo aprobado desde Tareas, el detalle, el historial del perfil, la ficha de cliente o el detalle abierto desde Facturas. No se borran entregas: el historial muestra «Se pidió rehacer».
+- La factura abierta pierde la línea y recalcula el total. En el demo pasó de **$18.000 a $9.000 COP**. Si ya consta un pago, la acción se bloquea sin modificar el trabajo.
+- La campana y Configuración incluyen «Trabajo para rehacer» y el aviso de cancelación o reasignación. La reapertura avisa al asignado y a los demás admins, salvo al actor. Cambiar la fecha conserva el aviso existente.
+- [24 capturas de QA](capturas-pedir-de-nuevo/README.md) en 375×812 y 1280×800, claro, oscuro y Glass. Solo se abrió un servidor oculto a la vez; ya está cerrado.
+
+**Para Elías:** validar y aplicar la [migración 027](supabase/migrations/027_pedido_de_nuevo.sql) antes de publicar. El SQL no se ejecutó contra Supabase durante esta sesión. Ver [reporte técnico y hashes](HARNESS-PEDIR-DE-NUEVO.md).
+
+---
+
 # Informe Coherencia Neumórfica y Cero Solapes · RConcept Systems
 
 **Publicado en `desde-cero`:** commit [`fa8f322`](https://github.com/juanroblox89-lab/rconceptsys/commit/fa8f3220b6c3f729828256fefc940526ba916c81) (sin cambios en `main`; solo Elías promueve tras verificar).

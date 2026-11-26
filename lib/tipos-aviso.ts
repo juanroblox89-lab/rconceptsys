@@ -1,0 +1,18 @@
+export const tiposAviso = {
+  "tarea-nueva": "Trabajo asignado",
+  "tarea-editada": "Trabajo actualizado",
+  "tarea-cancelada": "Trabajo cancelado o reasignado",
+  "pedido-de-nuevo": "Trabajo para rehacer",
+  "chat": "Mensajes del equipo",
+  "drive": "Cambios en Drive",
+  "ria": "Respuesta de RIA",
+  "entrega-hecha": "Entrega por revisar",
+  "entrega-retirada": "Entrega retirada",
+  "entrega-aprobada": "Entrega aprobada",
+  "entrega-devuelta": "Entrega devuelta",
+  "vence-manana": "Vence mañana",
+  "vencio": "Trabajo vencido",
+  "corte-listo": "Corte listo",
+  "corte-pagado": "Corte pagado",
+  "solicitud": "Solicitud para unirse",
+} as const;

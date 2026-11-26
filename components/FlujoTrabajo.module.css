@@ -55,7 +55,14 @@
 .estadoTrabajo[data-estado=hecha] { color: var(--rc-azul-texto); background: var(--rc-azul-suave); }
 .estadoTrabajo[data-estado=aceptada] { color: var(--rc-verde-texto); background: var(--rc-verde-suave); }
 .estadoTrabajo[data-estado=vencido], .estadoTrabajo[data-estado=rechazada] { color: var(--rc-rojo-texto); background: var(--rc-rojo-suave); }
-.abrir { grid-area: abrir; min-height: 40px; justify-self: start; }
+.abrir { min-height: 40px; justify-self: start; }
+.filaAcciones { grid-area: abrir; display: flex; flex-wrap: wrap; align-items: center; gap: var(--rc-esp-6); }
+:global([data-rc-shell]) .botonPedirDeNuevo:global(.rc-btn--sm):not(:global(.rc-btn--icono)):not(:global(.rc-btn--cargando)) { min-height: 40px; }
+.formPedirDeNuevo { display: grid; gap: var(--rc-esp-6); margin-top: var(--rc-esp-12); }
+.formPedirDeNuevo textarea { min-height: 150px; max-width: 100%; font-size: 16px; }
+@media (max-width: 550px) {
+  .filaTrabajo[data-acciones=true] { grid-template-areas: "titulo estado" "persona persona" "meta meta" "abrir abrir"; }
+}
 @media (min-width: 1000px) {
   .filaTrabajo { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.1fr) 90px auto; grid-template-areas: "titulo persona meta estado abrir"; }
   .panel { padding: var(--rc-esp-20); }

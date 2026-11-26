@@ -20,6 +20,7 @@ import {
   Building2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import Link from "next/link";
 import {
   Perfil,
   Rol,
@@ -232,7 +233,6 @@ function GestionAdmin() {
       const sp = new URLSearchParams(window.location.search);
       const p = sp.has("drive") ? "equipo" : sp.get("pestana");
       const pers = sp.get("persona");
-
       // Si viene a ?pestana=tareas, redirige a la sección propia de /tareas
       if (p === "tareas") {
         const params = new URLSearchParams();
@@ -246,6 +246,7 @@ function GestionAdmin() {
       if (p) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setPestanaActiva(p);
+        if (p === "facturas" && pers) setPersonaExpandida(pers);
         if (p === "estadisticas") {
           if (pers) {
             setFiltroPersonaStats(pers);
@@ -991,7 +992,7 @@ function GestionAdmin() {
                                       }}
                                     >
                                       <span>
-                                        {linea.titulo} ({linea.tipo?.nombre})
+                                        <Link href={`/trabajos/${linea.id}?origen=factura&persona=${encodeURIComponent(rf.perfil_id)}`}>{linea.titulo}</Link> ({linea.tipo?.nombre})
                                       </span>
                                       <span style={{ fontWeight: "var(--rc-fw-medio)" }}>
                                         $ {(linea.precio_congelado || 0).toLocaleString("es-CO")}

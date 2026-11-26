@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T22:12:24.672Z",
+  "generado_en": "2026-11-26T23:00:15.851Z",
   "version": "1.0",
   "modulos": [
     {
@@ -520,6 +520,13 @@
       "ruta": "/api/admin/tareas/{id}/cancelar",
       "handler": "backend/internal/httpapi/handlers.go:handleAdminPostTareaCancelar",
       "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaCancelar",
+      "auth": "solo_admin"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/admin/tareas/{id}/pedir-de-nuevo",
+      "handler": "backend/internal/httpapi/pedido_de_nuevo.go:handleAdminPostTareaPedirDeNuevo",
+      "archivo_funcion": "backend/internal/httpapi/pedido_de_nuevo.go:handleAdminPostTareaPedirDeNuevo",
       "auth": "solo_admin"
     },
     {
@@ -1578,6 +1585,70 @@
       ]
     },
     {
+      "id": "pedir-de-nuevo",
+      "nombre": "Pedir de nuevo un trabajo aprobado",
+      "descripcion": "Administración reabre una entrega aprobada no pagada, conserva su historial y avisa al equipo implicado.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/PedirDeNuevoTrabajo.tsx:ModalPedirDeNuevo",
+          "descripcion": "Confirma desde Tareas, el detalle, el equipo, el cliente o la factura abierta; motivo opcional."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/pedido_de_nuevo.go:handleAdminPostTareaPedirDeNuevo",
+          "descripcion": "POST /api/admin/tareas/{id}/pedir-de-nuevo, solo admin aprobado; máximo 32 KB y motivo de hasta 500 runas."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "backend/internal/supa/store.go:PedirDeNuevoTarea",
+          "descripcion": "PATCH REST a tareas con estado aceptada; 0 filas implica conflicto si la tarea existe."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "supabase/migrations/027_pedido_de_nuevo.sql:rc_registrar_reapertura_tarea",
+          "descripcion": "Valida el corte pagado con bloqueo, archiva la entrega y el evento, limpia la factura y corrige la fecha límite en Bogotá."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/notificaciones_eventos.go:avisarPedidoDeNuevo",
+          "descripcion": "Encola pedido-de-nuevo para el asignado y demás admins, salvo al actor; respeta preferencias."
+        },
+        {
+          "orden": 6,
+          "archivo_funcion": "components/RoadmapHistorial.tsx:construirPasosRoadmap",
+          "descripcion": "Presenta el evento como «Se pidió rehacer» sin perder enlaces ni entregas anteriores."
+        }
+      ]
+    },
+    {
+      "id": "avisos-cancelacion-reasignacion",
+      "nombre": "Avisos de cancelación y reasignación",
+      "descripcion": "El trabajador recibe solo los avisos pertinentes al cambiar el pedido; una reasignación no duplica el aviso de edición.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
+          "descripcion": "Detecta cambio real de asignado, sin duplicar el aviso de cambio de fecha."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/notificaciones_eventos.go:avisarCambioAsignacion",
+          "descripcion": "Encola tarea-nueva al nuevo asignado y tarea-cancelada al anterior."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaCancelar",
+          "descripcion": "Encola tarea-cancelada al asignado cuando el trabajo se cancela."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/store/notificaciones.go:Silencia",
+          "descripcion": "Excluye tipos silenciados en memoria y en el despacho; la RPC de cola de Supabase replica la preferencia."
+        }
+      ]
+    },
+    {
       "id": "notificacion-encolar",
       "nombre": "Notificación: encolar",
       "descripcion": "Cómo se crea una notificación en la bandeja y cola de envío",
@@ -2570,5 +2641,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "c91bf6d7adc099a72bbfe3ed48448e550dc8ac51"
+  "commit_hash": "96fbf06e27f1fe6015040f38e1abdd16921c02f1"
 }

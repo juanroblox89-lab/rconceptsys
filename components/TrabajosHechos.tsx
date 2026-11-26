@@ -4,7 +4,11 @@ import { CampoFecha } from "@/components/ui/CamposEspeciales";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { TrendingUp, Calendar, BarChart3 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api } from '@/lib/api';
+import type { Tarea } from '@/lib/types';
+import { fechaTrabajo } from './FilaTrabajo';
+import { BotonPedirDeNuevo } from './PedirDeNuevoTrabajo';
+import { usePerfilActual } from './AppShell';
 import { Boton } from "@/components/ui/Boton";
 import { Chip } from "@/components/ui/Chip";
 import { Esqueleto } from "@/components/ui/Esqueleto";
@@ -21,6 +25,8 @@ export interface TrabajosHechosProps {
 }
 
 type PresetFecha = "hoy" | "7dias" | "este_mes" | "mes_pasado" | "este_ano" | "todo" | "personalizado";
+
+const fechaCivilBogota = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" });
 
 function formatYMD(d: Date): string {
   const y = d.getFullYear();
@@ -88,6 +94,9 @@ export function TrabajosHechos({
   nombre,
   mostrarEnlaceAdminStats = true,
 }: TrabajosHechosProps) {
+  const perfil = usePerfilActual();
+  const esAdmin = perfil?.es_admin === true && perfil.estado === "aprobado";
+  const [aprobados, setAprobados] = useState<Tarea[]>([]);
   const [datos, setDatos] = useState<DatosTrabajosHechos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,11 +134,14 @@ export function TrabajosHechos({
           });
         } else {
           if (!personaId) return;
-          const res = await api.adminGetEstadisticas({
-            persona_id: personaId,
-            desde: desdeParam,
-            hasta: hastaParam,
-          });
+          const [res, trabajos] = await Promise.all([
+            api.adminGetEstadisticas({ persona_id: personaId, desde: desdeParam, hasta: hastaParam }),
+            esAdmin ? api.adminGetTareas({ persona: personaId, estado: "aceptada" }) : null,
+          ]);
+          setAprobados((trabajos?.tareas ?? []).filter(t => {
+            const fecha = t.resuelta_en && fechaCivilBogota.format(new Date(t.resuelta_en));
+            return (!desdeParam || (fecha && fecha >= desdeParam)) && (!hastaParam || (fecha && fecha <= hastaParam));
+          }));
           setDatos({
             trabajos: res.totales.trabajos,
             minutos: res.totales.minutos,
@@ -153,7 +165,7 @@ export function TrabajosHechos({
         setCargando(false);
       }
     },
-    [modoTipo, personaId]
+    [modoTipo, personaId, esAdmin]
   );
 
   useEffect(() => {
@@ -337,6 +349,18 @@ export function TrabajosHechos({
               <span className={styles.metricaBoxLabel}>Total ganado</span>
             </div>
           </div>
+
+          {esAdmin && personaId && aprobados.length > 0 && <section aria-label="Trabajos aprobados">
+            <h3 className={styles.label}>Trabajos aprobados</h3>
+            <ul className={styles.historialAprobados}>
+              {aprobados.map(t => <li key={t.id} className={styles.itemDesglose}>
+                <div className={styles.itemDesgloseTop}>
+                  <div className={styles.aprobadoTexto}><strong>{t.titulo}</strong><small>{[t.cliente?.nombre, fechaTrabajo(t.resuelta_en)].filter(Boolean).join(" · ")}</small></div>
+                  <BotonPedirDeNuevo id={t.id} origen="equipo" persona={personaId} />
+                </div>
+              </li>)}
+            </ul>
+          </section>}
 
           {/* Desglose por Tipo de Trabajo */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>

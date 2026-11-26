@@ -236,15 +236,18 @@ func (a *API) enviarPush(ctx context.Context, suscripcion *store.SuscripcionPush
 
 // AvisarTareaNueva avisa a la persona asignada que recibió una tarea.
 func (a *API) AvisarTareaNueva(ctx context.Context, tarea *store.Tarea) {
-	if tarea == nil {
-		return
+	if tarea != nil {
+		a.avisarTareaNueva(ctx, tarea, fmt.Sprintf("tarea:%d", tarea.ID))
 	}
+}
+
+func (a *API) avisarTareaNueva(ctx context.Context, tarea *store.Tarea, clave string) {
 	a.avisar(ctx, tarea.AsignadoA, AvisoPush{
 		Titulo:   "Tarea nueva " + FechaEntrega(tarea.FechaLimite, time.Now()),
 		Cuerpo:   datosAvisoTarea(tarea),
-		URL:      fmt.Sprintf("/tareas?tarea=%d#tarea-%d", tarea.ID, tarea.ID),
+		URL:      urlTarea(tarea.ID),
 		Etiqueta: "tarea-nueva",
-	}, fmt.Sprintf("tarea:%d", tarea.ID))
+	}, clave)
 }
 
 // AvisarEntregaAprobada avisa a la persona que su entrega quedó aprobada.
@@ -252,12 +255,16 @@ func (a *API) AvisarEntregaAprobada(ctx context.Context, tarea *store.Tarea) {
 	if tarea == nil {
 		return
 	}
+	clave := fmt.Sprintf("aprobada:%d", tarea.ID)
+	if tarea.ResueltaEn != nil {
+		clave += ":" + tarea.ResueltaEn.UTC().Format(time.RFC3339Nano)
+	}
 	a.avisar(ctx, tarea.AsignadoA, AvisoPush{
 		Titulo:   "Entrega aprobada",
 		Cuerpo:   recortar(tarea.Titulo, 90),
 		URL:      urlTarea(tarea.ID),
 		Etiqueta: "entrega-aprobada",
-	}, fmt.Sprintf("aprobada:%d", tarea.ID))
+	}, clave)
 }
 
 // ---------- Endpoints ----------

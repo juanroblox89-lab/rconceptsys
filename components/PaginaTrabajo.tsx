@@ -15,13 +15,15 @@ import { EstadoTrabajo, fechaTrabajo } from "./FilaTrabajo";
 import { FormularioAsignacion } from "./FormularioAsignacion";
 import { AdjuntosGuardados } from "./AdjuntosAsignacion";
 import { RoadmapHistorial } from "./RoadmapHistorial";
+import { BotonPedirDeNuevo, ModalPedirDeNuevo } from "./PedirDeNuevoTrabajo";
 import { usePerfilActual } from "./AppShell";
 import styles from "./FlujoTrabajo.module.css";
 
-export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { id?: number; origen?: string; persona?: string }) {
+export function PaginaTrabajo({ id, origen = "asignaciones", persona = "", pedir = false }: { id?: number; origen?: string; persona?: string; pedir?: boolean }) {
   const router = useRouter();
   const perfil = usePerfilActual();
-  const admin = perfil?.es_admin === true;
+  const admin = perfil?.es_admin === true && perfil.estado === "aprobado";
+  const [reabrir, setReabrir] = useState(pedir);
   const [respuesta, setRespuesta] = useState<Tarea | string | null>(null);
   const [cambio, setCambio] = useState(0);
   const [confirmar, setConfirmar] = useState(false);
@@ -30,9 +32,10 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
   const [exito, setExito] = useState("");
   const tarea = typeof respuesta === "object" ? respuesta : null;
   const clienteOrigen = /^cliente-(\d+)$/.exec(origen)?.[1];
-  const volver = !admin || origen === "tareas" ? "/tareas" : origen === "admin" ? "/admin?pestana=tareas" :
+  const volver = origen === "factura" ? (admin ? `/admin?pestana=facturas${persona ? `&persona=${encodeURIComponent(persona)}` : ""}` : "/factura") :
+    !admin || origen === "tareas" ? "/tareas" : origen === "admin" ? "/admin?pestana=tareas" :
     origen === "equipo" && persona ? `/equipo/${encodeURIComponent(persona)}` : clienteOrigen ? `/clientes/${clienteOrigen}` : "/asignaciones";
-  const textoVolver = !admin ? "Volver a tareas" : origen === "equipo" ? "Volver al perfil" : clienteOrigen ? "Volver al cliente" : origen === "tareas" || origen === "admin" ? "Volver a tareas" : "Volver a trabajos";
+  const textoVolver = origen === "factura" ? "Volver a facturas" : !admin ? "Volver a tareas" : origen === "equipo" ? "Volver al perfil" : clienteOrigen ? "Volver al cliente" : origen === "tareas" || origen === "admin" ? "Volver a tareas" : "Volver a trabajos";
   const editable = admin && (tarea?.estado === "pendiente" || tarea?.estado === "rechazada");
 
   useEffect(() => {
@@ -67,7 +70,10 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
     <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlace}`} href={volver}><ArrowLeft size={16} aria-hidden="true" />{textoVolver}</Link>
     <header className={styles.cabecera}>
       <div><h1>{id === undefined ? "Asignar trabajo" : tarea?.titulo ?? "Trabajo"}</h1>{tarea?.cliente && <p>{tarea.cliente.nombre}</p>}</div>
-      {tarea && <EstadoTrabajo tarea={tarea} />}
+      {tarea && <div className={styles.acciones}>
+        <EstadoTrabajo tarea={tarea} />
+        {admin && tarea.estado === "aceptada" && <BotonPedirDeNuevo id={tarea.id} onClick={() => setReabrir(true)} />}
+      </div>}
     </header>
     {exito && <p role="status">{exito}</p>}
     {typeof respuesta === "string" ? <div className={styles.panel}><p role="alert" className={styles.error}>{respuesta}</p><Boton variante="secundario" onClick={() => { setRespuesta(null); setCambio(n => n + 1); }}>Reintentar</Boton></div> :
@@ -101,6 +107,11 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
       </section>}
       {editable && <Boton variante="peligro" onClick={() => { setError(""); setConfirmar(true); }}>Cancelar trabajo</Boton>}
     </>}
+    {reabrir && admin && tarea?.estado === "aceptada" && <ModalPedirDeNuevo tarea={tarea} onCerrar={() => setReabrir(false)} onGuardado={actual => {
+      setRespuesta(actual);
+      setReabrir(false);
+      setExito("El trabajo volvió a pendiente.");
+    }} />}
     {confirmar && <Modal className={styles.dialogo} titulo="¿Cancelar este trabajo?" descripcion="Esta acción no se puede deshacer." onCerrar={() => { if (!cancelando) setConfirmar(false); }}
       accionSecundaria={<Boton variante="secundario" disabled={cancelando} onClick={() => setConfirmar(false)}>Conservar trabajo</Boton>}
       accionPrimaria={<Boton variante="peligro" cargando={cancelando} onClick={() => void cancelar()}>Sí, cancelar trabajo</Boton>}>

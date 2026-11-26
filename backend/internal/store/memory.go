@@ -26,18 +26,18 @@ type MemoryStore struct {
 	avatares         map[string][]byte
 
 	// F2 y F3: Clientes, tipos de trabajo, tareas, facturas
-	clientes      map[int]*Cliente
-	nextClienteID int
-	tiposTrabajo  map[int]*TipoTrabajo
-	nextTipoID    int
-	tareas        map[int64]*Tarea
-	nextTareaID   int64
+	clientes        map[int]*Cliente
+	nextClienteID   int
+	tiposTrabajo    map[int]*TipoTrabajo
+	nextTipoID      int
+	tareas          map[int64]*Tarea
+	nextTareaID     int64
 	entregasTareas  map[int64][]*EntregaTarea
 	nextEntregaID   int64
 	historialTareas map[int64][]*TareaHistorialItem
 	nextHistorialID int64
-	facturas      map[int64]*Factura
-	nextFactID    int64
+	facturas        map[int64]*Factura
+	nextFactID      int64
 
 	// F5: equipo, adjuntos del chat, asignaciones, Drive, piezas, cortes y push
 	equipo             ConfigEquipo
@@ -62,25 +62,25 @@ type MemoryStore struct {
 
 func NewMemoryStore() *MemoryStore {
 	m := &MemoryStore{
-		perfiles:      make(map[string]*Perfil),
-		roles:         make(map[int]*Rol),
-		perfilRoles:   make(map[string]map[int]bool),
-		mensajes:      make([]*ChatMensaje, 0),
-		nextRolID:     4,
-		nextMsgID:     1,
-		avatares:      make(map[string][]byte),
-		clientes:      make(map[int]*Cliente),
-		nextClienteID: 1,
-		tiposTrabajo:  make(map[int]*TipoTrabajo),
-		nextTipoID:    4,
-		tareas:        make(map[int64]*Tarea),
-		nextTareaID:   1,
+		perfiles:        make(map[string]*Perfil),
+		roles:           make(map[int]*Rol),
+		perfilRoles:     make(map[string]map[int]bool),
+		mensajes:        make([]*ChatMensaje, 0),
+		nextRolID:       4,
+		nextMsgID:       1,
+		avatares:        make(map[string][]byte),
+		clientes:        make(map[int]*Cliente),
+		nextClienteID:   1,
+		tiposTrabajo:    make(map[int]*TipoTrabajo),
+		nextTipoID:      4,
+		tareas:          make(map[int64]*Tarea),
+		nextTareaID:     1,
 		entregasTareas:  make(map[int64][]*EntregaTarea),
 		nextEntregaID:   1,
 		historialTareas: make(map[int64][]*TareaHistorialItem),
 		nextHistorialID: 1,
-		facturas:      make(map[int64]*Factura),
-		nextFactID:    1,
+		facturas:        make(map[int64]*Factura),
+		nextFactID:      1,
 		equipo: ConfigEquipo{
 			Nombre:      "RConcept Systems",
 			Descripcion: "Producción de contenido para clientes: grabación, edición y publicación.",
@@ -1560,6 +1560,73 @@ func (m *MemoryStore) AceptarTarea(ctx context.Context, id int64, adminID string
 		h.CreadoEn = ahora
 	})
 
+	return m.clonarTareaLocked(t), nil
+}
+
+func (m *MemoryStore) PedirDeNuevoTarea(ctx context.Context, id int64, adminID string, motivo string) (*Tarea, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	admin, ok := m.perfiles[adminID]
+	if !ok || !admin.EsAdmin || admin.Estado != EstadoAprobado {
+		return nil, ErrForbidden
+	}
+	motivo = strings.TrimSpace(motivo)
+	if utf8.RuneCountInString(motivo) > 500 {
+		return nil, ErrValidation
+	}
+	t, ok := m.tareas[id]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	if t.Estado != EstadoTareaAceptada {
+		return nil, ErrConflict
+	}
+	if t.FacturaID != nil {
+		if f := m.facturas[*t.FacturaID]; f != nil && f.Estado == EstadoFacturaPagada {
+			return nil, ErrCortePagado
+		}
+	}
+
+	// El panel de cortes guarda totales por persona y periodo, no IDs de tareas.
+	if t.ResueltaEn != nil {
+		fecha := t.ResueltaEn.In(time.Local).Format("2006-01-02")
+		for _, c := range m.cortes {
+			if fecha < c.Desde || fecha > c.Hasta || t.ResueltaEn.After(c.CreadoEn) {
+				continue
+			}
+			for _, l := range c.Lineas {
+				if l.PerfilID == t.AsignadoA && l.PagadaEn != nil {
+					return nil, ErrCortePagado
+				}
+			}
+		}
+	}
+
+	ahora := time.Now()
+	entregas := m.entregasTareas[id]
+	if len(entregas) > 0 {
+		if e := entregas[len(entregas)-1]; e.Estado == "aceptada" || e.Estado == "activa" {
+			e.Estado = "reabierta"
+		}
+	}
+	m.registrarHistorialLocked(id, &adminID, "pedido_de_nuevo", "Se pidió rehacer", func(h *TareaHistorialItem) {
+		if motivo != "" {
+			h.Motivo = &motivo
+		}
+		h.CreadoEn = ahora
+		// El evento conserva la entrega visible incluso en trabajos anteriores al historial.
+		h.MetodoEntrega, h.EnlaceMedios, h.EntregaNombre, h.EntregaTipo = t.MetodoEntrega, t.EnlaceMedios, t.EntregaNombre, t.EntregaTipo
+		h.Nota, h.Cantidad = t.NotaPersona, t.Cantidad
+	})
+	t.Estado = EstadoTareaPendiente
+	t.CantidadAceptada, t.PrecioUnitarioCongelado, t.PrecioCongelado = nil, nil, nil
+	t.FacturaID, t.ResueltaEn, t.ResueltaPor, t.HechaEn = nil, nil, nil, nil
+	t.MetodoEntrega, t.EnlaceMedios, t.EntregaNombre, t.EntregaTipo = nil, nil, nil, nil
+	t.NotaPersona, t.Cantidad, t.MotivoRechazo = nil, nil, nil
+	if hoy := ahora.In(LocBogota).Format("2006-01-02"); t.FechaLimite != nil && *t.FechaLimite < hoy {
+		t.FechaLimite = &hoy
+	}
 	return m.clonarTareaLocked(t), nil
 }
 

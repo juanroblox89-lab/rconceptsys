@@ -31,6 +31,7 @@
 - `GET /api/admin/trabajos`, `POST /api/admin/trabajos`, `PATCH /api/admin/trabajos/{id}`: consulta y mantiene tipos, unidades y tarifas.
 - `GET /api/admin/estadisticas`: resumen del equipo con filtros configurables.
 - `POST /api/admin/tareas/{id}/aceptar`: aprueba la entrega y congela su precio; `POST /api/admin/tareas/{id}/rechazar`: devuelve con motivo obligatorio y elementos opcionales de Google Drive (`drive_adjuntos`), además de permitir adjuntar audio, imágenes o video en el rechazo usando el pipeline de adjuntos; `POST /api/admin/tareas/{id}/cancelar`: cancela trabajo pendiente.
+- `POST /api/admin/tareas/{id}/pedir-de-nuevo`: devuelve a pendiente un trabajo aprobado que aún no se pagó y avisa al asignado y a los demás admins. **Pedir de nuevo** está en Tareas, el detalle, el historial de la persona y la ficha de cliente; desde Facturas abiertas se accede por el detalle.
 - En la bandeja de revisión de `/tareas`, cada entrega muestra cómo se envió (**Abrir en Drive** o **Entregado por WhatsApp**). Si el trabajador retira una entrega ya abierta para editarla, los administradores que la vieron reciben un aviso.
 - `GET /api/admin/facturas`, `GET /api/admin/facturas/{id}`, `POST /api/admin/facturas/{id}/pagar`: consulta facturas y marca el pago.
 - `GET /api/admin/cortes`, `POST /api/admin/cortes`, `GET /api/admin/cortes/{id}`: consulta o genera cortes. `POST /api/admin/cortes/{id}/lineas/{perfil}/pagar`: marca el pago individual. `GET /api/admin/cortes/{id}/csv` y `GET /api/admin/cortes/{id}/pdf`: exportan el corte.
