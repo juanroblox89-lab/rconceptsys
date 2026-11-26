@@ -30,7 +30,7 @@
 }
 
 @media (hover: none) {
-  .interactivo {
+  :is(.interactivo, .interactivoRIA) {
     -webkit-touch-callout: none;
     user-select: none;
   }

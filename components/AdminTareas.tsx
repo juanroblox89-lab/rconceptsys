@@ -522,8 +522,8 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       {modalAceptarTarea && (
         <Modal
           abierto={true}
-          titulo="Aceptar tarea y congelar valor"
-          descripcion={`Se congelará el precio y se añadirá a la factura abierta de ${modalAceptarTarea.asignado?.nombre || "la persona"}.`}
+          titulo="Anotar tarea en la factura"
+          descripcion={`El valor de esta tarea se anotará en la factura abierta de ${modalAceptarTarea.asignado?.nombre || "la persona"}.`}
           onCerrar={() => setModalAceptarTarea(null)}
           accionPrimaria={
             <Boton
@@ -531,7 +531,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               cargando={aceptandoTarea}
               onClick={handleConfirmarAceptar}
             >
-              Confirmar y congelar
+              Anotar
             </Boton>
           }
           accionSecundaria={
@@ -568,11 +568,11 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                   onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setMinutosAceptarInput(e.target.value)}
                 />
                 <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)" }}>
-                  La persona reportó {modalAceptarTarea.cantidad || 0} min. Puedes corregir los minutos antes de congelar.
+                  La persona reportó {modalAceptarTarea.cantidad || 0} min. Puedes corregir los minutos antes de anotar la tarea.
                 </div>
                 {Boolean(parseInt(minutosAceptarInput, 10)) && (
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--rc-verde-texto)" }}>
-                    Total a congelar: $ {((parseInt(minutosAceptarInput, 10) || 0) * (modalAceptarTarea.tipo?.precio || 0)).toLocaleString("es-CO")}
+                    Total a anotar: $ {((parseInt(minutosAceptarInput, 10) || 0) * (modalAceptarTarea.tipo?.precio || 0)).toLocaleString("es-CO")}
                     <span style={{ fontSize: 11, fontWeight: "normal", color: "var(--rc-texto-secundario)", marginLeft: 6 }}>
                       ({parseInt(minutosAceptarInput, 10)} min × $ {(modalAceptarTarea.tipo?.precio || 0).toLocaleString("es-CO")})
                     </span>
@@ -581,7 +581,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               </div>
             ) : (
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--rc-verde-texto)" }}>
-                Total a congelar: $ {(modalAceptarTarea.tipo?.precio || 0).toLocaleString("es-CO")}
+                Total a anotar: $ {(modalAceptarTarea.tipo?.precio || 0).toLocaleString("es-CO")}
               </div>
             )}
           </div>

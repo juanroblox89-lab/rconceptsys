@@ -125,6 +125,8 @@
   max-width: 78%;
 }
 
+.groupContentRIA { min-width: 0; }
+
 .groupHeader {
   display: flex;
   align-items: center;
