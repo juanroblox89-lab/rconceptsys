@@ -19,9 +19,9 @@
 .progreso::-webkit-progress-value { border-radius: 6px; background: var(--rc-azul-texto); }
 .progreso::-moz-progress-bar { background: var(--rc-azul-texto); }
 .confirmar, .resumen { display: grid; gap: 4px; font-size: 13px; }
-.resumen ul { padding-inline-start: 18px; margin: 0; }
+.resumen ul { list-style: disc; display: grid; gap: 2px; padding-inline-start: 18px; margin: 0; }
 .resumen li { overflow-wrap: anywhere; }
-.resumen p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.resumen p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .visor { width: min(720px, calc(100% - 24px)); max-height: 90dvh; padding: 12px; border: 1px solid var(--rc-border-subtle); border-radius: var(--rc-radio-md); background: var(--rc-superficie-clara); color: var(--rc-texto); }
 .visor::backdrop { background: rgb(0 0 0 / 65%); }
 .visor img { display: block; width: 100%; max-height: 72dvh; object-fit: contain; }

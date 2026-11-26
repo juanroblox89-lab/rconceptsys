@@ -187,6 +187,25 @@ func (m *MemoryStore) ReclamarResumenAdjunto(_ context.Context, intento string) 
 	return copiarAdjunto(elegido), nil
 }
 
+func (m *MemoryStore) ReclamarResumenAdjuntoPorID(_ context.Context, tarea int64, id, intento string) (*AdjuntoAsignacion, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a := m.adjuntosAsignacion[id]
+	if a == nil || a.TareaID != tarea || a.EstadoArchivo != "listo" {
+		return nil, false, ErrNotFound
+	}
+	ahora := time.Now().UTC()
+	if !a.Resumir || a.EstadoResumen == "listo" || a.EstadoResumen == "fallido" || a.EstadoResumen == "sin_resumen" {
+		return copiarAdjunto(a), false, nil
+	}
+	if a.EstadoResumen == "procesando" && a.ResumenHasta != nil && a.ResumenHasta.After(ahora) {
+		return copiarAdjunto(a), false, nil
+	}
+	vence := ahora.Add(3 * time.Minute)
+	a.EstadoResumen, a.ResumenIntento, a.ResumenHasta, a.ErrorResumen, a.ActualizadoEn = "procesando", &intento, &vence, nil, ahora
+	return copiarAdjunto(a), true, nil
+}
+
 func (m *MemoryStore) GuardarObjetoAdjunto(_ context.Context, ruta, _ string, datos []byte, reemplazar bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

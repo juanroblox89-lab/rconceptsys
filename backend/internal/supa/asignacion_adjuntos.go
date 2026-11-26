@@ -108,6 +108,54 @@ func (s *SupabaseStore) ReclamarResumenAdjunto(ctx context.Context, intento stri
 	return primeraFilaAdjunto(filas, err)
 }
 
+func (s *SupabaseStore) ReclamarResumenAdjuntoPorID(ctx context.Context, tarea int64, id, intento string) (*store.AdjuntoAsignacion, bool, error) {
+	ahora := time.Now().UTC()
+	vence := ahora.Add(3 * time.Minute)
+	campos := map[string]any{
+		"estado_resumen":  "procesando",
+		"resumen_intento": intento,
+		"resumen_hasta":   vence,
+		"actualizado_en":  ahora,
+	}
+	q := filtrosAdjunto(tarea, id)
+	q.Set("estado_archivo", "eq.listo")
+	q.Set("resumir", "eq.true")
+	q.Set("estado_resumen", "eq.pendiente")
+	var filas []*store.AdjuntoAsignacion
+	if err := s.client.REST(ctx, http.MethodPatch, tablaAdjuntos, q, campos, "return=representation", &filas); err != nil {
+		return nil, false, err
+	}
+	if len(filas) > 0 {
+		return filas[0], true, nil
+	}
+	actual, err := s.ObtenerAdjunto(ctx, tarea, id)
+	if err != nil {
+		return nil, false, err
+	}
+	if actual.EstadoArchivo != "listo" {
+		return nil, false, store.ErrNotFound
+	}
+	if actual.Resumir && actual.EstadoResumen == "procesando" && (actual.ResumenHasta == nil || !actual.ResumenHasta.After(ahora)) && actual.ResumenIntento != nil {
+		qExp := filtrosAdjunto(tarea, id)
+		qExp.Set("estado_archivo", "eq.listo")
+		qExp.Set("resumir", "eq.true")
+		qExp.Set("estado_resumen", "eq.procesando")
+		qExp.Set("resumen_intento", "eq."+*actual.ResumenIntento)
+		var filasExp []*store.AdjuntoAsignacion
+		if err := s.client.REST(ctx, http.MethodPatch, tablaAdjuntos, qExp, campos, "return=representation", &filasExp); err != nil {
+			return nil, false, err
+		}
+		if len(filasExp) > 0 {
+			return filasExp[0], true, nil
+		}
+		actual, err = s.ObtenerAdjunto(ctx, tarea, id)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	return actual, false, nil
+}
+
 func (s *SupabaseStore) GuardarObjetoAdjunto(ctx context.Context, ruta, mime string, datos []byte, reemplazar bool) error {
 	c := s.client
 	u := c.baseURL + "/storage/v1/object/" + store.BucketAdjuntosAsignacion + "/" + ruta

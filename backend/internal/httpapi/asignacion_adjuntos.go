@@ -89,10 +89,11 @@ type vistaAdjunto struct {
 	EstadoResumen string   `json:"estado_resumen"`
 	Resumen       []string `json:"resumen,omitempty"`
 	Transcripcion *string  `json:"transcripcion,omitempty"`
+	ErrorResumen  *string  `json:"error_resumen,omitempty"`
 }
 
 func vistaDeAdjunto(v *store.AdjuntoAsignacion) vistaAdjunto {
-	return vistaAdjunto{v.ID, v.Tipo, v.Nombre, v.Tamano, v.Mime, v.DuracionMS, v.Resumir, v.EstadoResumen, v.Resumen, v.Transcripcion}
+	return vistaAdjunto{v.ID, v.Tipo, v.Nombre, v.Tamano, v.Mime, v.DuracionMS, v.Resumir, v.EstadoResumen, v.Resumen, v.Transcripcion, v.ErrorResumen}
 }
 
 func errorAdjunto(w http.ResponseWriter) {
@@ -327,6 +328,15 @@ func (a *API) handleFinalizarAdjunto(w http.ResponseWriter, r *http.Request) {
 		ResponderJSON(w, 200, vistaDeAdjunto(v))
 		return
 	}
+	var in struct {
+		BorradorResumen *borradorResumenAplicar `json:"borrador_resumen"`
+	}
+	if r.Body != nil {
+		if err := leerJSONCuerpo(r, 256*1024, &in); err != nil && !errors.Is(err, io.EOF) {
+			ResponderError(w, 400, "cuerpo_invalido", "Revisa los datos del adjunto.")
+			return
+		}
+	}
 	select {
 	case turnoFinalizarAdjunto <- struct{}{}:
 		defer func() { <-turnoFinalizarAdjunto }()
@@ -351,6 +361,7 @@ func (a *API) handleFinalizarAdjunto(w http.ResponseWriter, r *http.Request) {
 		defer fin()
 		v.EstadoArchivo = "subiendo"
 		v.EstadoResumen = "sin_resumen"
+		v.ErrorResumen = nil
 		_, _ = a.Store.CambiarAdjunto(rescate, v, store.FiltroAdjunto{Archivo: "finalizando"})
 	}()
 	datos := make([]byte, 0, v.Tamano)
@@ -376,8 +387,11 @@ func (a *API) handleFinalizarAdjunto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v.EstadoArchivo = "listo"
+	v.ErrorResumen = nil
 	if v.Resumir {
-		v.EstadoResumen = "pendiente"
+		if !a.aplicarResumenBorrador(v, UsuarioDesdeContexto(r.Context()).ID, datos, in.BorradorResumen) {
+			v.EstadoResumen = "pendiente"
+		}
 	}
 	listo, e := a.Store.CambiarAdjunto(ctx, v, store.FiltroAdjunto{Archivo: "finalizando"})
 	if e != nil {
@@ -440,13 +454,13 @@ func (a *API) handlePreferenciaAdjunto(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 400, "preferencia_invalida", "El resumen solo está disponible para audio.")
 		return
 	}
-	if *in.Resumir != v.Resumir {
+	if *in.Resumir != v.Resumir || (*in.Resumir && v.EstadoResumen == "fallido") {
 		v.Resumir = *in.Resumir
 		v.EstadoResumen = "sin_resumen"
 		if v.Resumir {
 			v.EstadoResumen = "pendiente"
 		}
-		v.Resumen, v.Transcripcion, v.Proveedor, v.ResumenIntento, v.ResumenHasta = nil, nil, nil, nil, nil
+		v.Resumen, v.Transcripcion, v.ErrorResumen, v.Proveedor, v.ResumenIntento, v.ResumenHasta = nil, nil, nil, nil, nil, nil
 		var e error
 		v, e = a.Store.CambiarAdjunto(r.Context(), v, store.FiltroAdjunto{Archivo: "listo"})
 		if e != nil {
@@ -467,6 +481,7 @@ func (a *API) handleReintentarResumenAdjunto(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	v.EstadoResumen = "pendiente"
+	v.ErrorResumen = nil
 	v, e := a.Store.CambiarAdjunto(r.Context(), v, store.FiltroAdjunto{Archivo: "listo", Resumen: "fallido"})
 	if e != nil {
 		errorAdjunto(w)

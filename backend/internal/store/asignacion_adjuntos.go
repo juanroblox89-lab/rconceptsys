@@ -27,6 +27,7 @@ type AdjuntoAsignacion struct {
 	EstadoResumen  string     `json:"estado_resumen"`
 	Resumen        []string   `json:"resumen"`
 	Transcripcion  *string    `json:"transcripcion"`
+	ErrorResumen   *string    `json:"error_resumen,omitempty"`
 	Proveedor      *string    `json:"proveedor"`
 	ResumenIntento *string    `json:"resumen_intento"`
 	ResumenHasta   *time.Time `json:"resumen_hasta"`
@@ -50,6 +51,7 @@ type StoreAdjuntosAsignacion interface {
 	BorrarRegistroAdjunto(context.Context, int64, string) error
 	AdjuntosIncompletos(context.Context, time.Time) ([]*AdjuntoAsignacion, error)
 	ReclamarResumenAdjunto(context.Context, string) (*AdjuntoAsignacion, error)
+	ReclamarResumenAdjuntoPorID(context.Context, int64, string, string) (*AdjuntoAsignacion, bool, error)
 	GuardarObjetoAdjunto(context.Context, string, string, []byte, bool) error
 	LeerObjetoAdjunto(context.Context, string, int) ([]byte, error)
 	BorrarObjetosAdjunto(context.Context, []string) error

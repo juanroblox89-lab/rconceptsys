@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, Download, Film, ImageIcon, Mic, Music2, Paperclip, Square, Trash2 } from "lucide-react";
 import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { Boton } from "@/components/ui/Boton";
-import { aceptarAdjuntos, adjuntos, limiteAdjunto, tipoDeArchivo, type AdjuntoAsignacion, type AdjuntoLocal, type TipoAdjunto } from "@/lib/adjuntos-asignacion";
+import { aceptarAdjuntos, adjuntos, detectarTipoArchivo, limiteAdjunto, type AdjuntoAsignacion, type AdjuntoLocal, type TipoAdjunto } from "@/lib/adjuntos-asignacion";
 import styles from "./AdjuntosAsignacion.module.css";
 
 const textoError = (e: unknown) => e instanceof Error ? e.message : "No se pudo completar la acción.";
@@ -36,8 +36,8 @@ function Medio({ tipo, url, nombre, visor = false, duracion, renovar }: { tipo: 
   return <audio className={styles.audio} src={url} controls preload="metadata" aria-label={nombre} onError={renovar} onLoadedMetadata={e => duracionMedio(e, duracion)} />;
 }
 
-function BotonResumen({ activo, onClick, bloqueado }: { activo: boolean; onClick: () => void; bloqueado?: boolean }) {
-  return <Boton variante="secundario" tamano="sm" role="switch" aria-checked={activo} disabled={bloqueado} onClick={onClick}>{activo && <Check size={15} aria-hidden="true" />}Resumir con IA</Boton>;
+function BotonResumen({ activo, onClick, bloqueado, ocupando }: { activo: boolean; onClick: () => void; bloqueado?: boolean; ocupando?: boolean }) {
+  return <Boton variante="secundario" tamano="sm" role="switch" aria-checked={activo} aria-busy={ocupando || undefined} disabled={bloqueado} onClick={onClick}>{activo && <Check size={15} aria-hidden="true" />}Resumir con IA</Boton>;
 }
 
 function Quitar({ nombre, onQuitar, bloqueado }: { nombre: string; onQuitar: () => void; bloqueado?: boolean }) {
@@ -52,7 +52,21 @@ function Quitar({ nombre, onQuitar, bloqueado }: { nombre: string; onQuitar: () 
     </div></div> : <Boton variante="fantasma" tamano="sm" ref={boton} disabled={bloqueado} aria-label={`Quitar ${nombre}`} onClick={() => setConfirmar(true)}><Trash2 size={15} aria-hidden="true" /> Quitar</Boton>;
 }
 
-function FilaLocal({ a, cambiar, quitar, bloqueado, permitirResumen = true }: { a: AdjuntoLocal; cambiar: (a: AdjuntoLocal) => void; quitar: () => void; bloqueado: boolean; permitirResumen?: boolean }) {
+function FilaLocal({
+  a,
+  actualizarItem,
+  onResumir,
+  quitar,
+  bloqueado,
+  permitirResumen = true,
+}: {
+  a: AdjuntoLocal;
+  actualizarItem: (id: string, fn: (actual: AdjuntoLocal) => AdjuntoLocal) => void;
+  onResumir: (a: AdjuntoLocal) => void;
+  quitar: () => void;
+  bloqueado: boolean;
+  permitirResumen?: boolean;
+}) {
   const [url, setUrl] = useState("");
   const { archivo } = a;
   useEffect(() => {
@@ -61,15 +75,57 @@ function FilaLocal({ a, cambiar, quitar, bloqueado, permitirResumen = true }: { 
     const t = setTimeout(() => setUrl(objeto), 0);
     return () => { clearTimeout(t); URL.revokeObjectURL(objeto); };
   }, [archivo]);
+  const estado = a.estadoResumen;
+  const resumiendo = estado === "procesando";
   return <li>
     <strong className={styles.nombre}>{archivo.name}</strong>
-    <Medio tipo={a.tipo} url={url} nombre={archivo.name} duracion={d => { if (!bloqueado && a.duracion === undefined) cambiar({ ...a, duracion: d }); }} />
+    <Medio tipo={a.tipo} url={url} nombre={archivo.name} duracion={d => { if (!bloqueado && a.duracion === undefined) actualizarItem(a.id, x => x.duracion === undefined ? { ...x, duracion: d } : x); }} />
     {a.avance !== undefined && <><progress className={styles.progreso} aria-label={`Subida de ${archivo.name}`} max={100} value={a.avance} /><span className={styles.ayuda}>{a.avance === 95 && bloqueado ? "Guardando archivo…" : `${a.avance}%`}</span></>}
     {a.error && <span className={styles.error} role="alert">{a.error}</span>}
     <div className={styles.acciones}>
-      {permitirResumen && a.tipo === "audio" && <BotonResumen activo={a.resumir} bloqueado={bloqueado} onClick={() => cambiar({ ...a, resumir: !a.resumir })} />}
+      {permitirResumen && a.tipo === "audio" && (
+        <BotonResumen
+          activo={a.resumir}
+          ocupando={resumiendo}
+          bloqueado={bloqueado || resumiendo}
+          onClick={() => {
+            if (!a.resumir) {
+              onResumir(a);
+            } else {
+              actualizarItem(a.id, x => ({
+                ...x,
+                resumir: false,
+                estadoResumen: "sin_resumen",
+                resumen: undefined,
+                transcripcion: undefined,
+                errorResumen: undefined,
+                borradorResumen: undefined,
+              }));
+            }
+          }}
+        />
+      )}
       <Quitar nombre={archivo.name} onQuitar={quitar} bloqueado={bloqueado} />
     </div>
+    {permitirResumen && a.tipo === "audio" && a.resumir && (
+      <div className={styles.resumen}>
+        <strong role="status">{estado === "listo" ? "Listo" : estado === "fallido" ? "No se pudo" : "Resumiendo…"}</strong>
+        {estado === "fallido" && (
+          <>
+            <p role="alert" className={styles.error}>{a.errorResumen || "No pudimos resumir este audio. Intenta de nuevo."}</p>
+            <div className={styles.acciones}>
+              <Boton variante="secundario" tamano="sm" disabled={bloqueado} onClick={() => onResumir(a)}>Reintentar</Boton>
+            </div>
+          </>
+        )}
+        {estado === "listo" && (
+          <>
+            <ul aria-label="Resumen">{a.resumen?.map((p, i) => <li key={i}>{p}</li>)}</ul>
+            {a.transcripcion && <details><summary>Transcripción</summary><p>{a.transcripcion}</p></details>}
+          </>
+        )}
+      </div>
+    )}
   </li>;
 }
 
@@ -97,6 +153,7 @@ export function EditorAdjuntos({
   const input = useRef<HTMLInputElement>(null);
   const grabacion = useRef<{ r: MediaRecorder; s: MediaStream; viva: boolean } | null>(null);
   const vivo = useRef(false);
+  const enCursoBorrador = useRef<Set<string>>(new Set());
   const [soporta, setSoporta] = useState(false);
   const [grabando, setGrabando] = useState(false);
   const [error, setError] = useState("");
@@ -107,14 +164,62 @@ export function EditorAdjuntos({
     return () => { vivo.current = false; clearTimeout(t); const g = grabacion.current; if (g) { g.viva = false; if (g.r.state !== "inactive") g.r.stop(); g.s.getTracks().forEach(p => p.stop()); } };
   }, []);
 
-  function agregar(archivos: File[], duracion?: number) {
+  function actualizarItem(id: string, fn: (actual: AdjuntoLocal) => AdjuntoLocal) {
+    cambiar(lista => lista.map(x => x.id === id ? fn(x) : x));
+  }
+
+  async function resumirBorrador(a: AdjuntoLocal) {
+    if (enCursoBorrador.current.has(a.id)) return;
+    enCursoBorrador.current.add(a.id);
+    actualizarItem(a.id, x => ({
+      ...x,
+      resumir: true,
+      estadoResumen: "procesando",
+      errorResumen: undefined,
+      resumen: undefined,
+      transcripcion: undefined,
+      borradorResumen: undefined,
+    }));
+    try {
+      const res = await adjuntos.resumirBorrador(a);
+      if (!vivo.current) return;
+      actualizarItem(a.id, x => ({
+        ...x,
+        resumir: true,
+        estadoResumen: "listo",
+        resumen: res.resumen,
+        transcripcion: res.transcripcion,
+        borradorResumen: res.borrador_resumen,
+        errorResumen: undefined,
+      }));
+    } catch (e) {
+      if (!vivo.current) return;
+      actualizarItem(a.id, x => ({
+        ...x,
+        resumir: true,
+        estadoResumen: "fallido",
+        errorResumen: textoError(e),
+        resumen: undefined,
+        transcripcion: undefined,
+        borradorResumen: undefined,
+      }));
+    } finally {
+      enCursoBorrador.current.delete(a.id);
+    }
+  }
+
+  async function agregar(archivos: File[], duracion?: number) {
     const lote: AdjuntoLocal[] = []; const problemas: string[] = [];
-    for (const archivo of archivos) {
+    for (let archivo of archivos) {
       if (cantidad + lote.length >= 10) { problemas.push("Máximo 10 adjuntos."); break; }
-      const tipo = tipoDeArchivo(archivo);
+      const tipo = await detectarTipoArchivo(archivo);
+      if (!vivo.current) return;
       if (!tipo) { problemas.push("Hay un formato no compatible."); continue; }
       if (!archivo.size || archivo.size > limiteAdjunto[tipo] * mb) { problemas.push(`El archivo debe pesar entre 1 byte y ${limiteAdjunto[tipo]} MB.`); continue; }
-      lote.push({ id: crypto.randomUUID(), archivo, tipo, resumir: false, duracion });
+      if (tipo === "audio" && archivo.name.toLowerCase().endsWith(".webm") && archivo.type !== "audio/webm") {
+        archivo = new File([archivo], archivo.name, { type: "audio/webm", lastModified: archivo.lastModified });
+      }
+      lote.push({ id: crypto.randomUUID(), archivo, tipo, resumir: false, estadoResumen: "sin_resumen", duracion });
     }
     setError([...new Set(problemas)].join(" ")); if (lote.length) cambiar(v => [...v, ...lote]);
   }
@@ -136,8 +241,13 @@ export function EditorAdjuntos({
       r.onstop = () => {
         s.getTracks().forEach(p => p.stop()); grabacion.current = null;
         if (!vivo.current) return;
-        if (g.viva) { const tipo = (r.mimeType || mime).split(";")[0]; const ext = tipo === "audio/mp4" ? "m4a" : tipo === "audio/ogg" ? "ogg" : "webm";
-          agregar([new File(bloques, `Grabación-${new Date().toISOString().slice(11, 19).replaceAll(":", "-")}.${ext}`, { type: tipo })], Math.round(performance.now() - inicio)); }
+        if (g.viva) {
+          let tipo = (r.mimeType || mime).split(";")[0].toLowerCase();
+          if (tipo === "video/webm") tipo = "audio/webm";
+          if (tipo === "video/mp4") tipo = "audio/mp4";
+          const ext = tipo === "audio/mp4" ? "m4a" : tipo === "audio/ogg" ? "ogg" : "webm";
+          void agregar([new File(bloques, `Grabación-${new Date().toISOString().slice(11, 19).replaceAll(":", "-")}.${ext}`, { type: tipo })], Math.round(performance.now() - inicio));
+        }
         setGrabando(false); onGrabando(false);
       };
       r.start(500);
@@ -146,7 +256,7 @@ export function EditorAdjuntos({
 
   return <section className={styles.seccion} aria-labelledby={titulo}>
     <div className={styles.cabecera}><h3 id={titulo}>{tituloSeccion}</h3><div className={styles.acciones}>
-      <input ref={input} hidden type="file" multiple accept={aceptarAdjuntos} onChange={e => { agregar(Array.from(e.currentTarget.files ?? [])); e.currentTarget.value = ""; }} />
+      <input ref={input} hidden type="file" multiple accept={aceptarAdjuntos} onChange={e => { const fs = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; void agregar(fs); }} />
       <Boton variante="secundario" tamano="sm" disabled={bloqueado || grabando || cantidad >= 10} onClick={() => input.current?.click()}><Paperclip size={16} aria-hidden="true" /> Adjuntar</Boton>
       {soporta && (grabando ? <Boton variante="secundario" tamano="sm" onClick={() => { const r = grabacion.current?.r; if (r?.state === "recording") r.stop(); }}><Square size={15} aria-hidden="true" /> Detener</Boton> :
         <Boton variante="fantasma" tamano="sm" disabled={bloqueado || cantidad >= 10} onClick={() => void grabar()}><Mic size={16} aria-hidden="true" /> Grabar audio</Boton>)}
@@ -154,11 +264,25 @@ export function EditorAdjuntos({
     <span className={styles.ayuda}>{cantidad}/10 · Imagen 10 MB · Video 50 MB · Audio 25 MB</span>
     {grabando && <span role="status" className={styles.ayuda}>Grabando audio…</span>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
-    {locales.length > 0 && <ul className={`${styles.lista} ${compacto ? styles.listaCompacta : ""}`.trim()}>{locales.map(a => <FilaLocal key={a.id} a={a} bloqueado={bloqueado || grabando} permitirResumen={permitirResumen} quitar={() => quitar(a)} cambiar={b => cambiar(v => v.map(x => x.id === b.id ? b : x))} />)}</ul>}
+    {locales.length > 0 && <ul className={`${styles.lista} ${compacto ? styles.listaCompacta : ""}`.trim()}>{locales.map(a => <FilaLocal key={a.id} a={a} bloqueado={bloqueado || grabando} permitirResumen={permitirResumen} quitar={() => quitar(a)} actualizarItem={actualizarItem} onResumir={item => void resumirBorrador(item)} />)}</ul>}
   </section>;
 }
 
-function FilaGuardada({ tarea, a, editable, bloqueado, actualizar }: { tarea: number; a: AdjuntoAsignacion; editable: boolean; bloqueado: boolean; actualizar: (id: string, v?: AdjuntoAsignacion) => void }) {
+function FilaGuardada({
+  tarea,
+  a,
+  editable,
+  bloqueado,
+  actualizar,
+  onProcesar,
+}: {
+  tarea: number;
+  a: AdjuntoAsignacion;
+  editable: boolean;
+  bloqueado: boolean;
+  actualizar: (id: string, v?: AdjuntoAsignacion) => void;
+  onProcesar: (id: string) => Promise<void>;
+}) {
   const [medio, setMedio] = useState<{ url: string; expira: number }>();
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -179,18 +303,44 @@ function FilaGuardada({ tarea, a, editable, bloqueado, actualizar }: { tarea: nu
     document.body.append(enlace); enlace.click(); enlace.remove();
   }
   const estado = a.estado_resumen;
+  const resumiendo = a.resumir && (estado === "pendiente" || estado === "procesando");
   return <li>
     <strong className={styles.nombre}>{a.nombre}</strong>
     <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
     <div className={styles.acciones}>
       {medio && <EnlaceExterno href={medio.url} className="rc-btn rc-btn--secundario rc-btn--sm" aria-label={`Abrir ${a.nombre} fuera de RConcept`} onClick={e => { if (Date.now() >= medio.expira - 3000) { e.preventDefault(); renovar(); setError("Actualizamos el enlace. Pulsa Abrir de nuevo."); } }}>Abrir fuera</EnlaceExterno>}
       <Boton variante="secundario" tamano="sm" aria-label={`Descargar ${a.nombre}`} disabled={ocupado} onClick={() => void accion(descargar)}><Download size={15} aria-hidden="true" /> Descargar</Boton>
-      {editable && a.tipo === "audio" && <BotonResumen activo={a.resumir} bloqueado={ocupado || bloqueado} onClick={() => void accion(async () => actualizar(id, await adjuntos.resumir(tarea, id, !a.resumir)))} />}
+      {editable && a.tipo === "audio" && (
+        <BotonResumen
+          activo={a.resumir}
+          ocupando={resumiendo}
+          bloqueado={ocupado || bloqueado || resumiendo}
+          onClick={() => void accion(async () => {
+            const activar = !a.resumir;
+            const resp = await adjuntos.resumir(tarea, id, activar);
+            actualizar(id, resp);
+            if (activar && (resp.estado_resumen === "pendiente" || resp.estado_resumen === "procesando")) {
+              await onProcesar(id);
+            }
+          })}
+        />
+      )}
       {editable && <Quitar nombre={a.nombre} bloqueado={ocupado || bloqueado} onQuitar={() => void accion(async () => { await adjuntos.quitar(tarea, id); actualizar(id); })} />}
     </div>
     {a.resumir && <div className={styles.resumen}>
       <strong role="status">{estado === "listo" ? "Listo" : estado === "fallido" ? "No se pudo" : "Resumiendo…"}</strong>
-      {estado === "fallido" && <div className={styles.acciones}><Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={() => void accion(async () => actualizar(id, await adjuntos.reintentar(tarea, id)))}>Reintentar</Boton></div>}
+      {estado === "fallido" && (
+        <>
+          <p role="alert" className={styles.error}>{a.error_resumen || "No pudimos resumir este audio. Pulsa Reintentar para intentarlo de nuevo."}</p>
+          <div className={styles.acciones}>
+            <Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={() => void accion(async () => {
+              const resp = await adjuntos.reintentar(tarea, id);
+              actualizar(id, resp);
+              await onProcesar(id);
+            })}>Reintentar</Boton>
+          </div>
+        </>
+      )}
       {estado === "listo" && <><ul aria-label="Resumen">{a.resumen?.map((p, i) => <li key={i}>{p}</li>)}</ul>
         <details><summary>Transcripción</summary><p>{a.transcripcion}</p></details></>}
     </div>}
@@ -202,26 +352,90 @@ export function AdjuntosGuardados({ tarea, editable = false, bloqueado = false, 
   const [lista, setLista] = useState<AdjuntoAsignacion[] | null>(null);
   const [error, setError] = useState(false);
   const [intento, setIntento] = useState(0);
+  const vivoRef = useRef(true);
+  const enCurso = useRef<Map<string, Promise<void>>>(new Map());
+  const autoDisparados = useRef<Set<string>>(new Set());
   const titulo = useId();
-  const pendiente = lista?.some(a => a.estado_resumen === "pendiente" || a.estado_resumen === "procesando") ?? false;
+  const pendiente = lista?.some(a => a.resumir && (a.estado_resumen === "pendiente" || a.estado_resumen === "procesando")) ?? false;
+
+  useEffect(() => {
+    vivoRef.current = true;
+    autoDisparados.current.clear();
+    return () => { vivoRef.current = false; };
+  }, [tarea]);
+
+  const procesar = useCallback((id: string): Promise<void> => {
+    const existente = enCurso.current.get(id);
+    if (existente) return existente;
+    autoDisparados.current.add(id);
+    setLista(prev => prev ? prev.map(a => a.id === id && a.estado_resumen === "pendiente" ? { ...a, estado_resumen: "procesando", error_resumen: undefined } : a) : prev);
+    const promesa = (async () => {
+      try {
+        const res = await adjuntos.procesarResumen(tarea, id);
+        if (!vivoRef.current) return;
+        setLista(prev => prev ? prev.map(a => a.id === id ? res : a) : prev);
+      } catch (e) {
+        if (!vivoRef.current) return;
+        setLista(prev => prev ? prev.map(a => a.id === id ? { ...a, estado_resumen: "fallido", error_resumen: textoError(e) } : a) : prev);
+      } finally {
+        enCurso.current.delete(id);
+      }
+    })();
+    enCurso.current.set(id, promesa);
+    return promesa;
+  }, [tarea]);
+
   useEffect(() => {
     let vivo = true;
-    const traer = () => adjuntos.listar(tarea).then(r => { if (vivo) { setLista(r); cantidad?.(r.length); setError(false); } }).catch(() => { if (vivo) setError(true); });
+    const traer = () => adjuntos.listar(tarea).then(r => {
+      if (!vivo) return;
+      setLista(prev => {
+        const siguientes = r.map(item => {
+          if (enCurso.current.has(item.id) && item.estado_resumen === "pendiente") {
+            return { ...item, estado_resumen: "procesando" as const };
+          }
+          const ant = prev?.find(x => x.id === item.id);
+          if (item.estado_resumen === "fallido" && !item.error_resumen && ant?.error_resumen) {
+            return { ...item, error_resumen: ant.error_resumen };
+          }
+          return item;
+        });
+        return siguientes;
+      });
+      cantidad?.(r.length);
+      setError(false);
+    }).catch(() => { if (vivo) setError(true); });
     void traer();
     const t = pendiente ? setInterval(() => { if (!document.hidden) void traer(); }, 5000) : undefined;
     return () => { vivo = false; clearInterval(t); };
   }, [tarea, cantidad, pendiente, intento]);
+
+  useEffect(() => {
+    if (!lista) return;
+    for (const a of lista) {
+      if (a.tipo === "audio" && a.resumir && a.estado_resumen === "pendiente" && !enCurso.current.has(a.id) && !autoDisparados.current.has(a.id)) {
+        autoDisparados.current.add(a.id);
+        void procesar(a.id);
+      }
+    }
+  }, [lista, procesar]);
+
   function actualizar(id: string, v?: AdjuntoAsignacion) {
-    setLista(l => (l ?? []).flatMap(a => a.id === id ? v ? [v] : [] : [a]));
-    setIntento(i => i + 1);
-    if (!v && lista) cantidad?.(lista.length - 1);
+    if (v?.estado_resumen === "pendiente" || v?.estado_resumen === "sin_resumen") {
+      autoDisparados.current.delete(id);
+    }
+    setLista(l => {
+      const sig = (l ?? []).flatMap(a => a.id === id ? v ? [v] : [] : [a]);
+      if (!v) cantidad?.(sig.length);
+      return sig;
+    });
   }
   if (lista?.length === 0 && !error) return null;
   return <section className={styles.seccion} aria-labelledby={titulo}>
     <div className={styles.cabecera}><h3 id={titulo}>{editable ? "Adjuntos guardados" : "Adjuntos"}</h3></div>
     {!lista && !error && <span className={styles.ayuda} role="status">Cargando adjuntos…</span>}
     {error && <div className={styles.acciones}><span className={styles.error} role="alert">No se pudieron cargar los adjuntos.</span><Boton variante="secundario" tamano="sm" onClick={() => setIntento(i => i + 1)}>Reintentar</Boton></div>}
-    {!!lista?.length && <ul className={styles.lista}>{lista.map(a => <FilaGuardada key={a.id} tarea={tarea} a={a} editable={editable} bloqueado={bloqueado} actualizar={actualizar} />)}</ul>}
+    {!!lista?.length && <ul className={styles.lista}>{lista.map(a => <FilaGuardada key={a.id} tarea={tarea} a={a} editable={editable} bloqueado={bloqueado} actualizar={actualizar} onProcesar={id => procesar(id)} />)}</ul>}
   </section>;
 }
 

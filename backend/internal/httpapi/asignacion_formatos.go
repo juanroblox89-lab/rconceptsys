@@ -216,7 +216,7 @@ func pistasWebM(b []byte) (audio, video bool) {
 	recorrerEBML(b, func(id uint64, p []byte) {
 		if id == 0x1a45dfa3 {
 			recorrerEBML(p, func(id uint64, p []byte) {
-				if id == 0x4282 && string(p) == "webm" {
+				if id == 0x4282 && strings.TrimRight(string(p), "\x00") == "webm" {
 					webm = true
 				}
 			})
