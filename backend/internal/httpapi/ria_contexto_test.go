@@ -26,9 +26,9 @@ func TestRIAContextoRespetaAlcance(t *testing.T) {
 	if _, e := m.GuardarConversacionRIA(ctx, "otro", "SOLO-HISTORIAL", "secreto ajeno"); e != nil {
 		t.Fatal(e)
 	}
-	datos := func(p *store.Perfil, equipo bool) string {
+	datos := func(p *store.Perfil) string {
 		t.Helper()
-		ms, e := a.contextoRIA(ctx, p, equipo, "Consulta de prueba")
+		ms, e := a.contextoRIA(ctx, p, "Consulta de prueba")
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -38,15 +38,11 @@ func TestRIAContextoRespetaAlcance(t *testing.T) {
 		}
 		return r.String()
 	}
-	privado := datos(editor, false)
+	privado := datos(editor)
 	if !strings.Contains(privado, "SOLO-EDITOR") || !strings.Contains(privado, "Manual de edición") || strings.Contains(privado, "SOLO-OTRO") || strings.Contains(privado, "/api/admin/") || strings.Contains(privado, "SOLO-HISTORIAL") {
 		t.Fatal("El contexto del editor no respetó el alcance")
 	}
-	publico := datos(otro, true)
-	if strings.Contains(publico, "SOLO-EDITOR") || strings.Contains(publico, "SOLO-OTRO") || strings.Contains(publico, "SOLO-HISTORIAL") || strings.Contains(publico, "/api/admin/") {
-		t.Fatal("Se incluyeron datos privados en el chat público")
-	}
-	if !strings.Contains(datos(otro, false), "/api/admin/") {
+	if !strings.Contains(datos(otro), "/api/admin/") {
 		t.Fatal("Falta el manual admin para el administrador")
 	}
 }

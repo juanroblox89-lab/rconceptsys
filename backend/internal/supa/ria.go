@@ -76,20 +76,6 @@ func (s *SupabaseStore) UsarCupoRIA(ctx context.Context, perfil, dia string, top
 	e := s.client.REST(ctx, "POST", "rpc/rc_cupo_ria", nil, map[string]any{"p_perfil": perfil, "p_dia": dia, "p_tope": tope}, "", &ok)
 	return ok, e
 }
-func (s *SupabaseStore) CrearMensajeEquipoRIA(ctx context.Context, perfil, respuesta string) (*store.ChatMensaje, error) {
-	var rows []dbChatMensaje
-	e := s.client.REST(ctx, "POST", "chat_mensajes", nil, map[string]any{"autor_id": perfil, "cuerpo": respuesta, "es_ria": true}, "return=representation", &rows)
-	if e != nil {
-		return nil, e
-	}
-	if len(rows) == 0 {
-		return nil, store.ErrNotFound
-	}
-	v := rows[0]
-	t := parsearTiempoSupa(v.CreadoEn)
-	return &store.ChatMensaje{ID: v.ID, AutorID: "ria", EsRIA: true, Cuerpo: v.Cuerpo, CreadoEn: t}, nil
-}
-
 func (s *SupabaseStore) obtenerMensajeRIAPorID(ctx context.Context, id int64) (*dbMensajeRIA, error) {
 	q := url.Values{
 		"id":     {"eq." + strconv.FormatInt(id, 10)},

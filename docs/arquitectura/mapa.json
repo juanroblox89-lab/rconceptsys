@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T08:06:37.079Z",
+  "generado_en": "2026-11-26T18:11:08.989Z",
   "version": "1.0",
   "modulos": [
     {
@@ -233,6 +233,13 @@
       "ruta": "/api/chat",
       "handler": "backend/internal/httpapi/handlers.go:handlePostChat",
       "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostChat",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/chat/ria",
+      "handler": "backend/internal/httpapi/ria_grupo.go:handleRIAGrupo",
+      "archivo_funcion": "backend/internal/httpapi/ria_grupo.go:handleRIAGrupo",
       "auth": "miembros_aprobados"
     },
     {
@@ -1360,6 +1367,21 @@
         "entrega_tipo",
         "nota"
       ]
+    },
+    {
+      "nombre": "ria_consultas_grupo",
+      "migracion": "026_ria_grupo.sql",
+      "numero_migracion": 26,
+      "columnas_principales": [
+        "perfil_id",
+        "solicitud_id",
+        "huella",
+        "consulta_id",
+        "respuesta_id",
+        "terminada",
+        "turno",
+        "hasta"
+      ]
     }
   ],
   "variables_entorno": [
@@ -1703,63 +1725,53 @@
     },
     {
       "id": "ria-chat-equipo",
-      "nombre": "RIA: chat de equipo (mención @RIA)",
-      "descripcion": "En el chat del equipo, al mencionar @RIA, responde en streaming y publica como mensaje de RIA",
+      "nombre": "RIA: participante del chat de equipo (/ria)",
+      "descripcion": "Un miembro aprobado envía /ria <pregunta>. Consulta y respuesta se leen en el chat grupal con el polling normal.",
       "pasos": [
         {
           "orden": 1,
-          "archivo_funcion": "lib/ria.ts:mencionaRIA",
-          "descripcion": "Frontend detecta mención @RIA en mensaje de chat"
+          "archivo_funcion": "app/(app)/page.tsx:ChatPage",
+          "descripcion": "El compositor reconoce solo /ria explícito; guarda la solicitud pendiente por usuario y no navega ni procesa @ria."
         },
         {
           "orden": 2,
-          "archivo_funcion": "lib/ria.ts:transmitirRIA",
-          "descripcion": "POST /api/ria con {pregunta, mensaje_id} vía SSE"
+          "archivo_funcion": "lib/ria.ts:transmitirRIAPublica",
+          "descripcion": "POST /api/chat/ria con solicitud_id estable y comando; recibe consulta, fin persistido o error recuperable."
         },
         {
           "orden": 3,
-          "archivo_funcion": "backend/internal/httpapi/ria.go:handleRIA",
-          "descripcion": "Valida que mensaje_id existe, es del usuario, y contiene @RIA; extrae pregunta quitando la mención"
+          "archivo_funcion": "backend/internal/httpapi/ria_grupo.go:handleRIAGrupo",
+          "descripcion": "Solo sesión aprobada; valida UUID, comando y longitud, sin aceptar autor, adjuntos ni parámetros de contexto."
         },
         {
           "orden": 4,
-          "archivo_funcion": "backend/internal/httpapi/ria.go:contextoRIA",
-          "descripcion": "Construye contexto: perfil, tareas, clientes (si admin), histogramas; system prompt con datos de referencia"
+          "archivo_funcion": "supabase/migrations/026_ria_grupo.sql:rc_iniciar_ria_grupo",
+          "descripcion": "Transacción con autorización, idempotencia por usuario, cupo diario compartido y publicación de consulta humana."
         },
         {
           "orden": 5,
-          "archivo_funcion": "backend/internal/httpapi/ria.go:handleRIA",
-          "descripcion": "Verifica tope diario (ASISTENTE_TOPE_DIA, default 20) via RPC rc_cupo_ria (lógica interna)"
+          "archivo_funcion": "backend/internal/supa/ria_grupo.go:ContextoRIAGrupo",
+          "descripcion": "Lee solo texto activo y es_ria del mismo grupo, hasta 50 previos a la consulta y en orden."
         },
         {
           "orden": 6,
-          "archivo_funcion": "supabase/migrations/014_ria.sql:rc_cupo_ria",
-          "descripcion": "Upsert en ria_uso_diario; retorna false si usos >= tope"
+          "archivo_funcion": "backend/internal/httpapi/ria_grupo.go:contextoRIAGrupo",
+          "descripcion": "Omite enlaces y acota a 600 caracteres por mensaje; estructura el historial como datos no confiables."
         },
         {
           "orden": 7,
-          "archivo_funcion": "backend/internal/httpapi/ria_modelo.go:modeloRIADesdeEntorno",
-          "descripcion": "Configura proveedor principal (9router: NINEROUTER_BASE_URL, NINEROUTER_API_KEY, modelo ag/claude-sonnet-5-5-low) y respaldo (NVIDIA: NVIDIA_API_KEYS, modelo nemotron-3.5-super-vl-120b-a12b)"
+          "archivo_funcion": "backend/internal/httpapi/ria_modelo.go:responder",
+          "descripcion": "Reusa el cliente y la cadena 9router/NVIDIA sin herramientas; no publica deltas públicos."
         },
         {
           "orden": 8,
-          "archivo_funcion": "backend/internal/httpapi/ria_modelo.go:responder",
-          "descripcion": "Intenta proveedor principal (timeout 6s); si falla (429/5xx/timeout) hace round-robin por claves NVIDIA (timeout 12s cada una)"
+          "archivo_funcion": "supabase/migrations/026_ria_grupo.sql:rc_finalizar_ria_grupo",
+          "descripcion": "Persiste una única respuesta con es_ria=true y autor_id SQL nulo. La API usa el identificador virtual ria."
         },
         {
           "orden": 9,
-          "archivo_funcion": "backend/internal/httpapi/ria.go:handleRIA",
-          "descripcion": "Streaming: event: inicio, event: delta (texto), event: fin / event: error (emitir es closure interno)"
-        },
-        {
-          "orden": 10,
-          "archivo_funcion": "backend/internal/httpapi/ria.go:handleRIA",
-          "descripcion": "Inserta en chat_mensajes con autor_id='ria', es_ria=true, cuerpo=respuesta completa (lógica interna)"
-        },
-        {
-          "orden": 11,
-          "archivo_funcion": "backend/internal/store/ria.go:GuardarConversacionRIA",
-          "descripcion": "Guarda en ria_mensajes (user + assistant) para historial privado"
+          "archivo_funcion": "supabase/migrations/026_ria_grupo.sql:rc_liberar_ria_grupo",
+          "descripcion": "Libera solo el propio turno al fallar; reintentar no duplica la consulta ni la respuesta."
         }
       ]
     },
@@ -1776,12 +1788,12 @@
         {
           "orden": 2,
           "archivo_funcion": "backend/internal/httpapi/ria.go:handleRIA",
-          "descripcion": "equipo=false; salta validación de mención @RIA"
+          "descripcion": "Endpoint exclusivo del chat privado; acepta solo pregunta, sin referencias a mensajes del grupo."
         },
         {
           "orden": 3,
           "archivo_funcion": "backend/internal/httpapi/ria.go:contextoRIA",
-          "descripcion": "Contexto sin datos de equipo; incluye HistorialRIA (últimos 16) del usuario"
+          "descripcion": "Incluye HistorialRIA (últimos 16) del usuario y contexto con permisos; nada se persiste en el grupo."
         },
         {
           "orden": 4,
@@ -1796,7 +1808,7 @@
         {
           "orden": 6,
           "archivo_funcion": "backend/internal/httpapi/ria.go:handleRIA",
-          "descripcion": "Streaming idéntico: inicio, delta, fin/error (emitir es closure interno)"
+          "descripcion": "Streaming privado: inicio, delta y fin/error por SSE."
         },
         {
           "orden": 7,
@@ -1808,7 +1820,7 @@
     {
       "id": "ria-streaming",
       "nombre": "RIA: streaming SSE",
-      "descripcion": "Mecanismo de Server-Sent Events para respuesta token a token",
+      "descripcion": "Mecanismo de Server-Sent Events: deltas en privado y consulta/respuesta persistidas en grupo.",
       "pasos": [
         {
           "orden": 1,
@@ -1828,7 +1840,7 @@
         {
           "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/ria_modelo.go:leer",
-          "descripcion": "time.AfterFunc(p.espera, cancel) — 6s principal, 12s respaldo NVIDIA; si no llega primer delta, cancela y reintenta siguiente proveedor"
+          "descripcion": "time.AfterFunc(p.espera, cancel) — 25s principal, hasta 12s por clave NVIDIA; si no llega primer delta, cancela y reintenta siguiente proveedor"
         },
         {
           "orden": 5,
@@ -2177,34 +2189,29 @@
     },
     {
       "id": "ria-ayuda-comandos-f11",
-      "nombre": "RIA: modo ayuda y rutas",
-      "descripcion": "Abrir Ayuda no consume cupo; las rutas se validan por rol.",
+      "nombre": "RIA privado: ayuda contextual",
+      "descripcion": "Abrir Ayuda no consume cupo; el chat privado no convierte rutas en atajos.",
       "pasos": [
         {
           "orden": 1,
           "archivo_funcion": "app/(app)/ria/page.tsx:ConversacionRIA",
-          "descripcion": "Muestra saludo, fichas y un menú / navegable sin enviar mensajes."
+          "descripcion": "Muestra saludo y fichas de ayuda; el compositor privado no tiene menú de comandos."
         },
         {
           "orden": 2,
-          "archivo_funcion": "lib/rutas-ria.ts:rutasVisiblesRIA",
-          "descripcion": "Deriva destinos reales según el perfil aprobado."
-        },
-        {
-          "orden": 3,
           "archivo_funcion": "backend/internal/httpapi/ria_ayuda.go:respuestaAyudaRIA",
           "descripcion": "Resuelve las preguntas sugeridas; el resto recibe contexto sin recomendaciones circulares."
         },
         {
-          "orden": 4,
+          "orden": 3,
           "archivo_funcion": "components/RespuestaRIA.tsx:RespuestaRIA",
-          "descripcion": "Renderiza Markdown y enlaza rutas conocidas y permitidas."
+          "descripcion": "Renderiza Markdown. En privado solo mantiene enlaces externos explícitos; los tokens de rutas se quedan como texto."
         }
       ]
     },
     {
       "id": "comandos-chat-f12",
-      "nombre": "Comandos de navegación en RIA y chat de equipo",
+      "nombre": "Comandos de navegación en el chat de equipo",
       "descripcion": "En Glass, las rutas visibles se resaltan mientras se escriben y se enlazan al enviar. Abrir una sugerencia navega sin publicar.",
       "pasos": [
         {
@@ -2357,17 +2364,17 @@
     {
       "id": "chat-acciones-mensajes",
       "nombre": "Entrada pareja, comando /ria y acciones por mensaje",
-      "descripcion": "Compositores alineados a 44 px, /ria desde el chat sin dejar basura y menú Copiar/Editar/Eliminar con permisos en servidor.",
+      "descripcion": "Compositores alineados, /ria persistente en el chat del equipo y menú Copiar/Editar/Eliminar con permisos en servidor.",
       "pasos": [
         {
           "orden": 1,
           "archivo_funcion": "app/(app)/page.tsx:ChatPage",
-          "descripcion": "Comandos /ria y /ria <texto> navegan a /ria sin publicar en el chat del equipo; muestra barra de deshacer y editor en línea."
+          "descripcion": "/ria <pregunta> permanece en el grupo; el chat conserva barra de deshacer y editor en línea."
         },
         {
           "orden": 2,
           "archivo_funcion": "app/(app)/ria/page.tsx:ConversacionRIA",
-          "descripcion": "Recibe ?q= desde el chat, envía la pregunta y permite copiar respuestas y editar/eliminar mensajes propios."
+          "descripcion": "El chat privado recibe solo envíos explícitos y permite copiar respuestas y editar/eliminar mensajes propios."
         },
         {
           "orden": 3,
@@ -2509,5 +2516,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "fa8f3220b6c3f729828256fefc940526ba916c81"
+  "commit_hash": "497bc7844de3463a1a6aec30de90ce4633b13a47"
 }

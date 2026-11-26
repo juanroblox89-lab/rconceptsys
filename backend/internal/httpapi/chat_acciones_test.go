@@ -35,7 +35,10 @@ func TestPermisosAccionesChatEquipo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msgRIA, err := s.CrearMensajeEquipoRIA(ctx, editorID, "Respuesta pública de RIA")
+	if _, err := s.IniciarRIAGrupo(ctx, editorID, "solicitud", "turno", "/ria ¿qué opinas?", "2026-01-01", 20); err != nil {
+		t.Fatal(err)
+	}
+	msgRIA, err := s.FinalizarRIAGrupo(ctx, editorID, "solicitud", "turno", "Respuesta pública de RIA")
 	if err != nil {
 		t.Fatal(err)
 	}

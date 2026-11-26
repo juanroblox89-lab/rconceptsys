@@ -29,11 +29,22 @@ export interface ChatMensaje {
   creado_en: string;
   editado_en?: string | null;
   borrado_en?: string | null;
-  autor?: Perfil;
+  autor?: Perfil | null;
   adjuntos?: ChatAdjunto[];
   // UI states
   enviando?: boolean;
   error?: boolean;
+}
+
+export interface SolicitudRIAPublica {
+  solicitud_id: string;
+  comando: string;
+}
+
+export interface RespuestaRIAPublica extends ChatMensaje {
+  es_ria: true;
+  autor_id: 'ria';
+  autor?: null;
 }
 
 // ==========================================

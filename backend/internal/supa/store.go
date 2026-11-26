@@ -344,7 +344,7 @@ func (s *SupabaseStore) convertirChatMensaje(ctx context.Context, item *dbChatMe
 
 	autorID := item.AutorID
 	if item.EsRIA {
-		autorID = "ria"
+		autorID = store.AutorChatRIA
 	}
 	return &store.ChatMensaje{
 		EsRIA:     item.EsRIA,
