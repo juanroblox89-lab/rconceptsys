@@ -1,3 +1,16 @@
+# Informe Coherencia Neumórfica y Cero Solapes · RConcept Systems
+
+**Publicado en `desde-cero`:** commit [`fa8f322`](https://github.com/juanroblox89-lab/rconceptsys/commit/fa8f3220b6c3f729828256fefc940526ba916c81) (sin cambios en `main`; solo Elías promueve tras verificar).
+
+- **Cero solapes en cabecera móvil y barra colapsada (`AppShell`, `CampanaNotificaciones`):** la pastilla «RConcept» y la campana dejaron de flotar con `position: fixed` sobre el área desplazable. Ahora viven en una barra superior en flujo (`.topChrome`) encima de `<main>` (`scroll-padding-top: 12px`), con soporte completo para `env(safe-area-inset-top)` / `bottom` y teclado virtual (`--rc-visual-viewport`), toasts bajo la cabecera móvil (`.rc-avisos-flotantes`) y jerarquía ordenada de `z-index` para drawer, campana, hoja de equipo y modales.
+- **Coherencia neumórfica integral (claro, oscuro y Glass):** se repararon tokens inexistentes (`--rc-elev-foco`, `--rc-borde-linea`, `--rc-*-fondo`, `--rc-fw-medium`, `rc-spin`), sombras y gradientes Liquid Glass para modo oscuro (`apariencia.css`), pestañas legibles en oscuro, tooltip de gráficas en oscuro, `Selector`/`CampoFecha`/`CampoHora`/`CampoCOP` en relieve/hundido, y se unificaron con neumorfismo y `<CabeceraPagina>` las pantallas de Trabajos/Tareas, Clientes, Gestión (Cortes, Equipo, Piezas, Estadísticas, Miembros), Mi factura, Equipo, Mi perfil, Configuración, Personalización, RIA, Adjuntos y Auth.
+- **Desbordes eliminados en `320–1280 px`:** corregida la tabla oculta de accesibilidad de gráficas (`.tablaOculta`) que desbordaba horizontalmente, y ajustadas todas las rejillas a `minmax(min(100%, ...), 1fr)` con ajuste limpio de botones en `320 px`.
+- **Verificación:** `node scripts/qa-coherencia.mjs` pasó de **54 fallos** en `antes` a **148/148 checks OK (0 fallos)** en `despues` a `320`, `375`, `414`, `768` y `1280 px` (claro, oscuro y Glass, top, scroll `56 px`, barra colapsada, modales, campana, hoja de equipo y teclado simulado) con 136 capturas inspeccionadas; `npm run lint`, `npm run typecheck`, `npm test` (11/11), `npm run build` (22 rutas) y `npm run mapa` en verde. Sin cambios en `.env*`, `Sensible\` ni archivos ajenos protegidos, y sin servidores activos.
+
+[Reporte detallado y estado para retomar](<HARNESS-COHERENCIA.md>)
+
+---
+
 # Informe Resumen de Audio WebM al Pulsar «Resumir con IA» · RConcept Systems
 
 **Publicado en `desde-cero`:** commit [`b453aec`](https://github.com/juanroblox89-lab/rconceptsys/commit/b453aec6a69325b3412d110b384807f47212dd75) (sin cambios en `main`; solo Elías promueve tras verificar).
