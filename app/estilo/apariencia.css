@@ -167,7 +167,7 @@ html[data-rc-tema="glass"] {
 }
 html[data-rc-tema="glass"] [data-rc-compositor] {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 4px;
   padding: var(--rc-compositor-marco);
   border: var(--rc-compositor-borde) solid var(--rc-gris-300);

@@ -381,7 +381,7 @@
   background: var(--rc-menu-fondo); border-color: var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante);
 }
 :global(html[data-rc-tema="glass"]) .composerCaja { min-width: 0; padding: 0; background: transparent; box-shadow: none; }
-:global(html[data-rc-tema="glass"]) .composer > :global(.rc-escena-vidrio) { display: flex; flex: none; align-self: flex-end; }
+:global(html[data-rc-tema="glass"]) .composer > :global(.rc-escena-vidrio) { display: flex; flex: none; align-self: center; }
 :global(html[data-rc-tema="glass"]) .composer :global(.rc-mancha) { display: none; }
 :global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar) {
   width: var(--rc-compositor-control) !important;

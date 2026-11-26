@@ -172,7 +172,6 @@ function ConversacionRIA() {
         </button>
         <button type="submit" className={styles.enviar} data-rc-compositor-boton aria-label="Enviar a RIA" disabled={!listo || !texto.trim() || (!glass && esComando) || enviando || microActivo}><ArrowUp size={20} aria-hidden="true" /></button>
       </form>
-      <p data-rc-compositor-ayuda="solo-glass">Enter envía · Shift+Enter baja de línea · / abre secciones</p>
       {dictado.errorVoz ? <p role="alert" className={styles.error}>{dictado.errorVoz}</p> : microActivo && <p role="status" className={styles.voz}>{dictado.estado === "grabando" ? "Escuchando…" : dictado.estado === "iniciando" ? "Activando micrófono…" : "Transcribiendo…"}</p>}
     </div>
   </section>;

@@ -526,9 +526,6 @@ export default function ChatPage() {
               </button>
             </div>
           </form>
-          <span className={styles.composerHint} data-rc-compositor-ayuda>
-            Enter envía · Shift+Enter baja de línea · El micrófono graba un audio{glass && " · Usa / para abrir secciones"}
-          </span>
         </div>
       </div>
 
