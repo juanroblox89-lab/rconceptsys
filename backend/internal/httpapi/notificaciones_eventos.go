@@ -78,6 +78,27 @@ func (a *API) avisarEntregaAdmins(ctx context.Context, t *store.Tarea, persona s
 	}
 	a.avisarAdmins(ctx, AvisoPush{Titulo: persona + " hizo una entrega", Cuerpo: datosAvisoTarea(t), URL: fmt.Sprintf("/trabajos/%d?desde=tareas", t.ID), Etiqueta: "entrega-hecha"}, clave)
 }
+
+func (a *API) avisarEntregaRetiradaAdmins(ctx context.Context, t *store.Tarea, persona string, hechaAnterior *time.Time) {
+	if t == nil {
+		return
+	}
+	admins, err := a.Store.AdminsVieronTareaDesde(ctx, t.ID, hechaAnterior)
+	if err != nil || len(admins) == 0 {
+		return
+	}
+	aviso := AvisoPush{
+		Titulo:   persona + " retiró su entrega",
+		Cuerpo:   datosAvisoTarea(t),
+		URL:      fmt.Sprintf("/trabajos/%d?desde=tareas", t.ID),
+		Etiqueta: "entrega-retirada",
+	}
+	clave := fmt.Sprintf("retiro:%d:%d", t.ID, time.Now().UTC().UnixNano())
+	for _, adminID := range admins {
+		a.encolarSinEnviar(ctx, adminID, aviso, clave)
+	}
+	a.despacharYa(ctx)
+}
 func rutaCorte(id int64) string { return fmt.Sprintf("/factura?corte=%d#corte-%d", id, id) }
 func (a *API) avisarCorte(ctx context.Context, id int64, perfil string, pagado bool, periodo string) {
 	tipo, titulo := "corte-listo", "Tu corte está listo"

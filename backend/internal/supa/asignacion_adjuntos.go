@@ -40,7 +40,22 @@ func filtrosAdjunto(tarea int64, id string) url.Values {
 }
 
 func (s *SupabaseStore) ListarAdjuntos(ctx context.Context, tarea int64) ([]*store.AdjuntoAsignacion, error) {
-	q := url.Values{"tarea_id": {"eq." + strconv.FormatInt(tarea, 10)}, "estado_archivo": {"eq.listo"}, "order": {"cupo"}}
+	return s.ListarAdjuntosPorOrigen(ctx, tarea, "asignacion", nil)
+}
+
+func (s *SupabaseStore) ListarAdjuntosPorOrigen(ctx context.Context, tarea int64, origen string, historialID *int64) ([]*store.AdjuntoAsignacion, error) {
+	if origen == "" {
+		origen = "asignacion"
+	}
+	q := url.Values{
+		"tarea_id":       {"eq." + strconv.FormatInt(tarea, 10)},
+		"origen":         {"eq." + origen},
+		"estado_archivo": {"eq.listo"},
+		"order":          {"cupo"},
+	}
+	if historialID != nil {
+		q.Set("historial_id", "eq."+strconv.FormatInt(*historialID, 10))
+	}
 	filas := make([]*store.AdjuntoAsignacion, 0)
 	err := s.client.REST(ctx, http.MethodGet, tablaAdjuntos, q, nil, "", &filas)
 	return filas, err

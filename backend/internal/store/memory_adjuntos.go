@@ -15,12 +15,46 @@ func copiarAdjunto(a *AdjuntoAsignacion) *AdjuntoAsignacion {
 	return &b
 }
 
+func origenAdjunto(a *AdjuntoAsignacion) string {
+	if a != nil && a.Origen == "rechazo" {
+		return "rechazo"
+	}
+	return "asignacion"
+}
+
+func mismoHistorialAdjunto(a, b *int64) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
 func (m *MemoryStore) ReservarAdjunto(_ context.Context, a *AdjuntoAsignacion) (*AdjuntoAsignacion, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	t := m.tareas[a.TareaID]
-	if t == nil || (t.Estado != "pendiente" && t.Estado != "rechazada") {
-		return nil, ErrCupoAdjuntos
+	origen := origenAdjunto(a)
+	if origen == "rechazo" {
+		if t == nil || t.Estado != EstadoTareaRechazada || a.HistorialID == nil {
+			return nil, ErrCupoAdjuntos
+		}
+		valido := false
+		for _, h := range m.historialTareas[a.TareaID] {
+			if h.ID == *a.HistorialID && h.Evento == "entrega_rechazada" {
+				valido = true
+				break
+			}
+		}
+		if !valido {
+			return nil, ErrCupoAdjuntos
+		}
+	} else {
+		if t == nil || (t.Estado != "pendiente" && t.Estado != "rechazada") {
+			return nil, ErrCupoAdjuntos
+		}
 	}
 	if previa := m.adjuntosAsignacion[a.ID]; previa != nil {
 		if previa.TareaID != a.TareaID {
@@ -33,7 +67,7 @@ func (m *MemoryStore) ReservarAdjunto(_ context.Context, a *AdjuntoAsignacion) (
 	}
 	usados := [11]bool{}
 	for _, v := range m.adjuntosAsignacion {
-		if v.TareaID == a.TareaID {
+		if v.TareaID == a.TareaID && origenAdjunto(v) == origen && (origen != "rechazo" || mismoHistorialAdjunto(v.HistorialID, a.HistorialID)) {
 			usados[v.Cupo] = true
 		}
 	}
@@ -42,6 +76,10 @@ func (m *MemoryStore) ReservarAdjunto(_ context.Context, a *AdjuntoAsignacion) (
 			continue
 		}
 		b := copiarAdjunto(a)
+		b.Origen = origen
+		if origen == "asignacion" {
+			b.HistorialID = nil
+		}
 		b.Cupo = cupo
 		b.CreadoEn = time.Now().UTC()
 		b.ActualizadoEn = b.CreadoEn
@@ -53,12 +91,22 @@ func (m *MemoryStore) ReservarAdjunto(_ context.Context, a *AdjuntoAsignacion) (
 	return nil, ErrCupoAdjuntos
 }
 
-func (m *MemoryStore) ListarAdjuntos(_ context.Context, tarea int64) ([]*AdjuntoAsignacion, error) {
+func (m *MemoryStore) ListarAdjuntos(ctx context.Context, tarea int64) ([]*AdjuntoAsignacion, error) {
+	return m.ListarAdjuntosPorOrigen(ctx, tarea, "asignacion", nil)
+}
+
+func (m *MemoryStore) ListarAdjuntosPorOrigen(_ context.Context, tarea int64, origen string, historialID *int64) ([]*AdjuntoAsignacion, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if origen == "" {
+		origen = "asignacion"
+	}
 	out := make([]*AdjuntoAsignacion, 0)
 	for _, a := range m.adjuntosAsignacion {
-		if a.TareaID == tarea && a.EstadoArchivo == "listo" {
+		if a.TareaID == tarea && a.EstadoArchivo == "listo" && origenAdjunto(a) == origen {
+			if historialID != nil && (a.HistorialID == nil || *a.HistorialID != *historialID) {
+				continue
+			}
 			out = append(out, copiarAdjunto(a))
 		}
 	}

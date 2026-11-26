@@ -24,17 +24,40 @@ export function tipoDeArchivo(f: File): TipoAdjunto | null {
 }
 
 export const adjuntos = {
-  listar: (id: number) => fetchApi<AdjuntoAsignacion[]>(base(id), { cache: "no-store" }),
+  listar: (id: number, origen?: "asignacion" | "rechazo", historialId?: number) => {
+    const q = new URLSearchParams();
+    if (origen && origen !== "asignacion") q.set("origen", origen);
+    if (historialId) q.set("historial_id", String(historialId));
+    const qs = q.toString();
+    return fetchApi<AdjuntoAsignacion[]>(`${base(id)}${qs ? `?${qs}` : ""}`, { cache: "no-store" });
+  },
   firma: (id: number, a: string, descarga = false) => fetchApi<{ url: string; expira_en: number }>(`${base(id)}/${a}/firma${descarga ? "?descargar=1" : ""}`, { cache: "no-store" }),
   reintentar: (id: number, a: string) => fetchApi<AdjuntoAsignacion>(`${base(id)}/${a}/reintentar`, { method: "POST" }),
   quitar: (id: number, a: string) => fetchApi<unknown>(`${admin(id)}/${a}`, { method: "DELETE" }),
   resumir: (id: number, a: string, resumir: boolean) => fetchApi<AdjuntoAsignacion>(`${admin(id)}/${a}`, json("PATCH", { resumir })),
 };
 
-export async function subirAdjunto(tarea: number, local: AdjuntoLocal, progreso: (n: number) => void) {
+export async function subirAdjunto(
+  tarea: number,
+  local: AdjuntoLocal,
+  progreso: (n: number) => void,
+  opts?: { origen?: "asignacion" | "rechazo"; historialId?: number },
+) {
   const f = local.archivo;
   const raiz = admin(tarea);
-  const r = await fetchApi<{ id: string; parte_bytes: number; listo: boolean }>(raiz, json("POST", { id: local.id, nombre: f.name, tamano: f.size, tipo: local.tipo, resumir: local.resumir, duracion_ms: local.duracion }));
+  const r = await fetchApi<{ id: string; parte_bytes: number; listo: boolean }>(
+    raiz,
+    json("POST", {
+      id: local.id,
+      nombre: f.name,
+      tamano: f.size,
+      tipo: local.tipo,
+      resumir: local.resumir,
+      duracion_ms: local.duracion,
+      ...(opts?.origen ? { origen: opts.origen } : {}),
+      ...(opts?.historialId ? { historial_id: opts.historialId } : {}),
+    }),
+  );
   const accion = `${raiz}/${r.id}`;
   if (!r.listo) {
     for (let offset = 0, n = 0; offset < f.size; offset += r.parte_bytes, n++) {

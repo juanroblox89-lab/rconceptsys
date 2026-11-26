@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 type MemoryStore struct {
@@ -31,6 +32,10 @@ type MemoryStore struct {
 	nextTipoID    int
 	tareas        map[int64]*Tarea
 	nextTareaID   int64
+	entregasTareas  map[int64][]*EntregaTarea
+	nextEntregaID   int64
+	historialTareas map[int64][]*TareaHistorialItem
+	nextHistorialID int64
 	facturas      map[int64]*Factura
 	nextFactID    int64
 
@@ -70,6 +75,10 @@ func NewMemoryStore() *MemoryStore {
 		nextTipoID:    4,
 		tareas:        make(map[int64]*Tarea),
 		nextTareaID:   1,
+		entregasTareas:  make(map[int64][]*EntregaTarea),
+		nextEntregaID:   1,
+		historialTareas: make(map[int64][]*TareaHistorialItem),
+		nextHistorialID: 1,
 		facturas:      make(map[int64]*Factura),
 		nextFactID:    1,
 		equipo: ConfigEquipo{
@@ -1002,7 +1011,66 @@ func (m *MemoryStore) clonarTareaLocked(t *Tarea) *Tarea {
 	if creador, ok := m.perfiles[t.CreadoPor]; ok {
 		cp.Creador = m.clonarPerfilLocked(creador)
 	}
+	if t.Estado == EstadoTareaPendiente || t.Estado == EstadoTareaRechazada {
+		if entregas := m.entregasTareas[t.ID]; len(entregas) > 0 {
+			ultima := entregas[len(entregas)-1]
+			if ultima.Estado == "retirada" || ultima.Estado == "rechazada" {
+				copiaEntrega := *ultima
+				cp.BorradorEntrega = &copiaEntrega
+			}
+		}
+	}
+	if t.Estado == EstadoTareaRechazada {
+		if hist := m.historialTareas[t.ID]; len(hist) > 0 {
+			for i := len(hist) - 1; i >= 0; i-- {
+				h := hist[i]
+				if h.Evento == "entrega_rechazada" {
+					motivo := ""
+					if h.Motivo != nil {
+						motivo = *h.Motivo
+					}
+					cp.RechazoActual = &RechazoEvento{
+						HistorialID:   h.ID,
+						Motivo:        motivo,
+						DriveAdjuntos: append([]ReferenciaDriveTrabajo{}, h.DriveAdjuntos...),
+						Adjuntos:      m.vistaAdjuntosRechazoLocked(t.ID, h.ID),
+						CreadoEn:      h.CreadoEn,
+					}
+					break
+				}
+			}
+		}
+	}
 	return &cp
+}
+
+func (m *MemoryStore) vistaAdjuntosRechazoLocked(tareaID, historialID int64) []*VistaAdjuntoTarea {
+	var lista []*AdjuntoAsignacion
+	for _, a := range m.adjuntosAsignacion {
+		if a.TareaID == tareaID && a.Origen == "rechazo" && a.HistorialID != nil && *a.HistorialID == historialID && a.EstadoArchivo == "listo" {
+			lista = append(lista, a)
+		}
+	}
+	if len(lista) == 0 {
+		return nil
+	}
+	sort.Slice(lista, func(i, j int) bool { return lista[i].Cupo < lista[j].Cupo })
+	out := make([]*VistaAdjuntoTarea, 0, len(lista))
+	for _, a := range lista {
+		out = append(out, &VistaAdjuntoTarea{
+			ID:            a.ID,
+			Tipo:          a.Tipo,
+			Nombre:        a.Nombre,
+			Tamano:        a.Tamano,
+			Mime:          a.Mime,
+			DuracionMS:    a.DuracionMS,
+			Resumir:       a.Resumir,
+			EstadoResumen: a.EstadoResumen,
+			Resumen:       append([]string{}, a.Resumen...),
+			Transcripcion: a.Transcripcion,
+		})
+	}
+	return out
 }
 
 // ContarLetrasDigitos cuenta letras y dígitos (unicode) de un texto.
@@ -1147,6 +1215,14 @@ func (m *MemoryStore) ContarTareasPorRevisar(ctx context.Context) (int, error) {
 }
 
 func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int, enlaceMedios *string) (*Tarea, error) {
+	return m.EntregarTarea(ctx, id, asignadoID, EntregaInput{
+		Nota:         nota,
+		Cantidad:     cantidad,
+		EnlaceMedios: enlaceMedios,
+	})
+}
+
+func (m *MemoryStore) EntregarTarea(ctx context.Context, id int64, asignadoID string, entrada EntregaInput) (*Tarea, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -1163,36 +1239,244 @@ func (m *MemoryStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID
 
 	tipo := m.tiposTrabajo[t.TipoID]
 	if tipo != nil && tipo.Unidad == "minuto" {
-		if cantidad == nil || *cantidad < 1 || *cantidad > 1440 {
+		if entrada.Cantidad == nil || *entrada.Cantidad < 1 || *entrada.Cantidad > 1440 {
 			return nil, fmt.Errorf("%w: los minutos deben estar entre 1 y 1440", ErrValidation)
 		}
-		t.Cantidad = cantidad
+		cant := *entrada.Cantidad
+		t.Cantidad = &cant
 	} else {
 		t.Cantidad = nil
 	}
 
-	if nota != nil {
-		if len(*nota) > 500 {
+	var notaLimpia *string
+	if entrada.Nota != nil {
+		tr := strings.TrimSpace(*entrada.Nota)
+		if utf8.RuneCountInString(tr) > 500 {
 			return nil, ErrValidation
 		}
-		t.NotaPersona = nota
-	}
-
-	if enlaceMedios != nil {
-		limpio := strings.TrimSpace(*enlaceMedios)
-		if limpio == "" {
-			t.EnlaceMedios = nil
-		} else {
-			t.EnlaceMedios = &limpio
+		if tr != "" {
+			notaLimpia = &tr
 		}
 	}
+	t.NotaPersona = notaLimpia
+
+	metodo := strings.ToLower(strings.TrimSpace(entrada.Metodo))
+	var enlaceLimpio, nombreLimpio, tipoEntregaLimpio *string
+	if entrada.EnlaceMedios != nil {
+		tr := strings.TrimSpace(*entrada.EnlaceMedios)
+		if tr != "" {
+			enlaceLimpio = &tr
+		}
+	}
+	if entrada.EntregaNombre != nil {
+		tr := strings.TrimSpace(*entrada.EntregaNombre)
+		if tr != "" {
+			r := []rune(tr)
+			if len(r) > 200 {
+				tr = string(r[:200])
+			}
+			nombreLimpio = &tr
+		}
+	}
+	if entrada.EntregaTipo != nil {
+		tr := strings.ToLower(strings.TrimSpace(*entrada.EntregaTipo))
+		if tr == "carpeta" || tr == "archivo" {
+			tipoEntregaLimpio = &tr
+		} else if tr != "" {
+			return nil, ErrValidation
+		}
+	}
+
+	if metodo == "" && enlaceLimpio != nil {
+		metodo = "drive"
+	}
+
+	var detalle string
+	var metodoPtr *string
+	switch metodo {
+	case "whatsapp":
+		mp := "whatsapp"
+		metodoPtr = &mp
+		enlaceLimpio = nil
+		nombreLimpio = nil
+		tipoEntregaLimpio = nil
+		detalle = "Entrega enviada por WhatsApp"
+	case "drive":
+		mp := "drive"
+		metodoPtr = &mp
+		detalle = "Entrega enviada por Drive"
+	case "":
+		detalle = "Entrega enviada a revisión"
+	default:
+		return nil, fmt.Errorf("%w: método de entrega inválido", ErrValidation)
+	}
+
+	t.MetodoEntrega = metodoPtr
+	t.EnlaceMedios = enlaceLimpio
+	t.EntregaNombre = nombreLimpio
+	t.EntregaTipo = tipoEntregaLimpio
 
 	ahora := time.Now()
 	t.Estado = EstadoTareaHecha
 	t.HechaEn = &ahora
 	t.MotivoRechazo = nil // Se limpia motivo al volver a entregar
 
+	if m.entregasTareas == nil {
+		m.entregasTareas = make(map[int64][]*EntregaTarea)
+	}
+	if m.nextEntregaID == 0 {
+		m.nextEntregaID = 1
+	}
+	for _, previa := range m.entregasTareas[id] {
+		if previa.Estado == "activa" {
+			previa.Estado = "reemplazada"
+		}
+	}
+	eid := m.nextEntregaID
+	m.nextEntregaID++
+	entrega := &EntregaTarea{
+		ID:            eid,
+		TareaID:       id,
+		PerfilID:      asignadoID,
+		Metodo:        metodo,
+		EnlaceMedios:  enlaceLimpio,
+		EntregaNombre: nombreLimpio,
+		EntregaTipo:   tipoEntregaLimpio,
+		Nota:          notaLimpia,
+		Cantidad:      t.Cantidad,
+		Estado:        "activa",
+		CreadaEn:      ahora,
+	}
+	m.entregasTareas[id] = append(m.entregasTareas[id], entrega)
+
+	m.registrarHistorialLocked(id, &asignadoID, "entrega_enviada", detalle, func(h *TareaHistorialItem) {
+		h.MetodoEntrega = metodoPtr
+		h.EnlaceMedios = enlaceLimpio
+		h.EntregaNombre = nombreLimpio
+		h.EntregaTipo = tipoEntregaLimpio
+		h.Nota = notaLimpia
+		h.Cantidad = t.Cantidad
+		h.CreadoEn = ahora
+	})
+
 	return m.clonarTareaLocked(t), nil
+}
+
+func (m *MemoryStore) registrarHistorialLocked(tareaID int64, actorID *string, evento, detalle string, configurar func(*TareaHistorialItem)) *TareaHistorialItem {
+	if m.historialTareas == nil {
+		m.historialTareas = make(map[int64][]*TareaHistorialItem)
+	}
+	if m.nextHistorialID == 0 {
+		m.nextHistorialID = 1
+	}
+	hid := m.nextHistorialID
+	m.nextHistorialID++
+	item := &TareaHistorialItem{
+		ID:       hid,
+		TareaID:  tareaID,
+		ActorID:  actorID,
+		Evento:   evento,
+		Detalle:  detalle,
+		CreadoEn: time.Now(),
+	}
+	if actorID != nil {
+		if p, ok := m.perfiles[*actorID]; ok {
+			item.ActorNombre = p.Nombre
+		}
+	}
+	if configurar != nil {
+		configurar(item)
+	}
+	m.historialTareas[tareaID] = append(m.historialTareas[tareaID], item)
+	return item
+}
+
+func (m *MemoryStore) RevertirEntregaTarea(ctx context.Context, id int64, asignadoID string) (*ResultadoReversionEntrega, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	t, ok := m.tareas[id]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	if t.AsignadoA != asignadoID {
+		return nil, ErrForbidden
+	}
+	if t.Estado != EstadoTareaHecha {
+		return nil, fmt.Errorf("%w:estado:%s", ErrConflict, t.Estado)
+	}
+
+	ahora := time.Now()
+	hechaAnterior := t.HechaEn
+
+	var retirada *EntregaTarea
+	for i := len(m.entregasTareas[id]) - 1; i >= 0; i-- {
+		e := m.entregasTareas[id][i]
+		if e.Estado == "activa" {
+			e.Estado = "retirada"
+			e.RetiradaEn = &ahora
+			retirada = e
+			break
+		}
+	}
+	if retirada == nil {
+		if m.entregasTareas == nil {
+			m.entregasTareas = make(map[int64][]*EntregaTarea)
+		}
+		if m.nextEntregaID == 0 {
+			m.nextEntregaID = 1
+		}
+		eid := m.nextEntregaID
+		m.nextEntregaID++
+		metodo := ""
+		if t.MetodoEntrega != nil {
+			metodo = *t.MetodoEntrega
+		}
+		retirada = &EntregaTarea{
+			ID:            eid,
+			TareaID:       id,
+			PerfilID:      asignadoID,
+			Metodo:        metodo,
+			EnlaceMedios:  t.EnlaceMedios,
+			EntregaNombre: t.EntregaNombre,
+			EntregaTipo:   t.EntregaTipo,
+			Nota:          t.NotaPersona,
+			Cantidad:      t.Cantidad,
+			Estado:        "retirada",
+			CreadaEn:      ahora,
+			RetiradaEn:    &ahora,
+		}
+		m.entregasTareas[id] = append(m.entregasTareas[id], retirada)
+	}
+
+	t.Estado = EstadoTareaPendiente
+	t.HechaEn = nil
+	t.MetodoEntrega = nil
+	t.EnlaceMedios = nil
+	t.EntregaNombre = nil
+	t.EntregaTipo = nil
+	t.NotaPersona = nil
+	t.Cantidad = nil
+
+	var metodoHist *string
+	if retirada.Metodo != "" {
+		mp := retirada.Metodo
+		metodoHist = &mp
+	}
+	m.registrarHistorialLocked(id, &asignadoID, "entrega_retirada", "Entrega retirada por el trabajador", func(h *TareaHistorialItem) {
+		h.MetodoEntrega = metodoHist
+		h.EnlaceMedios = retirada.EnlaceMedios
+		h.EntregaNombre = retirada.EntregaNombre
+		h.EntregaTipo = retirada.EntregaTipo
+		h.Nota = retirada.Nota
+		h.Cantidad = retirada.Cantidad
+		h.CreadoEn = ahora
+	})
+
+	return &ResultadoReversionEntrega{
+		Tarea:           m.clonarTareaLocked(t),
+		HechaEnAnterior: hechaAnterior,
+	}, nil
 }
 
 func (m *MemoryStore) AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*Tarea, error) {
@@ -1265,10 +1549,25 @@ func (m *MemoryStore) AceptarTarea(ctx context.Context, id int64, adminID string
 	t.ResueltaEn = &ahora
 	t.ResueltaPor = &adminID
 
+	for i := len(m.entregasTareas[id]) - 1; i >= 0; i-- {
+		if m.entregasTareas[id][i].Estado == "activa" {
+			m.entregasTareas[id][i].Estado = "aceptada"
+			break
+		}
+	}
+	m.registrarHistorialLocked(id, &adminID, "entrega_aceptada", "Entrega aprobada", func(h *TareaHistorialItem) {
+		h.Cantidad = &cantAceptada
+		h.CreadoEn = ahora
+	})
+
 	return m.clonarTareaLocked(t), nil
 }
 
 func (m *MemoryStore) RechazarTarea(ctx context.Context, id int64, adminID string, motivo string) (*Tarea, error) {
+	return m.RechazarTareaConDetalle(ctx, id, adminID, motivo, nil)
+}
+
+func (m *MemoryStore) RechazarTareaConDetalle(ctx context.Context, id int64, adminID string, motivo string, driveAdjuntos []ReferenciaDriveTrabajo) (*Tarea, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -1278,7 +1577,7 @@ func (m *MemoryStore) RechazarTarea(ctx context.Context, id int64, adminID strin
 	}
 
 	motivoLimpio := strings.TrimSpace(motivo)
-	if motivoLimpio == "" || len(motivoLimpio) > 500 {
+	if motivoLimpio == "" || utf8.RuneCountInString(motivoLimpio) > 500 {
 		return nil, fmt.Errorf("%w: el motivo de rechazo es obligatorio (hasta 500 caracteres)", ErrValidation)
 	}
 
@@ -1287,7 +1586,7 @@ func (m *MemoryStore) RechazarTarea(ctx context.Context, id int64, adminID strin
 		return nil, ErrNotFound
 	}
 	if t.Estado != EstadoTareaHecha {
-		return nil, fmt.Errorf("%w: solo se pueden rechazar tareas en estado hecha", ErrValidation)
+		return nil, fmt.Errorf("%w: solo se pueden rechazar tareas en estado hecha (estado actual: %s)", ErrConflict, t.Estado)
 	}
 
 	ahora := time.Now()
@@ -1296,7 +1595,70 @@ func (m *MemoryStore) RechazarTarea(ctx context.Context, id int64, adminID strin
 	t.ResueltaEn = &ahora
 	t.ResueltaPor = &adminID
 
+	for i := len(m.entregasTareas[id]) - 1; i >= 0; i-- {
+		if m.entregasTareas[id][i].Estado == "activa" {
+			m.entregasTareas[id][i].Estado = "rechazada"
+			break
+		}
+	}
+	m.registrarHistorialLocked(id, &adminID, "entrega_rechazada", "Entrega devuelta con observaciones", func(h *TareaHistorialItem) {
+		h.Motivo = &motivoLimpio
+		if len(driveAdjuntos) > 0 {
+			h.DriveAdjuntos = append([]ReferenciaDriveTrabajo{}, driveAdjuntos...)
+		}
+		h.CreadoEn = ahora
+	})
+
 	return m.clonarTareaLocked(t), nil
+}
+
+func (m *MemoryStore) ObtenerHistorialTarea(ctx context.Context, tareaID int64) ([]*TareaHistorialItem, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if _, ok := m.tareas[tareaID]; !ok {
+		return nil, ErrNotFound
+	}
+	items := m.historialTareas[tareaID]
+	out := make([]*TareaHistorialItem, 0, len(items))
+	for _, h := range items {
+		cp := *h
+		if h.DriveAdjuntos != nil {
+			cp.DriveAdjuntos = append([]ReferenciaDriveTrabajo{}, h.DriveAdjuntos...)
+		}
+		if h.Evento == "entrega_rechazada" {
+			cp.Adjuntos = m.vistaAdjuntosRechazoLocked(tareaID, h.ID)
+		}
+		if cp.ActorNombre == "" && h.ActorID != nil {
+			if p, ok := m.perfiles[*h.ActorID]; ok {
+				cp.ActorNombre = p.Nombre
+			}
+		}
+		out = append(out, &cp)
+	}
+	return out, nil
+}
+
+func (m *MemoryStore) AdminsVieronTareaDesde(ctx context.Context, tareaID int64, desde *time.Time) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var admins []string
+	for perfilID, vistas := range m.asignacionesVistas {
+		p, ok := m.perfiles[perfilID]
+		if !ok || !p.EsAdmin || p.Estado != EstadoAprobado {
+			continue
+		}
+		vistoEn, ok := vistas[tareaID]
+		if !ok {
+			continue
+		}
+		if desde != nil && vistoEn.Before(*desde) {
+			continue
+		}
+		admins = append(admins, perfilID)
+	}
+	return admins, nil
 }
 
 func (m *MemoryStore) CancelarTarea(ctx context.Context, id int64, adminID string) (*Tarea, error) {

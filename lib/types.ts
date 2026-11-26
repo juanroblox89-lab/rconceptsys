@@ -240,6 +240,74 @@ export interface TipoTrabajo {
 
 export type EstadoTarea = 'pendiente' | 'hecha' | 'aceptada' | 'rechazada' | 'cancelada';
 
+export type MetodoEntrega = 'drive' | 'whatsapp';
+export type TipoElementoEntrega = 'carpeta' | 'archivo';
+
+export interface EntregaTarea {
+  id: number;
+  tarea_id: number;
+  perfil_id: string;
+  metodo_entrega?: MetodoEntrega | null;
+  enlace_medios?: string | null;
+  entrega_nombre?: string | null;
+  entrega_tipo?: TipoElementoEntrega | null;
+  nota?: string | null;
+  cantidad?: number | null;
+  estado: string;
+  creada_en: string;
+  retirada_en?: string | null;
+}
+
+export interface AdjuntoRechazoVista {
+  id: string;
+  tipo: 'imagen' | 'video' | 'audio';
+  nombre: string;
+  tamano: number;
+  mime: string;
+  duracion_ms?: number | null;
+  resumir?: boolean;
+  estado_resumen?: string;
+}
+
+export interface RechazoEvento {
+  historial_id: number;
+  motivo: string;
+  drive_adjuntos?: ReferenciaDriveTrabajo[];
+  adjuntos?: AdjuntoRechazoVista[];
+  creado_en: string;
+}
+
+export interface TareaHistorialItem {
+  id: number;
+  tarea_id: number;
+  actor_id?: string | null;
+  actor_nombre?: string;
+  evento: 'entrega_enviada' | 'entrega_retirada' | 'entrega_rechazada' | 'entrega_aceptada';
+  detalle: string;
+  metodo_entrega?: MetodoEntrega | null;
+  enlace_medios?: string | null;
+  entrega_nombre?: string | null;
+  entrega_tipo?: TipoElementoEntrega | null;
+  nota?: string | null;
+  motivo?: string | null;
+  cantidad?: number | null;
+  drive_adjuntos?: ReferenciaDriveTrabajo[];
+  adjuntos?: AdjuntoRechazoVista[];
+  creado_en: string;
+}
+
+export interface WorkerPickerConfig {
+  modo: string;
+  client_id?: string;
+  access_token?: string;
+  clave: string;
+  proyecto_id: string;
+  scope?: string;
+  carpeta_id?: string;
+  carpeta_url?: string | null;
+  equipo_conectado?: boolean;
+}
+
 export interface ReferenciaDriveTrabajo {
   id: string;
   nombre: string;
@@ -265,10 +333,16 @@ export interface Tarea {
   estado: EstadoTarea;
   fecha_limite?: string | null;
   nota_persona?: string | null;
+  metodo_entrega?: MetodoEntrega | null;
   enlace_medios?: string | null;
+  entrega_nombre?: string | null;
+  entrega_tipo?: TipoElementoEntrega | null;
   drive_carpeta_id?: string | null;
   drive_carpeta_url?: string | null;
   motivo_rechazo?: string | null;
+  borrador_entrega?: EntregaTarea | null;
+  rechazo_actual?: RechazoEvento | null;
+  historial?: TareaHistorialItem[];
   cantidad?: number | null;
   cantidad_aceptada?: number | null;
   precio_unitario_congelado?: number | null;

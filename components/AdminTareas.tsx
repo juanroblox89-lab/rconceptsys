@@ -1,12 +1,16 @@
 "use client";
 
 import { Selector, opcionesSelector } from "@/components/ui/Selector";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Check,
+  FileText,
+  FolderOpen,
+  MessageCircle,
   Plus,
+  Trash2,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, type ApiError } from "@/lib/api";
 import estilosTarea from "@/app/(app)/tareas/tareas.module.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,8 +18,13 @@ import { FilaTrabajo } from "@/components/FilaTrabajo";
 import flujo from "@/components/FlujoTrabajo.module.css";
 import {
   Perfil,
+  ReferenciaDriveTrabajo,
   Tarea,
 } from "@/lib/types";
+import { type DialogoPicker } from "@/lib/google-picker";
+import { abrirSelectorGoogleDrive } from "@/components/PickerDriveCliente";
+import { EditorAdjuntos } from "@/components/AdjuntosAsignacion";
+import { subirAdjunto, type AdjuntoLocal } from "@/lib/adjuntos-asignacion";
 import { Boton } from "@/components/ui/Boton";
 import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Esqueleto } from "@/components/ui/Esqueleto";
@@ -26,6 +35,8 @@ import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { CarpetaDriveTarea } from "@/components/ui/CarpetaDriveTarea";
 import { useAviso } from "@/components/ui/Aviso";
 import styles from "@/app/(app)/admin/admin.module.css";
+
+const MAX_DRIVE_RECHAZO = 5;
 
 export interface AdminTareasProps {
   embedded?: boolean;
@@ -48,10 +59,34 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   const [minutosAceptarInput, setMinutosAceptarInput] = useState<string>("");
   const [aceptandoTarea, setAceptandoTarea] = useState(false);
 
-  // Modal Rechazar Tarea
+  // Modal Rechazar Tarea (texto + audio/imagen/video + Google Drive)
   const [tareaARechazar, setTareaARechazar] = useState<Tarea | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [rechazoLocales, setRechazoLocales] = useState<AdjuntoLocal[]>([]);
+  const [rechazoDrive, setRechazoDrive] = useState<ReferenciaDriveTrabajo[]>([]);
+  const [grabandoRechazo, setGrabandoRechazo] = useState(false);
+  const [abriendoPickerRechazo, setAbriendoPickerRechazo] = useState(false);
+  const [errorPickerRechazo, setErrorPickerRechazo] = useState("");
+  const [errorRechazo, setErrorRechazo] = useState("");
+  const [rechazoGuardadoId, setRechazoGuardadoId] = useState<number | null>(null);
   const [rechazando, setRechazando] = useState(false);
+
+  const pickerDialogo = useRef<DialogoPicker | null>(null);
+  const pickerVigente = useRef(true);
+
+  useEffect(() => {
+    pickerVigente.current = true;
+    return () => {
+      pickerVigente.current = false;
+      try {
+        pickerDialogo.current?.setVisible(false);
+        pickerDialogo.current?.dispose?.();
+      } catch {
+        // Ignorar limpieza de diálogo cerrado
+      }
+      pickerDialogo.current = null;
+    };
+  }, []);
 
   const cargarDatos = useCallback(async () => {
     try {
@@ -130,21 +165,135 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     }
   };
 
+  const abrirModalRechazar = (t: Tarea) => {
+    setTareaARechazar(t);
+    setMotivoRechazo("");
+    setRechazoLocales([]);
+    setRechazoDrive([]);
+    setGrabandoRechazo(false);
+    setAbriendoPickerRechazo(false);
+    setErrorPickerRechazo("");
+    setErrorRechazo("");
+    setRechazoGuardadoId(null);
+  };
+
+  const cerrarModalRechazar = () => {
+    if (rechazando || grabandoRechazo || abriendoPickerRechazo) return;
+    const recargar = rechazoGuardadoId !== null;
+    setTareaARechazar(null);
+    setMotivoRechazo("");
+    setRechazoLocales([]);
+    setRechazoDrive([]);
+    setErrorPickerRechazo("");
+    setErrorRechazo("");
+    setRechazoGuardadoId(null);
+    if (recargar) void cargarDatos();
+  };
+
+  const handleElegirDriveRechazo = async () => {
+    if (!tareaARechazar || abriendoPickerRechazo || rechazando || rechazoDrive.length >= MAX_DRIVE_RECHAZO) return;
+    setErrorPickerRechazo("");
+    setAbriendoPickerRechazo(true);
+    try {
+      await abrirSelectorGoogleDrive({
+        clienteId: tareaARechazar.cliente_id ?? undefined,
+        multiselect: true,
+        maxItems: Math.max(1, MAX_DRIVE_RECHAZO - rechazoDrive.length),
+        dialogoRef: pickerDialogo,
+        vigenteRef: pickerVigente,
+        onAbrir: () => {
+          if (pickerVigente.current) setAbriendoPickerRechazo(false);
+        },
+        onCancelar: () => {
+          if (pickerVigente.current) setAbriendoPickerRechazo(false);
+        },
+        onSeleccion: (elementos) => {
+          if (!pickerVigente.current) return;
+          setAbriendoPickerRechazo(false);
+          setRechazoDrive((prev) => {
+            const ids = new Set(prev.map((x) => x.id));
+            const nuevos: ReferenciaDriveTrabajo[] = [];
+            for (const el of elementos) {
+              if (ids.has(el.id)) continue;
+              ids.add(el.id);
+              nuevos.push({ id: el.id, nombre: el.nombre, url: el.url, tipo: el.tipo });
+            }
+            return [...prev, ...nuevos].slice(0, MAX_DRIVE_RECHAZO);
+          });
+        },
+      });
+    } catch (err) {
+      if (!pickerVigente.current) return;
+      setAbriendoPickerRechazo(false);
+      const apiErr = err as ApiError;
+      if (apiErr.codigo === "drive_no_conectado") {
+        setErrorPickerRechazo("Conecta el Drive del equipo en Gestión → Equipo.");
+      } else if (apiErr.codigo === "drive_sin_organizar") {
+        setErrorPickerRechazo("Organiza el Drive del equipo en Gestión → Equipo.");
+      } else {
+        setErrorPickerRechazo(err instanceof Error ? err.message : "No pudimos abrir Google Drive.");
+      }
+    }
+  };
+
   const handleConfirmarRechazar = async () => {
-    if (!tareaARechazar) return;
-    if (!motivoRechazo.trim()) {
+    if (!tareaARechazar || rechazando || grabandoRechazo || abriendoPickerRechazo) return;
+    if (!rechazoGuardadoId && !motivoRechazo.trim()) {
       mostrarAviso({ tipo: "error", titulo: "Motivo obligatorio" });
       return;
     }
+
     setRechazando(true);
+    setErrorRechazo("");
     try {
-      await api.adminRechazarTarea(tareaARechazar.id, motivoRechazo.trim());
+      let historialId = rechazoGuardadoId;
+      if (!historialId) {
+        const rechazada = await api.adminRechazarTarea(
+          tareaARechazar.id,
+          motivoRechazo.trim(),
+          rechazoDrive,
+        );
+        historialId = rechazada.rechazo_actual?.historial_id ?? null;
+      }
+
+      if (rechazoLocales.length > 0 && historialId) {
+        let fallos = 0;
+        for (const archivo of rechazoLocales) {
+          const ajustar = (campos: Partial<AdjuntoLocal>) =>
+            setRechazoLocales((prev) =>
+              prev.map((x) => (x.id === archivo.id ? { ...x, ...campos } : x)),
+            );
+          ajustar({ avance: 0, error: undefined });
+          try {
+            await subirAdjunto(
+              tareaARechazar.id,
+              archivo,
+              (avance) => ajustar({ avance }),
+              { origen: "rechazo", historialId },
+            );
+            setRechazoLocales((prev) => prev.filter((x) => x.id !== archivo.id));
+          } catch (e) {
+            fallos++;
+            ajustar({ error: e instanceof Error ? e.message : "No se pudo subir este archivo." });
+          }
+        }
+        if (fallos > 0) {
+          setRechazoGuardadoId(historialId);
+          setErrorRechazo("El rechazo quedó guardado. Reintenta subir los archivos pendientes o quítalos.");
+          return;
+        }
+      }
+
       mostrarAviso({ tipo: "info", titulo: "Tarea rechazada" });
       setTareaARechazar(null);
       setMotivoRechazo("");
+      setRechazoLocales([]);
+      setRechazoDrive([]);
+      setRechazoGuardadoId(null);
       await cargarDatos();
     } catch (err: unknown) {
       const e = err as { message?: string };
+      setErrorRechazo(e.message || "No se pudo rechazar la tarea.");
       mostrarAviso({ tipo: "error", titulo: "Error al rechazar", texto: e.message || "No se pudo rechazar la tarea." });
     } finally {
       setRechazando(false);
@@ -248,11 +397,28 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                       </div>
                     )}
 
-                    {t.enlace_medios && (
-                      <div style={{ marginTop: "var(--rc-esp-8)" }}>
+                    {t.metodo_entrega === "whatsapp" ? (
+                      <div className={styles.entregaDriveBloque}>
+                        <span className={styles.entregaWhatsappChip}>
+                          <MessageCircle size={14} aria-hidden="true" />
+                          Entregado por WhatsApp
+                        </span>
+                      </div>
+                    ) : t.enlace_medios ? (
+                      <div className={styles.entregaDriveBloque}>
+                        {t.entrega_nombre && (
+                          <span className={styles.entregaDriveNombre}>
+                            {t.entrega_tipo === "carpeta" ? (
+                              <FolderOpen size={14} aria-hidden="true" />
+                            ) : (
+                              <FileText size={14} aria-hidden="true" />
+                            )}
+                            <span>{t.entrega_nombre}</span>
+                          </span>
+                        )}
                         <EnlaceDrive enlace={t.enlace_medios} />
                       </div>
-                    )}
+                    ) : null}
 
                     <div style={{ marginTop: "var(--rc-esp-6)" }}>
                       <CarpetaDriveTarea tarea={t} />
@@ -268,13 +434,10 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                     </div>
 
                     <div className={styles.reviewAcciones}>
-                      <Link className={flujo.enlace} href={`/trabajos/${t.id}?desde=tareas`}>Abrir</Link>
+                      <Link className="rc-btn rc-btn--fantasma rc-btn--sm" href={`/trabajos/${t.id}?desde=tareas`}>Abrir</Link>
                       <Boton
                         variante="peligro"
-                        onClick={() => {
-                          setTareaARechazar(t);
-                          setMotivoRechazo("");
-                        }}
+                        onClick={() => abrirModalRechazar(t)}
                       >
                         Rechazar
                       </Boton>
@@ -404,45 +567,120 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL: RECHAZAR TAREA                                     */}
+      {/* MODAL: RECHAZAR TAREA (texto + medios + Google Drive)     */}
       {/* ========================================================= */}
       {tareaARechazar && (
         <Modal
           abierto={true}
           titulo="Rechazar tarea"
           descripcion={`La persona verá el motivo y podrá corregir «${tareaARechazar.titulo}».`}
-          onCerrar={() => setTareaARechazar(null)}
+          onCerrar={cerrarModalRechazar}
           accionPrimaria={
             <Boton
               variante="peligro"
               cargando={rechazando}
+              disabled={grabandoRechazo || abriendoPickerRechazo}
               onClick={handleConfirmarRechazar}
             >
-              Rechazar tarea
+              {rechazoGuardadoId ? "Reintentar subida" : "Rechazar tarea"}
             </Boton>
           }
           accionSecundaria={
             <Boton
               variante="secundario"
-              onClick={() => setTareaARechazar(null)}
-              disabled={rechazando}
+              onClick={cerrarModalRechazar}
+              disabled={rechazando || grabandoRechazo || abriendoPickerRechazo}
             >
-              Cancelar
+              {rechazoGuardadoId ? "Cerrar" : "Cancelar"}
             </Boton>
           }
         >
           <div className={styles.modalForm}>
-            <Campo
-              etiqueta="Motivo del rechazo *"
-              como="textarea"
-              filas={3}
-              placeholder="Ej. El audio tiene ruido de viento o falta el corte final..."
-              value={motivoRechazo}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setMotivoRechazo(e.target.value.slice(0, 500))}
-            />
-            <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)", textAlign: "right" }}>
-              {motivoRechazo.length} / 500
+            <div>
+              <Campo
+                etiqueta="Motivo del rechazo *"
+                como="textarea"
+                filas={3}
+                placeholder="Ej. El audio tiene ruido de viento o falta el corte final..."
+                value={motivoRechazo}
+                disabled={rechazando || rechazoGuardadoId !== null}
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setMotivoRechazo(e.target.value.slice(0, 500))}
+              />
+              <div style={{ fontSize: 11, color: "var(--rc-texto-secundario)", textAlign: "right", marginTop: 4 }}>
+                {motivoRechazo.length} / 500
+              </div>
             </div>
+
+            <div className={styles.rechazoAdjuntosBloque}>
+              <EditorAdjuntos
+                locales={rechazoLocales}
+                cambiar={setRechazoLocales}
+                quitar={(a) => setRechazoLocales((prev) => prev.filter((x) => x.id !== a.id))}
+                cantidad={rechazoLocales.length}
+                bloqueado={rechazando}
+                onGrabando={setGrabandoRechazo}
+                permitirResumen={false}
+                tituloSeccion="Audio, imágenes o video (opcional)"
+                compacto={true}
+              />
+            </div>
+
+            {rechazoGuardadoId === null && (
+              <div className={styles.rechazoAdjuntosBloque}>
+                <div className={styles.rechazoDriveCabecera}>
+                  <h3>Elemento de Drive (opcional)</h3>
+                  <Boton
+                    variante="secundario"
+                    tamano="sm"
+                    cargando={abriendoPickerRechazo}
+                    disabled={rechazando || grabandoRechazo || rechazoDrive.length >= MAX_DRIVE_RECHAZO}
+                    onClick={() => void handleElegirDriveRechazo()}
+                  >
+                    <FolderOpen size={15} aria-hidden="true" />
+                    Elegir de Drive
+                  </Boton>
+                </div>
+                {errorPickerRechazo && (
+                  <p className={styles.errorTexto} role="alert">
+                    {errorPickerRechazo}
+                  </p>
+                )}
+                {rechazoDrive.length > 0 && (
+                  <ul className={styles.rechazoDriveLista} aria-label="Elementos de Drive adjuntos al rechazo">
+                    {rechazoDrive.map((d) => (
+                      <li key={d.id} className={styles.rechazoDriveItem}>
+                        <div className={styles.rechazoDriveInfo}>
+                          {d.tipo === "carpeta" ? (
+                            <FolderOpen size={15} aria-hidden="true" />
+                          ) : (
+                            <FileText size={15} aria-hidden="true" />
+                          )}
+                          <span title={d.nombre}>{d.nombre}</span>
+                        </div>
+                        <div className={styles.rechazoDriveAcciones}>
+                          <EnlaceDrive enlace={d.url} etiqueta="Abrir" />
+                          <Boton
+                            variante="fantasma"
+                            tamano="sm"
+                            disabled={rechazando}
+                            aria-label={`Quitar ${d.nombre}`}
+                            onClick={() => setRechazoDrive((prev) => prev.filter((x) => x.id !== d.id))}
+                          >
+                            <Trash2 size={14} aria-hidden="true" /> Quitar
+                          </Boton>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {errorRechazo && (
+              <p className={styles.errorTexto} role="alert">
+                {errorRechazo}
+              </p>
+            )}
           </div>
         </Modal>
       )}

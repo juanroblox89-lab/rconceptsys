@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"rconceptsys/backend/internal/store"
@@ -51,8 +52,11 @@ func (a *API) tareaParaAdjuntos(w http.ResponseWriter, r *http.Request, editar b
 
 func (a *API) handleDetalleAsignacion(w http.ResponseWriter, r *http.Request) {
 	if t := a.tareaParaAdjuntos(w, r, false); t != nil {
+		copia := *t
+		if hist, err := a.Store.ObtenerHistorialTarea(r.Context(), t.ID); err == nil {
+			copia.Historial = hist
+		}
 		if !UsuarioDesdeContexto(r.Context()).EsAdmin {
-			copia := *t
 			if t.Asignado != nil {
 				perfil := *t.Asignado
 				perfil.Correo = ""
@@ -69,9 +73,8 @@ func (a *API) handleDetalleAsignacion(w http.ResponseWriter, r *http.Request) {
 				cliente.Paquete = nil
 				copia.Cliente = &cliente
 			}
-			t = &copia
 		}
-		ResponderJSON(w, 200, t)
+		ResponderJSON(w, 200, &copia)
 	}
 }
 
@@ -104,7 +107,24 @@ func (a *API) handleListarAdjuntos(w http.ResponseWriter, r *http.Request) {
 	if t == nil {
 		return
 	}
-	lista, e := a.Store.ListarAdjuntos(r.Context(), t.ID)
+	origen := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("origen")))
+	if origen == "" {
+		origen = "asignacion"
+	}
+	if origen != "asignacion" && origen != "rechazo" {
+		ResponderError(w, 400, "origen_invalido", "Origen de adjuntos inválido.")
+		return
+	}
+	var histPtr *int64
+	if hs := strings.TrimSpace(r.URL.Query().Get("historial_id")); hs != "" {
+		hid, err := strconv.ParseInt(hs, 10, 64)
+		if err != nil || hid <= 0 {
+			ResponderError(w, 400, "historial_invalido", "Referencia de historial inválida.")
+			return
+		}
+		histPtr = &hid
+	}
+	lista, e := a.Store.ListarAdjuntosPorOrigen(r.Context(), t.ID, origen, histPtr)
 	if e != nil {
 		errorAdjunto(w)
 		return
@@ -183,6 +203,8 @@ func (a *API) handleReservarAdjunto(w http.ResponseWriter, r *http.Request) {
 	}
 	var in struct {
 		ID, Nombre, Tipo string
+		Origen           string `json:"origen"`
+		HistorialID      *int64 `json:"historial_id"`
 		Tamano           int
 		Duracion         *int `json:"duracion_ms"`
 		Resumir          bool
@@ -190,6 +212,42 @@ func (a *API) handleReservarAdjunto(w http.ResponseWriter, r *http.Request) {
 	if leerJSONCuerpo(r, 4096, &in) != nil || !uuidAdjunto.MatchString(in.ID) {
 		ResponderError(w, 400, "adjunto_invalido", "Revisa los datos del adjunto.")
 		return
+	}
+	origen := strings.ToLower(strings.TrimSpace(in.Origen))
+	if origen == "" {
+		origen = "asignacion"
+	}
+	if origen != "asignacion" && origen != "rechazo" {
+		ResponderError(w, 400, "adjunto_invalido", "Origen de adjunto inválido.")
+		return
+	}
+	if origen == "rechazo" {
+		if t.Estado != store.EstadoTareaRechazada {
+			ResponderError(w, 409, "tarea_no_rechazada", "Solo puedes adjuntar al rechazo de una tarea devuelta.")
+			return
+		}
+		if in.HistorialID == nil || *in.HistorialID <= 0 {
+			ResponderError(w, 400, "rechazo_invalido", "Falta la referencia del rechazo.")
+			return
+		}
+		hist, err := a.Store.ObtenerHistorialTarea(r.Context(), t.ID)
+		if err != nil {
+			errorAdjunto(w)
+			return
+		}
+		encontrado := false
+		for _, h := range hist {
+			if h.ID == *in.HistorialID && h.Evento == "entrega_rechazada" {
+				encontrado = true
+				break
+			}
+		}
+		if !encontrado {
+			ResponderError(w, 400, "rechazo_invalido", "El evento de rechazo no pertenece a esta tarea.")
+			return
+		}
+	} else {
+		in.HistorialID = nil
 	}
 	nombre, e := nombreSeguroAdjunto(in.Nombre)
 	f, ok := formatoAsignacion(nombre, in.Tipo)
@@ -202,7 +260,7 @@ func (a *API) handleReservarAdjunto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := UsuarioDesdeContexto(r.Context())
-	v, e := a.Store.ReservarAdjunto(r.Context(), &store.AdjuntoAsignacion{ID: in.ID, TareaID: t.ID, Tipo: f.tipo, Ruta: fmt.Sprintf("%d/%s/archivo", t.ID, in.ID), Nombre: nombre, Tamano: in.Tamano, Mime: f.mime, DuracionMS: in.Duracion, Resumir: in.Resumir, CreadoPor: &p.ID})
+	v, e := a.Store.ReservarAdjunto(r.Context(), &store.AdjuntoAsignacion{ID: in.ID, TareaID: t.ID, Origen: origen, HistorialID: in.HistorialID, Tipo: f.tipo, Ruta: fmt.Sprintf("%d/%s/archivo", t.ID, in.ID), Nombre: nombre, Tamano: in.Tamano, Mime: f.mime, DuracionMS: in.Duracion, Resumir: in.Resumir, CreadoPor: &p.ID})
 	if errors.Is(e, store.ErrCupoAdjuntos) {
 		ResponderError(w, 409, "cupo_adjuntos", "Esta asignación admite hasta 10 adjuntos.")
 		return

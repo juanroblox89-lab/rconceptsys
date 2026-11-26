@@ -29,8 +29,14 @@
 .datosTrabajo dt { font-weight: 600; }
 .datosTrabajo dd { margin: 0; color: var(--rc-texto-secundario); }
 .historialTrabajo, .listaTrabajos { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; min-width: 0; }
-.historialTrabajo li { display: flex; gap: 4px 12px; flex-wrap: wrap; padding-block: 5px; border-bottom: 1px solid var(--rc-border-subtle); }
-.historialTrabajo li span { color: var(--rc-texto-secundario); }
+.historialTrabajo li { display: flex; flex-direction: column; gap: 6px; padding-block: 8px; border-bottom: 1px solid var(--rc-border-subtle); }
+.historialFila { display: flex; gap: 4px 12px; flex-wrap: wrap; align-items: baseline; justify-content: space-between; }
+.historialTrabajo li span.historialFecha { color: var(--rc-texto-secundario); font-size: 12px; }
+.historialDetalle { font-size: 13px; color: var(--rc-texto); white-space: pre-wrap; overflow-wrap: anywhere; }
+.historialDriveLista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.historialDriveItem { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: var(--rc-radio-sm); background: var(--rc-superficie); box-shadow: var(--rc-elev-hundido-sm); }
+.historialDriveNombre { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; min-width: 0; overflow-wrap: anywhere; }
+.entregaWhatsappChip { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 4px 10px; border-radius: var(--rc-radio-pildora); background-color: var(--rc-verde-fondo, var(--rc-verde-suave)); color: var(--rc-verde-texto); border: 1px solid color-mix(in srgb, var(--rc-verde-texto) 24%, transparent); font-size: 12px; font-weight: 600; }
 .textoLargo { white-space: pre-wrap; overflow-wrap: break-word; }
 .filtrosTrabajo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 0; }
 .filtrosTrabajo select { min-width: 0; width: 100%; min-height: 44px; padding: 0 7px; border: 1px solid var(--rc-border-subtle); border-radius: var(--rc-radio-md); font: inherit; font-size: 13px; color: var(--rc-texto); background: var(--rc-superficie-clara); }
