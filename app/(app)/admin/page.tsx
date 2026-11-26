@@ -137,7 +137,6 @@ function GestionAdmin() {
 
   // Formulario nuevo rol (Pestaña Miembros)
   const [nuevoNombre, setNuevoNombre] = useState("");
-  const [nuevaClave, setNuevaClave] = useState("");
   const [nuevoColor, setNuevoColor] = useState("#2F7FE0");
   const [rolesPendientes, setRolesPendientes] = useState<Record<string, number[]>>({});
 
@@ -332,18 +331,21 @@ function GestionAdmin() {
 
   const handleCrearRol = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevoNombre.trim() || !nuevaClave.trim()) return;
+    const clave = nuevoNombre.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    if (!clave) {
+      mostrarAviso({ tipo: "error", titulo: "Nombre no válido", texto: "Escribe un nombre con letras o números." });
+      return;
+    }
     try {
       await api.adminPostRol({
         nombre: nuevoNombre.trim(),
-        clave: nuevaClave.trim().toLowerCase(),
+        clave,
         color: nuevoColor,
         orden: roles.length + 1,
         activo: true,
       });
       mostrarAviso({ tipo: "exito", titulo: "Rol creado", texto: `El rol "${nuevoNombre}" fue creado.` });
       setNuevoNombre("");
-      setNuevaClave("");
       await cargarDatos();
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -1327,21 +1329,28 @@ function GestionAdmin() {
                   <input
                     type="text"
                     placeholder="Nombre del rol (ej. Productor)"
+                    aria-label="Nombre del rol"
                     className={styles.roleInput}
                     value={nuevoNombre}
                     onChange={(e) => setNuevoNombre(e.target.value)}
+                    maxLength={40}
                     required
                   />
-                  <input
-                    type="text"
-                    placeholder="clave_interna"
-                    className={styles.roleInput}
-                    value={nuevaClave}
-                    onChange={(e) => setNuevaClave(e.target.value)}
-                    required
-                  />
-                  <Campo etiqueta="Color del rol" value={nuevoColor} onChange={e => setNuevoColor(e.target.value)} maxLength={7} pattern="#[0-9a-fA-F]{6}" required />
-                  <Boton variante="primario" type="submit">
+                  <div className={styles.paletaRol} role="radiogroup" aria-label="Color del rol">
+                    {["#2F7FE0", "#7C5CE0", "#D9558F", "#E0603A", "#E0A21F", "#3AA76D", "#2BA3A3", "#6B7280"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        role="radio"
+                        aria-checked={nuevoColor === c}
+                        aria-label={`Color ${c}`}
+                        className={`${styles.muestraRol} ${nuevoColor === c ? styles.muestraRolActiva : ""}`}
+                        style={{ background: c }}
+                        onClick={() => setNuevoColor(c)}
+                      />
+                    ))}
+                  </div>
+                  <Boton variante="primario" type="submit" disabled={!nuevoNombre.trim()}>
                     <Plus size={14} style={{ marginRight: "4px" }} />
                     Crear rol
                   </Boton>
