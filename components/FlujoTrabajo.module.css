@@ -95,7 +95,7 @@
 
 /* Referencias de Drive del cliente: una fila por archivo, acciones compactas a la derecha. */
 .referencias { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
-.referencia { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 10px; border-radius: 10px; background: var(--rc-superficie-hundida); }
+.referencia { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 10px; border-radius: 10px; background: var(--rc-superficie); box-shadow: var(--rc-elev-hundido-sm); }
 .referenciaIcono { flex: none; opacity: .7; }
 .referenciaNombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .referenciaAccion { flex: none; min-height: 40px; }
@@ -105,7 +105,7 @@
 
 .referenciasTrabajo { display: grid; gap: var(--rc-esp-8); min-width: 0; }
 .referenciasCabecera { display: flex; justify-content: space-between; align-items: center; gap: var(--rc-esp-8); }
-.referenciaTrabajo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; border-radius: var(--rc-radio-md); background: var(--rc-superficie-hundida); min-width: 0; }
+.referenciaTrabajo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; border-radius: var(--rc-radio-md); background: var(--rc-superficie); box-shadow: var(--rc-elev-hundido-sm); min-width: 0; }
 .referenciaTrabajo > svg { color: var(--rc-texto-secundario); }
 .referenciaTrabajo .confirmarQuitar { grid-column: 1 / -1; overflow-wrap: anywhere; }
 .nombreReferenciaTrabajo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rc-fs-etiqueta); }
