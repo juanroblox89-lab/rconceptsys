@@ -142,6 +142,9 @@ html[data-rc-tema="glass"] :is(.rc-modal, dialog[open]) {
   box-shadow: var(--rc-glass-sombra-flotante);
   color: var(--rc-texto);
 }
+html[data-rc-tema="glass"] .rc-modal--dialogo .rc-modal__acciones {
+  background: var(--rc-glass-modal);
+}
 /* Solo se filtra el velo del diálogo (no la caja ni sus hijos). El plano de fondo
    es un pseudoelemento hermano del contenido, nunca ancestro del velo. */
 html[data-rc-tema="glass"] :has(> .rc-modal[aria-modal="true"]) {

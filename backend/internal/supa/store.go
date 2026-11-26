@@ -2,6 +2,7 @@ package supa
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -102,7 +103,10 @@ type dbTarea struct {
 	Estado                  string                         `json:"estado"`
 	FechaLimite             *string                        `json:"fecha_limite"`
 	NotaPersona             *string                        `json:"nota_persona"`
+	MetodoEntrega           *string                        `json:"metodo_entrega"`
 	EnlaceMedios            *string                        `json:"enlace_medios"`
+	EntregaNombre           *string                        `json:"entrega_nombre"`
+	EntregaTipo             *string                        `json:"entrega_tipo"`
 	DriveCarpetaID          *string                        `json:"drive_carpeta_id"`
 	DriveCarpetaURL         *string                        `json:"drive_carpeta_url"`
 	DriveReferencias        []store.ReferenciaDriveTrabajo `json:"drive_referencias"`
@@ -833,7 +837,10 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 		Estado:                  store.EstadoTarea(dt.Estado),
 		FechaLimite:             dt.FechaLimite,
 		NotaPersona:             dt.NotaPersona,
+		MetodoEntrega:           dt.MetodoEntrega,
 		EnlaceMedios:            dt.EnlaceMedios,
+		EntregaNombre:           dt.EntregaNombre,
+		EntregaTipo:             dt.EntregaTipo,
 		MotivoRechazo:           dt.MotivoRechazo,
 		Cantidad:                dt.Cantidad,
 		CantidadAceptada:        dt.CantidadAceptada,
@@ -980,7 +987,9 @@ func (s *SupabaseStore) ObtenerTareaPorID(ctx context.Context, id int64) (*store
 	if len(rows) == 0 {
 		return nil, store.ErrNotFound
 	}
-	return convertirTarea(&rows[0]), nil
+	res := convertirTarea(&rows[0])
+	s.hidratarExtrasTareas(ctx, []*store.Tarea{res})
+	return res, nil
 }
 
 func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTareas) ([]*store.Tarea, error) {
@@ -1008,6 +1017,7 @@ func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTar
 		for i := range rows {
 			res = append(res, convertirTarea(&rows[i]))
 		}
+		s.hidratarExtrasTareas(ctx, res)
 		return res, nil
 	}
 	const pagina = 500
@@ -1020,6 +1030,7 @@ func (s *SupabaseStore) ListarTareas(ctx context.Context, filtro store.FiltroTar
 			return nil, err
 		}
 		if len(rows) == 0 {
+			s.hidratarExtrasTareas(ctx, res)
 			return res, nil
 		}
 		for i := range rows {
@@ -1043,52 +1054,96 @@ func (s *SupabaseStore) ContarTareasPorRevisar(ctx context.Context) (int, error)
 	return len(rows), nil
 }
 
+func mapearErrorRPCTarea(err error) error {
+	if err == nil {
+		return nil
+	}
+	var se *Error
+	if errors.As(err, &se) {
+		msg := se.Body
+		switch {
+		case strings.Contains(msg, "P0001") || strings.Contains(msg, "tarea_ajena") || strings.Contains(msg, "no_autorizado"):
+			return store.ErrForbidden
+		case strings.Contains(msg, "P0002") || strings.Contains(msg, "tarea_no_encontrada"):
+			return store.ErrNotFound
+		case strings.Contains(msg, "P0003") || strings.Contains(msg, "no_reversible") || strings.Contains(msg, "estado_invalido"):
+			return fmt.Errorf("%w: %s", store.ErrConflict, msg)
+		case strings.Contains(msg, "P0005") || strings.Contains(msg, "cantidad_invalida") || strings.Contains(msg, "motivo_invalido") || strings.Contains(msg, "nota_larga"):
+			return fmt.Errorf("%w: %s", store.ErrValidation, msg)
+		}
+	}
+	return err
+}
+
 func (s *SupabaseStore) MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int, enlaceMedios *string) (*store.Tarea, error) {
-	tarea, err := s.ObtenerTareaPorID(ctx, id)
+	return s.EntregarTarea(ctx, id, asignadoID, store.EntregaInput{
+		Nota:         nota,
+		Cantidad:     cantidad,
+		EnlaceMedios: enlaceMedios,
+	})
+}
+
+func (s *SupabaseStore) EntregarTarea(ctx context.Context, id int64, asignadoID string, entrada store.EntregaInput) (*store.Tarea, error) {
+	payload := map[string]any{
+		"p_tarea":           id,
+		"p_perfil":          asignadoID,
+		"p_metodo":          nil,
+		"p_nota":            nil,
+		"p_cantidad":        nil,
+		"p_enlace":          nil,
+		"p_entrega_nombre":  nil,
+		"p_entrega_tipo":    nil,
+	}
+	if m := strings.TrimSpace(entrada.Metodo); m != "" {
+		payload["p_metodo"] = m
+	}
+	if entrada.Nota != nil {
+		payload["p_nota"] = *entrada.Nota
+	}
+	if entrada.Cantidad != nil {
+		payload["p_cantidad"] = *entrada.Cantidad
+	}
+	if entrada.EnlaceMedios != nil {
+		payload["p_enlace"] = *entrada.EnlaceMedios
+	}
+	if entrada.EntregaNombre != nil {
+		payload["p_entrega_nombre"] = *entrada.EntregaNombre
+	}
+	if entrada.EntregaTipo != nil {
+		payload["p_entrega_tipo"] = *entrada.EntregaTipo
+	}
+	var res map[string]any
+	if err := s.client.RPC(ctx, "rc_entregar_tarea", payload, &res); err != nil {
+		return nil, mapearErrorRPCTarea(err)
+	}
+	return s.ObtenerTareaPorID(ctx, id)
+}
+
+func (s *SupabaseStore) RevertirEntregaTarea(ctx context.Context, id int64, asignadoID string) (*store.ResultadoReversionEntrega, error) {
+	var res struct {
+		HechaEnAnterior *string `json:"hecha_en_anterior"`
+	}
+	if err := s.client.RPC(ctx, "rc_revertir_entrega_tarea", map[string]any{
+		"p_tarea":  id,
+		"p_perfil": asignadoID,
+	}, &res); err != nil {
+		return nil, mapearErrorRPCTarea(err)
+	}
+	t, err := s.ObtenerTareaPorID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if tarea.AsignadoA != asignadoID {
-		return nil, store.ErrForbidden
-	}
-	if tarea.Estado != store.EstadoTareaPendiente && tarea.Estado != store.EstadoTareaRechazada {
-		return nil, fmt.Errorf("%w: la tarea no está en estado pendiente ni rechazada", store.ErrValidation)
-	}
-
-	payload := map[string]any{
-		"estado":         store.EstadoTareaHecha,
-		"hecha_en":       time.Now().Format(time.RFC3339),
-		"nota_persona":   nota,
-		"motivo_rechazo": nil,
-	}
-	if enlaceMedios != nil {
-		limpio := strings.TrimSpace(*enlaceMedios)
-		if limpio != "" {
-			payload["enlace_medios"] = limpio
+	var hechaAnt *time.Time
+	if res.HechaEnAnterior != nil && *res.HechaEnAnterior != "" {
+		parsed := parsearTiempoSupa(*res.HechaEnAnterior)
+		if !parsed.IsZero() {
+			hechaAnt = &parsed
 		}
 	}
-
-	if tarea.Tipo != nil && tarea.Tipo.Unidad == "minuto" {
-		if cantidad == nil || *cantidad < 1 || *cantidad > 1440 {
-			return nil, fmt.Errorf("%w: los minutos deben estar entre 1 y 1440", store.ErrValidation)
-		}
-		payload["cantidad"] = *cantidad
-	} else {
-		payload["cantidad"] = nil
-	}
-
-	q := url.Values{}
-	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
-
-	var rows []dbTarea
-	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
-		return nil, err
-	}
-	if len(rows) == 0 {
-		return nil, store.ErrNotFound
-	}
-	return convertirTarea(&rows[0]), nil
+	return &store.ResultadoReversionEntrega{
+		Tarea:           t,
+		HechaEnAnterior: hechaAnt,
+	}, nil
 }
 
 func (s *SupabaseStore) AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*store.Tarea, error) {
@@ -1101,38 +1156,253 @@ func (s *SupabaseStore) AceptarTarea(ctx context.Context, id int64, adminID stri
 	}
 	var res map[string]any
 	if err := s.client.RPC(ctx, "aceptar_tarea", payload, &res); err != nil {
-		return nil, err
+		return nil, mapearErrorRPCTarea(err)
 	}
 	return s.ObtenerTareaPorID(ctx, id)
 }
 
 func (s *SupabaseStore) RechazarTarea(ctx context.Context, id int64, adminID string, motivo string) (*store.Tarea, error) {
-	tarea, err := s.ObtenerTareaPorID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if tarea.Estado != store.EstadoTareaHecha {
-		return nil, fmt.Errorf("%w: solo se pueden rechazar tareas en estado hecha", store.ErrValidation)
-	}
+	return s.RechazarTareaConDetalle(ctx, id, adminID, motivo, nil)
+}
 
-	payload := map[string]any{
-		"estado":         store.EstadoTareaRechazada,
-		"motivo_rechazo": motivo,
-		"resuelta_en":    time.Now().Format(time.RFC3339),
-		"resuelta_por":   adminID,
+func (s *SupabaseStore) RechazarTareaConDetalle(ctx context.Context, id int64, adminID string, motivo string, driveAdjuntos []store.ReferenciaDriveTrabajo) (*store.Tarea, error) {
+	if driveAdjuntos == nil {
+		driveAdjuntos = []store.ReferenciaDriveTrabajo{}
 	}
+	var res map[string]any
+	if err := s.client.RPC(ctx, "rc_rechazar_tarea", map[string]any{
+		"p_tarea":          id,
+		"p_admin":          adminID,
+		"p_motivo":         motivo,
+		"p_drive_adjuntos": driveAdjuntos,
+	}, &res); err != nil {
+		return nil, mapearErrorRPCTarea(err)
+	}
+	return s.ObtenerTareaPorID(ctx, id)
+}
+
+type dbEntregaTarea struct {
+	ID            int64   `json:"id"`
+	TareaID       int64   `json:"tarea_id"`
+	PerfilID      string  `json:"perfil_id"`
+	Metodo        *string `json:"metodo_entrega"`
+	EnlaceMedios  *string `json:"enlace_medios"`
+	EntregaNombre *string `json:"entrega_nombre"`
+	EntregaTipo   *string `json:"entrega_tipo"`
+	Nota          *string `json:"nota"`
+	Cantidad      *int    `json:"cantidad"`
+	Estado        string  `json:"estado"`
+	CreadaEn      string  `json:"creada_en"`
+	RetiradaEn    *string `json:"retirada_en"`
+}
+
+type dbTareaHistorial struct {
+	ID            int64                            `json:"id"`
+	TareaID       int64                            `json:"tarea_id"`
+	ActorID       *string                          `json:"actor_id"`
+	Evento        string                           `json:"evento"`
+	Detalle       string                           `json:"detalle"`
+	MetodoEntrega *string                          `json:"metodo_entrega"`
+	EnlaceMedios  *string                          `json:"enlace_medios"`
+	EntregaNombre *string                          `json:"entrega_nombre"`
+	EntregaTipo   *string                          `json:"entrega_tipo"`
+	Nota          *string                          `json:"nota"`
+	Motivo        *string                          `json:"motivo"`
+	Cantidad      *int                             `json:"cantidad"`
+	DriveAdjuntos []store.ReferenciaDriveTrabajo `json:"drive_adjuntos"`
+	CreadoEn      string                           `json:"creado_en"`
+	Actor         *dbPerfil                        `json:"actor"`
+}
+
+func vistaAdjuntosDeLista(lista []*store.AdjuntoAsignacion) map[int64][]*store.VistaAdjuntoTarea {
+	porHist := make(map[int64][]*store.VistaAdjuntoTarea)
+	for _, a := range lista {
+		if a.HistorialID == nil || a.EstadoArchivo != "listo" {
+			continue
+		}
+		porHist[*a.HistorialID] = append(porHist[*a.HistorialID], &store.VistaAdjuntoTarea{
+			ID:            a.ID,
+			Tipo:          a.Tipo,
+			Nombre:        a.Nombre,
+			Tamano:        a.Tamano,
+			Mime:          a.Mime,
+			DuracionMS:    a.DuracionMS,
+			Resumir:       a.Resumir,
+			EstadoResumen: a.EstadoResumen,
+			Resumen:       a.Resumen,
+			Transcripcion: a.Transcripcion,
+		})
+	}
+	return porHist
+}
+
+func (s *SupabaseStore) hidratarExtrasTareas(ctx context.Context, tareas []*store.Tarea) {
+	if len(tareas) == 0 {
+		return
+	}
+	var idsBorrador []int64
+	var idsRechazadas []int64
+	for _, t := range tareas {
+		if t.Estado == store.EstadoTareaPendiente || t.Estado == store.EstadoTareaRechazada {
+			idsBorrador = append(idsBorrador, t.ID)
+		}
+		if t.Estado == store.EstadoTareaRechazada {
+			idsRechazadas = append(idsRechazadas, t.ID)
+		}
+	}
+	if len(idsBorrador) > 0 {
+		q := url.Values{}
+		q.Set("tarea_id", "in.("+listaIDs(idsBorrador)+")")
+		q.Set("estado", "in.(retirada,rechazada)")
+		q.Set("order", "id.desc")
+		var rows []dbEntregaTarea
+		if err := s.client.REST(ctx, "GET", "tarea_entregas", q, nil, "", &rows); err == nil {
+			porTarea := make(map[int64]*store.EntregaTarea)
+			for i := range rows {
+				r := rows[i]
+				if _, ya := porTarea[r.TareaID]; ya {
+					continue
+				}
+				metodo := ""
+				if r.Metodo != nil {
+					metodo = *r.Metodo
+				}
+				var ret *time.Time
+				if r.RetiradaEn != nil {
+					pt := parsearTiempoSupa(*r.RetiradaEn)
+					ret = &pt
+				}
+				porTarea[r.TareaID] = &store.EntregaTarea{
+					ID:            r.ID,
+					TareaID:       r.TareaID,
+					PerfilID:      r.PerfilID,
+					Metodo:        metodo,
+					EnlaceMedios:  r.EnlaceMedios,
+					EntregaNombre: r.EntregaNombre,
+					EntregaTipo:   r.EntregaTipo,
+					Nota:          r.Nota,
+					Cantidad:      r.Cantidad,
+					Estado:        r.Estado,
+					CreadaEn:      parsearTiempoSupa(r.CreadaEn),
+					RetiradaEn:    ret,
+				}
+			}
+			for _, t := range tareas {
+				if e, ok := porTarea[t.ID]; ok {
+					t.BorradorEntrega = e
+				}
+			}
+		}
+	}
+	if len(idsRechazadas) > 0 {
+		q := url.Values{}
+		q.Set("tarea_id", "in.("+listaIDs(idsRechazadas)+")")
+		q.Set("evento", "eq.entrega_rechazada")
+		q.Set("order", "id.desc")
+		var rows []dbTareaHistorial
+		if err := s.client.REST(ctx, "GET", "tarea_historial", q, nil, "", &rows); err == nil && len(rows) > 0 {
+			aq := url.Values{}
+			aq.Set("tarea_id", "in.("+listaIDs(idsRechazadas)+")")
+			aq.Set("origen", "eq.rechazo")
+			aq.Set("estado_archivo", "eq.listo")
+			aq.Set("order", "cupo.asc")
+			var adjRows []*store.AdjuntoAsignacion
+			_ = s.client.REST(ctx, "GET", tablaAdjuntos, aq, nil, "", &adjRows)
+			porHist := vistaAdjuntosDeLista(adjRows)
+			rechazoPorTarea := make(map[int64]*store.RechazoEvento)
+			for i := range rows {
+				r := rows[i]
+				if _, ya := rechazoPorTarea[r.TareaID]; ya {
+					continue
+				}
+				motivo := ""
+				if r.Motivo != nil {
+					motivo = *r.Motivo
+				}
+				rechazoPorTarea[r.TareaID] = &store.RechazoEvento{
+					HistorialID:   r.ID,
+					Motivo:        motivo,
+					DriveAdjuntos: r.DriveAdjuntos,
+					Adjuntos:      porHist[r.ID],
+					CreadoEn:      parsearTiempoSupa(r.CreadoEn),
+				}
+			}
+			for _, t := range tareas {
+				if r, ok := rechazoPorTarea[t.ID]; ok {
+					t.RechazoActual = r
+				}
+			}
+		}
+	}
+}
+
+func (s *SupabaseStore) ObtenerHistorialTarea(ctx context.Context, tareaID int64) ([]*store.TareaHistorialItem, error) {
 	q := url.Values{}
-	q.Set("id", fmt.Sprintf("eq.%d", id))
-	q.Set("select", "*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)")
+	q.Set("tarea_id", "eq."+strconv.FormatInt(tareaID, 10))
+	q.Set("select", "*,actor:perfiles!tarea_historial_actor_id_fkey(id,nombre)")
+	q.Set("order", "id.asc")
 
-	var rows []dbTarea
-	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
+	var rows []dbTareaHistorial
+	if err := s.client.REST(ctx, "GET", "tarea_historial", q, nil, "", &rows); err != nil {
 		return nil, err
 	}
-	if len(rows) == 0 {
-		return nil, store.ErrNotFound
+	adjList, _ := s.ListarAdjuntosPorOrigen(ctx, tareaID, "rechazo", nil)
+	porHist := vistaAdjuntosDeLista(adjList)
+
+	out := make([]*store.TareaHistorialItem, 0, len(rows))
+	for i := range rows {
+		r := rows[i]
+		item := &store.TareaHistorialItem{
+			ID:            r.ID,
+			TareaID:       r.TareaID,
+			ActorID:       r.ActorID,
+			Evento:        r.Evento,
+			Detalle:       r.Detalle,
+			MetodoEntrega: r.MetodoEntrega,
+			EnlaceMedios:  r.EnlaceMedios,
+			EntregaNombre: r.EntregaNombre,
+			EntregaTipo:   r.EntregaTipo,
+			Nota:          r.Nota,
+			Motivo:        r.Motivo,
+			Cantidad:      r.Cantidad,
+			DriveAdjuntos: r.DriveAdjuntos,
+			CreadoEn:      parsearTiempoSupa(r.CreadoEn),
+		}
+		if r.Actor != nil {
+			item.ActorNombre = r.Actor.Nombre
+		}
+		if r.Evento == "entrega_rechazada" {
+			item.Adjuntos = porHist[r.ID]
+		}
+		out = append(out, item)
 	}
-	return convertirTarea(&rows[0]), nil
+	return out, nil
+}
+
+func (s *SupabaseStore) AdminsVieronTareaDesde(ctx context.Context, tareaID int64, desde *time.Time) ([]string, error) {
+	q := url.Values{}
+	q.Set("tarea_id", "eq."+strconv.FormatInt(tareaID, 10))
+	q.Set("select", "perfil_id,visto_en,perfiles!inner(id,es_admin,estado)")
+	if desde != nil {
+		q.Set("visto_en", "gte."+desde.UTC().Format(time.RFC3339Nano))
+	}
+	var rows []struct {
+		PerfilID string `json:"perfil_id"`
+		Perfil   struct {
+			EsAdmin bool   `json:"es_admin"`
+			Estado  string `json:"estado"`
+		} `json:"perfiles"`
+	}
+	if err := s.client.REST(ctx, "GET", "asignaciones_vistas", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if r.Perfil.EsAdmin && r.Perfil.Estado == string(store.EstadoAprobado) {
+			out = append(out, r.PerfilID)
+		}
+	}
+	return out, nil
 }
 
 func (s *SupabaseStore) CancelarTarea(ctx context.Context, id int64, adminID string) (*store.Tarea, error) {

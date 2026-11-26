@@ -6,6 +6,7 @@
 .ayuda { color: var(--rc-texto-secundario); font-size: 13px; }
 .error { color: var(--rc-rojo-texto); font-size: 13px; overflow-wrap: anywhere; }
 .lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.listaCompacta { grid-template-columns: minmax(0, 1fr) !important; }
 .lista > li { display: grid; gap: 6px; align-content: start; min-width: 0; padding: 9px; border: 1px solid var(--rc-border-subtle); border-radius: var(--rc-radio-md); background: var(--rc-superficie-clara); }
 .nombre { display: block; overflow-wrap: anywhere; font-size: 14px; }
 .visual, .miniatura, .marcoVideo { display: grid; place-items: center; width: 100%; min-width: 0; aspect-ratio: 16/9; max-height: 190px; overflow: hidden; border-radius: var(--rc-radio-md); background: var(--rc-superficie-hundida); color: var(--rc-texto-secundario); }

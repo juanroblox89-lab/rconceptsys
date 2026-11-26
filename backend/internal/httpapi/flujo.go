@@ -52,6 +52,14 @@ func (a *API) handleAdminGetTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 500, "error_trabajo", "No pudimos cargar ese trabajo.")
 		return
 	}
+	if hist, e := a.Store.ObtenerHistorialTarea(r.Context(), id); e == nil {
+		t.Historial = hist
+	}
+	if t.Estado == store.EstadoTareaHecha {
+		if yo := a.usuarioActual(r); yo != nil {
+			_ = a.Store.MarcarAsignacionesVistas(r.Context(), yo.ID, []int64{id})
+		}
+	}
 	ResponderJSON(w, 200, t)
 }
 

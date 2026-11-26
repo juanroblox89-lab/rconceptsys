@@ -52,7 +52,7 @@ function Quitar({ nombre, onQuitar, bloqueado }: { nombre: string; onQuitar: () 
     </div></div> : <Boton variante="fantasma" tamano="sm" ref={boton} disabled={bloqueado} aria-label={`Quitar ${nombre}`} onClick={() => setConfirmar(true)}><Trash2 size={15} aria-hidden="true" /> Quitar</Boton>;
 }
 
-function FilaLocal({ a, cambiar, quitar, bloqueado }: { a: AdjuntoLocal; cambiar: (a: AdjuntoLocal) => void; quitar: () => void; bloqueado: boolean }) {
+function FilaLocal({ a, cambiar, quitar, bloqueado, permitirResumen = true }: { a: AdjuntoLocal; cambiar: (a: AdjuntoLocal) => void; quitar: () => void; bloqueado: boolean; permitirResumen?: boolean }) {
   const [url, setUrl] = useState("");
   const { archivo } = a;
   useEffect(() => {
@@ -67,13 +67,33 @@ function FilaLocal({ a, cambiar, quitar, bloqueado }: { a: AdjuntoLocal; cambiar
     {a.avance !== undefined && <><progress className={styles.progreso} aria-label={`Subida de ${archivo.name}`} max={100} value={a.avance} /><span className={styles.ayuda}>{a.avance === 95 && bloqueado ? "Guardando archivo…" : `${a.avance}%`}</span></>}
     {a.error && <span className={styles.error} role="alert">{a.error}</span>}
     <div className={styles.acciones}>
-      {a.tipo === "audio" && <BotonResumen activo={a.resumir} bloqueado={bloqueado} onClick={() => cambiar({ ...a, resumir: !a.resumir })} />}
+      {permitirResumen && a.tipo === "audio" && <BotonResumen activo={a.resumir} bloqueado={bloqueado} onClick={() => cambiar({ ...a, resumir: !a.resumir })} />}
       <Quitar nombre={archivo.name} onQuitar={quitar} bloqueado={bloqueado} />
     </div>
   </li>;
 }
 
-export function EditorAdjuntos({ locales, cambiar, quitar, cantidad, bloqueado, onGrabando }: { locales: AdjuntoLocal[]; cambiar: (actualizar: (lista: AdjuntoLocal[]) => AdjuntoLocal[]) => void; quitar: (a: AdjuntoLocal) => void; cantidad: number; bloqueado: boolean; onGrabando: (v: boolean) => void }) {
+export function EditorAdjuntos({
+  locales,
+  cambiar,
+  quitar,
+  cantidad,
+  bloqueado,
+  onGrabando,
+  permitirResumen = true,
+  tituloSeccion = "Adjuntos",
+  compacto = false,
+}: {
+  locales: AdjuntoLocal[];
+  cambiar: (actualizar: (lista: AdjuntoLocal[]) => AdjuntoLocal[]) => void;
+  quitar: (a: AdjuntoLocal) => void;
+  cantidad: number;
+  bloqueado: boolean;
+  onGrabando: (v: boolean) => void;
+  permitirResumen?: boolean;
+  tituloSeccion?: string;
+  compacto?: boolean;
+}) {
   const input = useRef<HTMLInputElement>(null);
   const grabacion = useRef<{ r: MediaRecorder; s: MediaStream; viva: boolean } | null>(null);
   const vivo = useRef(false);
@@ -125,7 +145,7 @@ export function EditorAdjuntos({ locales, cambiar, quitar, cantidad, bloqueado, 
   }
 
   return <section className={styles.seccion} aria-labelledby={titulo}>
-    <div className={styles.cabecera}><h3 id={titulo}>Adjuntos</h3><div className={styles.acciones}>
+    <div className={styles.cabecera}><h3 id={titulo}>{tituloSeccion}</h3><div className={styles.acciones}>
       <input ref={input} hidden type="file" multiple accept={aceptarAdjuntos} onChange={e => { agregar(Array.from(e.currentTarget.files ?? [])); e.currentTarget.value = ""; }} />
       <Boton variante="secundario" tamano="sm" disabled={bloqueado || grabando || cantidad >= 10} onClick={() => input.current?.click()}><Paperclip size={16} aria-hidden="true" /> Adjuntar</Boton>
       {soporta && (grabando ? <Boton variante="secundario" tamano="sm" onClick={() => { const r = grabacion.current?.r; if (r?.state === "recording") r.stop(); }}><Square size={15} aria-hidden="true" /> Detener</Boton> :
@@ -134,7 +154,7 @@ export function EditorAdjuntos({ locales, cambiar, quitar, cantidad, bloqueado, 
     <span className={styles.ayuda}>{cantidad}/10 · Imagen 10 MB · Video 50 MB · Audio 25 MB</span>
     {grabando && <span role="status" className={styles.ayuda}>Grabando audio…</span>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
-    {locales.length > 0 && <ul className={styles.lista}>{locales.map(a => <FilaLocal key={a.id} a={a} bloqueado={bloqueado || grabando} quitar={() => quitar(a)} cambiar={b => cambiar(v => v.map(x => x.id === b.id ? b : x))} />)}</ul>}
+    {locales.length > 0 && <ul className={`${styles.lista} ${compacto ? styles.listaCompacta : ""}`.trim()}>{locales.map(a => <FilaLocal key={a.id} a={a} bloqueado={bloqueado || grabando} permitirResumen={permitirResumen} quitar={() => quitar(a)} cambiar={b => cambiar(v => v.map(x => x.id === b.id ? b : x))} />)}</ul>}
   </section>;
 }
 
@@ -203,4 +223,116 @@ export function AdjuntosGuardados({ tarea, editable = false, bloqueado = false, 
     {error && <div className={styles.acciones}><span className={styles.error} role="alert">No se pudieron cargar los adjuntos.</span><Boton variante="secundario" tamano="sm" onClick={() => setIntento(i => i + 1)}>Reintentar</Boton></div>}
     {!!lista?.length && <ul className={styles.lista}>{lista.map(a => <FilaGuardada key={a.id} tarea={tarea} a={a} editable={editable} bloqueado={bloqueado} actualizar={actualizar} />)}</ul>}
   </section>;
+}
+
+export interface AdjuntoRechazoItem {
+  id: string;
+  tipo: TipoAdjunto;
+  nombre: string;
+  mime: string;
+  tamano: number;
+  duracion_ms?: number | null;
+}
+
+function FilaRechazo({ tarea, a }: { tarea: number; a: AdjuntoRechazoItem }) {
+  const [medio, setMedio] = useState<{ url: string; expira: number }>();
+  const [error, setError] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    let vivo = true;
+    adjuntos
+      .firma(tarea, a.id)
+      .then((r) => {
+        if (vivo) setMedio({ url: r.url, expira: Date.now() + r.expira_en * 1000 });
+      })
+      .catch(() => {
+        if (vivo) setError("No se pudo cargar la vista previa.");
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [tarea, a.id, version]);
+
+  function renovar() {
+    if (medio && Date.now() >= medio.expira - 3000) setVersion((n) => n + 1);
+  }
+
+  async function descargar() {
+    setOcupado(true);
+    setError("");
+    try {
+      const { url } = await adjuntos.firma(tarea, a.id, true);
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.rel = "noreferrer";
+      enlace.download = a.nombre;
+      document.body.append(enlace);
+      enlace.click();
+      enlace.remove();
+    } catch (e) {
+      setError(textoError(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  return (
+    <li>
+      <strong className={styles.nombre}>{a.nombre}</strong>
+      <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
+      <div className={styles.acciones}>
+        {medio && (
+          <EnlaceExterno
+            href={medio.url}
+            className="rc-btn rc-btn--secundario rc-btn--sm"
+            aria-label={`Abrir ${a.nombre} fuera de RConcept`}
+            onClick={(e) => {
+              if (Date.now() >= medio.expira - 3000) {
+                e.preventDefault();
+                renovar();
+                setError("Actualizamos el enlace. Pulsa Abrir de nuevo.");
+              }
+            }}
+          >
+            Abrir fuera
+          </EnlaceExterno>
+        )}
+        <Boton
+          variante="secundario"
+          tamano="sm"
+          aria-label={`Descargar ${a.nombre}`}
+          disabled={ocupado}
+          onClick={() => void descargar()}
+        >
+          <Download size={15} aria-hidden="true" /> Descargar
+        </Boton>
+      </div>
+      {error && (
+        <span role="alert" className={styles.error}>
+          {error}
+        </span>
+      )}
+    </li>
+  );
+}
+
+export function AdjuntosRechazoVista({
+  tarea,
+  items,
+  compacto = true,
+}: {
+  tarea: number;
+  items?: AdjuntoRechazoItem[];
+  compacto?: boolean;
+}) {
+  if (!items || items.length === 0) return null;
+  return (
+    <ul className={`${styles.lista} ${compacto ? styles.listaCompacta : ""}`.trim()} aria-label="Adjuntos del rechazo">
+      {items.map((a) => (
+        <FilaRechazo key={a.id} tarea={tarea} a={a} />
+      ))}
+    </ul>
+  );
 }

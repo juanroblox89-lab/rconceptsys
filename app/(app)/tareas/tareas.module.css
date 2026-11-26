@@ -115,18 +115,22 @@
   color: var(--rc-verde-texto);
   font-weight: var(--rc-fw-semibold);
   font-variant-numeric: tabular-nums;
-  background-color: var(--rc-verde-fondo);
+  background-color: var(--rc-verde-fondo, var(--rc-verde-suave));
   padding: 2px 6px;
   border-radius: var(--rc-radio-xs);
 }
 
 .motivoRechazoBox {
-  background-color: var(--rc-rojo-fondo);
+  background-color: var(--rc-rojo-fondo, var(--rc-rojo-suave));
   color: var(--rc-rojo-texto);
+  border: 1px solid color-mix(in srgb, var(--rc-rojo-texto) 22%, transparent);
   border-radius: var(--rc-radio-sm);
   padding: var(--rc-esp-8) var(--rc-esp-10);
   font-size: var(--rc-fs-etiqueta);
-  line-height: 1.4;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
 }
 
 .motivoRechazoTitulo {
@@ -135,12 +139,281 @@
 }
 
 .notaPersonaBox {
-  background-color: var(--rc-azul-fondo);
-  color: var(--rc-azul-texto);
+  background-color: var(--rc-azul-fondo, var(--rc-azul-suave));
+  border: 1px solid color-mix(in srgb, var(--rc-azul-texto) 24%, transparent);
+  color: var(--rc-texto);
   border-radius: var(--rc-radio-sm);
   padding: var(--rc-esp-8) var(--rc-esp-10);
   font-size: var(--rc-fs-etiqueta);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.notaPersonaBox strong {
+  color: var(--rc-comando-texto, light-dark(#134e9b, #cfe5ff));
+  font-weight: var(--rc-fw-bold);
+}
+
+.entregaResumenBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rc-esp-8);
+  margin-top: var(--rc-esp-4);
+}
+
+.entregaWhatsappChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--rc-radio-pildora);
+  background-color: var(--rc-verde-fondo, var(--rc-verde-suave));
+  color: var(--rc-verde-texto);
+  border: 1px solid color-mix(in srgb, var(--rc-verde-texto) 24%, transparent);
+  font-size: var(--rc-fs-etiqueta);
+  font-weight: var(--rc-fw-semibold);
+}
+
+.entregaDriveNombre {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-texto-secundario);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.entregaMetodoGrupo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--rc-radio-md);
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+}
+
+.entregaMetodoBtn {
+  min-height: 40px;
+  padding: 6px 10px;
+  border-radius: var(--rc-radio-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--rc-fs-secundario);
+  font-weight: var(--rc-fw-medio);
+  color: var(--rc-texto-secundario);
+  background: transparent;
+  transition: background var(--rc-transicion-rapida), color var(--rc-transicion-rapida), box-shadow var(--rc-transicion-rapida);
+}
+
+.entregaMetodoBtn:hover {
+  color: var(--rc-texto);
+}
+
+.entregaMetodoActivo {
+  background: var(--rc-superficie-clara);
+  color: var(--rc-texto);
+  font-weight: var(--rc-fw-semibold);
+  box-shadow: var(--rc-elev-relieve-sm);
+}
+
+.driveBloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+}
+
+.driveAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rc-esp-8);
+}
+
+.driveAcciones button {
+  min-height: 40px;
+}
+
+.driveSeleccionCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-esp-8);
+  padding: 8px 10px;
+  border-radius: var(--rc-radio-md);
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  min-width: 0;
+}
+
+.driveSeleccionInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.driveSeleccionTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.driveSeleccionTexto strong {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto);
+  overflow-wrap: anywhere;
+}
+
+.driveSeleccionTexto span {
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-texto-secundario);
+}
+
+.driveSeleccionBotones {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.whatsappAvisoBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--rc-radio-md);
+  background-color: var(--rc-verde-fondo, var(--rc-verde-suave));
+  border: 1px solid color-mix(in srgb, var(--rc-verde-texto) 24%, transparent);
+  color: var(--rc-texto);
+  font-size: var(--rc-fs-secundario);
   line-height: 1.4;
+}
+
+.whatsappAvisoBox svg {
+  color: var(--rc-verde-texto);
+  flex-shrink: 0;
+}
+
+.togglePegar {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 2px;
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-azul-texto);
+  font-weight: var(--rc-fw-medio);
+}
+
+.pegarCaja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  padding: 10px;
+  border-radius: var(--rc-radio-md);
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+}
+
+.carpetaEquipoCaja {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--rc-radio-md);
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.carpetaEquipoCabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-texto-secundario);
+}
+
+.carpetaEquipoLista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.carpetaEquipoItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-superficie-clara);
+}
+
+.carpetaEquipoNombre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto);
+  text-align: left;
+}
+
+.carpetaEquipoNombre span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rechazoDriveLista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rechazoDriveItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-superficie-clara);
+  color: var(--rc-texto);
+  flex-wrap: wrap;
+}
+
+.rechazoDriveItemInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  font-size: var(--rc-fs-etiqueta);
+  overflow-wrap: anywhere;
+}
+
+.errorInline {
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-rojo-texto);
 }
 
 .tareaFooter {

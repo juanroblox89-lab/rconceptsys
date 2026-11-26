@@ -1734,6 +1734,42 @@
   gap: var(--rc-esp-4);
 }
 
+.rc-modal--dialogo {
+  width: min(100%, 480px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: var(--rc-esp-16);
+  border-radius: var(--rc-radio-lg);
+  box-shadow: var(--rc-elev-relieve-lg);
+  gap: var(--rc-esp-10);
+  outline: none;
+}
+
+.rc-modal--dialogo .rc-modal__acciones {
+  position: sticky;
+  bottom: calc(-1 * var(--rc-esp-16));
+  background: var(--rc-superficie);
+  padding-block: var(--rc-esp-8);
+  margin-bottom: calc(-1 * var(--rc-esp-8));
+  z-index: 2;
+}
+
+.rc-modal--dialogo .rc-modal__acciones .rc-btn {
+  min-height: 40px;
+  height: auto;
+  max-height: none;
+  padding-block: 8px;
+}
+
+.rc-modal--dialogo .rc-toast__cerrar {
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--rc-radio-sm);
+}
+
 .rc-modal__cabecera {
   display: flex;
   align-items: center;

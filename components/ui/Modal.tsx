@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId } from "react";
+import React, { useEffect, useId, useRef } from "react";
 
 export interface ModalProps {
   abierto?: boolean;
@@ -26,12 +26,44 @@ export function Modal({
   children,
 }: ModalProps) {
   const tituloId = useId();
+  const cajaRef = useRef<HTMLDivElement>(null);
+  const onCerrarRef = useRef(onCerrar);
+  useEffect(() => {
+    onCerrarRef.current = onCerrar;
+  }, [onCerrar]);
+
+  useEffect(() => {
+    if (!abierto || enLinea) return;
+    const previo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = requestAnimationFrame(() => {
+      if (cajaRef.current && !cajaRef.current.contains(document.activeElement)) {
+        cajaRef.current.focus({ preventScroll: true });
+      }
+    });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      // Si hay un diálogo nativo o Google Picker encima, dejar que ese cierre primero.
+      if (document.querySelector("dialog[open], .picker-dialog")) return;
+      e.preventDefault();
+      onCerrarRef.current?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKey);
+      if (previo && previo.isConnected) {
+        requestAnimationFrame(() => previo.focus({ preventScroll: true }));
+      }
+    };
+  }, [abierto, enLinea]);
 
   if (!abierto && !enLinea) return null;
 
   const contenidoModal = (
     <div
-      className={`rc-modal ${className}`.trim()}
+      ref={enLinea ? undefined : cajaRef}
+      tabIndex={enLinea ? undefined : -1}
+      className={`rc-modal ${enLinea ? "" : "rc-modal--dialogo"} ${className}`.trim()}
       role="dialog"
       aria-modal={enLinea ? "false" : "true"}
       aria-labelledby={tituloId}

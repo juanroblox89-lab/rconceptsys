@@ -30,6 +30,9 @@ import {
   BandejaNotificaciones,
   CortePropioDatos,
   PreferenciasNotificaciones,
+  MetodoEntrega,
+  TipoElementoEntrega,
+  WorkerPickerConfig,
 } from './types';
 
 // En el navegador usamos rutas relativas con cookies httpOnly
@@ -390,11 +393,36 @@ export const api = {
     if (estado) q.set('estado', estado);
     return fetchApi<Tarea[]>(`/api/tareas?${q.toString()}`);
   },
-  postTareaHecha: (id: number, nota?: string, cantidad?: number, enlaceMedios?: string) =>
+  postTareaHecha: (
+    id: number,
+    nota?: string,
+    cantidad?: number,
+    enlaceMedios?: string,
+    entrega?: {
+      metodo_entrega?: MetodoEntrega;
+      entrega_nombre?: string;
+      entrega_tipo?: TipoElementoEntrega;
+    },
+  ) =>
     fetchApi<Tarea>(`/api/tareas/${id}/hecha`, {
       method: 'POST',
-      body: JSON.stringify({ nota, cantidad, enlace_medios: enlaceMedios }),
+      body: JSON.stringify({
+        nota,
+        cantidad,
+        enlace_medios: enlaceMedios,
+        ...(entrega ?? {}),
+      }),
     }),
+  revertirEntregaTarea: (id: number) =>
+    fetchApi<Tarea>(`/api/tareas/${id}/revertir`, { method: 'POST' }),
+  getTareaDrivePickerToken: (id: number) =>
+    fetchApi<WorkerPickerConfig>(`/api/tareas/${id}/drive/picker-token`, { cache: 'no-store' }),
+  getTareaDriveArchivos: (id: number, carpeta?: string) => {
+    const q = new URLSearchParams();
+    if (carpeta) q.set('carpeta', carpeta);
+    const qs = q.toString();
+    return fetchApi<DriveArchivo[]>(`/api/tareas/${id}/drive/archivos${qs ? `?${qs}` : ''}`, { cache: 'no-store' });
+  },
   getFacturaMia: () => fetchApi<FacturaMiaRespuesta>('/api/facturas/mia'),
 
   // F2 y F3: Solo Admin (Gestión de Trabajos, Clientes, Tareas, Facturas y Estadísticas)
@@ -470,10 +498,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ cantidad }),
     }),
-  adminRechazarTarea: (id: number, motivo: string) =>
+  adminRechazarTarea: (id: number, motivo: string, driveAdjuntos?: ReferenciaDriveTrabajo[]) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/rechazar`, {
       method: 'POST',
-      body: JSON.stringify({ motivo }),
+      body: JSON.stringify({
+        motivo,
+        ...(driveAdjuntos && driveAdjuntos.length > 0 ? { drive_adjuntos: driveAdjuntos } : {}),
+      }),
     }),
   adminCancelarTarea: (id: number) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/cancelar`, { method: 'POST' }),

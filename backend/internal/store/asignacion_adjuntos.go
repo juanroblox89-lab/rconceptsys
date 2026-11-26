@@ -14,6 +14,8 @@ type AdjuntoAsignacion struct {
 	ID             string     `json:"id"`
 	TareaID        int64      `json:"tarea_id"`
 	Cupo           int        `json:"cupo"`
+	Origen         string     `json:"origen,omitempty"`
+	HistorialID    *int64     `json:"historial_id,omitempty"`
 	Tipo           string     `json:"tipo"`
 	Ruta           string     `json:"ruta"`
 	Nombre         string     `json:"nombre"`
@@ -42,6 +44,7 @@ type FiltroAdjunto struct {
 type StoreAdjuntosAsignacion interface {
 	ReservarAdjunto(context.Context, *AdjuntoAsignacion) (*AdjuntoAsignacion, error)
 	ListarAdjuntos(context.Context, int64) ([]*AdjuntoAsignacion, error)
+	ListarAdjuntosPorOrigen(context.Context, int64, string, *int64) ([]*AdjuntoAsignacion, error)
 	ObtenerAdjunto(context.Context, int64, string) (*AdjuntoAsignacion, error)
 	CambiarAdjunto(context.Context, *AdjuntoAsignacion, FiltroAdjunto) (*AdjuntoAsignacion, error)
 	BorrarRegistroAdjunto(context.Context, int64, string) error

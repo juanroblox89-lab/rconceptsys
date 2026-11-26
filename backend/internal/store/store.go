@@ -137,6 +137,75 @@ type ReferenciaDriveTrabajo struct {
 	Tipo   string `json:"tipo"`
 }
 
+type EntregaInput struct {
+	Metodo        string  `json:"metodo_entrega"`
+	Nota          *string `json:"nota"`
+	Cantidad      *int    `json:"cantidad"`
+	EnlaceMedios  *string `json:"enlace_medios"`
+	EntregaNombre *string `json:"entrega_nombre"`
+	EntregaTipo   *string `json:"entrega_tipo"`
+}
+
+type EntregaTarea struct {
+	ID            int64      `json:"id"`
+	TareaID       int64      `json:"tarea_id"`
+	PerfilID      string     `json:"perfil_id"`
+	Metodo        string     `json:"metodo_entrega,omitempty"`
+	EnlaceMedios  *string    `json:"enlace_medios,omitempty"`
+	EntregaNombre *string    `json:"entrega_nombre,omitempty"`
+	EntregaTipo   *string    `json:"entrega_tipo,omitempty"`
+	Nota          *string    `json:"nota,omitempty"`
+	Cantidad      *int       `json:"cantidad,omitempty"`
+	Estado        string     `json:"estado"`
+	CreadaEn      time.Time  `json:"creada_en"`
+	RetiradaEn    *time.Time `json:"retirada_en,omitempty"`
+}
+
+type VistaAdjuntoTarea struct {
+	ID            string   `json:"id"`
+	Tipo          string   `json:"tipo"`
+	Nombre        string   `json:"nombre"`
+	Tamano        int      `json:"tamano"`
+	Mime          string   `json:"mime"`
+	DuracionMS    *int     `json:"duracion_ms,omitempty"`
+	Resumir       bool     `json:"resumir"`
+	EstadoResumen string   `json:"estado_resumen"`
+	Resumen       []string `json:"resumen,omitempty"`
+	Transcripcion *string  `json:"transcripcion,omitempty"`
+}
+
+type RechazoEvento struct {
+	HistorialID   int64                    `json:"historial_id"`
+	Motivo        string                   `json:"motivo"`
+	DriveAdjuntos []ReferenciaDriveTrabajo `json:"drive_adjuntos,omitempty"`
+	Adjuntos      []*VistaAdjuntoTarea     `json:"adjuntos,omitempty"`
+	CreadoEn      time.Time                `json:"creado_en"`
+}
+
+type TareaHistorialItem struct {
+	ID            int64                    `json:"id"`
+	TareaID       int64                    `json:"tarea_id"`
+	ActorID       *string                  `json:"actor_id,omitempty"`
+	ActorNombre   string                   `json:"actor_nombre,omitempty"`
+	Evento        string                   `json:"evento"`
+	Detalle       string                   `json:"detalle"`
+	MetodoEntrega *string                  `json:"metodo_entrega,omitempty"`
+	EnlaceMedios  *string                  `json:"enlace_medios,omitempty"`
+	EntregaNombre *string                  `json:"entrega_nombre,omitempty"`
+	EntregaTipo   *string                  `json:"entrega_tipo,omitempty"`
+	Nota          *string                  `json:"nota,omitempty"`
+	Motivo        *string                  `json:"motivo,omitempty"`
+	Cantidad      *int                     `json:"cantidad,omitempty"`
+	DriveAdjuntos []ReferenciaDriveTrabajo `json:"drive_adjuntos,omitempty"`
+	Adjuntos      []*VistaAdjuntoTarea     `json:"adjuntos,omitempty"`
+	CreadoEn      time.Time                `json:"creado_en"`
+}
+
+type ResultadoReversionEntrega struct {
+	Tarea           *Tarea
+	HechaEnAnterior *time.Time
+}
+
 type Tarea struct {
 	DriveReferencias        []ReferenciaDriveTrabajo `json:"drive_referencias"`
 	ID                      int64                    `json:"id"`
@@ -155,10 +224,16 @@ type Tarea struct {
 	Estado                  EstadoTarea              `json:"estado"`
 	FechaLimite             *string                  `json:"fecha_limite,omitempty"` // YYYY-MM-DD
 	NotaPersona             *string                  `json:"nota_persona,omitempty"`
+	MetodoEntrega           *string                  `json:"metodo_entrega,omitempty"`
 	EnlaceMedios            *string                  `json:"enlace_medios,omitempty"`
+	EntregaNombre           *string                  `json:"entrega_nombre,omitempty"`
+	EntregaTipo             *string                  `json:"entrega_tipo,omitempty"`
 	DriveCarpetaID          *string                  `json:"drive_carpeta_id,omitempty"`
 	DriveCarpetaURL         *string                  `json:"drive_carpeta_url,omitempty"`
 	MotivoRechazo           *string                  `json:"motivo_rechazo,omitempty"`
+	BorradorEntrega         *EntregaTarea            `json:"borrador_entrega,omitempty"`
+	RechazoActual           *RechazoEvento           `json:"rechazo_actual,omitempty"`
+	Historial               []*TareaHistorialItem    `json:"historial,omitempty"`
 	Cantidad                *int                     `json:"cantidad,omitempty"`
 	CantidadAceptada        *int                     `json:"cantidad_aceptada,omitempty"`
 	PrecioUnitarioCongelado *int64                   `json:"precio_unitario_congelado,omitempty"`
@@ -392,8 +467,13 @@ type Store interface {
 	ListarTareas(ctx context.Context, filtro FiltroTareas) ([]*Tarea, error)
 	ContarTareasPorRevisar(ctx context.Context) (int, error)
 	MarcarTareaHecha(ctx context.Context, id int64, asignadoID string, nota *string, cantidad *int, enlaceMedios *string) (*Tarea, error)
+	EntregarTarea(ctx context.Context, id int64, asignadoID string, entrada EntregaInput) (*Tarea, error)
+	RevertirEntregaTarea(ctx context.Context, id int64, asignadoID string) (*ResultadoReversionEntrega, error)
 	AceptarTarea(ctx context.Context, id int64, adminID string, cantidad *int) (*Tarea, error)
 	RechazarTarea(ctx context.Context, id int64, adminID string, motivo string) (*Tarea, error)
+	RechazarTareaConDetalle(ctx context.Context, id int64, adminID string, motivo string, driveAdjuntos []ReferenciaDriveTrabajo) (*Tarea, error)
+	ObtenerHistorialTarea(ctx context.Context, tareaID int64) ([]*TareaHistorialItem, error)
+	AdminsVieronTareaDesde(ctx context.Context, tareaID int64, desde *time.Time) ([]string, error)
 	CancelarTarea(ctx context.Context, id int64, adminID string) (*Tarea, error)
 
 	// F2 y F3: Facturas

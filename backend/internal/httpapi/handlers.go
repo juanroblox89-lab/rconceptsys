@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"rconceptsys/backend/internal/store"
 )
@@ -82,6 +84,9 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /api/trabajos", a.MiddlewareAuth(a.handleGetTrabajos, true, false))
 	mux.HandleFunc("GET /api/tareas", a.MiddlewareAuth(a.handleGetTareas, true, false))
 	mux.HandleFunc("POST /api/tareas/{id}/hecha", a.MiddlewareAuth(a.handlePostTareaHecha, true, false))
+	mux.HandleFunc("POST /api/tareas/{id}/revertir", a.MiddlewareAuth(a.handlePostTareaRevertir, true, false))
+	mux.HandleFunc("GET /api/tareas/{id}/drive/picker-token", a.MiddlewareAuth(a.handleTareaDrivePickerToken, true, false))
+	mux.HandleFunc("GET /api/tareas/{id}/drive/archivos", a.MiddlewareAuth(a.handleTareaDriveArchivos, true, false))
 	mux.HandleFunc("GET /api/facturas/mia", a.MiddlewareAuth(a.handleGetFacturaMia, true, false))
 
 	// F3: Miembros aprobados (Clientes y Mis Estadísticas)
@@ -1005,9 +1010,12 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
 	var body struct {
-		Nota         *string `json:"nota"`
-		Cantidad     *int    `json:"cantidad"`
-		EnlaceMedios *string `json:"enlace_medios"`
+		Nota          *string `json:"nota"`
+		Cantidad      *int    `json:"cantidad"`
+		EnlaceMedios  *string `json:"enlace_medios"`
+		MetodoEntrega *string `json:"metodo_entrega"`
+		EntregaNombre *string `json:"entrega_nombre"`
+		EntregaTipo   *string `json:"entrega_tipo"`
 	}
 	// El cuerpo es opcional
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
@@ -1015,10 +1023,62 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enlacePtr, okEnlace := validarEnlaceDrive(body.EnlaceMedios)
-	if !okEnlace {
-		ResponderError(w, http.StatusBadRequest, "enlace_invalido", "El enlace debe ser una URL https de Google Drive (drive.google.com, docs.google.com o drive.usercontent.google.com) y tener máximo 500 caracteres.")
-		return
+	metodo := ""
+	if body.MetodoEntrega != nil {
+		metodo = strings.ToLower(strings.TrimSpace(*body.MetodoEntrega))
+		if metodo != "" && metodo != "drive" && metodo != "whatsapp" {
+			ResponderError(w, http.StatusBadRequest, "metodo_invalido", "El método de entrega debe ser Drive o WhatsApp.")
+			return
+		}
+	}
+
+	var entregaNombrePtr *string
+	if body.EntregaNombre != nil {
+		tr := strings.TrimSpace(*body.EntregaNombre)
+		if utf8.RuneCountInString(tr) > 200 {
+			ResponderError(w, http.StatusBadRequest, "nombre_entrega_largo", "El nombre del archivo o carpeta de entrega no puede superar los 200 caracteres.")
+			return
+		}
+		if tr != "" {
+			entregaNombrePtr = &tr
+		}
+	}
+
+	var entregaTipoPtr *string
+	if body.EntregaTipo != nil {
+		tr := strings.ToLower(strings.TrimSpace(*body.EntregaTipo))
+		if tr != "" && tr != "carpeta" && tr != "archivo" {
+			ResponderError(w, http.StatusBadRequest, "tipo_entrega_invalido", "El tipo de elemento de Drive debe ser carpeta o archivo.")
+			return
+		}
+		if tr != "" {
+			entregaTipoPtr = &tr
+		}
+	}
+
+	var enlacePtr *string
+	if metodo == "whatsapp" {
+		enlacePtr = nil
+		entregaNombrePtr = nil
+		entregaTipoPtr = nil
+	} else {
+		var okEnlace bool
+		enlacePtr, okEnlace = validarEnlaceDrive(body.EnlaceMedios)
+		if !okEnlace {
+			ResponderError(w, http.StatusBadRequest, "enlace_invalido", "El enlace debe ser una URL https de Google Drive (drive.google.com, docs.google.com o drive.usercontent.google.com) y tener máximo 500 caracteres.")
+			return
+		}
+		if metodo == "drive" && enlacePtr == nil {
+			ResponderError(w, http.StatusBadRequest, "enlace_requerido", "Selecciona una carpeta o archivo de Google Drive, o elige entrega por WhatsApp.")
+			return
+		}
+		if enlacePtr != nil && entregaTipoPtr == nil {
+			t := "archivo"
+			if strings.Contains(*enlacePtr, "/folders/") {
+				t = "carpeta"
+			}
+			entregaTipoPtr = &t
+		}
 	}
 
 	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
@@ -1053,7 +1113,7 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 	var notaPtr *string
 	if body.Nota != nil {
 		trimmed := strings.TrimSpace(*body.Nota)
-		if len(trimmed) > 500 {
+		if utf8.RuneCountInString(trimmed) > 500 {
 			ResponderError(w, http.StatusBadRequest, "nota_demasiado_larga", "La nota no puede tener más de 500 caracteres.")
 			return
 		}
@@ -1062,17 +1122,92 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	actualizada, err := a.Store.MarcarTareaHecha(r.Context(), id, yo.ID, notaPtr, body.Cantidad, enlacePtr)
+	actualizada, err := a.Store.EntregarTarea(r.Context(), id, yo.ID, store.EntregaInput{
+		Metodo:        metodo,
+		Nota:          notaPtr,
+		Cantidad:      body.Cantidad,
+		EnlaceMedios:  enlacePtr,
+		EntregaNombre: entregaNombrePtr,
+		EntregaTipo:   entregaTipoPtr,
+	})
 	if err != nil {
+		if errors.Is(err, store.ErrConflict) || errors.Is(err, store.ErrValidation) {
+			ResponderError(w, http.StatusBadRequest, "estado_invalido", "Solo puedes marcar como hecha una tarea pendiente o rechazada.")
+			return
+		}
 		ResponderError(w, http.StatusInternalServerError, "error_marcar_hecha", "No se pudo marcar la tarea como hecha.")
 		return
 	}
 
-	// F5: si la tarea tiene subcarpeta en el Drive del equipo, la entrega se copia ahí.
+	// F5: si la tarea tiene subcarpeta en el Drive del equipo y se entregó un archivo, se copia ahí.
 	a.avisarEntregaAdmins(r.Context(), actualizada, yo.Nombre)
 	a.SincronizarEntregaConDrive(r.Context(), actualizada)
 
 	ResponderJSON(w, http.StatusOK, actualizada)
+}
+
+// POST /api/tareas/{id}/revertir
+func (a *API) handlePostTareaRevertir(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	if yo == nil {
+		ResponderError(w, http.StatusUnauthorized, "no_autenticado", "No se encontró el perfil autenticado.")
+		return
+	}
+
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de tarea inválido.")
+		return
+	}
+
+	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
+	if errors.Is(err, store.ErrNotFound) {
+		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_obtener_tarea", "No se pudo consultar la tarea.")
+		return
+	}
+	if tarea.AsignadoA != yo.ID {
+		ResponderError(w, http.StatusForbidden, "tarea_ajena", "Solo el responsable asignado puede retirar esta entrega.")
+		return
+	}
+
+	res, err := a.Store.RevertirEntregaTarea(r.Context(), id, yo.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		ResponderError(w, http.StatusNotFound, "tarea_no_encontrada", "La tarea no existe.")
+		return
+	}
+	if errors.Is(err, store.ErrForbidden) {
+		ResponderError(w, http.StatusForbidden, "tarea_ajena", "Solo el responsable asignado puede retirar esta entrega.")
+		return
+	}
+	if errors.Is(err, store.ErrConflict) {
+		actual, _ := a.Store.ObtenerTareaPorID(r.Context(), id)
+		msg := "La entrega ya no está en revisión y no se puede cambiar."
+		if actual != nil {
+			switch actual.Estado {
+			case store.EstadoTareaAceptada:
+				msg = "No puedes editar esta entrega porque ya fue aceptada."
+			case store.EstadoTareaRechazada:
+				msg = "El administrador ya devolvió esta tarea. Usa «Volver a entregar»."
+			case store.EstadoTareaPendiente:
+				msg = "Esta entrega ya fue retirada para editar."
+			case store.EstadoTareaCancelada:
+				msg = "Esta tarea fue cancelada."
+			}
+		}
+		ResponderError(w, http.StatusConflict, "no_reversible", msg)
+		return
+	}
+	if err != nil {
+		ResponderError(w, http.StatusInternalServerError, "error_revertir_entrega", "No se pudo retirar la entrega para editar.")
+		return
+	}
+
+	a.avisarEntregaRetiradaAdmins(r.Context(), res.Tarea, yo.Nombre, res.HechaEnAnterior)
+	ResponderJSON(w, http.StatusOK, res.Tarea)
 }
 
 // GET /api/facturas/mia
@@ -1561,6 +1696,10 @@ func (a *API) handleAdminPostTareaAceptar(w http.ResponseWriter, r *http.Request
 
 	aceptada, err := a.Store.AceptarTarea(r.Context(), id, admin.ID, body.Cantidad)
 	if err != nil {
+		if errors.Is(err, store.ErrConflict) {
+			ResponderError(w, http.StatusConflict, "estado_invalido", "La tarea ya cambió de estado y no se puede aceptar.")
+			return
+		}
 		if strings.Contains(err.Error(), "minutos") {
 			ResponderError(w, http.StatusBadRequest, "cantidad_invalida", "Los minutos deben estar entre 1 y 1440.")
 			return
@@ -1590,9 +1729,10 @@ func (a *API) handleAdminPostTareaRechazar(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*32)
 	var body struct {
-		Motivo string `json:"motivo"`
+		Motivo        string          `json:"motivo"`
+		DriveAdjuntos json.RawMessage `json:"drive_adjuntos"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "Formato de datos inválido.")
@@ -1600,8 +1740,14 @@ func (a *API) handleAdminPostTareaRechazar(w http.ResponseWriter, r *http.Reques
 	}
 
 	motivo := strings.TrimSpace(body.Motivo)
-	if motivo == "" || len(motivo) > 500 {
+	if motivo == "" || utf8.RuneCountInString(motivo) > 500 {
 		ResponderError(w, http.StatusBadRequest, "motivo_requerido", "Debes ingresar un motivo de rechazo (hasta 500 caracteres).")
+		return
+	}
+
+	driveAdjuntos, err := validarAdjuntosDriveRechazo(body.DriveAdjuntos)
+	if err != nil {
+		ResponderError(w, http.StatusBadRequest, "drive_adjuntos_invalidos", err.Error())
 		return
 	}
 
@@ -1616,12 +1762,20 @@ func (a *API) handleAdminPostTareaRechazar(w http.ResponseWriter, r *http.Reques
 	}
 
 	if tarea.Estado != store.EstadoTareaHecha {
-		ResponderError(w, http.StatusBadRequest, "estado_invalido", fmt.Sprintf("Solo se pueden rechazar tareas en estado 'hecha' (estado actual: %s).", tarea.Estado))
+		ResponderError(w, http.StatusConflict, "estado_invalido", fmt.Sprintf("Solo se pueden rechazar tareas en estado 'hecha' (estado actual: %s).", tarea.Estado))
 		return
 	}
 
-	rechazada, err := a.Store.RechazarTarea(r.Context(), id, admin.ID, motivo)
+	rechazada, err := a.Store.RechazarTareaConDetalle(r.Context(), id, admin.ID, motivo, driveAdjuntos)
 	if err != nil {
+		if errors.Is(err, store.ErrConflict) {
+			ResponderError(w, http.StatusConflict, "estado_invalido", "La tarea ya cambió de estado y no se puede rechazar.")
+			return
+		}
+		if errors.Is(err, store.ErrValidation) {
+			ResponderError(w, http.StatusBadRequest, "datos_invalidos", "Revisa el motivo y los adjuntos del rechazo.")
+			return
+		}
 		ResponderError(w, http.StatusInternalServerError, "error_rechazar_tarea", "No se pudo rechazar la tarea.")
 		return
 	}

@@ -560,6 +560,12 @@ func (a *API) SincronizarEntregaConDrive(ctx context.Context, tarea *store.Tarea
 	if tarea == nil || tarea.EnlaceMedios == nil || tarea.DriveCarpetaID == nil {
 		return
 	}
+	if tarea.MetodoEntrega != nil && *tarea.MetodoEntrega == "whatsapp" {
+		return
+	}
+	if tarea.EntregaTipo != nil && *tarea.EntregaTipo == "carpeta" {
+		return
+	}
 	archivoID := idDeArchivoDrive(*tarea.EnlaceMedios)
 	if archivoID == "" || archivoID == *tarea.DriveCarpetaID {
 		// El enlace es de carpeta o no se pudo leer: no hay nada que copiar.
