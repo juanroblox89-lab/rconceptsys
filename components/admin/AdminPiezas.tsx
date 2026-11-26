@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { Cliente, EtapaPieza, Pieza } from "@/lib/types";
 import { useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import styles from "./admin-paneles.module.css";
 
 export const ETAPAS: { clave: EtapaPieza; nombre: string }[] = [
@@ -38,6 +39,10 @@ export function AdminPiezas() {
   const [nuevaFormato, setNuevaFormato] = useState("Reel");
   const [creando, setCreando] = useState(false);
   const [formAbierto, setFormAbierto] = useState(false);
+
+  useCambiosSinGuardar(
+    formAbierto && (nuevaNombre.trim() !== "" || nuevaCliente !== "" || nuevaFormato !== "Reel"),
+  );
 
   const cargar = useCallback(async () => {
     try {

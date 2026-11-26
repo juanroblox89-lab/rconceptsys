@@ -81,6 +81,7 @@ type ReferenciaDrive struct {
 	ID     string `json:"id"`
 	Nombre string `json:"nombre"`
 	URL    string `json:"url"`
+	Ruta   string `json:"ruta,omitempty"`
 }
 
 // ReferenciasDeCliente devuelve la lista de referencias; si solo existe la referencia única anterior, la incluye.
@@ -135,6 +136,7 @@ type ReferenciaDriveTrabajo struct {
 	Nombre string `json:"nombre"`
 	URL    string `json:"url"`
 	Tipo   string `json:"tipo"`
+	Ruta   string `json:"ruta,omitempty"`
 }
 
 type EntregaInput struct {
@@ -230,6 +232,8 @@ type Tarea struct {
 	EntregaTipo             *string                  `json:"entrega_tipo,omitempty"`
 	DriveCarpetaID          *string                  `json:"drive_carpeta_id,omitempty"`
 	DriveCarpetaURL         *string                  `json:"drive_carpeta_url,omitempty"`
+	DriveCarpetaNombre      *string                  `json:"drive_carpeta_nombre,omitempty"`
+	DriveCarpetaRuta        *string                  `json:"drive_carpeta_ruta,omitempty"`
 	MotivoRechazo           *string                  `json:"motivo_rechazo,omitempty"`
 	BorradorEntrega         *EntregaTarea            `json:"borrador_entrega,omitempty"`
 	RechazoActual           *RechazoEvento           `json:"rechazo_actual,omitempty"`

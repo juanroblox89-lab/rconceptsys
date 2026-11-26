@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { Corte } from "@/lib/types";
 import { useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import styles from "./admin-paneles.module.css";
 
 function fmtCOP(valor: number): string {
@@ -30,6 +31,8 @@ export function AdminCortes() {
   const [abierto, setAbierto] = useState<number | null>(null);
   const [desdeManual, setDesdeManual] = useState("");
   const [hastaManual, setHastaManual] = useState("");
+
+  useCambiosSinGuardar(Boolean(desdeManual || hastaManual));
 
   const cargar = useCallback(async () => {
     setCargando(true);

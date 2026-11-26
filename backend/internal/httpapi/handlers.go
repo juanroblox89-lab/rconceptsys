@@ -112,6 +112,7 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/admin/clientes/{id}/foto", a.MiddlewareAuth(a.handleAdminPostClienteFoto, true, true))
 	mux.HandleFunc("GET /api/admin/clientes/{id}/foto/{archivo}", a.MiddlewareAuth(a.handleGetClienteFoto, true, true))
 	mux.HandleFunc("GET /api/admin/drive/picker-token", a.MiddlewareAuth(a.handleAdminDrivePickerToken, true, true))
+	mux.HandleFunc("GET /api/admin/drive/referencia", a.MiddlewareAuth(a.handleAdminGetDriveReferencia, true, true))
 	mux.HandleFunc("PATCH /api/admin/clientes/{id}", a.MiddlewareAuth(a.handleAdminPatchCliente, true, true))
 	mux.HandleFunc("GET /api/admin/estadisticas", a.MiddlewareAuth(a.handleAdminGetEstadisticas, true, true))
 
@@ -962,6 +963,7 @@ func (a *API) handleGetTareas(w http.ResponseWriter, r *http.Request) {
 	if tareas == nil {
 		tareas = []*store.Tarea{}
 	}
+	a.enriquecerTareasReferencias(r.Context(), tareas)
 	ResponderJSON(w, http.StatusOK, tareas)
 }
 
@@ -1444,6 +1446,7 @@ func (a *API) handleAdminGetTareas(w http.ResponseWriter, r *http.Request) {
 	if tareas == nil {
 		tareas = []*store.Tarea{}
 	}
+	a.enriquecerTareasReferencias(r.Context(), tareas)
 
 	porRevisar, err := a.Store.ContarTareasPorRevisar(r.Context())
 	if err != nil {
@@ -1544,6 +1547,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	referencias = a.enriquecerReferenciasTrabajo(r.Context(), referencias)
 	if !tipo.Activo {
 		ResponderError(w, http.StatusBadRequest, "tipo_invalido", "Elige un tipo de trabajo activo.")
 		return
@@ -1655,6 +1659,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 	}
 	// Aviso push: tarea nueva.
 	a.AvisarTareaNueva(r.Context(), creada)
+	a.enriquecerTareasReferencias(r.Context(), []*store.Tarea{creada})
 
 	ResponderJSON(w, http.StatusCreated, creada)
 }
@@ -1759,6 +1764,7 @@ func (a *API) handleAdminPostTareaRechazar(w http.ResponseWriter, r *http.Reques
 		ResponderError(w, http.StatusBadRequest, "drive_adjuntos_invalidos", err.Error())
 		return
 	}
+	driveAdjuntos = a.enriquecerReferenciasTrabajo(r.Context(), driveAdjuntos)
 
 	tarea, err := a.Store.ObtenerTareaPorID(r.Context(), id)
 	if err == store.ErrNotFound {
@@ -2066,7 +2072,7 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 		if v == nil {
 			campos["drive_referencia_nombre"], campos["drive_referencia_url"] = nil, nil
 		} else if ref, tipoOK := v.(string); tipoOK {
-			nombre, enlace, err := a.referenciaDriveCliente(r.Context(), ref)
+			nombre, enlace, _, err := a.referenciaDriveCliente(r.Context(), ref)
 			if err != nil {
 				ResponderError(w, 422, "referencia_invalida", err.Error())
 				return
@@ -2096,12 +2102,12 @@ func (a *API) handleAdminPatchCliente(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			vistos[ref] = true
-			nombre, enlace, err := a.referenciaDriveCliente(r.Context(), ref)
+			nombre, enlace, ruta, err := a.referenciaDriveCliente(r.Context(), ref)
 			if err != nil {
 				ResponderError(w, 422, "referencia_invalida", err.Error())
 				return
 			}
-			lista = append(lista, store.ReferenciaDrive{ID: ref, Nombre: nombre, URL: enlace})
+			lista = append(lista, store.ReferenciaDrive{ID: ref, Nombre: nombre, URL: enlace, Ruta: ruta})
 		}
 		campos["drive_referencias"] = lista
 		// Columnas anteriores: reflejan la primera referencia para no romper lecturas viejas.

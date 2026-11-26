@@ -22,8 +22,9 @@ import {
   Tarea,
 } from "@/lib/types";
 import { type DialogoPicker } from "@/lib/google-picker";
-import { abrirSelectorGoogleDrive } from "@/components/PickerDriveCliente";
+import { abrirSelectorGoogleDrive, resolverReferenciaDriveSeleccionada } from "@/components/PickerDriveCliente";
 import { EditorAdjuntos } from "@/components/AdjuntosAsignacion";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { subirAdjunto, type AdjuntoLocal } from "@/lib/adjuntos-asignacion";
 import { Boton } from "@/components/ui/Boton";
 import { Tarjeta } from "@/components/ui/Tarjeta";
@@ -71,6 +72,16 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   const [errorRechazo, setErrorRechazo] = useState("");
   const [rechazoGuardadoId, setRechazoGuardadoId] = useState<number | null>(null);
   const [rechazando, setRechazando] = useState(false);
+
+  const rechazoSucio = Boolean(
+    tareaARechazar &&
+      !rechazoGuardadoId &&
+      (motivoRechazo.trim() !== "" ||
+        rechazoLocales.length > 0 ||
+        rechazoDrive.length > 0 ||
+        grabandoRechazo),
+  );
+  const { confirmarSalida, limpiarRegistro } = useCambiosSinGuardar(rechazoSucio);
 
   const pickerDialogo = useRef<DialogoPicker | null>(null);
   const pickerVigente = useRef(true);
@@ -180,15 +191,17 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
 
   const cerrarModalRechazar = () => {
     if (rechazando || grabandoRechazo || abriendoPickerRechazo) return;
-    const recargar = rechazoGuardadoId !== null;
-    setTareaARechazar(null);
-    setMotivoRechazo("");
-    setRechazoLocales([]);
-    setRechazoDrive([]);
-    setErrorPickerRechazo("");
-    setErrorRechazo("");
-    setRechazoGuardadoId(null);
-    if (recargar) void cargarDatos();
+    confirmarSalida(() => {
+      const recargar = rechazoGuardadoId !== null;
+      setTareaARechazar(null);
+      setMotivoRechazo("");
+      setRechazoLocales([]);
+      setRechazoDrive([]);
+      setErrorPickerRechazo("");
+      setErrorRechazo("");
+      setRechazoGuardadoId(null);
+      if (recargar) void cargarDatos();
+    });
   };
 
   const handleElegirDriveRechazo = async () => {
@@ -208,16 +221,25 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
         onCancelar: () => {
           if (pickerVigente.current) setAbriendoPickerRechazo(false);
         },
-        onSeleccion: (elementos) => {
+        onSeleccion: async (elementos) => {
+          const resueltos = await Promise.all(
+            elementos.map((el) => resolverReferenciaDriveSeleccionada(el)),
+          );
           if (!pickerVigente.current) return;
           setAbriendoPickerRechazo(false);
           setRechazoDrive((prev) => {
             const ids = new Set(prev.map((x) => x.id));
             const nuevos: ReferenciaDriveTrabajo[] = [];
-            for (const el of elementos) {
+            for (const el of resueltos) {
               if (ids.has(el.id)) continue;
               ids.add(el.id);
-              nuevos.push({ id: el.id, nombre: el.nombre, url: el.url, tipo: el.tipo });
+              nuevos.push({
+                id: el.id,
+                nombre: el.nombre,
+                url: el.url,
+                tipo: el.tipo,
+                ...(el.ruta ? { ruta: el.ruta } : {}),
+              });
             }
             return [...prev, ...nuevos].slice(0, MAX_DRIVE_RECHAZO);
           });
@@ -286,6 +308,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       }
 
       mostrarAviso({ tipo: "info", titulo: "Tarea rechazada" });
+      limpiarRegistro();
       setTareaARechazar(null);
       setMotivoRechazo("");
       setRechazoLocales([]);
@@ -659,7 +682,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                         <div className={styles.rechazoDriveAcciones}>
                           <EnlaceDrive enlace={d.url} etiqueta="Abrir" />
                           <Boton
-                            variante="fantasma"
+                            variante="peligro"
                             tamano="sm"
                             disabled={rechazando}
                             aria-label={`Quitar ${d.nombre}`}

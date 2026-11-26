@@ -42,6 +42,7 @@
   --rc-verde: #2FA66A;
   --rc-verde-suave: #E7F6EE;
   --rc-verde-texto: #238252;
+  --rc-verde-halo: rgba(47, 166, 106, 0.24);
   --rc-verde-tinte: rgba(47, 166, 106, 0.13);
 
   --rc-ambar: #E8A33D;
@@ -77,6 +78,7 @@
   --rc-elev-vidrio-azul: inset 1px 1px 1px rgba(255, 255, 255, 0.92), inset -1px -1px 2px rgba(90, 169, 255, 0.35), 0 8px 20px rgba(47, 127, 224, 0.22);
   --rc-elev-vidrio-rojo: inset 1px 1px 1px rgba(255, 255, 255, 0.92), inset -1px -1px 2px rgba(229, 72, 77, 0.30), 0 8px 20px rgba(229, 72, 77, 0.20);
   --rc-elev-foco-azul: inset 2px 2px 5px rgba(163, 172, 190, 0.38), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1.5px var(--rc-azul), 0 0 10px var(--rc-azul-halo);
+  --rc-elev-foco-verde: inset 2px 2px 5px rgba(163, 172, 190, 0.38), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1.5px var(--rc-verde), 0 0 10px var(--rc-verde-halo);
   --rc-elev-radio-activo: 0 0 0 1.5px var(--rc-azul-texto);
   --rc-elev-presencia: 0 0 0 1.5px var(--rc-superficie);
   --rc-elev-error-rojo: inset 2px 2px 5px rgba(163, 172, 190, 0.38), inset -2px -2px 5px var(--rc-luz-suave), 0 0 0 1px var(--rc-rojo), 0 0 8px var(--rc-rojo-halo);

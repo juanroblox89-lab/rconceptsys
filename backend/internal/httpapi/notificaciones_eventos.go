@@ -113,3 +113,51 @@ func (a *API) avisarSolicitud(ctx context.Context, p *store.Perfil) {
 	}
 	a.avisarAdmins(ctx, AvisoPush{Titulo: "Nueva solicitud para unirse", Cuerpo: p.Nombre, URL: "/admin?pestana=miembros&solicitud=" + url.QueryEscape(p.ID) + "#solicitud-" + url.PathEscape(p.ID), Etiqueta: "solicitud"}, "solicitud:"+p.ID)
 }
+
+func (a *API) avisarPedidoActualizado(ctx context.Context, tarea *store.Tarea, actorID, detalle string) {
+	if tarea == nil || tarea.AsignadoA == "" || tarea.AsignadoA == actorID {
+		return
+	}
+	clave := fmt.Sprintf("pedido-act:%d:%s", tarea.ID, tarea.AsignadoA)
+	if !a.F5.puedeAvisarPedido(clave, 15*time.Second) {
+		return
+	}
+	cuerpo := datosAvisoTarea(tarea)
+	if detalle != "" {
+		cuerpo = recortar(detalle+" · "+cuerpo, 160)
+	}
+	claveEvento := fmt.Sprintf("%s:%d", clave, time.Now().Unix()/15)
+	a.avisar(ctx, tarea.AsignadoA, AvisoPush{
+		Titulo:   "Pedido actualizado",
+		Cuerpo:   cuerpo,
+		URL:      fmt.Sprintf("/trabajos/%d?desde=tareas", tarea.ID),
+		Etiqueta: "tarea-editada",
+	}, claveEvento)
+}
+
+func (a *API) avisarAdjuntoPedido(ctx context.Context, tareaID int64, actor *store.Perfil, adj *store.AdjuntoAsignacion) {
+	if adj == nil {
+		return
+	}
+	tarea, err := a.Store.ObtenerTareaPorID(ctx, tareaID)
+	if err != nil || tarea == nil {
+		return
+	}
+	actorID := ""
+	if actor != nil {
+		actorID = actor.ID
+	}
+	detalle := "Nuevo adjunto en el pedido"
+	switch adj.Tipo {
+	case "audio":
+		detalle = "Nuevo audio adjunto"
+	case "imagen":
+		detalle = "Nueva imagen adjunta"
+	case "video":
+		detalle = "Nuevo video adjunto"
+	}
+	if adj.Nombre != "" {
+		detalle += " (" + adj.Nombre + ")"
+	}
+	a.avisarPedidoActualizado(ctx, tarea, actorID, detalle)
+}

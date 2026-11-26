@@ -200,6 +200,7 @@ export interface ReferenciaDriveCliente {
   id: string;
   nombre: string;
   url?: string;
+  ruta?: string;
 }
 
 export interface Cliente {
@@ -324,6 +325,7 @@ export interface ReferenciaDriveTrabajo {
   nombre: string;
   url: string;
   tipo: 'carpeta' | 'archivo';
+  ruta?: string;
 }
 
 export interface Tarea {
@@ -350,6 +352,8 @@ export interface Tarea {
   entrega_tipo?: TipoElementoEntrega | null;
   drive_carpeta_id?: string | null;
   drive_carpeta_url?: string | null;
+  drive_carpeta_nombre?: string | null;
+  drive_carpeta_ruta?: string | null;
   motivo_rechazo?: string | null;
   borrador_entrega?: EntregaTarea | null;
   rechazo_actual?: RechazoEvento | null;

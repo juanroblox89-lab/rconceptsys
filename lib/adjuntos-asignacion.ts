@@ -174,7 +174,7 @@ export async function subirAdjunto(
   tarea: number,
   local: AdjuntoLocal,
   progreso: (n: number) => void,
-  opts?: { origen?: "asignacion" | "rechazo"; historialId?: number },
+  opts?: { origen?: "asignacion" | "rechazo"; historialId?: number; inicial?: boolean },
 ) {
   const f = local.archivo;
   const raiz = admin(tarea);
@@ -199,7 +199,10 @@ export async function subirAdjunto(
       progreso(Math.round(Math.min(f.size, offset + parte.size) / f.size * 95));
     }
   }
-  const cuerpoFinal = local.resumir && local.borradorResumen ? json("POST", { borrador_resumen: local.borradorResumen }) : { method: "POST" };
+  const payloadFinal: Record<string, unknown> = {};
+  if (local.resumir && local.borradorResumen) payloadFinal.borrador_resumen = local.borradorResumen;
+  if (opts?.inicial) payloadFinal.inicial = true;
+  const cuerpoFinal = Object.keys(payloadFinal).length > 0 ? json("POST", payloadFinal) : { method: "POST" };
   const guardado = await fetchApi<AdjuntoAsignacion>(`${accion}/finalizar`, cuerpoFinal);
   // Si una respuesta se perdió y luego se cambió el interruptor, conserva la última elección.
   const final = guardado.tipo === "audio" && guardado.resumir !== local.resumir ? await adjuntos.resumir(tarea, r.id, local.resumir) : guardado;

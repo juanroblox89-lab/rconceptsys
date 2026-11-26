@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -82,6 +81,8 @@ func (a *API) handleGetFichaCliente(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	a.enriquecerClienteReferencias(r.Context(), c)
+	a.enriquecerTareasReferencias(r.Context(), trabajos)
 	ResponderJSON(w, 200, map[string]any{"cliente": c, "trabajos": trabajos, "estadisticas": stats})
 }
 
@@ -217,26 +218,14 @@ func (a *API) handleAdminDrivePickerToken(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (a *API) referenciaDriveCliente(ctx context.Context, id string) (nombre, enlace string, err error) {
-	if !driveIDValido(id) {
-		return "", "", errors.New("elige un archivo o carpeta de Drive")
-	}
-	token, err := a.tokenDrive(ctx)
+func (a *API) referenciaDriveCliente(ctx context.Context, id string) (nombre, enlace, ruta string, err error) {
+	ref, err := a.resolverReferenciaDrive(ctx, id)
 	if err != nil {
-		return "", "", errors.New("primero conecta el Drive del equipo desde Gestión")
-	}
-	var archivo struct {
-		Nombre    string `json:"name"`
-		Tipo      string `json:"mimeType"`
-		Eliminado bool   `json:"trashed"`
-	}
-	err = a.pedirDrive(ctx, token, driveAPIBase+"/files/"+url.PathEscape(id)+"?supportsAllDrives=true&fields=name,mimeType,trashed", &archivo)
-	if err != nil || archivo.Eliminado || strings.TrimSpace(archivo.Nombre) == "" {
-		return "", "", errors.New("el Drive del equipo no puede abrir esa referencia; compártela con la cuenta conectada o elige otra")
+		return "", "", "", err
 	}
 	enlace = "https://drive.google.com/open?id=" + id
-	if archivo.Tipo == driveCarpetaMime {
-		enlace = "https://drive.google.com/drive/folders/" + id
+	if ref.Tipo == "carpeta" {
+		enlace = urlCarpetaDrive(id)
 	}
-	return archivo.Nombre, enlace, nil
+	return ref.Nombre, enlace, ref.Ruta, nil
 }

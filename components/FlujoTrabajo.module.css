@@ -12,6 +12,8 @@
 .fila { display: flex; align-items: center; justify-content: space-between; gap: var(--rc-esp-8); flex-wrap: wrap; padding: var(--rc-esp-14); border: 1px solid transparent; border-radius: var(--rc-radio-lg); background: var(--rc-superficie); box-shadow: var(--rc-elev-relieve-sm); }
 .enlace { min-height: 40px; justify-self: start; }
 .enlaceCliente { max-width: 100%; min-height: 40px; height: auto; max-height: none; white-space: normal; text-align: start; padding-block: 6px; }
+.enlaceClienteTexto { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.rutaReferenciaCliente { font-size: 10px; line-height: 1.25; color: var(--rc-texto-tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .error { color: var(--rc-rojo-texto); margin: 0; }
 @media (max-width: 600px) { .pagina { padding: var(--rc-esp-12); padding-bottom: calc(var(--rc-esp-16) + env(safe-area-inset-bottom, 0px)); } .form input:not([type=checkbox]), .form select, .form textarea { font-size: 16px; } }
 
@@ -99,34 +101,156 @@
 .fotoTexto .ayuda { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .fotoTitulo { font-size: var(--rc-fs-etiqueta); font-weight: var(--rc-fw-semibold); color: var(--rc-texto); }
 
-/* Referencias de Drive del cliente: una fila por archivo, acciones compactas a la derecha. */
+/* Referencias de Drive del cliente y del trabajo: ruta completa sutil arriba y nombre real debajo. */
 .referencias { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
-.referencia { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 10px; border-radius: 10px; background: var(--rc-superficie); box-shadow: var(--rc-elev-hundido-sm); }
-.referenciaIcono { flex: none; opacity: .7; }
-.referenciaNombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.referencia { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 6px 6px 10px; border-radius: 10px; background: var(--rc-superficie); box-shadow: var(--rc-elev-hundido-sm); min-width: 0; }
+.referenciaIcono { flex: none; opacity: .75; color: var(--rc-texto-secundario); }
+.referenciaTexto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rutaReferenciaTrabajo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 1.3; color: var(--rc-texto-tenue); }
+.referenciaNombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rc-fs-cuerpo); font-weight: var(--rc-fw-semibold); color: var(--rc-texto); }
 .referenciaAccion { flex: none; min-height: 40px; }
 .confirmarQuitar { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .confirmarQuitar > span { flex: 1; min-width: 0; }
-@media (max-width: 600px) { .referenciaAccion > span { display: none; } .referenciaAccion { padding: 0 10px; min-width: 40px; } }
+@media (max-width: 600px) {
+  .referencia { flex-wrap: wrap; padding: 8px 10px; }
+  .referenciaTexto { flex: 1 1 calc(100% - 28px); }
+  .referenciaAccion { margin-left: auto; }
+  .referenciaAccion > span { display: none; }
+  .referenciaAccion { padding: 0 10px; min-width: 40px; }
+}
 
 .referenciasTrabajo { display: grid; gap: var(--rc-esp-8); min-width: 0; }
 .referenciasCabecera { display: flex; justify-content: space-between; align-items: center; gap: var(--rc-esp-8); }
 .referenciaTrabajo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 12px 8px 10px; overflow: hidden; border-radius: var(--rc-radio-md); background: var(--rc-superficie); box-shadow: var(--rc-elev-hundido-sm); min-width: 0; }
 .referenciaTrabajo > svg { color: var(--rc-texto-secundario); }
 .referenciaTrabajo .confirmarQuitar { grid-column: 1 / -1; overflow-wrap: anywhere; }
-.nombreReferenciaTrabajo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rc-fs-etiqueta); }
+.nombreReferenciaTrabajo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rc-fs-cuerpo); font-weight: var(--rc-fw-semibold); color: var(--rc-texto); }
 .accionesReferenciaTrabajo { display: flex; align-items: center; gap: 6px; }
 .botonReferenciaTrabajo { min-height: 32px; padding-block: 0; }
 @media (max-width: 600px) {
+  .referenciaTrabajo { grid-template-columns: auto minmax(0, 1fr); }
+  .accionesReferenciaTrabajo { grid-column: 1 / -1; justify-content: flex-end; }
   .nombreReferenciaTrabajo { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-  .accionesReferenciaTrabajo .botonReferenciaTrabajo { min-width: 40px; padding-inline: 8px; }
-  .accionesReferenciaTrabajo button.botonReferenciaTrabajo span:not([aria-hidden]) { display: none; }
+  .accionesReferenciaTrabajo .botonReferenciaTrabajo { min-width: 40px; padding-inline: 10px; }
+}
+
+/* Roadmap cronológico "Historial y entregas": vertical con ↓ en móvil, horizontal con → y salto ↓ en desktop. */
+.roadmapLista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.roadmapItem { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.roadmapPaso {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--rc-radio-lg);
+  border: 1px solid var(--rc-gris-100);
+  border-top: 3px solid var(--rc-gris-300);
+  background: var(--rc-superficie-clara);
+  box-shadow: var(--rc-elev-relieve-sm);
+}
+.roadmapPaso[data-tono="inicio"] { border-top-color: var(--rc-gris-500); }
+.roadmapPaso[data-tono="entrega"] { border-top-color: var(--rc-azul); }
+.roadmapPaso[data-tono="retirada"] { border-top-color: var(--rc-ambar); }
+.roadmapPaso[data-tono="devuelto"] { border-top-color: var(--rc-rojo); }
+.roadmapPaso[data-tono="aprobado"] { border-top-color: var(--rc-verde); }
+.roadmapPaso[data-tono="cancelado"] { border-top-color: var(--rc-rojo-texto); }
+
+.roadmapCabecera { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.roadmapNodo {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--rc-radio-pildora);
+  display: grid;
+  place-items: center;
+  background: var(--rc-superficie-hundida);
+  color: var(--rc-texto-secundario);
+  box-shadow: var(--rc-elev-hundido-sm);
+}
+.roadmapPaso[data-tono="entrega"] .roadmapNodo { background: var(--rc-azul-suave); color: var(--rc-azul-texto); }
+.roadmapPaso[data-tono="retirada"] .roadmapNodo { background: var(--rc-ambar-suave); color: var(--rc-ambar-texto); }
+.roadmapPaso[data-tono="devuelto"] .roadmapNodo { background: var(--rc-rojo-suave); color: var(--rc-rojo-texto); }
+.roadmapPaso[data-tono="aprobado"] .roadmapNodo { background: var(--rc-verde-suave); color: var(--rc-verde-texto); }
+.roadmapPaso[data-tono="cancelado"] .roadmapNodo { background: var(--rc-rojo-suave); color: var(--rc-rojo-texto); }
+
+.roadmapTitulos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.roadmapTituloFila { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; }
+.roadmapTituloFila strong { font-size: var(--rc-fs-cuerpo); color: var(--rc-texto); overflow-wrap: anywhere; }
+.roadmapOrden { font-size: var(--rc-fs-micro); font-weight: var(--rc-fw-semibold); color: var(--rc-texto-tenue); font-variant-numeric: tabular-nums; flex: none; }
+.roadmapMeta { font-size: 11.5px; line-height: 1.35; color: var(--rc-texto-secundario); overflow-wrap: anywhere; }
+
+.roadmapCajaNota, .roadmapCajaMotivo {
+  margin: 0;
+  padding: 7px 9px;
+  border-radius: var(--rc-radio-sm);
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.roadmapCajaNota { background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm); color: var(--rc-texto); }
+.roadmapCajaMotivo { background: var(--rc-rojo-suave); color: var(--rc-rojo-texto); border: 1px solid color-mix(in srgb, var(--rc-rojo) 22%, transparent); }
+.roadmapEntregaDrive { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.roadmapValor { margin: 0; font-size: 13px; color: var(--rc-verde-texto); font-variant-numeric: tabular-nums; }
+
+.roadmapConector { display: flex; align-items: center; justify-content: center; padding-block: 1px; }
+.roadmapFlecha {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--rc-radio-pildora);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rc-superficie);
+  border: 1px solid var(--rc-gris-100);
+  box-shadow: var(--rc-elev-relieve-sm);
+  color: var(--rc-texto-secundario);
+}
+.roadmapFlechaDer { display: none; }
+.roadmapFlechaAbajo { display: inline-flex; }
+
+@media (min-width: 768px) {
+  .roadmapLista { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; row-gap: 34px; align-items: stretch; }
+  .roadmapLista[data-cols="1"] { grid-template-columns: minmax(0, 1fr); }
+  .roadmapItem { gap: 0; }
+  .roadmapPaso { flex: 1; }
+  .roadmapConector { position: absolute; padding: 0; z-index: 2; }
+  .roadmapItem:not(:nth-child(2n)):not(:last-child) .roadmapConector { top: 50%; right: -28px; transform: translateY(-50%); }
+  .roadmapItem:not(:nth-child(2n)):not(:last-child) .roadmapFlechaDer { display: inline-flex; }
+  .roadmapItem:not(:nth-child(2n)):not(:last-child) .roadmapFlechaAbajo { display: none; }
+  .roadmapItem:nth-child(2n):not(:last-child) .roadmapConector { bottom: -29px; left: -16px; transform: translateX(-50%); }
+  .roadmapItem:nth-child(2n):not(:last-child) .roadmapFlechaDer { display: none; }
+  .roadmapItem:nth-child(2n):not(:last-child) .roadmapFlechaAbajo { display: inline-flex; }
+}
+
+@media (min-width: 1024px) {
+  .roadmapLista[data-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .roadmapLista[data-cols="3"] .roadmapItem:nth-child(2n):not(:last-child) .roadmapConector { top: auto; bottom: auto; right: auto; left: auto; transform: none; }
+  .roadmapLista[data-cols="3"] .roadmapItem:not(:nth-child(3n)):not(:last-child) .roadmapConector { top: 50%; right: -28px; bottom: auto; left: auto; transform: translateY(-50%); }
+  .roadmapLista[data-cols="3"] .roadmapItem:not(:nth-child(3n)):not(:last-child) .roadmapFlechaDer { display: inline-flex; }
+  .roadmapLista[data-cols="3"] .roadmapItem:not(:nth-child(3n)):not(:last-child) .roadmapFlechaAbajo { display: none; }
+  .roadmapLista[data-cols="3"] .roadmapItem:nth-child(3n):not(:last-child) .roadmapConector { top: auto; right: auto; bottom: -29px; left: calc(-50% - 32px); transform: translateX(-50%); }
+  .roadmapLista[data-cols="3"] .roadmapItem:nth-child(3n):not(:last-child) .roadmapFlechaDer { display: none; }
+  .roadmapLista[data-cols="3"] .roadmapItem:nth-child(3n):not(:last-child) .roadmapFlechaAbajo { display: inline-flex; }
 }
 
 :global(html[data-rc-tema="glass"]) :is(.panel, .fila, .filaTrabajo, .filaCliente, .cabeceraClientes, .buscarCliente) {
   background: var(--rc-superficie-clara);
   border-color: var(--rc-glass-borde);
   border-radius: var(--rc-glass-radio);
+}
+:global(html[data-rc-tema="glass"]) :is(.roadmapPaso, .roadmapFlecha, .referencia, .referenciaTrabajo) {
+  background: var(--rc-superficie-clara);
+  border-color: var(--rc-glass-borde);
+}
+:global(html[data-rc-tema="glass"]) .roadmapCajaNota {
+  background: var(--rc-superficie-hundida);
+  border: 1px solid var(--rc-glass-borde);
+}
+:global(html[data-rc-tema="glass"]) .roadmapCajaMotivo {
+  background: color-mix(in srgb, var(--rc-rojo) 16%, var(--rc-superficie-clara));
+  border-color: color-mix(in srgb, var(--rc-rojo) 34%, var(--rc-glass-borde));
 }
 :global(html[data-rc-tema="glass"]) .buscarCliente {
   background: var(--rc-superficie-hundida);

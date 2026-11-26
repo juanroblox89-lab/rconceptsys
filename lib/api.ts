@@ -454,6 +454,8 @@ export const api = {
   },
   adminGetDrivePickerToken: (id?: number) => fetchApi<{ access_token: string; expires_in: number; carpeta_id: string; clave: string; proyecto_id: string; correo?: string; cuenta_equipo?: string }>(
     `/api/admin/drive/picker-token${id === undefined ? '' : `?cliente_id=${id}`}`, { cache: 'no-store' }),
+  adminGetDriveReferencia: (id: string) =>
+    fetchApi<ReferenciaDriveTrabajo>(`/api/admin/drive/referencia?id=${encodeURIComponent(id)}`, { cache: 'no-store' }),
   adminGetClientes: () => fetchApi<Cliente[]>('/api/admin/clientes'),
   adminPostCliente: (nombre: string) =>
     fetchApi<Cliente>('/api/admin/clientes', {

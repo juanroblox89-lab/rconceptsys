@@ -333,6 +333,8 @@ type metadatosCarpetaDrive struct {
 	Mime        string            `json:"mimeType"`
 	EnPapelera  bool              `json:"trashed"`
 	Padres      []string          `json:"parents"`
+	DriveID     string            `json:"driveId"`
+	WebViewLink string            `json:"webViewLink"`
 	Propiedades map[string]string `json:"appProperties"`
 	Propia      bool              `json:"ownedByMe"`
 	DeLaApp     bool              `json:"isAppAuthorized"`
@@ -340,7 +342,7 @@ type metadatosCarpetaDrive struct {
 
 func (a *API) metadatosCarpeta(ctx context.Context, token, id string) (metadatosCarpetaDrive, error) {
 	var f metadatosCarpetaDrive
-	err := a.pedirDrive(ctx, token, driveAPIBase+"/files/"+url.PathEscape(id)+"?supportsAllDrives=true&fields=id,name,mimeType,trashed,parents,appProperties,ownedByMe,isAppAuthorized", &f)
+	err := a.pedirDrive(ctx, token, driveAPIBase+"/files/"+url.PathEscape(id)+"?supportsAllDrives=true&fields=id,name,mimeType,trashed,parents,driveId,webViewLink,appProperties,ownedByMe,isAppAuthorized", &f)
 	return f, err
 }
 

@@ -212,6 +212,7 @@ func (a *API) handleDriveCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin?drive=error_guardar", http.StatusFound)
 		return
 	}
+	a.F5.InvalidarCacheDrive()
 	if organizado {
 		_, pendientes, err := a.organizarClientesDrive(r.Context(), token.AccessToken, conexion.CarpetaClientesID)
 		organizado = err == nil && len(pendientes) == 0
@@ -231,6 +232,7 @@ func (a *API) handleAdminPostDriveDesconectar(w http.ResponseWriter, r *http.Req
 		ResponderError(w, http.StatusInternalServerError, "error_desconectar", "No se pudo desconectar Drive.")
 		return
 	}
+	a.F5.InvalidarCacheDrive()
 	ResponderJSON(w, http.StatusOK, map[string]string{"mensaje": "Drive desconectado."})
 }
 

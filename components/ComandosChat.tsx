@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type TextareaHTMLAttributes } from "react";
 import { eventoApariencia } from "@/lib/apariencia";
 import { buscarRutasRIA, comandoRIA, fragmentosRutasRIA, type RutaRIA } from "@/lib/rutas-ria";
+import { useConfirmarSalida } from "@/components/CambiosSinGuardar";
 import styles from "./ComandosChat.module.css";
 
 function suscribirTema(avisar: () => void) {
@@ -18,6 +19,7 @@ export function useGlassChat() {
 
 export function useComandosChat(texto: string, rutas: RutaRIA[], habilitado: boolean, limpiar: () => void) {
   const router = useRouter();
+  const confirmarSalida = useConfirmarSalida();
   const id = useId();
   const [cerrado, setCerrado] = useState(false);
   const [foco, setFoco] = useState(false);
@@ -35,8 +37,10 @@ export function useComandosChat(texto: string, rutas: RutaRIA[], habilitado: boo
   function navegar(ruta: RutaRIA) {
     setCerrado(true);
     setSeleccion(0);
-    limpiar();
-    router.push(ruta.href);
+    confirmarSalida(() => {
+      limpiar();
+      router.push(ruta.href);
+    });
   }
 
   function teclado(e: KeyboardEvent<HTMLTextAreaElement>) {

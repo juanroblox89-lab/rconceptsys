@@ -74,6 +74,7 @@ func (a *API) handleDetalleAsignacion(w http.ResponseWriter, r *http.Request) {
 				copia.Cliente = &cliente
 			}
 		}
+		a.enriquecerTareasReferencias(r.Context(), []*store.Tarea{&copia})
 		ResponderJSON(w, 200, &copia)
 	}
 }
@@ -330,6 +331,7 @@ func (a *API) handleFinalizarAdjunto(w http.ResponseWriter, r *http.Request) {
 	}
 	var in struct {
 		BorradorResumen *borradorResumenAplicar `json:"borrador_resumen"`
+		Inicial         bool                    `json:"inicial"`
 	}
 	if r.Body != nil {
 		if err := leerJSONCuerpo(r, 256*1024, &in); err != nil && !errors.Is(err, io.EOF) {
@@ -401,6 +403,9 @@ func (a *API) handleFinalizarAdjunto(w http.ResponseWriter, r *http.Request) {
 	terminado = true
 	// La subida ya está guardada; un fallo limpiando partes no invalida el adjunto.
 	_ = a.Store.BorrarObjetosAdjunto(ctx, partes)
+	if listo.Origen == "asignacion" && !in.Inicial {
+		a.avisarAdjuntoPedido(r.Context(), listo.TareaID, UsuarioDesdeContexto(r.Context()), listo)
+	}
 	ResponderJSON(w, 201, vistaDeAdjunto(listo))
 }
 

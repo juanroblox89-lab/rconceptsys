@@ -15,16 +15,30 @@ import { Esqueleto } from "@/components/ui/Esqueleto";
 import { FotoCliente } from "./ClientesPanel";
 import { FilaTrabajo, fechaTrabajo } from "./FilaTrabajo";
 import { PickerDriveCliente, type ReferenciaDrive } from "./PickerDriveCliente";
+import { useCambiosSinGuardar } from "./CambiosSinGuardar";
 import styles from "./FlujoTrabajo.module.css";
 
 /** Lista de referencias del cliente; acepta clientes que solo tienen la referencia única anterior. */
 function referenciasDe(c?: Cliente): ReferenciaDrive[] {
-  if (c?.drive_referencias?.length) return c.drive_referencias.map(r => ({ id: r.id, nombre: r.nombre, url: r.url }));
+  if (c?.drive_referencias?.length) return c.drive_referencias.map(r => ({ id: r.id, nombre: r.nombre, url: r.url, ruta: r.ruta }));
   return c?.drive_referencia_id ? [{ id: c.drive_referencia_id, nombre: c.drive_referencia_nombre ?? "Referencia de Drive", url: c.drive_referencia_url ?? undefined }] : [];
 }
 
-function EnlaceCliente({ href, children }: { href?: string | null; children: string }) {
-  return href && /^https:\/\/(drive|docs)\.google\.com\//.test(href) ? <EnlaceExterno className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceCliente}`} href={href}>{children}<ExternalLink size={14} aria-hidden="true" /></EnlaceExterno> : null;
+function EnlaceCliente({ href, ruta, children }: { href?: string | null; ruta?: string; children: string }) {
+  return href && /^https:\/\/(drive|docs)\.google\.com\//.test(href) ? (
+    <EnlaceExterno
+      className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.enlaceCliente}`}
+      href={href}
+      aria-label={children}
+      title={ruta ? `${ruta} / ${children}` : children}
+    >
+      <span className={styles.enlaceClienteTexto}>
+        {ruta && <span className={styles.rutaReferenciaCliente}>{ruta}</span>}
+        <span>{children}</span>
+      </span>
+      <ExternalLink size={14} aria-hidden="true" />
+    </EnlaceExterno>
+  ) : null;
 }
 
 export function PaginaCliente({ id, editar = false, admin = false }: { id?: number; editar?: boolean; admin?: boolean }) {
@@ -66,7 +80,7 @@ export function PaginaCliente({ id, editar = false, admin = false }: { id?: numb
           <h2>Notas y referencias</h2>
           <p className={styles.textoLargo}>{dato.cliente.notas || "Sin notas."}</p>
           <div className={styles.acciones}>
-            {referenciasDe(dato.cliente).map(r => <EnlaceCliente key={r.id} href={r.url}>{r.nombre}</EnlaceCliente>)}
+            {referenciasDe(dato.cliente).map(r => <EnlaceCliente key={r.id} href={r.url} ruta={r.ruta}>{r.nombre}</EnlaceCliente>)}
             <EnlaceCliente href={dato.cliente.drive_url}>{dato.cliente.drive_carpeta_id ? "Carpeta del cliente" : "Referencia anterior"}</EnlaceCliente>
             {dato.cliente.material_carpeta_id && <EnlaceCliente href={`https://drive.google.com/drive/folders/${encodeURIComponent(dato.cliente.material_carpeta_id)}`}>Material del lugar</EnlaceCliente>}
             {dato.cliente.producto_carpeta_id && <EnlaceCliente href={`https://drive.google.com/drive/folders/${encodeURIComponent(dato.cliente.producto_carpeta_id)}`}>Producto</EnlaceCliente>}
@@ -103,6 +117,16 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
   const inputFoto = useRef<HTMLInputElement>(null);
   const vistaPrevia = useMemo(() => (foto ? URL.createObjectURL(foto) : null), [foto]);
   useEffect(() => () => { if (vistaPrevia) URL.revokeObjectURL(vistaPrevia); }, [vistaPrevia]);
+
+  const guardado = base ?? cliente;
+  const sucio =
+    nombre !== (guardado?.nombre ?? "") ||
+    notas !== (guardado?.notas ?? "") ||
+    activo !== (guardado?.activo ?? true) ||
+    foto !== null ||
+    referencias.map((r) => r.id).join("|") !== referenciasDe(guardado).map((r) => r.id).join("|");
+  const { confirmarSalida, limpiarRegistro } = useCambiosSinGuardar(sucio);
+
   async function guardar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (ocupado) return;
@@ -117,6 +141,7 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
         ...(cambiaron ? { drive_referencias: ids } : {}) });
       setBase(actual);
       if (foto) { actual = await api.adminSubirFotoCliente(actual.id, foto); setBase(actual); setFoto(null); }
+      limpiarRegistro();
       onGuardar(actual);
     } catch (e) { setError(e instanceof Error ? e.message : "No pudimos guardar la ficha."); }
     finally { setOcupado(false); }
@@ -142,6 +167,6 @@ function EditorCliente({ cliente, onCerrar, onGuardar }: { cliente?: Cliente; on
     </div>}
     {cliente && <Casilla etiqueta="Cliente activo" checked={activo} onChange={e => setActivo(e.target.checked)} />}
     {error && <p className={styles.error} role="alert">{error}</p>}
-    <div className={styles.accionesFormulario}><Boton variante="secundario" disabled={ocupado} onClick={onCerrar}>Volver sin guardar</Boton><Boton type="submit" cargando={ocupado}>Guardar ficha</Boton></div>
+    <div className={styles.accionesFormulario}><Boton variante="secundario" disabled={ocupado} onClick={() => confirmarSalida(onCerrar)}>Volver sin guardar</Boton><Boton type="submit" variante="guardar" cargando={ocupado}>Guardar ficha</Boton></div>
   </form>;
 }

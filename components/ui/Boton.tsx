@@ -4,6 +4,7 @@ import React, { forwardRef } from "react";
 
 export type BotonVariante =
   | "primario"
+  | "guardar"
   | "vidrio"
   | "secundario"
   | "fantasma"
@@ -41,6 +42,7 @@ export const Boton = forwardRef<HTMLButtonElement, BotonProps>(function Boton(
   const clases: string[] = ["rc-btn"];
 
   if (variante === "primario") clases.push("rc-btn--primario");
+  else if (variante === "guardar") clases.push("rc-btn--guardar");
   else if (variante === "vidrio") clases.push("rc-btn--vidrio rc-vidrio rc-vidrio--azul");
   else if (variante === "secundario") clases.push("rc-btn--secundario");
   else if (variante === "fantasma") clases.push("rc-btn--fantasma");

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, Download, Film, ImageIcon, Mic, Music2, Paperclip, Square, Trash2 } from "lucide-react";
-import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { Boton } from "@/components/ui/Boton";
 import { aceptarAdjuntos, adjuntos, detectarTipoArchivo, limiteAdjunto, type AdjuntoAsignacion, type AdjuntoLocal, type TipoAdjunto } from "@/lib/adjuntos-asignacion";
 import styles from "./AdjuntosAsignacion.module.css";
@@ -49,7 +48,7 @@ function Quitar({ nombre, onQuitar, bloqueado }: { nombre: string; onQuitar: () 
     <span>¿Quitar {nombre}?</span><div className={styles.acciones}>
       <Boton variante="secundario" tamano="sm" ref={el => { cancelar.current = el; el?.focus(); }} disabled={bloqueado} onClick={no}>No</Boton>
       <Boton variante="peligro" tamano="sm" disabled={bloqueado} onClick={() => { setConfirmar(false); onQuitar(); }}>Sí</Boton>
-    </div></div> : <Boton variante="fantasma" tamano="sm" ref={boton} disabled={bloqueado} aria-label={`Quitar ${nombre}`} onClick={() => setConfirmar(true)}><Trash2 size={15} aria-hidden="true" /> Quitar</Boton>;
+    </div></div> : <Boton variante="peligro" tamano="sm" ref={boton} disabled={bloqueado} aria-label={`Quitar ${nombre}`} onClick={() => setConfirmar(true)}><Trash2 size={15} aria-hidden="true" /> Quitar</Boton>;
 }
 
 function FilaLocal({
@@ -308,7 +307,6 @@ function FilaGuardada({
     <strong className={styles.nombre}>{a.nombre}</strong>
     <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
     <div className={styles.acciones}>
-      {medio && <EnlaceExterno href={medio.url} className="rc-btn rc-btn--secundario rc-btn--sm" aria-label={`Abrir ${a.nombre} fuera de RConcept`} onClick={e => { if (Date.now() >= medio.expira - 3000) { e.preventDefault(); renovar(); setError("Actualizamos el enlace. Pulsa Abrir de nuevo."); } }}>Abrir fuera</EnlaceExterno>}
       <Boton variante="secundario" tamano="sm" aria-label={`Descargar ${a.nombre}`} disabled={ocupado} onClick={() => void accion(descargar)}><Download size={15} aria-hidden="true" /> Descargar</Boton>
       {editable && a.tipo === "audio" && (
         <BotonResumen
@@ -497,22 +495,6 @@ function FilaRechazo({ tarea, a }: { tarea: number; a: AdjuntoRechazoItem }) {
       <strong className={styles.nombre}>{a.nombre}</strong>
       <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
       <div className={styles.acciones}>
-        {medio && (
-          <EnlaceExterno
-            href={medio.url}
-            className="rc-btn rc-btn--secundario rc-btn--sm"
-            aria-label={`Abrir ${a.nombre} fuera de RConcept`}
-            onClick={(e) => {
-              if (Date.now() >= medio.expira - 3000) {
-                e.preventDefault();
-                renovar();
-                setError("Actualizamos el enlace. Pulsa Abrir de nuevo.");
-              }
-            }}
-          >
-            Abrir fuera
-          </EnlaceExterno>
-        )}
         <Boton
           variante="secundario"
           tamano="sm"

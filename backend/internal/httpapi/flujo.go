@@ -60,6 +60,7 @@ func (a *API) handleAdminGetTarea(w http.ResponseWriter, r *http.Request) {
 			_ = a.Store.MarcarAsignacionesVistas(r.Context(), yo.ID, []int64{id})
 		}
 	}
+	a.enriquecerTareasReferencias(r.Context(), []*store.Tarea{t})
 	ResponderJSON(w, 200, t)
 }
 
@@ -89,6 +90,7 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 				ResponderError(w, 400, "referencias_invalidas", err.Error())
 				return
 			}
+			refs = a.enriquecerReferenciasTrabajo(r.Context(), refs)
 			if t.DriveReferencias == nil || !slices.Equal(refs, t.DriveReferencias) {
 				campos[k] = refs
 			}
@@ -260,7 +262,13 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, 500, "error_guardar", "No pudimos guardar los cambios.")
 		return
 	}
-	a.avisar(r.Context(), actualizado.AsignadoA, AvisoPush{Titulo: "Trabajo actualizado · " + FechaEntrega(actualizado.FechaLimite, time.Now()), Cuerpo: datosAvisoTarea(actualizado), URL: fmt.Sprintf("/tareas?tarea=%d#tarea-%d", id, id), Etiqueta: "tarea-editada"}, "")
+	yo := a.usuarioActual(r)
+	actorID := ""
+	if yo != nil {
+		actorID = yo.ID
+	}
+	a.avisarPedidoActualizado(r.Context(), actualizado, actorID, "Cambios en el pedido")
+	a.enriquecerTareasReferencias(r.Context(), []*store.Tarea{actualizado})
 	ResponderJSON(w, 200, actualizado)
 }
 
