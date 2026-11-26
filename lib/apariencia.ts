@@ -4,7 +4,7 @@ export type Apariencia = {
   movimiento:'sistema'|'activado'|'desactivado'; contraste:boolean; oscurecido:number;
   imagen?:string; video?:string; fondo_nombre?:string; fondo_bytes?:number;
 };
-export const aparienciaInicial:Apariencia={modo:'sistema',tema:'rconcept',movimiento:'sistema',contraste:false,oscurecido:5};
+export const aparienciaInicial:Apariencia={modo:'claro',tema:'rconcept',movimiento:'sistema',contraste:false,oscurecido:5};
 export const eventoApariencia='rc-apariencia';
 export function aplicarApariencia(v:Apariencia, guardar=false) {
   const root=document.documentElement;

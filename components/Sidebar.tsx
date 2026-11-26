@@ -109,42 +109,38 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
 
   useEffect(() => {
     let montado = true;
-    api.getYo()
-      .then((p) => {
-        if (!montado) return;
-        setYo(p);
-        actualizarContadores(p.es_admin);
-      })
-      .catch(() => {});
+    let esAdminActual: boolean | null = null;
+    let ultima = 0;
 
-    // Intervalo de actualización cada 60s si el documento está visible
-    const intervalo = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        api.getYo()
-          .then((p) => {
-            if (!montado) return;
-            actualizarContadores(p.es_admin);
-          })
-          .catch(() => {});
+    const refrescar = () => {
+      if (document.visibilityState !== "visible") return;
+      const ahora = Date.now();
+      if (ahora - ultima < 30000) return;
+      ultima = ahora;
+      if (esAdminActual !== null) {
+        actualizarContadores(esAdminActual);
+        return;
       }
-    }, 60000);
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        api.getYo()
-          .then((p) => {
-            if (!montado) return;
-            actualizarContadores(p.es_admin);
-          })
-          .catch(() => {});
-      }
+      api.getYo()
+        .then((p) => {
+          if (!montado) return;
+          esAdminActual = p.es_admin;
+          setYo(p);
+          actualizarContadores(p.es_admin);
+        })
+        .catch(() => {});
     };
-    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    refrescar();
+
+    // Intervalo de actualización cada 3 min si el documento está visible
+    const intervalo = setInterval(refrescar, 180000);
+    document.addEventListener("visibilitychange", refrescar);
 
     return () => {
       montado = false;
       clearInterval(intervalo);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      document.removeEventListener("visibilitychange", refrescar);
     };
   }, [actualizarContadores]);
 

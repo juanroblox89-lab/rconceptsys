@@ -406,7 +406,7 @@ export function AdjuntosGuardados({ tarea, editable = false, bloqueado = false, 
       setError(false);
     }).catch(() => { if (vivo) setError(true); });
     void traer();
-    const t = pendiente ? setInterval(() => { if (!document.hidden) void traer(); }, 5000) : undefined;
+    const t = pendiente ? setInterval(() => { if (!document.hidden) void traer(); }, 12000) : undefined;
     return () => { vivo = false; clearInterval(t); };
   }, [tarea, cantidad, pendiente, intento]);
 
