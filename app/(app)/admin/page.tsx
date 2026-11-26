@@ -16,7 +16,6 @@ import {
   BarChart2,
   Users2,
   Calendar,
-  Layers,
   Wallet,
   Building2,
 } from "lucide-react";
@@ -45,7 +44,6 @@ import { useAviso } from "@/components/ui/Aviso";
 import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
 import { usePerfilActual } from "@/components/AppShell";
 import { AdminEquipo } from "@/components/admin/AdminEquipo";
-import { AdminPiezas } from "@/components/admin/AdminPiezas";
 import { AdminCortes } from "@/components/admin/AdminCortes";
 import styles from "./admin.module.css";
 
@@ -492,7 +490,6 @@ function GestionAdmin() {
   const tabsItems = [
     { id: "trabajos", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Briefcase size={14} /> Trabajos</span> },
     { id: "clientes", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Users2 size={14} /> Clientes</span> },
-    { id: "piezas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Layers size={14} /> Piezas</span> },
     { id: "estadisticas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><BarChart2 size={14} /> Estadísticas</span> },
     { id: "facturas", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Receipt size={14} /> Facturas</span> },
     { id: "cortes", etiqueta: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Wallet size={14} /> Cortes</span> },
@@ -1024,7 +1021,6 @@ function GestionAdmin() {
           {/* ========================================================= */}
           {/* PESTAÑA F5: PIEZAS                                        */}
           {/* ========================================================= */}
-          {pestanaActiva === "piezas" && <AdminPiezas />}
 
           {/* ========================================================= */}
           {/* PESTAÑA F5: CORTES DE PAGO                                */}
