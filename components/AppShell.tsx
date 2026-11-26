@@ -10,6 +10,7 @@ import { Sidebar, navItems } from "@/components/Sidebar";
 import { rutaVisible } from "@/lib/rutas-ria";
 import { CampanaNotificaciones } from "@/components/CampanaNotificaciones";
 import { FondoApariencia } from "@/components/FondoApariencia";
+import { CambiosSinGuardarProvider } from "@/components/CambiosSinGuardar";
 import { api } from "@/lib/api";
 import { Perfil } from "@/lib/types";
 import styles from "./AppShell.module.css";
@@ -98,7 +99,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <PerfilActual.Provider value={yo}><FondoApariencia /><div className={styles.root} data-rc-shell>
+    <PerfilActual.Provider value={yo}>
+      <CambiosSinGuardarProvider onSalirConfirmado={() => setMobileOpen(false)}>
+        <FondoApariencia /><div className={styles.root} data-rc-shell>
       {/* Riel flotante (solo desktop con la sidebar colapsada). */}
       <nav className={`${styles.rail} ${collapsed ? styles.railVisible : ""}`} data-rc-chrome="rail" aria-label="Accesos">
         <div className={styles.railGroup}>
@@ -179,6 +182,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div key={pathname} data-rc-entrada className={styles.pantalla}>{children}</div>
         </main>
       </div>
-    </div></PerfilActual.Provider>
+    </div>
+      </CambiosSinGuardarProvider>
+    </PerfilActual.Provider>
   );
 }

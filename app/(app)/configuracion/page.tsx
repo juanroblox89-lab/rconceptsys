@@ -10,6 +10,7 @@ import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { Casilla } from "@/components/ui/Casilla";
 import { Boton } from "@/components/ui/Boton";
 import { Esqueleto } from "@/components/ui/Esqueleto";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import styles from "@/components/FlujoTrabajo.module.css";
 import conf from "./configuracion.module.css";
 
@@ -21,21 +22,30 @@ const tipos: Array<[string, string]> = [
 
 export default function ConfiguracionPage() {
   const [prefs, setPrefs] = useState<PreferenciasNotificaciones | null>(null);
+  const [prefsGuardadas, setPrefsGuardadas] = useState<PreferenciasNotificaciones | null>(null);
   const [admin, setAdmin] = useState(false);
   const [estado, setEstado] = useState({ texto: "", error: false });
   const [ocupado, setOcupado] = useState(false);
   const [intento, setIntento] = useState(0);
+  useCambiosSinGuardar(
+    Boolean(prefs && prefsGuardadas) && JSON.stringify(prefs) !== JSON.stringify(prefsGuardadas),
+  );
   useEffect(() => {
     let vigente = true;
     Promise.all([api.getYo(), api.getPreferenciasNotificaciones()]).then(([p, datos]) => {
-      if (vigente) { setAdmin(p.es_admin); setPrefs(datos); }
+      if (vigente) { setAdmin(p.es_admin); setPrefs(datos); setPrefsGuardadas(datos); }
     }).catch(() => { if (vigente) setEstado({ texto: "No pudimos cargar tus preferencias.", error: true }); });
     return () => { vigente = false; };
   }, [intento]);
   async function guardar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (!prefs || ocupado) return;
     setOcupado(true); setEstado({ texto: "", error: false });
-    try { setPrefs(await api.guardarPreferenciasNotificaciones(prefs)); setEstado({ texto: "Preferencias guardadas.", error: false }); }
+    try {
+      const actualizadas = await api.guardarPreferenciasNotificaciones(prefs);
+      setPrefs(actualizadas);
+      setPrefsGuardadas(actualizadas);
+      setEstado({ texto: "Preferencias guardadas.", error: false });
+    }
     catch (e) { setEstado({ texto: e instanceof Error ? e.message : "No se pudieron guardar.", error: true }); }
     finally { setOcupado(false); }
   }
@@ -56,14 +66,14 @@ export default function ConfiguracionPage() {
           <legend>Horario de silencio (hora de Bogotá)</legend>
           <div className={conf.horario}><CampoHora etiqueta="Desde" valor={prefs.silencio_desde} onCambio={valor => setPrefs({ ...prefs, silencio_desde: valor })} disabled={ocupado} />
           <CampoHora etiqueta="Hasta" valor={prefs.silencio_hasta} onCambio={valor => setPrefs({ ...prefs, silencio_hasta: valor })} disabled={ocupado} /></div>
-          <div><Boton variante="fantasma" onClick={() => setPrefs({ ...prefs, silencio_desde: "", silencio_hasta: "" })}>Quitar horario</Boton></div>
+          <div><Boton variante="peligro" onClick={() => setPrefs({ ...prefs, silencio_desde: "", silencio_hasta: "" })}>Quitar horario</Boton></div>
         </fieldset>
       </form>}
     <FormularioCelular />
     <AvisosPush />
     {prefs && <footer className={conf.acciones}>
       {estado.texto && <p role={estado.error ? "alert" : "status"}>{estado.texto}</p>}
-      <Boton type="submit" form="preferencias-avisos" cargando={ocupado}>Guardar preferencias</Boton>
+      <Boton type="submit" variante="guardar" form="preferencias-avisos" cargando={ocupado}>Guardar preferencias</Boton>
     </footer>}
   </div>;
 }

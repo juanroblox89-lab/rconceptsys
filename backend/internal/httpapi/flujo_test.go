@@ -1,9 +1,12 @@
 package httpapi_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -61,5 +64,106 @@ func TestF6AsignarEditarYEntregar(t *testing.T) {
 	}
 	if r := doRequest(rutas, "PATCH", ruta, admin, cambios); r.Code != 409 {
 		t.Fatalf("se editó una entrega: %d", r.Code)
+	}
+}
+
+func TestNotificarPedidoActualizadoYAdjuntosSinAutoAviso(t *testing.T) {
+	rutas, s, admin, editor, _, _ := setupF2TestEnvironment(t)
+	ctx := context.Background()
+
+	leerBandeja := func(usuario string) []store.Notificacion {
+		t.Helper()
+		res := doRequest(rutas, "GET", "/api/notificaciones", usuario, nil)
+		if res.Code != 200 {
+			t.Fatalf("bandeja %s: %d %s", usuario, res.Code, res.Body.String())
+		}
+		var out struct {
+			Notificaciones []store.Notificacion `json:"notificaciones"`
+		}
+		if err := json.Unmarshal(res.Body.Bytes(), &out); err != nil {
+			t.Fatal(err)
+		}
+		return out.Notificaciones
+	}
+
+	seq := 0
+	subirAudio := func(tareaID int64, nombre string, inicial bool) {
+		t.Helper()
+		seq++
+		audio := []byte("RIFF\x0c\x00\x00\x00WAVEfmt \x00\x00\x00\x00")
+		id := fmt.Sprintf("11111111-1111-4111-8111-%012d", seq)
+		base := fmt.Sprintf("/api/admin/tareas/%d/adjuntos", tareaID)
+		r1 := doRequest(rutas, "POST", base, admin, map[string]any{
+			"id": id, "nombre": nombre, "tipo": "audio", "tamano": len(audio), "resumir": false,
+		})
+		if r1.Code != 200 {
+			t.Fatalf("reservar audio: %d %s", r1.Code, r1.Body.String())
+		}
+		req := httptest.NewRequest("PUT", base+"/"+id+"/partes/0", bytes.NewReader(audio))
+		req.Header.Set("X-Demo-User", admin)
+		w := httptest.NewRecorder()
+		rutas.ServeHTTP(w, req)
+		if w.Code != 204 {
+			t.Fatalf("parte audio: %d %s", w.Code, w.Body.String())
+		}
+		var finBody any
+		if inicial {
+			finBody = map[string]any{"inicial": true}
+		}
+		r3 := doRequest(rutas, "POST", base+"/"+id+"/finalizar", admin, finBody)
+		if r3.Code != 201 {
+			t.Fatalf("finalizar audio: %d %s", r3.Code, r3.Body.String())
+		}
+	}
+
+	// 1. Editar tarea existente notifica a asignado_a con URL al detalle
+	t1, err := s.CrearTarea(ctx, &store.Tarea{TipoID: 2, AsignadoA: editor, CreadoPor: admin, Titulo: "Corte A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := doRequest(rutas, "PATCH", fmt.Sprintf("/api/admin/tareas/%d", t1.ID), admin, map[string]any{"descripcion": "Nueva descripción detallada"}); r.Code != 200 {
+		t.Fatalf("patch t1: %d %s", r.Code, r.Body.String())
+	}
+	avisos1 := leerBandeja(editor)
+	if len(avisos1) != 1 || avisos1[0].Titulo != "Pedido actualizado" || avisos1[0].URL != fmt.Sprintf("/trabajos/%d?desde=tareas", t1.ID) {
+		t.Fatalf("aviso esperado tras PATCH: %+v", avisos1)
+	}
+
+	// 2. Subir audio nuevo a tarea existente notifica y deduplica múltiples archivos en la misma ventana
+	t2, err := s.CrearTarea(ctx, &store.Tarea{TipoID: 2, AsignadoA: editor, CreadoPor: admin, Titulo: "Corte B"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	subirAudio(t2.ID, "indicacion-1.wav", false)
+	subirAudio(t2.ID, "indicacion-2.wav", false)
+	avisos2 := leerBandeja(editor)
+	if len(avisos2) != 2 {
+		t.Fatalf("debía deduplicar los 2 audios en un solo aviso adicional (total 2), obtuvo %d: %+v", len(avisos2), avisos2)
+	}
+	if avisos2[0].Titulo != "Pedido actualizado" || !strings.Contains(strings.ToLower(avisos2[0].Cuerpo), "audio") || avisos2[0].URL != fmt.Sprintf("/trabajos/%d?desde=tareas", t2.ID) {
+		t.Fatalf("aviso de audio inesperado: %+v", avisos2[0])
+	}
+
+	// 3. Subida inicial durante creación no dispara "Pedido actualizado"
+	t3, err := s.CrearTarea(ctx, &store.Tarea{TipoID: 2, AsignadoA: editor, CreadoPor: admin, Titulo: "Corte C"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	subirAudio(t3.ID, "inicial.wav", true)
+	if avisos3 := leerBandeja(editor); len(avisos3) != 2 {
+		t.Fatalf("subida inicial no debe duplicar aviso: %+v", avisos3)
+	}
+
+	// 4. Si actor == asignado_a (auto-asignado), ni PATCH ni audio generan notificación para sí mismo
+	tAuto, err := s.CrearTarea(ctx, &store.Tarea{TipoID: 2, AsignadoA: admin, CreadoPor: admin, Titulo: "Auto asignado"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := doRequest(rutas, "PATCH", fmt.Sprintf("/api/admin/tareas/%d", tAuto.ID), admin, map[string]any{"descripcion": "Cambio propio"}); r.Code != 200 {
+		t.Fatalf("patch auto-asignado: %d %s", r.Code, r.Body.String())
+	}
+	subirAudio(tAuto.ID, "propio.wav", false)
+	if avisosAdmin := leerBandeja(admin); len(avisosAdmin) != 0 {
+		t.Fatalf("no debe notificarse al mismo actor auto-asignado: %+v", avisosAdmin)
 	}
 }

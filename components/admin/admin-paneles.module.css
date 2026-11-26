@@ -199,6 +199,17 @@
   cursor: default;
 }
 
+.miniBotonPeligro {
+  background: var(--rc-rojo-btn-bg, var(--rc-rojo-suave));
+  color: var(--rc-rojo-btn-texto, var(--rc-rojo-texto));
+  border: 1px solid var(--rc-rojo-btn-borde, transparent);
+}
+
+.miniBotonPeligro:hover:not(:disabled) {
+  background: var(--rc-rojo-btn-hover, var(--rc-rojo-tinte));
+  color: var(--rc-rojo-btn-texto, var(--rc-rojo-texto));
+}
+
 .enlaceNuevo {
   display: flex;
   gap: var(--rc-esp-6);

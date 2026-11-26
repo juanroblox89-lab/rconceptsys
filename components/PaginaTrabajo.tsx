@@ -3,18 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileText, FolderOpen, MessageCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Tarea } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
 import { Modal } from "@/components/ui/Modal";
 import { Esqueleto } from "@/components/ui/Esqueleto";
-import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { CarpetaDriveTarea } from "@/components/ui/CarpetaDriveTarea";
 import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
-import { EstadoTrabajo, ESTADOS_TRABAJO, fechaTrabajo } from "./FilaTrabajo";
+import { EstadoTrabajo, fechaTrabajo } from "./FilaTrabajo";
 import { FormularioAsignacion } from "./FormularioAsignacion";
-import { AdjuntosGuardados, AdjuntosRechazoVista } from "./AdjuntosAsignacion";
+import { AdjuntosGuardados } from "./AdjuntosAsignacion";
+import { RoadmapHistorial } from "./RoadmapHistorial";
 import { usePerfilActual } from "./AppShell";
 import styles from "./FlujoTrabajo.module.css";
 
@@ -92,100 +92,9 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "" }: { i
         </dl>
         <AdjuntosGuardados key={tarea.id} tarea={tarea.id} />
       </section>}
-      {tarea && <section className={styles.panel}>
+      {tarea && <section className={styles.panel} aria-label="Historial y entregas">
         <h2>Historial y entregas</h2>
-        <ul className={styles.historialTrabajo}>
-          <li>
-            <div className={styles.historialFila}>
-              <strong>Asignado</strong>
-              <span className={styles.historialFecha}>{fechaTrabajo(tarea.creada_en)}{tarea.creador?.nombre ? ` · ${tarea.creador.nombre}` : ""}</span>
-            </div>
-          </li>
-          {tarea.historial && tarea.historial.length > 0 ? (
-            tarea.historial.map((h) => (
-              <li key={h.id}>
-                <div className={styles.historialFila}>
-                  <strong>{h.detalle || h.evento}</strong>
-                  <span className={styles.historialFecha}>
-                    {fechaTrabajo(h.creado_en)}{h.actor_nombre ? ` · ${h.actor_nombre}` : ""}
-                  </span>
-                </div>
-                {h.nota && <p className={styles.historialDetalle}>Nota: {h.nota}</p>}
-                {h.motivo && <p className={styles.historialDetalle}>Motivo: {h.motivo}</p>}
-                {h.metodo_entrega === "whatsapp" ? (
-                  <span className={styles.entregaWhatsappChip}>
-                    <MessageCircle size={13} aria-hidden="true" />
-                    Entregado por WhatsApp
-                  </span>
-                ) : h.enlace_medios ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                    {h.entrega_nombre && (
-                      <span className={styles.historialDriveNombre}>
-                        {h.entrega_tipo === "carpeta" ? <FolderOpen size={14} aria-hidden="true" /> : <FileText size={14} aria-hidden="true" />}
-                        <span>{h.entrega_nombre}</span>
-                      </span>
-                    )}
-                    <EnlaceDrive enlace={h.enlace_medios} />
-                  </div>
-                ) : null}
-                {h.drive_adjuntos && h.drive_adjuntos.length > 0 && (
-                  <ul className={styles.historialDriveLista} aria-label="Elementos de Drive del rechazo">
-                    {h.drive_adjuntos.map((d) => (
-                      <li key={d.id || d.url} className={styles.historialDriveItem}>
-                        <span className={styles.historialDriveNombre}>
-                          {d.tipo === "carpeta" ? <FolderOpen size={14} aria-hidden="true" /> : <FileText size={14} aria-hidden="true" />}
-                          <span>{d.nombre}</span>
-                        </span>
-                        <EnlaceDrive enlace={d.url} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {h.adjuntos && h.adjuntos.length > 0 && (
-                  <AdjuntosRechazoVista tarea={tarea.id} items={h.adjuntos} compacto={false} />
-                )}
-              </li>
-            ))
-          ) : (
-            <>
-              {tarea.hecha_en && (
-                <li>
-                  <div className={styles.historialFila}>
-                    <strong>Entrega registrada</strong>
-                    <span className={styles.historialFecha}>{fechaTrabajo(tarea.hecha_en)}</span>
-                  </div>
-                </li>
-              )}
-              {tarea.resuelta_en && (
-                <li>
-                  <div className={styles.historialFila}>
-                    <strong>{ESTADOS_TRABAJO[tarea.estado]}</strong>
-                    <span className={styles.historialFecha}>{fechaTrabajo(tarea.resuelta_en)}</span>
-                  </div>
-                </li>
-              )}
-            </>
-          )}
-        </ul>
-        {tarea.nota_persona && <p className={styles.textoLargo}><strong>Nota de entrega: </strong>{tarea.nota_persona}</p>}
-        {tarea.motivo_rechazo && <p className={styles.textoLargo}><strong>Motivo de devolución: </strong>{tarea.motivo_rechazo}</p>}
-        {tarea.precio_congelado != null && <p><strong>Valor aprobado: </strong>${tarea.precio_congelado.toLocaleString("es-CO")}</p>}
-        {tarea.metodo_entrega === "whatsapp" ? (
-          <span className={styles.entregaWhatsappChip}>
-            <MessageCircle size={13} aria-hidden="true" />
-            Entregado por WhatsApp
-          </span>
-        ) : tarea.enlace_medios ? (
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-            {tarea.entrega_nombre && (
-              <span className={styles.historialDriveNombre}>
-                {tarea.entrega_tipo === "carpeta" ? <FolderOpen size={14} aria-hidden="true" /> : <FileText size={14} aria-hidden="true" />}
-                <span>{tarea.entrega_nombre}</span>
-              </span>
-            )}
-            <EnlaceDrive enlace={tarea.enlace_medios} />
-          </div>
-        ) : null}
+        <RoadmapHistorial tarea={tarea} />
         {!editable && <ReferenciasDriveTrabajo tarea={tarea} />}
         {(tarea.drive_referencias != null || !(tarea.drive_carpeta_id || tarea.drive_carpeta_url)) && <CarpetaDriveTarea tarea={tarea} onActualizada={setRespuesta} />}
         {tarea.estado === "hecha" && <Link className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.abrir}`} href={`/tareas?tarea=${tarea.id}#tarea-${tarea.id}`}>Revisar entrega</Link>}

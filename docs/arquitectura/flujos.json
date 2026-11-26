@@ -530,15 +530,20 @@
         {
           "orden": 3,
           "archivo_funcion": "components/PaginaTrabajo.tsx:PaginaTrabajo",
-          "descripcion": "Muestra datos, estado e historial disponible. Pendientes y devueltos se editan con el formulario compartido."
+          "descripcion": "Muestra datos, estado y la tarjeta Historial y entregas. Pendientes y devueltos se editan con el formulario compartido."
         },
         {
           "orden": 4,
-          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
-          "descripcion": "PATCH de los campos modificados y aviso a la persona."
+          "archivo_funcion": "components/RoadmapHistorial.tsx:RoadmapHistorial",
+          "descripcion": "Renderiza Historial y entregas como roadmap cronológico con nodos y flechas (↓ en móvil, → y salto ↓ en escritorio) con notas, motivos y adjuntos integrados."
         },
         {
           "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
+          "descripcion": "PATCH de los campos modificados y notificación deduplicada 'Pedido actualizado' al asignado (si es distinto del actor) apuntando al detalle del trabajo."
+        },
+        {
+          "orden": 6,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaCancelar",
           "descripcion": "POST de cancelación tras confirmación."
         }
@@ -594,17 +599,17 @@
         {
           "orden": 2,
           "archivo_funcion": "components/PickerDriveCliente.tsx:PickerDriveCliente",
-          "descripcion": "Carga Google Picker al pulsar; abre directamente con DocsView.setParent y el token del equipo, sin segundo OAuth."
+          "descripcion": "Carga Google Picker al pulsar, resuelve ruta de carpetas padre desde /api/admin/drive/referencia y muestra ruta arriba y nombre real debajo."
         },
         {
           "orden": 3,
           "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:referenciaDriveCliente",
-          "descripcion": "El backend comprueba acceso con el Drive conectado y obtiene el nombre canónico."
+          "descripcion": "El backend comprueba acceso con el Drive conectado y obtiene el nombre canónico y ruta completa de carpetas padre."
         },
         {
           "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPatchCliente",
-          "descripcion": "Recibe drive_referencias (lista de ids), valida cada una y guarda la lista; las columnas drive_referencia_* reflejan la primera."
+          "descripcion": "Recibe drive_referencias (lista de ids), valida cada una y guarda nombre, enlace y ruta; las columnas drive_referencia_* reflejan la primera."
         }
       ]
     },
@@ -670,32 +675,37 @@
         {
           "orden": 2,
           "archivo_funcion": "components/SelectorCarpetaTrabajo.tsx:SelectorCarpetaTrabajo",
-          "descripcion": "Admin añade o cambia archivos y carpetas con Google Picker, o quita una referencia con confirmación en línea."
+          "descripcion": "Admin añade o cambia archivos y carpetas con Google Picker, resuelve nombre real y ruta completa y quita referencias con confirmación en línea."
         },
         {
           "orden": 3,
+          "archivo_funcion": "backend/internal/httpapi/drive_referencias_trabajo.go:handleAdminGetDriveReferencia",
+          "descripcion": "GET /api/admin/drive/referencia?id=... resuelve nombre real y ruta padre separada por ' / ' con caché corta y tope de profundidad sin exponer tokens."
+        },
+        {
+          "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePickerToken",
           "descripcion": "Emite token temporal del Drive del equipo y carpeta inicial del cliente o raíz."
         },
         {
-          "orden": 4,
-          "archivo_funcion": "backend/internal/httpapi/drive_referencias_trabajo.go:validarReferenciasTrabajo",
-          "descripcion": "POST y PATCH administrativos validan forma, tipo, IDs, máximo tres y URL HTTPS del dominio de Google Drive o Docs."
-        },
-        {
           "orden": 5,
-          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
-          "descripcion": "Guarda drive_referencias como JSONB en trabajos pendientes o devueltos."
+          "archivo_funcion": "backend/internal/httpapi/drive_referencias_trabajo.go:validarReferenciasTrabajo",
+          "descripcion": "POST y PATCH administrativos validan forma, tipo, IDs, ruta opcional, máximo tres y URL HTTPS de Drive/Docs, enriqueciendo nombre y ruta al guardar y consultar."
         },
         {
           "orden": 6,
-          "archivo_funcion": "lib/referencias-trabajo.ts:referenciasDelTrabajo",
-          "descripcion": "Si no existe lista, expone el vínculo antiguo sin reescribirlo."
+          "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
+          "descripcion": "Guarda drive_referencias como JSONB con nombre y ruta en trabajos pendientes o devueltos."
         },
         {
           "orden": 7,
+          "archivo_funcion": "lib/referencias-trabajo.ts:referenciasDelTrabajo",
+          "descripcion": "Si no existe lista, expone el vínculo antiguo usando nombre real y ruta si Drive los resolvió, o fallback limpio."
+        },
+        {
+          "orden": 8,
           "archivo_funcion": "components/ui/ReferenciasDriveTrabajo.tsx:ReferenciasDriveTrabajo",
-          "descripcion": "El detalle y Mis tareas muestran botones Abrir. Los asignados no editan."
+          "descripcion": "Muestra arriba la ruta sutil truncada y debajo el nombre real junto a Abrir. Los asignados no editan."
         }
       ]
     },
@@ -708,7 +718,7 @@
         { "orden": 2, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleResumenBorradorDirecto", "descripcion": "Resume un audio en borrador (directo hasta 2 MiB o por partes) sin guardar el trabajo y devuelve token firmado." },
         { "orden": 3, "archivo_funcion": "lib/adjuntos-asignacion.ts:subirAdjunto", "descripcion": "Después de guardar el trabajo, carga piezas binarias de 2 MiB, muestra avance y reutiliza el resumen de borrador si existe." },
         { "orden": 4, "archivo_funcion": "supabase/migrations/023_asignaciones_adjuntos.sql:rc_reservar_adjunto", "descripcion": "Reserva un cupo entre diez de forma atómica para un trabajo editable." },
-        { "orden": 5, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto", "descripcion": "Valida el contenido, guarda el original en el bucket privado y aplica el resumen del borrador o lo marca pendiente." },
+        { "orden": 5, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFinalizarAdjunto", "descripcion": "Valida el contenido, guarda el original en el bucket privado, aplica el resumen del borrador y notifica al asignado si se agregó a un pedido existente." },
         { "orden": 6, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleProcesarResumenAdjunto", "descripcion": "Procesa de inmediato audios guardados pendientes con reclamo atómico sin duplicados (Gemini vía 9router, respaldo NVIDIA Omni con reempaque WebM→Ogg Opus y texto de RIA)." },
         { "orden": 7, "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:procesarResumenPendiente", "descripcion": "El cron protegido procesa pendientes rezagados y limpia subidas incompletas." },
         { "orden": 8, "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleFirmarAdjunto", "descripcion": "Revalida admin/asignado y emite firma temporal de Supabase para un adjunto de ese trabajo." },
@@ -927,6 +937,33 @@
           "orden": 10,
           "archivo_funcion": "supabase/migrations/024_chat_acciones_mensajes.sql",
           "descripcion": "Migración idempotente que asegura editado_en, borrado_en e índices activos en chat_mensajes y ria_mensajes."
+        }
+      ]
+    },
+    {
+      "id": "cambios-sin-guardar",
+      "nombre": "Protección de cambios sin guardar",
+      "descripcion": "Contexto centralizado en AppShell que avisa al cerrar pestaña (beforeunload) e intercepta navegación interna o cambio de pestañas mediante modal propio.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/CambiosSinGuardar.tsx:CambiosSinGuardarProvider",
+          "descripcion": "Registra formularios y borradores activos, escucha beforeunload y clics en enlaces internos, y muestra el modal 'Tienes cambios sin guardar'."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "components/CambiosSinGuardar.tsx:useCambiosSinGuardar",
+          "descripcion": "Hook usado por FormularioAsignacion, PaginaCliente, Admin/Gestión, Perfil, Celular, Personalización, Configuración, Modales de tareas y borradores de chat."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/AppShell.tsx:AppShell",
+          "descripcion": "Monta CambiosSinGuardarProvider envolviendo el shell y cierra el drawer móvil al confirmar salida."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "app/(app)/admin/page.tsx:AdminPage",
+          "descripcion": "Intercepta el cambio de pestañas en Gestión mediante confirmarSalida cuando hay ediciones pendientes."
         }
       ]
     }

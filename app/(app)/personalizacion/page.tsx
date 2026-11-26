@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronDown, ImagePlus, Monitor, Moon, Sun, Trash2 } from "lucide-react";
 import { aparienciaInicial, aplicarApariencia, preferenciasApariencia, primerFotograma, type Apariencia } from "@/lib/apariencia";
 import { Boton } from "@/components/ui/Boton";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import styles from "./personalizacion.module.css";
 
 const modos = [{ id: 'sistema', nombre: 'Sistema', Icon: Monitor }, { id: 'claro', nombre: 'Claro', Icon: Sun }, { id: 'oscuro', nombre: 'Oscuro', Icon: Moon }] as const;
@@ -24,6 +25,7 @@ const peso = (n: number) => n < 1024 ? `${n} B` : `${new Intl.NumberFormat('es-C
 
 export default function Personalizacion() {
   const [v, setV] = useState(aparienciaInicial);
+  const [guardado, setGuardado] = useState<Apariencia | null>(null);
   const [color, setColor] = useState<Color>('acento');
   const [listo, setListo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
@@ -42,7 +44,7 @@ export default function Personalizacion() {
   };
   useEffect(() => {
     let activo = true;
-    preferenciasApariencia().then(p => { if (activo) { setV(p); setListo(true); } }).catch((e: Error) => { if (activo) setError(e.message); });
+    preferenciasApariencia().then(p => { if (activo) { setV(p); setGuardado(p); setListo(true); } }).catch((e: Error) => { if (activo) setError(e.message); });
     return () => { activo = false; };
   }, []);
   useEffect(() => () => {
@@ -61,9 +63,12 @@ export default function Personalizacion() {
     try { await f(); } catch (e) { setError(e instanceof Error ? e.message : 'No pudimos guardar la apariencia.'); }
     finally { setOcupado(false); }
   };
+  const sucio = listo && guardado !== null && JSON.stringify(v) !== JSON.stringify(guardado);
+  useCambiosSinGuardar(sucio);
+
   const guardar = () => tarea(async () => {
     const p = await preferenciasApariencia('PUT', v);
-    setV(p); aplicarApariencia(p, true); setEstado('Apariencia guardada.');
+    setV(p); setGuardado(p); aplicarApariencia(p, true); setEstado('Apariencia guardada.');
   });
   const subir = (f: File) => tarea(async () => {
     if (f.size > 2500000) throw new Error('El fondo no debe superar 2,5 MB.');
@@ -72,6 +77,7 @@ export default function Personalizacion() {
     if (f.type.startsWith('video/')) datos.append('fotograma', await primerFotograma(f), 'fotograma.jpg');
     const p = await preferenciasApariencia('POST', datos);
     aplicarApariencia(p, true);
+    setGuardado((g) => g ? { ...g, imagen: p.imagen, video: p.video, fondo_nombre: p.fondo_nombre, fondo_bytes: p.fondo_bytes } : p);
     cambiar({ imagen: p.imagen, video: p.video, fondo_nombre: p.fondo_nombre, fondo_bytes: p.fondo_bytes });
     setEstado('Fondo guardado.');
   });
@@ -105,7 +111,7 @@ export default function Personalizacion() {
           <span>¿Quitar el fondo? El cambio se aplica al guardar.</span>
           <Boton variante="secundario" tamano="sm" onClick={() => setConfirmar(false)}>Cancelar</Boton>
           <Boton variante="peligro" tamano="sm" onClick={() => { cambiar({ imagen: undefined, video: undefined, fondo_nombre: undefined, fondo_bytes: undefined }); setConfirmar(false); }}>Sí, quitar fondo</Boton>
-        </div> : <Boton variante="secundario" tamano="sm" className={styles.quitar} onClick={() => setConfirmar(true)}><Trash2 size={15} aria-hidden="true" /> Quitar fondo</Boton>)}
+        </div> : <Boton variante="peligro" tamano="sm" className={styles.quitar} onClick={() => setConfirmar(true)}><Trash2 size={15} aria-hidden="true" /> Quitar fondo</Boton>)}
         <label className={styles.deslizador}><span>Oscurecido</span><output>{v.oscurecido}%</output><input type="range" aria-label="Oscurecido" min={0} max={85} value={v.oscurecido} style={{ '--progreso': `${v.oscurecido / 85 * 100}%` } as CSSProperties} onChange={e => cambiar({ oscurecido: e.currentTarget.valueAsNumber })} /></label>
       </section>}
       <section className={styles.panel} data-rc-panel>
@@ -134,7 +140,7 @@ export default function Personalizacion() {
           <Casilla etiqueta="Aumentar contraste" checked={v.contraste} onChange={e => cambiar({ contraste: e.currentTarget.checked })} />
         </div>
       </details>
-      <div className={styles.acciones}><Boton variante="secundario" onClick={() => { setV(aparienciaInicial); aplicarApariencia(aparienciaInicial); setConfirmar(false); setEstado(''); setError(''); }}>Restablecer</Boton><Boton variante="primario" disabled={errorHex} onClick={() => void guardar()}>Guardar apariencia</Boton></div>
+      <div className={styles.acciones}><Boton variante="secundario" onClick={() => { setV(aparienciaInicial); aplicarApariencia(aparienciaInicial); setConfirmar(false); setEstado(''); setError(''); }}>Restablecer</Boton><Boton variante="guardar" disabled={errorHex} onClick={() => void guardar()}>Guardar apariencia</Boton></div>
     </fieldset>
     {estado && <p role="status">{estado}</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}

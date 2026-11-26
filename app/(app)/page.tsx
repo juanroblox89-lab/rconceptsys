@@ -12,6 +12,7 @@ import { useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
 import { Modal } from "@/components/ui/Modal";
 import { EquipoBarra } from "@/components/EquipoBarra";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { AdjuntoVista } from "@/components/chat/AdjuntoVista";
 import { GrabadorAudio } from "@/components/chat/GrabadorAudio";
 import { MenuAdjuntos, type ArchivoNuevo } from "@/components/chat/MenuAdjuntos";
@@ -84,6 +85,12 @@ export default function ChatPage() {
   const [deshacerId, setDeshacerId] = useState<number | null>(null);
   const [restaurando, setRestaurando] = useState(false);
   const deshacerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useCambiosSinGuardar(
+    editandoId !== null ||
+      pendientes.length > 0 ||
+      (cuerpo.trim() !== "" && !cuerpo.trim().startsWith("/")),
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);

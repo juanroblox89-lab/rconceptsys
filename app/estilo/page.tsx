@@ -130,6 +130,11 @@ export default function EstiloPage() {
             </div>
 
             <div className="rc-campo-item">
+              <span className="rc-subtitulo">Guardar</span>
+              <Boton variante="guardar">Guardar cambios</Boton>
+            </div>
+
+            <div className="rc-campo-item">
               <span className="rc-subtitulo">Peligro</span>
               <Boton variante="peligro">
                 <svg className="rc-icono rc-icono--rojo" aria-hidden="true">

@@ -50,15 +50,35 @@ type oauthState struct {
 	Expira  time.Time
 }
 
-// EstadoF5 guarda lo que no vive en la base: estados de OAuth en curso y
-// configuración de Google Drive y Web Push leída del entorno.
+type cacheElementoDrive struct {
+	Nombre     string
+	Mime       string
+	EnPapelera bool
+	Padres     []string
+	DriveID    string
+	Enlace     string
+	Expira     time.Time
+}
+
+type cacheRootDrive struct {
+	ID     string
+	Nombre string
+	Expira time.Time
+}
+
+// EstadoF5 guarda lo que no vive en la base: estados de OAuth en curso, caché
+// corta de metadatos de Drive y configuración leída del entorno.
 type EstadoF5 struct {
-	DriveMu sync.Mutex
-	Mu      sync.Mutex
-	Estados map[string]oauthState
-	Drive   ConfDrive
-	Push    ConfPush
-	HTTP    *http.Client
+	DriveMu             sync.Mutex
+	Mu                  sync.Mutex
+	DriveCacheMu        sync.RWMutex
+	DriveMetaCache      map[string]cacheElementoDrive
+	DriveRootCache      map[string]cacheRootDrive
+	UltimosAvisosPedido map[string]time.Time
+	Estados             map[string]oauthState
+	Drive               ConfDrive
+	Push                ConfPush
+	HTTP                *http.Client
 }
 
 // NuevoEstadoF5 lee las claves del entorno. Nunca se registran en logs.
@@ -68,7 +88,10 @@ func NuevoEstadoF5() *EstadoF5 {
 		cuentaEquipo = strings.TrimSpace(os.Getenv("NEXT_PUBLIC_DRIVE_CUENTA_EQUIPO"))
 	}
 	return &EstadoF5{
-		Estados: make(map[string]oauthState),
+		Estados:             make(map[string]oauthState),
+		DriveMetaCache:      make(map[string]cacheElementoDrive),
+		DriveRootCache:      make(map[string]cacheRootDrive),
+		UltimosAvisosPedido: make(map[string]time.Time),
 		Drive: ConfDrive{
 			ClientID:     strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID")),
 			ClientSecret: strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")),
@@ -111,4 +134,95 @@ func (e *EstadoF5) ConsumirEstadoOAuth(state string) (string, bool) {
 	}
 	delete(e.Estados, state)
 	return v.AdminID, true
+}
+
+const (
+	ttlCacheDriveMeta = 2 * time.Minute
+	maxCacheDriveMeta = 512
+)
+
+func (e *EstadoF5) obtenerMetaDriveCache(clave string) (cacheElementoDrive, bool) {
+	e.DriveCacheMu.RLock()
+	defer e.DriveCacheMu.RUnlock()
+	item, ok := e.DriveMetaCache[clave]
+	if !ok || time.Now().After(item.Expira) {
+		return cacheElementoDrive{}, false
+	}
+	return item, true
+}
+
+func (e *EstadoF5) guardarMetaDriveCache(clave string, item cacheElementoDrive) {
+	ahora := time.Now()
+	item.Expira = ahora.Add(ttlCacheDriveMeta)
+	e.DriveCacheMu.Lock()
+	defer e.DriveCacheMu.Unlock()
+	if e.DriveMetaCache == nil {
+		e.DriveMetaCache = make(map[string]cacheElementoDrive)
+	}
+	if len(e.DriveMetaCache) >= maxCacheDriveMeta {
+		for k, v := range e.DriveMetaCache {
+			if ahora.After(v.Expira) {
+				delete(e.DriveMetaCache, k)
+			}
+		}
+		if len(e.DriveMetaCache) >= maxCacheDriveMeta {
+			e.DriveMetaCache = make(map[string]cacheElementoDrive)
+		}
+	}
+	e.DriveMetaCache[clave] = item
+}
+
+func (e *EstadoF5) obtenerRootDriveCache(clave string) (cacheRootDrive, bool) {
+	e.DriveCacheMu.RLock()
+	defer e.DriveCacheMu.RUnlock()
+	item, ok := e.DriveRootCache[clave]
+	if !ok || time.Now().After(item.Expira) {
+		return cacheRootDrive{}, false
+	}
+	return item, true
+}
+
+func (e *EstadoF5) guardarRootDriveCache(clave string, item cacheRootDrive) {
+	item.Expira = time.Now().Add(ttlCacheDriveMeta)
+	e.DriveCacheMu.Lock()
+	defer e.DriveCacheMu.Unlock()
+	if e.DriveRootCache == nil {
+		e.DriveRootCache = make(map[string]cacheRootDrive)
+	}
+	if len(e.DriveRootCache) >= 64 {
+		e.DriveRootCache = make(map[string]cacheRootDrive)
+	}
+	e.DriveRootCache[clave] = item
+}
+
+// InvalidarCacheDrive limpia la caché de metadatos al conectar o desconectar Drive.
+func (e *EstadoF5) InvalidarCacheDrive() {
+	e.DriveCacheMu.Lock()
+	defer e.DriveCacheMu.Unlock()
+	e.DriveMetaCache = make(map[string]cacheElementoDrive)
+	e.DriveRootCache = make(map[string]cacheRootDrive)
+}
+
+func (e *EstadoF5) puedeAvisarPedido(clave string, ventana time.Duration) bool {
+	if e == nil || ventana <= 0 {
+		return true
+	}
+	ahora := time.Now()
+	e.Mu.Lock()
+	defer e.Mu.Unlock()
+	if e.UltimosAvisosPedido == nil {
+		e.UltimosAvisosPedido = make(map[string]time.Time)
+	}
+	if expira, ok := e.UltimosAvisosPedido[clave]; ok && ahora.Before(expira) {
+		return false
+	}
+	if len(e.UltimosAvisosPedido) > 512 {
+		for k, exp := range e.UltimosAvisosPedido {
+			if !ahora.Before(exp) {
+				delete(e.UltimosAvisosPedido, k)
+			}
+		}
+	}
+	e.UltimosAvisosPedido[clave] = ahora.Add(ventana)
+	return true
 }

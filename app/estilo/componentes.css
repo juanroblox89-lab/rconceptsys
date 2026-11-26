@@ -305,20 +305,56 @@
   color: var(--rc-azul-texto);
 }
 
+.rc-btn--guardar {
+  background: var(--rc-verde-btn-bg, var(--rc-verde-suave));
+  color: var(--rc-verde-btn-texto, var(--rc-verde-texto));
+  border: 1px solid var(--rc-verde-btn-borde, transparent);
+}
+
+.rc-btn.rc-btn--guardar:hover:not(:disabled):not(.rc-btn--deshabilitado) {
+  background: var(--rc-verde-btn-hover, var(--rc-verde-tinte));
+  color: var(--rc-verde-btn-texto, var(--rc-verde-texto));
+}
+
+.rc-btn.rc-btn--guardar:active:not(:disabled):not(.rc-btn--deshabilitado) {
+  background: var(--rc-verde-btn-activo, var(--rc-verde-tinte));
+  box-shadow: var(--rc-elev-hundido-sm);
+}
+
+.rc-btn.rc-btn--guardar:focus-visible {
+  outline: 2px solid var(--rc-verde);
+  outline-offset: 2px;
+  box-shadow: var(--rc-elev-foco-verde);
+}
+
 .rc-btn--peligro {
-  background: var(--rc-rojo-suave);
-  color: var(--rc-rojo-texto);
+  background: var(--rc-rojo-btn-bg, var(--rc-rojo-suave));
+  color: var(--rc-rojo-btn-texto, var(--rc-rojo-texto));
+  border: 1px solid var(--rc-rojo-btn-borde, transparent);
   padding: 0 var(--rc-esp-12);
 }
 
-.rc-btn.rc-btn--peligro:hover:not(:disabled) {
-  background: var(--rc-rojo-tinte);
-  color: var(--rc-rojo-texto);
+.rc-btn.rc-btn--peligro:hover:not(:disabled):not(.rc-btn--deshabilitado) {
+  background: var(--rc-rojo-btn-hover, var(--rc-rojo-tinte));
+  color: var(--rc-rojo-btn-texto, var(--rc-rojo-texto));
 }
 
-.rc-btn.rc-btn--peligro:active:not(:disabled) {
-  background: var(--rc-rojo-tinte);
+.rc-btn.rc-btn--peligro:active:not(:disabled):not(.rc-btn--deshabilitado) {
+  background: var(--rc-rojo-btn-activo, var(--rc-rojo-tinte));
   box-shadow: var(--rc-elev-hundido-sm);
+}
+
+.rc-btn.rc-btn--peligro:focus-visible {
+  outline: 2px solid var(--rc-rojo);
+  outline-offset: 2px;
+  box-shadow: var(--rc-elev-error-rojo);
+}
+
+.rc-btn--guardar:disabled,
+.rc-btn--guardar.rc-btn--deshabilitado,
+.rc-btn--peligro:disabled,
+.rc-btn--peligro.rc-btn--deshabilitado {
+  border-color: transparent;
 }
 
 .rc-btn--peligro-vidrio {

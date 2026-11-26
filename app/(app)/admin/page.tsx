@@ -43,6 +43,7 @@ import { AdminTareas } from "@/components/AdminTareas";
 import { useAviso } from "@/components/ui/Aviso";
 import { GraficaLinea, GraficaBarras } from "@/components/ui/graficos";
 import { usePerfilActual } from "@/components/AppShell";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { AdminEquipo } from "@/components/admin/AdminEquipo";
 import { AdminCortes } from "@/components/admin/AdminCortes";
 import styles from "./admin.module.css";
@@ -137,6 +138,19 @@ function GestionAdmin() {
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoColor, setNuevoColor] = useState("#2F7FE0");
   const [rolesPendientes, setRolesPendientes] = useState<Record<string, number[]>>({});
+
+  const hayPreciosSinGuardar = trabajos.some((t) => (preciosEditados[t.id] ?? t.precio) !== t.precio);
+  const hayNuevoTrabajoSinGuardar =
+    modalNuevoTrabajo &&
+    (nuevoTrabNombre.trim() !== "" ||
+      nuevoTrabClave.trim() !== "" ||
+      nuevoTrabRolId !== "" ||
+      nuevoTrabPrecio > 0 ||
+      nuevoTrabUnidad !== "trabajo");
+  const hayRolesPendientes = Object.values(rolesPendientes).some((lista) => lista.length > 0);
+  const sucioAdmin =
+    hayPreciosSinGuardar || hayNuevoTrabajoSinGuardar || nuevoNombre.trim() !== "" || hayRolesPendientes;
+  const { confirmarSalida } = useCambiosSinGuardar(sucioAdmin);
 
   const cargarDatos = useCallback(async () => {
     try {
@@ -270,6 +284,12 @@ function GestionAdmin() {
       await api.adminSetRoles(id, rolesElegidos);
     }
     await api.adminAprobar(id);
+    setRolesPendientes((prev) => {
+      if (!(id in prev)) return prev;
+      const copia = { ...prev };
+      delete copia[id];
+      return copia;
+    });
     mostrarAviso({ tipo: "exito", titulo: "Miembro aprobado" });
     await cargarDatos();
   };
@@ -504,7 +524,10 @@ function GestionAdmin() {
       <Pestanas
         pestanas={tabsItems}
         activaId={pestanaActiva}
-        onCambio={(id) => setPestanaActiva(id)}
+        onCambio={(id) => {
+          if (id === pestanaActiva) return;
+          confirmarSalida(() => setPestanaActiva(id));
+        }}
       />
 
       {cargando ? (
@@ -591,7 +614,7 @@ function GestionAdmin() {
                         </td>
                         <td style={{ textAlign: "right" }}>
                           <Boton
-                            variante="secundario"
+                            variante="guardar"
                             disabled={preciosEditados[t.id] === t.precio}
                             onClick={() => handleGuardarPrecio(t)}
                           >
@@ -648,7 +671,7 @@ function GestionAdmin() {
                           <CampoCOP etiqueta={`Precio de ${t.nombre}`} valor={preciosEditados[t.id] ?? t.precio} onCambio={precio => setPreciosEditados(prev => ({ ...prev, [t.id]: precio }))} onBlur={() => handleGuardarPrecio(t)} />
                         </div>
                         <Boton
-                          variante="secundario"
+                          variante="guardar"
                           disabled={preciosEditados[t.id] === t.precio}
                           onClick={() => handleGuardarPrecio(t)}
                         >
@@ -1350,10 +1373,21 @@ function GestionAdmin() {
         <Modal
           abierto={true}
           titulo="Nuevo tipo de trabajo"
-          onCerrar={() => setModalNuevoTrabajo(false)}
+          onCerrar={() => {
+            if (!guardandoTrabajo) {
+              confirmarSalida(() => {
+                setModalNuevoTrabajo(false);
+                setNuevoTrabClave("");
+                setNuevoTrabNombre("");
+                setNuevoTrabRolId("");
+                setNuevoTrabPrecio(0);
+                setNuevoTrabUnidad("trabajo");
+              });
+            }
+          }}
           accionPrimaria={
             <Boton
-              variante="primario"
+              variante="guardar"
               cargando={guardandoTrabajo}
               onClick={handleCrearTrabajo}
             >
@@ -1363,7 +1397,16 @@ function GestionAdmin() {
           accionSecundaria={
             <Boton
               variante="secundario"
-              onClick={() => setModalNuevoTrabajo(false)}
+              onClick={() => {
+                confirmarSalida(() => {
+                  setModalNuevoTrabajo(false);
+                  setNuevoTrabClave("");
+                  setNuevoTrabNombre("");
+                  setNuevoTrabRolId("");
+                  setNuevoTrabPrecio(0);
+                  setNuevoTrabUnidad("trabajo");
+                });
+              }}
               disabled={guardandoTrabajo}
             >
               Cancelar

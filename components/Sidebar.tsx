@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { CampanaNotificaciones } from "@/components/CampanaNotificaciones";
+import { useConfirmarSalida } from "@/components/CambiosSinGuardar";
 import { Avatar } from "@/components/ui/Avatar";
 import { api } from "@/lib/api";
 import { rutaVisible } from "@/lib/rutas-ria";
@@ -83,6 +84,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
   const [recientesAbierto, setRecientesAbierto] = useState(true);
   const [menuPerfil, setMenuPerfil] = useState(false);
   const perfilRef = useRef<HTMLDivElement | null>(null);
+  const confirmarSalida = useConfirmarSalida();
 
   const actualizarContadores = useCallback((esAdmin: boolean) => {
     // Contador de tareas pendientes para la persona
@@ -323,7 +325,7 @@ export function Sidebar({ open = false, onNavigate, onCollapse }: SidebarProps) 
               className={styles.perfilMenuItem}
               onClick={() => {
                 setMenuPerfil(false);
-                void cerrarSesion();
+                confirmarSalida(() => void cerrarSesion());
               }}
             >
               <LogOut size={14} strokeWidth={1.75} aria-hidden="true" />

@@ -681,13 +681,14 @@ a.tarjeta:hover {
   height: 18px;
   border: none;
   border-radius: 50%;
-  background: none;
-  color: var(--rc-texto-tenue);
+  background: var(--rc-rojo-btn-bg, var(--rc-rojo-suave));
+  color: var(--rc-rojo-btn-texto, var(--rc-rojo-texto));
   cursor: pointer;
 }
 
 .pendienteQuitar:hover {
-  color: var(--rc-rojo-texto);
+  background: var(--rc-rojo-btn-hover, var(--rc-rojo-tinte));
+  color: var(--rc-rojo-btn-texto, var(--rc-rojo-texto));
 }
 
 :global(html[data-rc-tema="glass"]) .grabando { height: var(--rc-compositor-control); }

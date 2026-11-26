@@ -340,6 +340,13 @@ func (a *API) handleAdminGetAsignaciones(w http.ResponseWriter, r *http.Request)
 		ResponderError(w, http.StatusInternalServerError, "error_asignaciones", "No se pudieron cargar las asignaciones.")
 		return
 	}
+	tareas := make([]*store.Tarea, 0, len(lista))
+	for _, item := range lista {
+		if item != nil && item.Tarea != nil {
+			tareas = append(tareas, item.Tarea)
+		}
+	}
+	a.enriquecerTareasReferencias(r.Context(), tareas)
 	ResponderJSON(w, http.StatusOK, map[string]any{"asignaciones": lista})
 }
 
@@ -351,12 +358,17 @@ func (a *API) handleAdminGetAsignacionesRecientes(w http.ResponseWriter, r *http
 		ResponderError(w, http.StatusInternalServerError, "error_asignaciones", "No se pudieron cargar las asignaciones recientes.")
 		return
 	}
+	tareas := make([]*store.Tarea, 0, len(lista))
 	nuevas := 0
-	for _, a := range lista {
-		if a.Novedad {
+	for _, item := range lista {
+		if item != nil && item.Tarea != nil {
+			tareas = append(tareas, item.Tarea)
+		}
+		if item != nil && item.Novedad {
 			nuevas++
 		}
 	}
+	a.enriquecerTareasReferencias(r.Context(), tareas)
 	ResponderJSON(w, http.StatusOK, map[string]any{"asignaciones": lista, "nuevas": nuevas})
 }
 

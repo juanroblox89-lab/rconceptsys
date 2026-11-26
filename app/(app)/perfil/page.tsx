@@ -12,6 +12,7 @@ import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { TrabajosHechos } from "@/components/TrabajosHechos";
 import { FormularioCelular } from "@/components/Celular";
 import { AvisosPush } from "@/components/AvisosPush";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import styles from "./perfil.module.css";
 
 export default function MiPerfilPage() {
@@ -30,7 +31,7 @@ export default function MiPerfilPage() {
       .then((p) => {
         if (montado) {
           setYo(p);
-          setNombre(p.nombre);
+          setNombre((actual) => (actual === "" ? p.nombre : actual));
         }
       })
       .catch(() => {});
@@ -118,6 +119,7 @@ export default function MiPerfilPage() {
   };
 
   const sinCambios = nombre.trim() === (yo?.nombre || "").trim();
+  useCambiosSinGuardar(Boolean(yo) && !sinCambios);
 
   return (
     <div className={styles.container}>
@@ -228,7 +230,7 @@ export default function MiPerfilPage() {
               </div>
               <Boton
                 type="submit"
-                variante="vidrio"
+                variante="guardar"
                 cargando={guardando}
                 disabled={guardando || sinCambios}
                 style={{ whiteSpace: "nowrap" }}

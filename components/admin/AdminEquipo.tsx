@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { ConfigEquipo, DriveEstado, PlanDrive, ResultadoMovimientoDrive } from "@/lib/types";
 import { Aviso, useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { type DialogoPicker } from "@/lib/google-picker";
 import { abrirSelectorGoogleDrive } from "@/components/PickerDriveCliente";
 import {
@@ -52,6 +53,15 @@ export function AdminEquipo() {
     url: string;
     correoDetectado: string;
   } | null>(null);
+
+  const sucioEquipo =
+    Boolean(config) &&
+    (nombre !== config!.nombre ||
+      descripcion !== (config!.descripcion ?? "") ||
+      enlaceNombre.trim() !== "" ||
+      enlaceUrl.trim() !== "" ||
+      enlacePendienteCuenta !== null);
+  useCambiosSinGuardar(sucioEquipo);
 
   const cargar = useCallback(async () => {
     try {
@@ -379,7 +389,7 @@ export function AdminEquipo() {
           <div>
             <h2 className={styles.bloqueTitulo}>Este equipo</h2>
           </div>
-          <Boton variante="primario" onClick={guardarEquipo} cargando={guardando} disabled={guardando}>
+          <Boton variante="guardar" onClick={guardarEquipo} cargando={guardando} disabled={guardando}>
             Guardar
           </Boton>
         </div>
@@ -432,7 +442,7 @@ export function AdminEquipo() {
                   </button>
                   <button
                     type="button"
-                    className={styles.miniBoton}
+                    className={`${styles.miniBoton} ${styles.miniBotonPeligro}`}
                     aria-label={`Quitar ${enlace.nombre}`}
                     onClick={() => borrarEnlace(enlace.id)}
                   >

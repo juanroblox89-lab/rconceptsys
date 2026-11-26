@@ -32,6 +32,7 @@ import { useAviso } from "@/components/ui/Aviso";
 import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
 import { AdjuntosRechazoVista } from "@/components/AdjuntosAsignacion";
 import { enlaceReferenciaDrive } from "@/lib/referencias-trabajo";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import styles from "@/app/(app)/tareas/tareas.module.css";
 
 interface SeleccionDrive {
@@ -76,6 +77,24 @@ export function MisTareas() {
   const [pilaCarpetas, setPilaCarpetas] = useState<Array<{ id?: string; nombre: string }>>([]);
   const [enviando, setEnviando] = useState(false);
   const [revirtiendoId, setRevirtiendoId] = useState<number | null>(null);
+  const [inicialEntrega, setInicialEntrega] = useState<{
+    metodo: MetodoEntrega;
+    nota: string;
+    minutos: string;
+    driveUrl: string;
+  } | null>(null);
+
+  const modalEntregaSucio = Boolean(
+    modalTarea &&
+      inicialEntrega &&
+      (metodoEntrega !== inicialEntrega.metodo ||
+        nota !== inicialEntrega.nota ||
+        minutos !== inicialEntrega.minutos ||
+        (seleccionDrive?.url ?? "") !== inicialEntrega.driveUrl ||
+        enlaceManual.trim() !== "" ||
+        nombreManual.trim() !== ""),
+  );
+  const { confirmarSalida, limpiarRegistro } = useCambiosSinGuardar(modalEntregaSucio);
 
   const pickerDialogo = useRef<DialogoPicker | null>(null);
   const pickerVigente = useRef(true);
@@ -142,10 +161,18 @@ export function MisTareas() {
 
     setModalTarea(t);
     setMetodoEntrega(metodoInicial);
-    setNota(borrador?.nota ?? t.nota_persona ?? "");
+    const notaIni = borrador?.nota ?? t.nota_persona ?? "";
+    setNota(notaIni);
     const cantInicial = borrador?.cantidad ?? t.cantidad;
-    setMinutos(cantInicial ? String(cantInicial) : "");
+    const minIni = cantInicial ? String(cantInicial) : "";
+    setMinutos(minIni);
     setSeleccionDrive(selInicial);
+    setInicialEntrega({
+      metodo: metodoInicial,
+      nota: notaIni,
+      minutos: minIni,
+      driveUrl: selInicial?.url ?? "",
+    });
     setMostrarPegar(false);
     setEnlaceManual("");
     setNombreManual("");
@@ -158,19 +185,22 @@ export function MisTareas() {
 
   const cerrarModal = () => {
     if (enviando || abriendoPicker) return;
-    setModalTarea(null);
-    setMetodoEntrega("drive");
-    setNota("");
-    setMinutos("");
-    setSeleccionDrive(null);
-    setMostrarPegar(false);
-    setEnlaceManual("");
-    setNombreManual("");
-    setErrorPicker("");
-    setMostrarCarpetaEquipo(false);
-    setArchivosEquipo([]);
-    setErrorEquipo("");
-    setPilaCarpetas([]);
+    confirmarSalida(() => {
+      setModalTarea(null);
+      setInicialEntrega(null);
+      setMetodoEntrega("drive");
+      setNota("");
+      setMinutos("");
+      setSeleccionDrive(null);
+      setMostrarPegar(false);
+      setEnlaceManual("");
+      setNombreManual("");
+      setErrorPicker("");
+      setMostrarCarpetaEquipo(false);
+      setArchivosEquipo([]);
+      setErrorEquipo("");
+      setPilaCarpetas([]);
+    });
   };
 
   const handleElegirDeDrive = async () => {
@@ -320,7 +350,9 @@ export function MisTareas() {
         tipo: "exito",
         titulo: "Entrega enviada a revisión",
       });
+      limpiarRegistro();
       setModalTarea(null);
+      setInicialEntrega(null);
       setNota("");
       setMinutos("");
       setSeleccionDrive(null);
@@ -573,7 +605,7 @@ export function MisTareas() {
                     <div className={styles.driveSeleccionBotones}>
                       <EnlaceDrive enlace={seleccionDrive.url} etiqueta="Abrir" />
                       <Boton
-                        variante="fantasma"
+                        variante="peligro"
                         tamano="sm"
                         onClick={() => setSeleccionDrive(null)}
                         disabled={enviando}

@@ -8,6 +8,7 @@ import { ArrowRight, ArrowUp, Mic, Square } from "lucide-react";
 import { MarcaRIA } from "@/components/MarcaRIA";
 import { useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
+import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { Esqueleto } from "@/components/ui/Esqueleto";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -69,6 +70,9 @@ function ConversacionRIA() {
   const dictado = useDictadoRIA(frase => setTexto(t => `${t.trimEnd()}${t.trim() ? " " : ""}${frase}`.slice(0, 2000)));
   const enviando = Boolean(pregunta);
   const microActivo = dictado.estado !== "listo";
+  useCambiosSinGuardar(
+    editandoId !== null || (texto.trim() !== "" && !texto.trim().startsWith("/")),
+  );
 
   useEffect(() => {
     return () => {

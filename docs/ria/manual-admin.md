@@ -14,7 +14,7 @@
 - `POST /api/admin/clientes`: crea el cliente; `PATCH /api/admin/clientes/{id}`: actualiza datos de ficha y verifica referencias de Drive.
 - `POST /api/admin/clientes/{id}/foto`: sube una foto; `GET /api/admin/clientes/{id}/foto/{archivo}`: sirve la foto vigente con sesión de administración.
 - `POST /api/admin/clientes/{id}/drive`: vincula o crea la carpeta operativa directamente bajo la raíz.
-- `GET /api/admin/drive/archivos`: lista archivos y carpetas del Drive conectado; `GET /api/admin/drive/picker-token`: token temporal del Drive del equipo y carpeta inicial del selector, solo para administradores; no se guarda ni se reutiliza fuera del selector.
+- `GET /api/admin/drive/archivos`: lista archivos y carpetas del Drive conectado; `GET /api/admin/drive/picker-token`: token temporal del Drive del equipo y carpeta inicial del selector, solo para administradores; no se guarda ni se reutiliza fuera del selector; `GET /api/admin/drive/referencia`: resuelve el nombre real y la ruta completa de carpetas padre en Drive sin exponer tokens.
 - `GET /api/admin/tareas`: lista trabajos y número por revisar; `GET /api/admin/tareas/{id}`: detalle e historial disponible.
 - `POST /api/admin/tareas`: asigna un trabajo con fecha obligatoria; si no tiene cliente, la carpeta operativa queda bajo la raíz del equipo. La lista de referencias puede incluir la carpeta del cliente, archivos y otras carpetas.
 - `PATCH /api/admin/tareas/{id}`: cambia persona, tipo, fecha, especificaciones o referencias de Drive de un trabajo abierto. El asignado puede abrirlas, pero no editarlas.

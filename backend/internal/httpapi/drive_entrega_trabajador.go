@@ -34,6 +34,7 @@ func validarAdjuntosDriveRechazo(datos json.RawMessage) ([]store.ReferenciaDrive
 		ref.ID = strings.TrimSpace(ref.ID)
 		ref.Nombre = strings.TrimSpace(ref.Nombre)
 		ref.URL = strings.TrimSpace(ref.URL)
+		ref.Ruta = strings.TrimSpace(ref.Ruta)
 		ref.Tipo = strings.ToLower(strings.TrimSpace(ref.Tipo))
 		if ref.Tipo == "" {
 			if strings.Contains(ref.URL, "/folders/") {

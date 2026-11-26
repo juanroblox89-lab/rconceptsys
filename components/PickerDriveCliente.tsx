@@ -2,13 +2,14 @@
 
 import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
-import { ExternalLink, FileText, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, FileText, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { api, type ApiError } from "@/lib/api";
 import { cargarGooglePicker, type DialogoPicker } from "@/lib/google-picker";
+import { enlaceReferenciaDrive, nombreReferenciaVisible } from "@/lib/referencias-trabajo";
 import { Boton } from "@/components/ui/Boton";
 import styles from "./FlujoTrabajo.module.css";
 
-export type ReferenciaDrive = { id: string; nombre: string; url?: string };
+export type ReferenciaDrive = { id: string; nombre: string; url?: string; ruta?: string };
 export const MAX_REFERENCIAS = 10;
 
 export interface TokenPickerDrive {
@@ -26,6 +27,33 @@ export interface ElementoDriveSeleccionado {
   nombre: string;
   url: string;
   tipo: "carpeta" | "archivo";
+  ruta?: string;
+}
+
+export async function resolverReferenciaDriveSeleccionada(
+  base: ElementoDriveSeleccionado,
+): Promise<ElementoDriveSeleccionado> {
+  try {
+    const res = await api.adminGetDriveReferencia(base.id);
+    if (
+      res &&
+      typeof res === "object" &&
+      !Array.isArray(res) &&
+      typeof res.nombre === "string" &&
+      res.nombre.trim()
+    ) {
+      return {
+        id: base.id,
+        nombre: res.nombre.trim(),
+        url: enlaceReferenciaDrive(res.url) ? res.url : base.url,
+        tipo: res.tipo === "carpeta" || res.tipo === "archivo" ? res.tipo : base.tipo,
+        ruta: typeof res.ruta === "string" && res.ruta.trim() ? res.ruta.trim() : undefined,
+      };
+    }
+  } catch {
+    // Fallback limpio si Drive no está disponible o el entorno no soporta la resolución.
+  }
+  return base;
 }
 
 export interface OpcionesSelectorDrive {
@@ -200,8 +228,17 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
         dialogoRef: dialogo,
         vigenteRef: vigente,
         onAbrir: () => setEstado("listo"),
-        onSeleccion: (elementos) => {
-          const nuevos = elementos.map(d => ({ id: d.id, nombre: d.nombre, url: d.url }));
+        onSeleccion: async (elementos) => {
+          const resueltos = await Promise.all(
+            elementos.map((el) => resolverReferenciaDriveSeleccionada(el)),
+          );
+          if (!vigente.current) return;
+          const nuevos: ReferenciaDrive[] = resueltos.map((d) => ({
+            id: d.id,
+            nombre: d.nombre,
+            url: d.url,
+            ...(d.ruta ? { ruta: d.ruta } : {}),
+          }));
           const ids = new Set(actual.current.map(x => x.id));
           onChange([
             ...actual.current,
@@ -227,18 +264,26 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
     <strong>Referencias de Drive</strong>
     {valor.length > 0 &&
       <ul className={styles.referencias}>
-        {valor.map(r => <li key={r.id} className={styles.referencia}>
-          {confirmar === r.id ? <div className={styles.confirmarQuitar} role="group" aria-label={`Quitar ${r.nombre}`}>
-            <span>¿Quitar «{r.nombre}»?</span>
-            <Boton variante="secundario" tamano="sm" onClick={() => { onChange(valor.filter(x => x.id !== r.id)); setConfirmar(null); }}>Sí</Boton>
-            <Boton variante="fantasma" tamano="sm" onClick={() => setConfirmar(null)}>No</Boton>
+        {valor.map(r => {
+          const esCarpeta = Boolean(r.url?.includes("/folders/"));
+          const Icono = esCarpeta ? FolderOpen : FileText;
+          const nombre = nombreReferenciaVisible({ nombre: r.nombre, tipo: esCarpeta ? "carpeta" : "archivo" });
+          return <li key={r.id} className={styles.referencia}>
+          {confirmar === r.id ? <div className={styles.confirmarQuitar} role="group" aria-label={`Quitar ${nombre}`}>
+            <span>¿Quitar «{nombre}»?</span>
+            <Boton variante="peligro" tamano="sm" onClick={() => { onChange(valor.filter(x => x.id !== r.id)); setConfirmar(null); }}>Sí</Boton>
+            <Boton variante="secundario" tamano="sm" onClick={() => setConfirmar(null)}>No</Boton>
           </div> : <>
-            <FileText size={16} aria-hidden="true" className={styles.referenciaIcono} />
-            <span className={styles.referenciaNombre} title={r.nombre}>{r.nombre}</span>
-            {r.url && /^https:\/\/(drive|docs)\.google\.com\//.test(r.url) && <EnlaceExterno className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.referenciaAccion}`} href={r.url} aria-label={`Abrir ${r.nombre} en Google Drive`}><ExternalLink size={15} aria-hidden="true" /><span>Abrir</span></EnlaceExterno>}
-            <Boton variante="secundario" tamano="sm" className={styles.referenciaAccion} disabled={disabled} onClick={() => setConfirmar(r.id)} aria-label={`Quitar ${r.nombre}`}><Trash2 size={15} aria-hidden="true" /><span>Quitar</span></Boton>
+            <Icono size={16} aria-hidden="true" className={styles.referenciaIcono} />
+            <div className={styles.referenciaTexto}>
+              {r.ruta && <span className={styles.rutaReferenciaTrabajo} title={r.ruta}>{r.ruta}</span>}
+              <span className={styles.referenciaNombre} title={nombre}>{nombre}</span>
+            </div>
+            {r.url && /^https:\/\/(drive|docs)\.google\.com\//.test(r.url) && <EnlaceExterno className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.referenciaAccion}`} href={r.url} aria-label={`Abrir ${nombre} en Google Drive`}><ExternalLink size={15} aria-hidden="true" /><span>Abrir</span></EnlaceExterno>}
+            <Boton variante="peligro" tamano="sm" className={styles.referenciaAccion} disabled={disabled} onClick={() => setConfirmar(r.id)} aria-label={`Quitar ${nombre}`}><Trash2 size={15} aria-hidden="true" /><span>Quitar</span></Boton>
           </>}
-        </li>)}
+        </li>;
+        })}
       </ul>}
     <div className={styles.acciones}>
       {valor.length === 0

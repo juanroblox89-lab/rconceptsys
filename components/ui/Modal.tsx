@@ -11,6 +11,7 @@ export interface ModalProps {
   accionPrimaria?: React.ReactNode;
   accionSecundaria?: React.ReactNode;
   className?: string;
+  veloStyle?: React.CSSProperties;
   children?: React.ReactNode;
 }
 
@@ -23,6 +24,7 @@ export function Modal({
   accionPrimaria,
   accionSecundaria,
   className = "",
+  veloStyle,
   children,
 }: ModalProps) {
   const tituloId = useId();
@@ -105,6 +107,7 @@ export function Modal({
   return (
     <div
       className="rc-modal-velo"
+      style={veloStyle}
       onClick={(e) => {
         if (e.target === e.currentTarget && onCerrar) onCerrar();
       }}

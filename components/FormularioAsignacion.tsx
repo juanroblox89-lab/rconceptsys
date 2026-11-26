@@ -2,7 +2,7 @@
 
 import { Casilla } from "@/components/ui/Casilla";
 import { CampoFecha } from "@/components/ui/CamposEspeciales";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
 import type { Cliente, Perfil, Pieza, ReferenciaDriveTrabajo, Tarea, TipoTrabajo } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
@@ -11,6 +11,8 @@ import { SelectorCarpetaTrabajo } from "./SelectorCarpetaTrabajo";
 import { AdjuntosGuardados, EditorAdjuntos } from "./AdjuntosAsignacion";
 import { adjuntos, subirAdjunto, type AdjuntoLocal } from "@/lib/adjuntos-asignacion";
 import { MAX_REFERENCIAS_TRABAJO, referenciaDelCliente, referenciasDelTrabajo } from "@/lib/referencias-trabajo";
+import { resolverReferenciaDriveSeleccionada } from "./PickerDriveCliente";
+import { useCambiosSinGuardar } from "./CambiosSinGuardar";
 import styles from "./FlujoTrabajo.module.css";
 
 export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onGuardar }: {
@@ -37,7 +39,37 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
   const [versionAdjuntos, setVersionAdjuntos] = useState(0);
   const [trabajoCreado, setTrabajoCreado] = useState<Tarea>();
   const [grabando, setGrabando] = useState(false);
+  const solicitudRefCliente = useRef(0);
+  const vigenteRef = useRef(true);
   const trabajoActual = trabajoCreado ?? tarea;
+
+  useEffect(() => {
+    vigenteRef.current = true;
+    return () => { vigenteRef.current = false; };
+  }, []);
+
+  const baseSucio = Boolean(catalogo) && (trabajoActual
+    ? persona !== trabajoActual.asignado_a ||
+      tipo !== String(trabajoActual.tipo_id) ||
+      fecha !== (trabajoActual.fecha_limite ?? "") ||
+      descripcion !== (trabajoActual.descripcion ?? trabajoActual.titulo ?? "") ||
+      forzar ||
+      referenciasEditadas ||
+      locales.length > 0 ||
+      grabando
+    : cliente !== "" ||
+      persona !== personaInicial ||
+      tipo !== "" ||
+      pieza !== "" ||
+      fecha !== "" ||
+      descripcion !== "" ||
+      forzar ||
+      referenciasEditadas ||
+      locales.length > 0 ||
+      grabando);
+
+  const sucio = Boolean(catalogo) && (alta ? nombre.trim().length > 0 || baseSucio : baseSucio);
+  const { confirmarSalida, limpiarRegistro } = useCambiosSinGuardar(sucio);
 
   async function quitarLocal(a: AdjuntoLocal) {
     if (ocupado) return;
@@ -72,10 +104,31 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       return false;
     }
     setError("");
-    setCliente(nuevo ? String(nuevo.id) : "");
+    const nuevoClienteId = nuevo ? String(nuevo.id) : "";
+    setCliente(nuevoClienteId);
     setPieza("");
     setReferencias(agregar ? [automatica, ...personalizadas] : personalizadas);
     setIndiceAutomatico(agregar ? 0 : null);
+    const ticket = ++solicitudRefCliente.current;
+    if (agregar && automatica) {
+      void resolverReferenciaDriveSeleccionada(automatica).then((resuelta) => {
+        if (!vigenteRef.current || solicitudRefCliente.current !== ticket) return;
+        if (resuelta.nombre === automatica.nombre && !resuelta.ruta) return;
+        setReferencias((actuales) =>
+          actuales.map((r) =>
+            r.id === automatica.id
+              ? {
+                  ...r,
+                  nombre: resuelta.nombre,
+                  url: resuelta.url,
+                  tipo: resuelta.tipo,
+                  ...(resuelta.ruta ? { ruta: resuelta.ruta } : {}),
+                }
+              : r,
+          ),
+        );
+      });
+    }
     return true;
   }
 
@@ -111,6 +164,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       }
       const datos = { asignado_a: persona, tipo_id: Number(tipo), fecha_limite: fecha, descripcion: texto, forzar,
         ...(!tarea || referenciasEditadas ? { drive_referencias: referencias } : {}) };
+      const esCreacion = !trabajoActual;
       let actual: Tarea;
       if (trabajoActual) {
         const { asignado_a, tipo_id, fecha_limite, descripcion, ...otros } = datos;
@@ -130,7 +184,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         const ajustar = (campos: Partial<AdjuntoLocal>) => setLocales(lista => lista.map(v => v.id === a.id ? { ...v, ...campos } : v));
         ajustar({ avance: 0, error: undefined });
         try {
-          await subirAdjunto(actual.id, a, avance => ajustar({ avance }));
+          await subirAdjunto(actual.id, a, avance => ajustar({ avance }), esCreacion ? { inicial: true } : undefined);
           setLocales(lista => lista.filter(v => v.id !== a.id));
         } catch (e) {
           fallos++;
@@ -139,6 +193,10 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       }
       setVersionAdjuntos(v => v + 1);
       if (fallos) { setError("El trabajo quedó guardado. Reintenta los archivos pendientes o quítalos."); return; }
+      setReferenciasEditadas(false);
+      setForzar(false);
+      setLocales([]);
+      limpiarRegistro();
       onGuardar(actual);
     } catch (e) {
       const fallo = e as { message?: string; codigo?: string };
@@ -182,8 +240,12 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       </>}
     {error && <p className={styles.error} role="alert">{error}</p>}
     {catalogo && <div className={styles.accionesFormulario}>
-      <Boton variante="secundario" disabled={ocupado || grabando} onClick={() => alta ? setAlta(false) : trabajoCreado ? onGuardar(trabajoCreado) : onCerrar()}>{alta ? "Volver al trabajo" : trabajoCreado ? "Ver trabajo guardado" : "Volver sin guardar"}</Boton>
-      <Boton type="submit" disabled={grabando} cargando={ocupado}>{alta ? "Crear y seleccionar" : trabajoActual ? "Guardar cambios" : "Asignar trabajo"}</Boton>
+      <Boton variante="secundario" disabled={ocupado || grabando} onClick={() => {
+        if (alta) setAlta(false);
+        else if (trabajoCreado) { limpiarRegistro(); onGuardar(trabajoCreado); }
+        else confirmarSalida(onCerrar);
+      }}>{alta ? "Volver al trabajo" : trabajoCreado ? "Ver trabajo guardado" : "Volver sin guardar"}</Boton>
+      <Boton type="submit" variante={!alta && trabajoActual ? "guardar" : "primario"} disabled={grabando} cargando={ocupado}>{alta ? "Crear y seleccionar" : trabajoActual ? "Guardar cambios" : "Asignar trabajo"}</Boton>
     </div>}
   </form>;
 }

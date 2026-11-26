@@ -237,9 +237,9 @@
 }
 
 .editorBtnPrimario {
-  border-color: var(--rc-azul-texto);
-  background: var(--rc-azul-suave);
-  color: var(--rc-azul-texto);
+  border-color: var(--rc-verde-btn-borde, transparent);
+  background: var(--rc-verde-btn-bg, var(--rc-verde-suave));
+  color: var(--rc-verde-btn-texto, var(--rc-verde-texto));
 }
 
 .editorBtn:disabled {
