@@ -1,3 +1,17 @@
+# Informe Resumen de Audio WebM al Pulsar «Resumir con IA» · RConcept Systems
+
+**Publicado en `desde-cero`:** commit [`b453aec`](https://github.com/juanroblox89-lab/rconceptsys/commit/b453aec6a69325b3412d110b384807f47212dd75) (sin cambios en `main`; solo Elías promueve tras verificar).
+
+- **Causa raíz identificada:** en borrador (`EditorAdjuntos`/`FilaLocal`), «Resumir con IA» solo invertía un switch sin llamar al backend; en adjuntos guardados, `finalizar`, `PATCH` y `reintentar` solo dejaban el estado en `pendiente` esperando al cron por minuto de Supabase; archivos `.webm` de solo audio reportados por el navegador como `video/webm` se clasificaban como video; y el respaldo de NVIDIA apuntaba a `integrate.api.nvidia.com/v1/audio/transcriptions` con `parakeet-tdt-0.6b-v3` (que responde `404 page not found`) en lugar del endpoint vigente de chat multimodal.
+- **Borrador sin guardar el trabajo por sorpresa:** nuevos endpoints solo para administradores (`POST /api/admin/adjuntos/resumen-borrador` hasta 2 MiB y subida por fragmentos `/api/admin/adjuntos/borrador/{borrador}/...` hasta 25 MiB) reutilizan `resumenAudio` y devuelven un token HMAC (`borrador_resumen`). Al pulsar «Resumir con IA» muestra **Resumiendo…** y luego **Listo** con viñetas y transcripción plegable sin crear ninguna tarea; al guardar el trabajo, `finalizar` valida el token y persiste el resumen al instante sin volver a consultar la IA.
+- **Disparo inmediato en guardados y reintento sin duplicado:** `POST /api/tareas/{id}/adjuntos/{adjunto}/procesar-resumen` reclama el audio atómicamente (`ReclamarResumenAdjuntoPorID` en memoria y PostgREST CAS sin requerir migración nueva) respetando permisos por trabajo (`401`/`403`/`409`). `AdjuntosGuardados` dispara el resumen en cuanto se activa el control, se reintenta o aparece un adjunto `pendiente`, con deduplicación en cliente y servidor.
+- **Proveedores, WebM y errores legibles:** detección EBML en cliente para `.webm` de solo audio; primario por 9router (`ag/gemini-3.8-flash` con `temperature: 0`); respaldo NVIDIA sobre `/v1/chat/completions` (`nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`) mediante reempaque puro en Go `WebM (Opus) → Ogg Opus` (`asignacion_webm_ogg.go`) y respaldo de texto (`nvidia/nemotron-3.5-super-vl-120b-a12b`). Distingue silencio sin voz (*«No se escuchó voz clara en el audio para resumir.»*), formato, falta de configuración y timeout en mensajes humanos.
+- **Verificación:** sondas reales en vivo con WebM sintético de `MediaRecorder` (voz en español + silencio) aprobadas tanto en `9router` (`ag/gemini-3.8-flash`) como en `NVIDIA` (`nemotron-3-nano-omni` con Ogg Opus reempacado); `go build/vet/test` (`httpapi`, `store`, `supa`), `npm test` (11/11), `tsc --noEmit`, `eslint`, `npm run build`, `npm run mapa` (121 endpoints) y matriz Playwright Edge headless (`375×812` y `1280×800`, claro y oscuro) en verde. Sin cambios en `.env*`, `Sensible\` ni servidores activos.
+
+[Reporte técnico y estado para retomar](<HARNESS-RESUMIR-AUDIO.md>)
+
+---
+
 # Informe Entrega por Drive o WhatsApp, Reversión y Adjuntos en Rechazo · RConcept Systems
 
 **Publicado en `desde-cero`:** commit [`47d8b68`](https://github.com/juanroblox89-lab/rconceptsys/commit/47d8b68ca5ede2c62b891676c4b1c96dbf567086) (sin cambios en `main`).

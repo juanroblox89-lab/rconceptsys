@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T07:06:09.936Z",
+  "generado_en": "2026-11-26T07:10:31.355Z",
   "version": "1.0",
   "modulos": [
     {
@@ -2508,5 +2508,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "f849d6ac6eba7d5fd863fc2c563f1325b5020bb3"
+  "commit_hash": "b453aec6a69325b3412d110b384807f47212dd75"
 }
