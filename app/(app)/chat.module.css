@@ -305,18 +305,32 @@
 
 .composer {
   display: flex;
-  gap: var(--rc-esp-8);
+  gap: var(--rc-esp-6);
   align-items: flex-end;
 }
 
+.composer > :global(.rc-escena-vidrio) {
+  display: flex;
+  flex: none;
+  align-self: flex-end;
+}
+
+.composer :global(.rc-btn-enviar) {
+  width: var(--rc-compositor-control);
+  height: var(--rc-compositor-control);
+  flex: none;
+}
+
 .composerCaja {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--rc-compositor-control);
   border-radius: var(--rc-radio-md);
   background: var(--rc-superficie);
   box-shadow: var(--rc-elev-hundido-sm);
-  padding: var(--rc-esp-6) var(--rc-esp-12);
+  padding: 0 var(--rc-esp-10);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--rc-esp-8);
   transition: box-shadow var(--rc-transicion);
 }
@@ -326,16 +340,17 @@
 }
 
 .textarea {
-  flex: 1;
-  min-height: 32px;
-  max-height: 120px;
-  padding: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--rc-compositor-control);
+  max-height: min(132px, 23dvh);
+  padding: var(--rc-compositor-relleno) 0;
   border: none;
   background: transparent;
   color: var(--rc-gris-900);
   font-family: inherit;
-  font-size: var(--rc-fs-cuerpo);
-  line-height: var(--rc-lh-cuerpo);
+  font-size: var(--rc-compositor-fuente);
+  line-height: var(--rc-compositor-linea);
   resize: none;
   outline: none;
 }
@@ -345,6 +360,22 @@
   font-size: var(--rc-fs-micro);
   color: var(--rc-texto-tenue);
   padding: var(--rc-esp-4) var(--rc-esp-4) 0;
+}
+
+.riaAviso {
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-azul-suave);
+  color: var(--rc-azul-texto);
+  font-size: var(--rc-fs-micro);
+  line-height: 1.4;
+}
+
+:global(html[data-rc-tema="glass"]) .riaAviso {
+  background: var(--rc-menu-fondo);
+  border: 1px solid var(--rc-glass-borde-flotante);
+  color: var(--rc-comando-texto);
 }
 
 @media (min-width: 768px) {
@@ -380,12 +411,13 @@
 :global(html[data-rc-tema="glass"]) .newMsgNotice {
   background: var(--rc-menu-fondo); border-color: var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante);
 }
-:global(html[data-rc-tema="glass"]) .composerCaja { min-width: 0; padding: 0; background: transparent; box-shadow: none; }
-:global(html[data-rc-tema="glass"]) .composer > :global(.rc-escena-vidrio) { display: flex; flex: none; align-self: center; }
+:global(html[data-rc-tema="glass"]) :is(.composerCaja, .composerCaja:focus-within) { min-width: 0; padding: 0; background: transparent; box-shadow: none; }
+:global(html[data-rc-tema="glass"]) .composer { gap: 4px; }
+:global(html[data-rc-tema="glass"]) .composer > :global(.rc-escena-vidrio) { display: flex; flex: none; align-self: flex-end; }
 :global(html[data-rc-tema="glass"]) .composer :global(.rc-mancha) { display: none; }
 :global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar) {
-  width: var(--rc-compositor-control) !important;
-  height: var(--rc-compositor-control) !important;
+  width: var(--rc-compositor-control);
+  height: var(--rc-compositor-control);
   background: var(--rc-azul-fondo);
 }
 :global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar)::before,

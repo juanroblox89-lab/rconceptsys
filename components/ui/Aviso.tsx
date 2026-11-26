@@ -132,6 +132,7 @@ export function ProveedorAvisos({ children }: { children: React.ReactNode }) {
       {avisos.length > 0 && (
         <aside
           aria-live="polite"
+          data-rc-avisos-flotantes
           style={{
             position: "fixed",
             top: "var(--rc-esp-16)",

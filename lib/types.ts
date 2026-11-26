@@ -22,6 +22,7 @@ export interface Perfil {
 }
 
 export interface ChatMensaje {
+  es_ria?: boolean;
   id: number;
   autor_id: string;
   cuerpo: string;

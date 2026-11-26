@@ -62,6 +62,9 @@ func (a *API) Routes() http.Handler {
 	// Chat (solo aprobados)
 	mux.HandleFunc("GET /api/chat", a.MiddlewareAuth(a.handleGetChat, true, false))
 	mux.HandleFunc("POST /api/chat", a.MiddlewareAuth(a.handlePostChat, true, false))
+	mux.HandleFunc("PATCH /api/chat/{id}", a.MiddlewareAuth(a.handlePatchChat, true, false))
+	mux.HandleFunc("DELETE /api/chat/{id}", a.MiddlewareAuth(a.handleDeleteChat, true, false))
+	mux.HandleFunc("POST /api/chat/{id}/restaurar", a.MiddlewareAuth(a.handleRestaurarChat, true, false))
 
 	// Admin (solo es_admin)
 	mux.HandleFunc("GET /api/admin/miembros", a.MiddlewareAuth(a.handleAdminGetMiembros, true, true))
@@ -167,6 +170,9 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /api/yo/apariencia/fondo/{archivo}", a.MiddlewareAuth(a.handleMedioApariencia, true, false))
 	mux.HandleFunc("GET /api/ria", a.MiddlewareAuth(a.handleHistorialRIA, true, false))
 	mux.HandleFunc("POST /api/ria", a.MiddlewareAuth(a.handleRIA, true, false))
+	mux.HandleFunc("PATCH /api/ria/{id}", a.MiddlewareAuth(a.handlePatchRIA, true, false))
+	mux.HandleFunc("DELETE /api/ria/{id}", a.MiddlewareAuth(a.handleDeleteRIA, true, false))
+	mux.HandleFunc("POST /api/ria/{id}/restaurar", a.MiddlewareAuth(a.handleRestaurarRIA, true, false))
 	mux.HandleFunc("GET /api/cortes/{id}/mio", a.MiddlewareAuth(a.handleCortePropio, true, false))
 	mux.HandleFunc("GET /api/notificaciones", a.MiddlewareAuth(a.handleNotificaciones, true, false))
 	mux.HandleFunc("POST /api/notificaciones/leidas", a.MiddlewareAuth(a.handleLeerNotificaciones, true, false))
@@ -665,6 +671,84 @@ func (a *API) handlePostChat(w http.ResponseWriter, r *http.Request) {
 
 	a.avisarChat(r.Context(), yo, msg)
 	ResponderJSON(w, http.StatusCreated, msg)
+}
+
+const ventanaDeshacerMensaje = 30 * time.Second
+
+func (a *API) handlePatchChat(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de mensaje inválido.")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
+	var req struct {
+		Cuerpo string `json:"cuerpo"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "El formato del mensaje no es válido.")
+		return
+	}
+
+	msg, err := a.Store.EditarMensajeChat(r.Context(), id, yo.ID, req.Cuerpo)
+	switch err {
+	case nil:
+		ResponderJSON(w, http.StatusOK, msg)
+	case store.ErrNotFound:
+		ResponderError(w, http.StatusNotFound, "mensaje_no_encontrado", "No se encontró el mensaje.")
+	case store.ErrForbidden:
+		ResponderError(w, http.StatusForbidden, "sin_permiso", "Solo puedes editar tus propios mensajes.")
+	case store.ErrValidation:
+		ResponderError(w, http.StatusBadRequest, "mensaje_invalido", "El mensaje debe tener entre 1 y 2000 caracteres.")
+	default:
+		ResponderError(w, http.StatusInternalServerError, "error_editar_mensaje", "No se pudo editar el mensaje.")
+	}
+}
+
+func (a *API) handleDeleteChat(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de mensaje inválido.")
+		return
+	}
+
+	err = a.Store.EliminarMensajeChat(r.Context(), id, yo.ID, yo.EsAdmin)
+	switch err {
+	case nil:
+		ResponderJSON(w, http.StatusOK, map[string]string{"mensaje": "Mensaje eliminado."})
+	case store.ErrNotFound:
+		ResponderError(w, http.StatusNotFound, "mensaje_no_encontrado", "No se encontró el mensaje.")
+	case store.ErrForbidden:
+		ResponderError(w, http.StatusForbidden, "sin_permiso", "No tienes permiso para eliminar este mensaje.")
+	default:
+		ResponderError(w, http.StatusInternalServerError, "error_eliminar_mensaje", "No se pudo eliminar el mensaje.")
+	}
+}
+
+func (a *API) handleRestaurarChat(w http.ResponseWriter, r *http.Request) {
+	yo := UsuarioDesdeContexto(r.Context())
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de mensaje inválido.")
+		return
+	}
+
+	msg, err := a.Store.RestaurarMensajeChat(r.Context(), id, yo.ID, yo.EsAdmin, ventanaDeshacerMensaje)
+	switch err {
+	case nil:
+		ResponderJSON(w, http.StatusOK, msg)
+	case store.ErrNotFound:
+		ResponderError(w, http.StatusNotFound, "mensaje_no_encontrado", "No se encontró el mensaje eliminado.")
+	case store.ErrForbidden:
+		ResponderError(w, http.StatusForbidden, "sin_permiso", "No tienes permiso para restaurar este mensaje.")
+	case store.ErrConflict:
+		ResponderError(w, http.StatusConflict, "tiempo_expirado", "Ya pasó el tiempo para deshacer la eliminación.")
+	default:
+		ResponderError(w, http.StatusInternalServerError, "error_restaurar_mensaje", "No se pudo restaurar el mensaje.")
+	}
 }
 
 func (a *API) handleAdminGetMiembros(w http.ResponseWriter, r *http.Request) {

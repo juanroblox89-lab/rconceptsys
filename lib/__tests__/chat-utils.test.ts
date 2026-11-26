@@ -74,3 +74,28 @@ test('agruparMensajes agrupa mensajes consecutivos del mismo autor', () => {
   assert.strictEqual(grupos[1].lineas.length, 1);
   assert.strictEqual(grupos[1].es_mio, false);
 });
+
+test('agruparMensajes conserva editado_en y es_ria', () => {
+  const ahora = new Date().toISOString();
+  const grupos = agruparMensajes([
+    {
+      id: 10,
+      autor_id: 'user-1',
+      cuerpo: 'Editado',
+      creado_en: ahora,
+      editado_en: ahora,
+    },
+    {
+      id: 11,
+      autor_id: 'ria',
+      es_ria: true,
+      cuerpo: 'Hola desde RIA',
+      creado_en: ahora,
+    },
+  ], 'user-1');
+
+  assert.strictEqual(grupos.length, 2);
+  assert.strictEqual(grupos[0].lineas[0].editado_en, ahora);
+  assert.strictEqual(grupos[1].lineas[0].es_ria, true);
+  assert.strictEqual(grupos[1].es_mio, false);
+});

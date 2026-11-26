@@ -155,8 +155,22 @@ html[data-rc-tema="glass"] dialog::backdrop {
 }
 html[data-rc-tema="glass"] :is(.rc-modal, dialog) select option { background: var(--rc-glass-campo); color: var(--rc-texto); }
 
-/* Mismas medidas para ambos chats; flex-end alinea los controles con la última línea. */
-html[data-rc-tema="glass"] {
+html:not([data-rc-tema="glass"]) [data-rc-avisos-flotantes] .rc-toast {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-gris-300);
+  box-shadow: var(--rc-elev-relieve-md);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html:not([data-rc-tema="glass"]) [data-rc-avisos-flotantes] .rc-toast::before,
+html:not([data-rc-tema="glass"]) [data-rc-avisos-flotantes] .rc-toast::after,
+html:not([data-rc-tema="glass"]) [data-rc-avisos-flotantes] .rc-mancha {
+  content: none;
+  display: none;
+}
+
+/* Mismas medidas para ambos chats en todos los temas; flex-end alinea los controles con la última línea. */
+html:root {
   --rc-compositor-control: 44px;
   --rc-compositor-fuente: max(16px, var(--rc-fs-cuerpo));
   --rc-compositor-linea: calc(var(--rc-compositor-fuente) * 1.375);
@@ -165,18 +179,14 @@ html[data-rc-tema="glass"] {
   --rc-compositor-marco: 4px;
   --rc-compositor-relleno-inline: 8px;
 }
-html[data-rc-tema="glass"] [data-rc-compositor] {
+[data-rc-compositor] {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 4px;
-  padding: var(--rc-compositor-marco);
-  border: var(--rc-compositor-borde) solid var(--rc-gris-300);
-  border-radius: var(--rc-glass-radio);
-  background: var(--rc-superficie-hundida);
 }
-html[data-rc-tema="glass"] [data-rc-compositor]:focus-within { border-color: var(--rc-azul-texto); }
-html[data-rc-tema="glass"] [data-rc-compositor] textarea {
+[data-rc-compositor] textarea {
   display: block;
+  box-sizing: border-box;
   field-sizing: content;
   flex: 1 1 0;
   min-width: 0;
@@ -184,16 +194,32 @@ html[data-rc-tema="glass"] [data-rc-compositor] textarea {
   max-height: min(132px, 23dvh);
   padding: var(--rc-compositor-relleno) var(--rc-compositor-relleno-inline);
   font-size: var(--rc-compositor-fuente);
-  caret-color: var(--rc-texto);
   line-height: var(--rc-compositor-linea);
+  resize: none;
 }
-html[data-rc-tema="glass"] [data-rc-compositor] textarea:placeholder-shown { white-space: nowrap; overflow: hidden; }
-html[data-rc-tema="glass"] [data-rc-compositor] textarea::placeholder { color: var(--rc-texto-secundario); opacity: 1; text-overflow: ellipsis; }
-html[data-rc-tema="glass"] [data-rc-compositor] [data-rc-compositor-boton] {
+[data-rc-compositor] textarea:placeholder-shown {
+  height: var(--rc-compositor-control);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-rc-compositor] [data-rc-compositor-boton] {
   flex: none;
   inline-size: var(--rc-compositor-control);
   block-size: var(--rc-compositor-control);
 }
+
+html[data-rc-tema="glass"] [data-rc-compositor] {
+  padding: var(--rc-compositor-marco);
+  border: var(--rc-compositor-borde) solid var(--rc-gris-300);
+  border-radius: var(--rc-glass-radio);
+  background: var(--rc-superficie-hundida);
+}
+html[data-rc-tema="glass"] [data-rc-compositor]:focus-within { border-color: var(--rc-azul-texto); }
+html[data-rc-tema="glass"] [data-rc-compositor] textarea {
+  caret-color: var(--rc-texto);
+}
+html[data-rc-tema="glass"] [data-rc-compositor] textarea::placeholder { color: var(--rc-texto-secundario); opacity: 1; text-overflow: ellipsis; }
 html[data-rc-tema="glass"] [data-rc-compositor] [data-rc-compositor-boton]:hover:not(:disabled) {
   box-shadow: inset 0 0 0 1px var(--rc-gris-300);
 }

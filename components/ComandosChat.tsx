@@ -108,9 +108,11 @@ export function EntradaComandos({ texto, rutas, glass, autoAltura = false, ...pr
   useLayoutEffect(() => {
     const entrada = campo.current;
     if (!entrada) return;
-    if (autoAltura && (!glass || !CSS.supports("field-sizing", "content"))) {
+    if (!texto) {
+      entrada.style.removeProperty("height");
+    } else if (autoAltura && !CSS.supports("field-sizing", "content")) {
       entrada.style.height = "auto";
-      entrada.style.height = `${entrada.scrollHeight}px`;
+      entrada.style.height = `${Math.max(44, entrada.scrollHeight)}px`;
     } else {
       entrada.style.removeProperty("height");
     }

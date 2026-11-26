@@ -11,14 +11,14 @@
 
 - La campana muestra avisos sin leer. Abre un aviso para ir a su mensaje, tarea, corte o cambio de Drive, o usa **Marcar todo leído**.
 - `/configuracion`: controla cada tipo de aviso, silencia el chat o programa un horario de silencio en hora de Bogotá. Las menciones siempre llegan y el horario de silencio aplaza la entrega al dispositivo, no la bandeja.
-- `/`: chat del equipo. Una mención como `@Nombre` dirige el aviso a esa persona. Los mensajes seguidos se agrupan; un aviso de mención abre su mensaje exacto.
+- `/`: chat del equipo. Una mención como `@Nombre` dirige el aviso a esa persona, y `@RIA` hace que RIA responda en el grupo. Escribir `/ria` o `/ria tu consulta` abre tu conversación privada en RIA sin publicar en el grupo. Mantén pulsado un mensaje en móvil o usa `⋯` en escritorio para **Copiar**, **Editar** tus mensajes o **Eliminar** (propios, o cualquiera si eres admin) con confirmación y deshacer corto. Los mensajes seguidos se agrupan; un aviso de mención abre su mensaje exacto.
 - `/factura`: un aviso de corte abre tu línea del corte, con rango, monto y estado de pago. No muestra montos de otras personas.
 - `/drive-cambio`: abre el archivo del aviso en Google Drive, donde se aplican tus permisos de Google. Los cambios de una misma carpeta se agrupan durante dos minutos.
 
 ## Otras secciones
 - `/equipo`: directorio de miembros aprobados; `/equipo/[id]`: perfil de un miembro.
 - `/perfil`: consulta y edita tu nombre y tu foto; administra los avisos del dispositivo.
-- `/ria`: conversación privada con RIA. El historial pertenece a tu cuenta. La sugerencia se adapta a tu rol. Puedes dictar desde el micrófono si tu navegador admite reconocimiento de voz; el texto queda en la caja para revisarlo antes de enviar.
+- `/ria`: conversación privada con RIA. El historial pertenece a tu cuenta. La sugerencia se adapta a tu rol. Puedes dictar desde el micrófono si tu navegador admite reconocimiento de voz; el texto queda en la caja para revisarlo antes de enviar. Puedes copiar cualquier mensaje o respuesta de RIA, y editar o eliminar tus propios mensajes con confirmación y deshacer corto.
 - `/login`: inicia sesión; `/registro`: solicita acceso; `/pendiente`: consulta el estado de la solicitud.
 - `/estilo`: catálogo de referencia de la interfaz.
 - `/api/[...path]`: conexión interna entre la interfaz y la API; no es una pantalla.

@@ -1,0 +1,330 @@
+.fila {
+  display: flex;
+  align-items: flex-end;
+  align-self: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.filaMia {
+  flex-direction: row-reverse;
+  align-self: flex-end;
+}
+
+.filaBloque {
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: stretch;
+  width: 100%;
+}
+
+.contenido {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.interactivo {
+  touch-action: pan-y;
+}
+
+@media (hover: none) {
+  .interactivo {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+}
+
+.trigger {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--rc-radio-pildora);
+  background: transparent;
+  color: var(--rc-texto-tenue);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--rc-transicion-rapida), background var(--rc-transicion-rapida), color var(--rc-transicion-rapida);
+}
+
+.fila:hover .trigger,
+.fila:focus-within .trigger,
+.trigger[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.trigger:hover,
+.trigger[aria-expanded="true"] {
+  background: var(--rc-superficie-hundida);
+  color: var(--rc-texto);
+}
+
+/* En móvil táctil el menú abre con pulsación larga; el botón queda disponible solo al enfocar por teclado. */
+@media (hover: none) {
+  .trigger {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    opacity: 0;
+  }
+  .trigger:focus-visible {
+    position: static;
+    width: 28px;
+    height: 28px;
+    overflow: visible;
+    clip-path: none;
+    opacity: 1;
+  }
+}
+
+.pieAsistente {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: var(--rc-z-modal);
+  background: transparent;
+}
+
+.veloMovil {
+  background: rgba(12, 16, 24, 0.42);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+}
+
+.menu {
+  position: fixed;
+  z-index: calc(var(--rc-z-modal) + 1);
+  min-width: 172px;
+  max-width: min(260px, calc(100vw - 24px));
+  padding: 6px;
+  border-radius: var(--rc-radio-md);
+  border: 1px solid var(--rc-gris-100);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuMovil {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--rc-radio-lg);
+  padding: 8px;
+  gap: 4px;
+}
+
+.preview {
+  margin: 2px 8px 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rc-gris-100);
+  font-size: var(--rc-fs-micro);
+  line-height: 1.4;
+  color: var(--rc-texto-secundario);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  background: transparent;
+  color: var(--rc-texto);
+  font-family: inherit;
+  font-size: var(--rc-fs-secundario);
+  font-weight: var(--rc-fw-medio);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuMovil .opcion {
+  min-height: 44px;
+  font-size: var(--rc-fs-interfaz);
+}
+
+.opcion:hover,
+.opcion:focus-visible {
+  background: var(--rc-superficie-hundida);
+}
+
+.opcionPeligro {
+  color: var(--rc-rojo-texto);
+}
+
+.opcionPeligro:hover,
+.opcionPeligro:focus-visible {
+  background: var(--rc-rojo-suave);
+}
+
+.cancelarMovil {
+  margin-top: 2px;
+  border-top: 1px solid var(--rc-gris-100);
+  padding-top: 8px;
+  justify-content: center;
+  color: var(--rc-texto-secundario);
+}
+
+/* Editor en línea dentro de la burbuja */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: min(260px, 68vw);
+}
+
+.editorCampo {
+  width: 100%;
+  min-height: 40px;
+  max-height: 180px;
+  padding: 8px 10px;
+  border-radius: var(--rc-radio-sm);
+  border: 1px solid var(--rc-azul-texto);
+  background: var(--rc-superficie);
+  color: var(--rc-texto);
+  font-family: inherit;
+  font-size: var(--rc-fs-cuerpo);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.editorPie {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.editorError {
+  margin: 0;
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-rojo-texto);
+}
+
+.editorBtn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--rc-gris-300);
+  border-radius: var(--rc-radio-pildora);
+  background: var(--rc-superficie);
+  color: var(--rc-texto);
+  font-family: inherit;
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-semibold);
+  cursor: pointer;
+}
+
+.editorBtnPrimario {
+  border-color: var(--rc-azul-texto);
+  background: var(--rc-azul-suave);
+  color: var(--rc-azul-texto);
+}
+
+.editorBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.editadoMarca {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: var(--rc-fs-micro);
+  line-height: 1.2;
+  color: var(--rc-texto-tenue);
+  font-style: italic;
+}
+
+/* Barra corta de deshacer sobre el compositor */
+.deshacerBarra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border-radius: var(--rc-radio-md);
+  border: 1px solid var(--rc-gris-100);
+  background: var(--rc-superficie-clara);
+  box-shadow: var(--rc-elev-relieve-sm);
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto);
+}
+
+.deshacerAcciones {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.deshacerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--rc-azul-texto);
+  border-radius: var(--rc-radio-pildora);
+  background: var(--rc-azul-suave);
+  color: var(--rc-azul-texto);
+  font-family: inherit;
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-semibold);
+  cursor: pointer;
+}
+
+.deshacerCerrar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--rc-texto-secundario);
+  cursor: pointer;
+}
+
+:global(html[data-rc-tema="glass"]) .trigger:hover,
+:global(html[data-rc-tema="glass"]) .trigger[aria-expanded="true"] {
+  background: var(--rc-superficie);
+  border-color: var(--rc-glass-borde);
+}
+
+:global(html[data-rc-tema="glass"]) .menu {
+  background: var(--rc-menu-fondo);
+  border-color: var(--rc-glass-borde-flotante);
+  box-shadow: var(--rc-glass-sombra-flotante);
+}
+
+:global(html[data-rc-tema="glass"]) .editorCampo {
+  background: var(--rc-glass-campo);
+}
+
+:global(html[data-rc-tema="glass"]) .deshacerBarra {
+  background: var(--rc-menu-fondo);
+  border-color: var(--rc-glass-borde-flotante);
+  box-shadow: var(--rc-glass-sombra-flotante);
+}

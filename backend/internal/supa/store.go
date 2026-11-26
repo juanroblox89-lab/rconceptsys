@@ -311,6 +311,49 @@ func (s *SupabaseStore) ObtenerMiembroEquipo(ctx context.Context, id string) (*s
 	return convertirPerfil(&rows[0], roles), nil
 }
 
+func parsearTiempoSupa(raw string) time.Time {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t
+	}
+	t, _ := time.Parse(time.RFC3339, raw)
+	return t
+}
+
+func (s *SupabaseStore) convertirChatMensaje(ctx context.Context, item *dbChatMensaje, conservarBorrado bool) *store.ChatMensaje {
+	t := parsearTiempoSupa(item.CreadoEn)
+	var editT *time.Time
+	if item.EditadoEn != nil {
+		et := parsearTiempoSupa(*item.EditadoEn)
+		editT = &et
+	}
+	var borradoT *time.Time
+	if conservarBorrado && item.BorradoEn != nil {
+		bt := parsearTiempoSupa(*item.BorradoEn)
+		borradoT = &bt
+	}
+
+	var autor *store.Perfil
+	if item.Autor != nil && !item.EsRIA {
+		roles, _ := s.obtenerRolesDePerfil(ctx, item.Autor.ID)
+		autor = convertirPerfil(item.Autor, roles)
+	}
+
+	autorID := item.AutorID
+	if item.EsRIA {
+		autorID = "ria"
+	}
+	return &store.ChatMensaje{
+		EsRIA:     item.EsRIA,
+		ID:        item.ID,
+		AutorID:   autorID,
+		Autor:     autor,
+		Cuerpo:    item.Cuerpo,
+		CreadoEn:  t,
+		EditadoEn: editT,
+		BorradoEn: borradoT,
+	}
+}
+
 func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, despuesID int64, limite int) ([]*store.ChatMensaje, error) {
 	if limite <= 0 || limite > 100 {
 		limite = 40
@@ -335,37 +378,138 @@ func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, d
 		return nil, err
 	}
 
-	var res []*store.ChatMensaje = make([]*store.ChatMensaje, 0)
+	res := make([]*store.ChatMensaje, 0, len(rows))
 	for i := range rows {
-		item := &rows[i]
-		t, _ := time.Parse(time.RFC3339, item.CreadoEn)
-		var editT *time.Time
-		if item.EditadoEn != nil {
-			et, _ := time.Parse(time.RFC3339, *item.EditadoEn)
-			editT = &et
-		}
-
-		var autor *store.Perfil
-		if item.Autor != nil && !item.EsRIA {
-			roles, _ := s.obtenerRolesDePerfil(ctx, item.Autor.ID)
-			autor = convertirPerfil(item.Autor, roles)
-		}
-
-		if item.EsRIA {
-			item.AutorID = "ria"
-		}
-		res = append(res, &store.ChatMensaje{
-			EsRIA:     item.EsRIA,
-			ID:        item.ID,
-			AutorID:   item.AutorID,
-			Autor:     autor,
-			Cuerpo:    item.Cuerpo,
-			CreadoEn:  t,
-			EditadoEn: editT,
-		})
+		res = append(res, s.convertirChatMensaje(ctx, &rows[i], false))
 	}
 	s.adjuntosPorMensajes(ctx, res)
 	return res, nil
+}
+
+func (s *SupabaseStore) ObtenerMensajeChatPorID(ctx context.Context, id int64, incluirBorrado bool) (*store.ChatMensaje, error) {
+	q := url.Values{}
+	q.Set("id", "eq."+strconv.FormatInt(id, 10))
+	if !incluirBorrado {
+		q.Set("borrado_en", "is.null")
+	}
+	q.Set("select", "*,perfiles!chat_mensajes_autor_id_fkey(*)")
+
+	var rows []dbChatMensaje
+	if err := s.client.REST(ctx, "GET", "chat_mensajes", q, nil, "", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	msg := s.convertirChatMensaje(ctx, &rows[0], incluirBorrado)
+	s.adjuntosPorMensajes(ctx, []*store.ChatMensaje{msg})
+	return msg, nil
+}
+
+func (s *SupabaseStore) EditarMensajeChat(ctx context.Context, id int64, autorID string, cuerpo string) (*store.ChatMensaje, error) {
+	actual, err := s.ObtenerMensajeChatPorID(ctx, id, false)
+	if err != nil {
+		return nil, err
+	}
+	if actual.EsRIA || actual.AutorID != autorID {
+		return nil, store.ErrForbidden
+	}
+	c := strings.TrimSpace(cuerpo)
+	long := len([]rune(c))
+	if long > 2000 || (long == 0 && len(actual.Adjuntos) == 0) {
+		return nil, store.ErrValidation
+	}
+
+	q := url.Values{}
+	q.Set("id", "eq."+strconv.FormatInt(id, 10))
+	q.Set("autor_id", "eq."+autorID)
+	q.Set("es_ria", "eq.false")
+	q.Set("borrado_en", "is.null")
+	q.Set("select", "*,perfiles!chat_mensajes_autor_id_fkey(*)")
+
+	payload := map[string]any{
+		"cuerpo":     c,
+		"editado_en": time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	var rows []dbChatMensaje
+	if err := s.client.REST(ctx, "PATCH", "chat_mensajes", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	msg := s.convertirChatMensaje(ctx, &rows[0], false)
+	s.adjuntosPorMensajes(ctx, []*store.ChatMensaje{msg})
+	return msg, nil
+}
+
+func (s *SupabaseStore) EliminarMensajeChat(ctx context.Context, id int64, actorID string, esAdmin bool) error {
+	actual, err := s.ObtenerMensajeChatPorID(ctx, id, false)
+	if err != nil {
+		return err
+	}
+	if !esAdmin && (actual.EsRIA || actual.AutorID != actorID) {
+		return store.ErrForbidden
+	}
+
+	q := url.Values{}
+	q.Set("id", "eq."+strconv.FormatInt(id, 10))
+	q.Set("borrado_en", "is.null")
+	if !esAdmin {
+		q.Set("autor_id", "eq."+actorID)
+		q.Set("es_ria", "eq.false")
+	}
+
+	var rows []dbChatMensaje
+	payload := map[string]any{
+		"borrado_en": time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := s.client.REST(ctx, "PATCH", "chat_mensajes", q, payload, "return=representation", &rows); err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+func (s *SupabaseStore) RestaurarMensajeChat(ctx context.Context, id int64, actorID string, esAdmin bool, ventana time.Duration) (*store.ChatMensaje, error) {
+	actual, err := s.ObtenerMensajeChatPorID(ctx, id, true)
+	if err != nil {
+		return nil, err
+	}
+	if actual.BorradoEn == nil {
+		return nil, store.ErrNotFound
+	}
+	if !esAdmin && (actual.EsRIA || actual.AutorID != actorID) {
+		return nil, store.ErrForbidden
+	}
+	if time.Since(*actual.BorradoEn) > ventana {
+		return nil, store.ErrConflict
+	}
+
+	q := url.Values{}
+	q.Set("id", "eq."+strconv.FormatInt(id, 10))
+	q.Set("borrado_en", "not.is.null")
+	if !esAdmin {
+		q.Set("autor_id", "eq."+actorID)
+		q.Set("es_ria", "eq.false")
+	}
+	q.Set("select", "*,perfiles!chat_mensajes_autor_id_fkey(*)")
+
+	var rows []dbChatMensaje
+	payload := map[string]any{
+		"borrado_en": nil,
+	}
+	if err := s.client.REST(ctx, "PATCH", "chat_mensajes", q, payload, "return=representation", &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, store.ErrNotFound
+	}
+	msg := s.convertirChatMensaje(ctx, &rows[0], false)
+	s.adjuntosPorMensajes(ctx, []*store.ChatMensaje{msg})
+	return msg, nil
 }
 
 func (s *SupabaseStore) CrearMensajeChat(ctx context.Context, autorID string, cuerpo string) (*store.ChatMensaje, error) {
