@@ -320,7 +320,7 @@
         {
           "orden": 6,
           "archivo_funcion": "backend/internal/httpapi/ria_grupo.go:contextoRIAGrupo",
-          "descripcion": "Omite enlaces y acota a 600 caracteres por mensaje; estructura el historial como datos no confiables."
+          "descripcion": "Omite enlaces y acota a 600 caracteres por mensaje; estructura el historial como datos no confiables. Admite Markdown GFM y datos ria-viz sin inventar cifras ni consultar fuentes externas."
         },
         {
           "orden": 7,
@@ -336,6 +336,16 @@
           "orden": 9,
           "archivo_funcion": "supabase/migrations/026_ria_grupo.sql:rc_liberar_ria_grupo",
           "descripcion": "Libera solo el propio turno al fallar; reintentar no duplica la consulta ni la respuesta."
+        },
+        {
+          "orden": 10,
+          "archivo_funcion": "components/RespuestaRIA.tsx:RespuestaRIA",
+          "descripcion": "Solo las respuestas de RIA se muestran con Markdown GFM y visualizaciones locales; el grupo no activa enlaces."
+        },
+        {
+          "orden": 11,
+          "archivo_funcion": "lib/copiar-ria.ts:copiarCuerpoRIA",
+          "descripcion": "En ambos chats el menú de RIA copia únicamente su cuerpo renderizado: HTML y texto con respaldo de texto plano, sin destinos de enlaces."
         }
       ]
     },
@@ -743,7 +753,7 @@
         {
           "orden": 3,
           "archivo_funcion": "components/RespuestaRIA.tsx:RespuestaRIA",
-          "descripcion": "Renderiza Markdown. En privado solo mantiene enlaces externos explícitos; los tokens de rutas se quedan como texto."
+          "descripcion": "Renderiza Markdown GFM y visualizaciones locales con datos legibles. En privado mantiene enlaces externos explícitos; los tokens de rutas se quedan como texto."
         }
       ]
     },

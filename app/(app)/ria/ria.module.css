@@ -12,7 +12,7 @@
 .sugerencia:hover, .micro:hover { background: var(--rc-azul-suave); }
 .sugerencia:active { box-shadow: var(--rc-elev-hundido-sm); }
 .mensaje { align-self: flex-start; max-width: 100%; overflow-wrap: break-word; font-size: 15px; line-height: 1.6; }
-.mensaje p { margin: 0; white-space: pre-wrap; }
+.propia > p { margin: 0; white-space: pre-wrap; }
 .propia { align-self: flex-end; max-width: min(86%, 620px); padding: 8px 14px; border-radius: 18px; background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm); }
 [data-rc-mensaje-fila] .propia { max-width: 100%; }
 .hilo > [data-rc-mensaje-fila] { max-width: min(86%, 620px); }
@@ -44,14 +44,6 @@
 
 .fichas { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,230px),1fr)); gap: 8px; width: min(100%, 530px); }
 .fichas .sugerencia { justify-content: space-between; color: var(--rc-texto); }
-.mensaje :is(ul,ol) { margin: .35em 0; padding-inline-start: 1.55em; }
-.mensaje ol { list-style: decimal; }
-.mensaje ul { list-style: disc; }
-.mensaje p + p { margin-top: .65em; }
-.mensaje a { color: var(--rc-azul-texto); text-decoration: underline; text-underline-offset: .18em; }
-.mensaje code { background: var(--rc-superficie-hundida); border-radius: 4px; padding: .1em .25em; font-size: .92em; }
-.mensaje pre { overflow: auto; white-space: pre-wrap; padding: 8px; background: var(--rc-superficie-hundida); border-radius: var(--rc-radio-sm); }
-.mensaje pre code { padding: 0; background: none; }
 @media (min-width: 768px) { .pie { --rc-comandos-inset: 24px; } }
 
 /* No dejamos párrafos de RIA ni el saludo directamente sobre el wallpaper. */

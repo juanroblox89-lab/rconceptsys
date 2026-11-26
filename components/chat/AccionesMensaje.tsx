@@ -3,6 +3,8 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Copy, MoreHorizontal, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { useAviso } from "@/components/ui/Aviso";
+import { copiarCuerpoRIA } from "@/lib/copiar-ria";
 import styles from "./AccionesMensaje.module.css";
 
 export async function copiarTextoSeguro(texto: string): Promise<boolean> {
@@ -54,6 +56,8 @@ export interface AccionesMensajeProps {
   puedeEliminar?: boolean;
   /** Si el mensaje está en edición en línea, deshabilita el menú/pulsación larga. */
   editando?: boolean;
+  /** Copia solo el cuerpo renderizado de RIA, nunca el texto del menú ni adjuntos. */
+  copiarRIA?: boolean;
   onCopiar?: () => void;
   onEditar?: () => void;
   onEliminar?: () => void;
@@ -69,6 +73,7 @@ export function AccionesMensaje({
   puedeEliminar = false,
   editando = false,
   onCopiar,
+  copiarRIA = false,
   onEditar,
   onEliminar,
 }: AccionesMensajeProps) {
@@ -77,6 +82,8 @@ export function AccionesMensaje({
   const [movilSheet, setMovilSheet] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const contenidoRef = useRef<HTMLDivElement>(null);
+  const { mostrarAviso } = useAviso();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inicioToqueRef = useRef<{ x: number; y: number } | null>(null);
@@ -194,7 +201,22 @@ export function AccionesMensaje({
     fn?.();
   };
 
-  const vistaPrevia = (resumen ?? "").trim();
+  const vistaPrevia = copiarRIA ? "Respuesta de RIA" : (resumen ?? "").trim();
+
+  const copiar = async () => {
+    const cuerpo = contenidoRef.current?.querySelector<HTMLElement>("[data-rc-cuerpo-ria]") ?? null;
+    let ok = false;
+    try {
+      ok = await copiarCuerpoRIA(cuerpo, copiarTextoSeguro);
+    } catch {
+      // Un fallo de serialización tampoco debe copiar el mensaje crudo.
+    }
+    mostrarAviso({
+      tipo: ok ? "exito" : "error",
+      titulo: ok ? "Respuesta copiada" : "No se pudo copiar la respuesta",
+    });
+  };
+
 
   const contenidoMenu = (
     <div
@@ -208,7 +230,10 @@ export function AccionesMensaje({
     >
       {movilSheet && vistaPrevia ? <p className={styles.preview}>{vistaPrevia}</p> : null}
       {puedeCopiar && (
-        <button type="button" role="menuitem" className={styles.opcion} onClick={() => ejecutar(onCopiar)}>
+        <button type="button" role="menuitem" className={styles.opcion} onClick={() => {
+          ejecutar(copiarRIA ? () => void copiar() : onCopiar);
+          if (copiarRIA && !movilSheet) triggerRef.current?.focus();
+        }}>
           <Copy size={15} strokeWidth={1.75} aria-hidden="true" />
           <span>Copiar</span>
         </button>
@@ -264,7 +289,8 @@ export function AccionesMensaje({
       className={`${styles.fila} ${propio ? styles.filaMia : ""} ${bloque ? styles.filaBloque : ""}`}
     >
       <div
-        className={`${styles.contenido} ${hayAcciones ? styles.interactivo : ""}`}
+        ref={copiarRIA ? contenidoRef : undefined}
+        className={`${styles.contenido} ${hayAcciones ? (copiarRIA ? styles.interactivoRIA : styles.interactivo) : ""}`}
         onPointerDown={(e) => {
           if (e.pointerType === "touch" || e.pointerType === "pen") {
             iniciarLarga(e.clientX, e.clientY, e.target);

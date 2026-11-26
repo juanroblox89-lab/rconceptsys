@@ -277,7 +277,8 @@ function ConversacionRIA() {
               puedeEditar={esUsuario && esPersistido}
               puedeEliminar={esUsuario && esPersistido}
               editando={estaEditando}
-              onCopiar={() => void copiarMensaje(m.cuerpo)}
+              copiarRIA={!esUsuario}
+              onCopiar={esUsuario ? () => void copiarMensaje(m.cuerpo) : undefined}
               onEditar={() => {
                 setErrorEdicion(null);
                 setEditandoId(m.id);
@@ -314,7 +315,7 @@ function ConversacionRIA() {
         })}
         {enviando && <>
           <article className={`${styles.mensaje} ${styles.propia}`} aria-label="Tu mensaje"><p>{pregunta}</p></article>
-          {respuesta ? <article className={styles.mensaje} aria-label="Respuesta de RIA"><RespuestaRIA texto={respuesta} rutas={[]} /></article> : <p role="status" className={styles.pensando}>Pensando</p>}
+          {respuesta ? <article className={styles.mensaje} aria-label="Respuesta de RIA"><RespuestaRIA texto={respuesta} transmitiendo /></article> : <p role="status" className={styles.pensando}>Pensando</p>}
         </>}
         {error && <div role="alert" className={styles.error}>{error} {!listo && <Boton variante="secundario" tamano="sm" onClick={() => { setError(""); setIntento(n => n + 1); }}>Reintentar</Boton>}</div>}
       </div>

@@ -14,6 +14,7 @@ import { Modal } from "@/components/ui/Modal";
 import { EquipoBarra } from "@/components/EquipoBarra";
 import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { AdjuntoVista } from "@/components/chat/AdjuntoVista";
+import { RespuestaRIA } from "@/components/RespuestaRIA";
 import { GrabadorAudio } from "@/components/chat/GrabadorAudio";
 import { MenuAdjuntos, type ArchivoNuevo } from "@/components/chat/MenuAdjuntos";
 import {
@@ -537,7 +538,7 @@ export default function ChatPage() {
                   />
                 </Link>}
 
-                <div className={styles.groupContent}>
+                <div className={`${styles.groupContent} ${grupo.autor_id === "ria" ? styles.groupContentRIA : ""}`}>
                   <div className={styles.groupHeader}>
                     {grupo.autor_id === "ria" ? <strong className={styles.authorName}>RIA</strong> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.authorName}>
                       {grupo.autor_nombre}
@@ -564,7 +565,7 @@ export default function ChatPage() {
                         linea.cuerpo.trim() ||
                         linea.adjuntos?.find((a) => a.tipo === "drive" && a.url_externa)?.url_externa ||
                         "";
-                      const puedeCopiar = esPersistido && Boolean(textoCopiar);
+                      const puedeCopiar = esPersistido && Boolean(esRia ? linea.cuerpo.trim() : textoCopiar);
                       const puedeEditar = esPersistido && grupo.es_mio && !esRia;
                       const puedeEliminar = esPersistido && ((grupo.es_mio && !esRia) || Boolean(yo?.es_admin));
                       const estaEditando = editandoId === linea.id;
@@ -578,7 +579,8 @@ export default function ChatPage() {
                           puedeEditar={puedeEditar}
                           puedeEliminar={puedeEliminar}
                           editando={estaEditando}
-                          onCopiar={() => void copiarMensaje(textoCopiar)}
+                          copiarRIA={esRia}
+                          onCopiar={esRia ? undefined : () => void copiarMensaje(textoCopiar)}
                           onEditar={() => {
                             setErrorEdicion(null);
                             setEditandoId(linea.id);
@@ -611,9 +613,11 @@ export default function ChatPage() {
                               />
                             ) : (
                               <>
-                                {linea.cuerpo ? (
+                                {linea.cuerpo ? esRia ? (
+                                  <RespuestaRIA texto={linea.cuerpo} grupo />
+                                ) : (
                                   <p className={styles.bubbleTexto}>
-                                    {glass && !esRia && leerComandoRIAPublico(linea.cuerpo) === null
+                                    {glass && leerComandoRIAPublico(linea.cuerpo) === null
                                       ? <TextoComandos texto={linea.cuerpo} rutas={rutas} />
                                       : linea.cuerpo}
                                   </p>

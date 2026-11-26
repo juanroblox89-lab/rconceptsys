@@ -198,11 +198,17 @@ func TestRIAGrupoSoloHistorialVisibleYAcotado(t *testing.T) {
 				t.Fatalf("dato no permitido: %s", palabra)
 			}
 		}
-		return delta("Respuesta sintética con https://storage.invalid/NEVER-PUBLISH?token=sintetico")
+		for _, regla := range []string{"máximo 1500 caracteres", "tablas", "ria-viz", "solo valores aportados en el chat", "no inventes estadísticas"} {
+			if !strings.Contains(ms[0].Texto, regla) {
+				t.Errorf("falta restricción de formato o datos: %q", regla)
+			}
+		}
+		return delta("Respuesta sintética con https://storage.invalid/NEVER-PUBLISH?token=sintetico\n\n```ria-viz\n{\"tipo\":\"barras\",\"datos\":[[\"Tareas\",2]]}\n```")
 	}
 	w := pedirRIA(a.Routes(), "POST", "/api/chat/ria", "uno", comandoPrueba(1, "/ria resume los últimos 50 mensajes con /storage/obj?token=PREGUNTA_TOKEN"))
 	m := leerEventosGrupo(t, w, "consulta", "fin")
-	if strings.Contains(m[1].Cuerpo, "NEVER-PUBLISH") || !strings.Contains(m[1].Cuerpo, "[enlace omitido]") {
+	if strings.Contains(m[1].Cuerpo, "NEVER-PUBLISH") || !strings.Contains(m[1].Cuerpo, "[enlace omitido]") ||
+		!strings.Contains(m[1].Cuerpo, "```ria-viz\n{\"tipo\":\"barras\",\"datos\":[[\"Tareas\",2]]}\n```") {
 		t.Fatal(m[1].Cuerpo)
 	}
 }
