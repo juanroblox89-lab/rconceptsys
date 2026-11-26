@@ -20,8 +20,10 @@ interface Pendiente {
   nombre: string;
   estado: "subiendo" | "listo" | "error";
   adjunto?: ChatAdjunto;
+  urlDrive?: string;
 }
 
+import { normalizarUrlEnlace } from "@/lib/drive-equipo";
 import { mencionaRIA, transmitirRIA } from "@/lib/ria";
 import { MarcaRIA } from "@/components/MarcaRIA";
 import { EntradaComandos, TextoComandos, useComandosChat, useGlassChat } from "@/components/ComandosChat";
@@ -229,8 +231,19 @@ export default function ChatPage() {
 
   const agregarDrive = (nombre: string, url: string) => {
     setErrorAdjunto(null);
+    const claveUrl = normalizarUrlEnlace(url);
+    const yaExiste = pendientes.some(
+      (p) =>
+        p.estado !== "error" &&
+        ((p.urlDrive && p.urlDrive === claveUrl) ||
+          (p.adjunto?.tipo === "drive" && p.adjunto.url_externa && normalizarUrlEnlace(p.adjunto.url_externa) === claveUrl)),
+    );
+    if (yaExiste) {
+      setErrorAdjunto("Esa carpeta ya está adjunta en el borrador.");
+      return;
+    }
     const clave = `${Date.now()}-drive`;
-    setPendientes((prev) => [...prev, { id: clave, nombre: nombre, estado: "subiendo" }]);
+    setPendientes((prev) => [...prev, { id: clave, nombre: nombre, estado: "subiendo", urlDrive: claveUrl }]);
     void subirAdjunto(clave, api.postChatAdjuntoDrive(nombre, url));
   };
 
@@ -490,6 +503,7 @@ export default function ChatPage() {
               onArchivos={agregarArchivos}
               onDrive={agregarDrive}
               onError={(m) => setErrorAdjunto(m)}
+              esAdmin={Boolean(yo?.es_admin)}
             />
             <div className={styles.composerCaja}>
               <EntradaComandos

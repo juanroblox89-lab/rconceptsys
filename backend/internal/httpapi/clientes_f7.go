@@ -201,8 +201,20 @@ func (a *API) handleAdminDrivePickerToken(w http.ResponseWriter, r *http.Request
 			}
 		}
 	}
+	correo := strings.TrimSpace(conexion.Correo)
+	if actual := strings.TrimSpace(a.correoDrive(r.Context(), tok.AccessToken)); actual != "" {
+		correo = actual
+	}
 	// Nunca serializar tokenDriveResp: contiene el campo refresh_token.
-	ResponderJSON(w, 200, map[string]any{"access_token": tok.AccessToken, "expires_in": tok.ExpiresIn, "carpeta_id": padre, "clave": conf.PickerKey, "proyecto_id": conf.PickerAppID})
+	ResponderJSON(w, 200, map[string]any{
+		"access_token":  tok.AccessToken,
+		"expires_in":    tok.ExpiresIn,
+		"carpeta_id":    padre,
+		"clave":         conf.PickerKey,
+		"proyecto_id":   conf.PickerAppID,
+		"correo":        correo,
+		"cuenta_equipo": conf.CuentaEsperada(),
+	})
 }
 
 func (a *API) referenciaDriveCliente(ctx context.Context, id string) (nombre, enlace string, err error) {

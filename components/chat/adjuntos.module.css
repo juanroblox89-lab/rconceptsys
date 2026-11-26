@@ -147,6 +147,150 @@
   cursor: pointer;
 }
 
+/* --- Selector de carpeta de Drive (chat) --- */
+.driveError {
+  margin: 0;
+  padding: var(--rc-esp-6) var(--rc-esp-8);
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-rojo-suave);
+  color: var(--rc-rojo-texto);
+  font-size: var(--rc-fs-micro);
+  text-align: center;
+}
+
+.driveCargando {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rc-esp-6);
+  padding: var(--rc-esp-10);
+  color: var(--rc-texto-tenue);
+  font-size: var(--rc-fs-secundario);
+}
+
+.loader {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.driveVacio {
+  margin: 0;
+  padding: var(--rc-esp-10);
+  text-align: center;
+  color: var(--rc-texto-tenue);
+  font-size: var(--rc-fs-secundario);
+}
+
+.driveLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.driveItem {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-esp-8);
+  width: 100%;
+  padding: var(--rc-esp-6) var(--rc-esp-8);
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  background: none;
+  color: var(--rc-gris-900);
+  font-family: inherit;
+  font-size: var(--rc-fs-secundario);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--rc-transicion-rapida);
+}
+
+.driveItem:hover {
+  background: var(--rc-gris-50);
+}
+
+.driveItem:focus-visible {
+  outline: none;
+  box-shadow: var(--rc-elev-foco-azul);
+}
+
+.driveItemIcono {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: var(--rc-icono);
+}
+
+.driveItemTexto {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.driveItemNombre {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.driveItemOrigen {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--rc-texto-tenue);
+}
+
+.driveItemFlecha {
+  flex: none;
+  color: var(--rc-texto-tenue);
+}
+
+.driveNotaSoloLectura {
+  margin: 0;
+  font-size: var(--rc-fs-micro);
+  line-height: var(--rc-lh-micro);
+  color: var(--rc-texto-tenue);
+}
+
+.driveTogglePegar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rc-esp-4);
+  padding: var(--rc-esp-4) var(--rc-esp-6);
+  border: none;
+  border-radius: var(--rc-radio-sm);
+  background: none;
+  color: var(--rc-azul-texto);
+  font-family: inherit;
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-semibold);
+  cursor: pointer;
+}
+
+.driveTogglePegar:hover {
+  background: var(--rc-gris-50);
+}
+
+.drivePegarCaja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-6);
+  padding-top: var(--rc-esp-4);
+  border-top: 1px solid var(--rc-gris-100);
+}
+
 /* --- Micrófono --- */
 .micBoton {
   display: grid;
@@ -439,7 +583,22 @@
   transition: box-shadow var(--rc-transicion-rapida);
 }
 
-.tarjeta:hover {
+.tarjetaDrive {
+  max-width: 340px;
+  flex-wrap: wrap;
+}
+
+.tarjetaDrive .tarjetaTexto {
+  flex: 1 1 130px;
+}
+
+.tarjetaBoton {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+a.tarjeta:hover {
   box-shadow: var(--rc-elev-relieve-md);
 }
 

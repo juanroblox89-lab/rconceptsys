@@ -87,6 +87,7 @@ func (a *API) handleAdminGetDrive(w http.ResponseWriter, r *http.Request) {
 		"configurado":         a.F5.Drive.Configurado(),
 		"conectado":           false,
 		"correo":              "",
+		"cuenta_equipo":       a.F5.Drive.CuentaEsperada(),
 		"carpeta_raiz_id":     "",
 		"carpeta_raiz_nombre": "",
 		"organizado":          false,

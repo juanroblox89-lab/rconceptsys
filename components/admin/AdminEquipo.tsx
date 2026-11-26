@@ -1,12 +1,22 @@
 "use client";
 
 import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
-import { useCallback, useEffect, useState } from "react";
-import { ArrowUp, ArrowDown, Check, ExternalLink, Link2, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowUp, ArrowDown, Check, ExternalLink, FolderOpen, Link2, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ConfigEquipo, DriveEstado, PlanDrive, ResultadoMovimientoDrive } from "@/lib/types";
 import { Aviso, useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
+import { type DialogoPicker } from "@/lib/google-picker";
+import { abrirSelectorGoogleDrive } from "@/components/PickerDriveCliente";
+import {
+  cuentaEquipoEsperada,
+  esCuentaEquipoDrive,
+  esUrlHttpsValida,
+  normalizarCorreoDrive,
+  normalizarUrlEnlace,
+  truncarNombreEnlace,
+} from "@/lib/drive-equipo";
 import styles from "./admin-paneles.module.css";
 
 // Gestión → Equipo: nombre y descripción del equipo, enlaces rápidos de la
@@ -31,6 +41,18 @@ export function AdminEquipo() {
   const [plan, setPlan] = useState<PlanDrive | null>(null);
   const [movimientos, setMovimientos] = useState<ResultadoMovimientoDrive | null>(null);
 
+  // Estados para "Elegir de Drive"
+  const pickerDialogo = useRef<DialogoPicker | null>(null);
+  const pickerVigente = useRef(false);
+  const [pickerAbriendo, setPickerAbriendo] = useState(false);
+  const [guardandoPicker, setGuardandoPicker] = useState(false);
+  const [pickerError, setPickerError] = useState("");
+  const [enlacePendienteCuenta, setEnlacePendienteCuenta] = useState<{
+    nombre: string;
+    url: string;
+    correoDetectado: string;
+  } | null>(null);
+
   const cargar = useCallback(async () => {
     try {
       const [resumen, estadoDrive] = await Promise.all([api.getEquipoResumen(), api.adminGetDrive()]);
@@ -49,6 +71,21 @@ export function AdminEquipo() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void cargar();
   }, [cargar]);
+
+  // Limpieza del Picker al desmontar
+  useEffect(() => {
+    pickerVigente.current = true;
+    return () => {
+      pickerVigente.current = false;
+      try {
+        pickerDialogo.current?.setVisible(false);
+        pickerDialogo.current?.dispose?.();
+      } catch {
+        // Ignorar limpieza de diálogo ya cerrado
+      }
+      pickerDialogo.current = null;
+    };
+  }, []);
 
   // Vuelta del OAuth de Google: /admin?drive=conectado
   useEffect(() => {
@@ -69,6 +106,11 @@ export function AdminEquipo() {
     window.history.replaceState({}, "", "/admin?pestana=equipo");
   }, [mostrarAviso]);
 
+  const enlacesActualesRef = useRef(config?.enlaces ?? []);
+  useEffect(() => {
+    enlacesActualesRef.current = config?.enlaces ?? [];
+  }, [config?.enlaces]);
+
   const guardarEquipo = async () => {
     setGuardando(true);
     try {
@@ -86,10 +128,48 @@ export function AdminEquipo() {
     }
   };
 
+  const cuentaEquipo = cuentaEquipoEsperada(drive?.cuenta_equipo);
+  const cuentaDriveIncorrecta = Boolean(
+    drive?.conectado && drive.correo && !esCuentaEquipoDrive(drive.correo, drive.cuenta_equipo),
+  );
+
+  const crearEnlaceDesdeDrive = async (nombreEnlace: string, urlEnlace: string) => {
+    setGuardandoPicker(true);
+    setPickerError("");
+    try {
+      await api.adminPostEnlaceEquipo(nombreEnlace, urlEnlace);
+      await cargar();
+      mostrarAviso({ tipo: "exito", titulo: "Enlace agregado desde Drive" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo crear el enlace.";
+      setPickerError(msg);
+      mostrarAviso({ tipo: "error", titulo: "No se pudo crear el enlace", texto: msg });
+    } finally {
+      if (pickerVigente.current) setGuardandoPicker(false);
+    }
+  };
+
   const agregarEnlace = async () => {
+    const limpioNombre = enlaceNombre.trim();
+    const limpioUrl = enlaceUrl.trim();
+    setPickerError("");
+    if (!limpioNombre || !limpioUrl) return;
+    if (!esUrlHttpsValida(limpioUrl)) {
+      setPickerError("El enlace debe ser una URL https válida (máximo 500 caracteres).");
+      return;
+    }
+    const claveNueva = normalizarUrlEnlace(limpioUrl);
+    if (enlacesActualesRef.current.some((e) => normalizarUrlEnlace(e.url) === claveNueva)) {
+      setPickerError("Ese enlace ya está en la lista.");
+      return;
+    }
+    if (enlacesActualesRef.current.length >= 12) {
+      setPickerError("Máximo 12 enlaces rápidos permitidos.");
+      return;
+    }
     setAgregando(true);
     try {
-      await api.adminPostEnlaceEquipo(enlaceNombre, enlaceUrl);
+      await api.adminPostEnlaceEquipo(limpioNombre, limpioUrl);
       setEnlaceNombre("");
       setEnlaceUrl("");
       await cargar();
@@ -123,6 +203,108 @@ export function AdminEquipo() {
     }
   };
 
+  // "Elegir de Drive" - abrir Google Picker reutilizando PickerDriveCliente y /api/admin/drive/picker-token
+  const abrirPickerDrive = async () => {
+    if (pickerAbriendo || guardandoPicker || !drive?.conectado) return;
+    if (enlacesActualesRef.current.length >= 12) {
+      setPickerError("Máximo 12 enlaces rápidos permitidos.");
+      return;
+    }
+    const boton = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPickerError("");
+    setEnlacePendienteCuenta(null);
+    setPickerAbriendo(true);
+    const restaurarFoco = () => requestAnimationFrame(() => boton?.focus());
+
+    try {
+      await abrirSelectorGoogleDrive({
+        maxItems: 1,
+        multiselect: false,
+        dialogoRef: pickerDialogo,
+        vigenteRef: pickerVigente,
+        onAbrir: (conf) => {
+          if (!pickerVigente.current) return;
+          setPickerAbriendo(false);
+          if (conf.correo && (!drive?.correo || normalizarCorreoDrive(conf.correo) !== normalizarCorreoDrive(drive.correo))) {
+            setDrive((prev) => (prev ? { ...prev, correo: conf.correo ?? prev.correo } : prev));
+          }
+        },
+        onCancelar: () => {
+          if (!pickerVigente.current) return;
+          setPickerAbriendo(false);
+          restaurarFoco();
+        },
+        onSeleccion: async (elementos, conf, correoPicker) => {
+          if (!pickerVigente.current) return;
+          const doc = elementos[0];
+          if (!doc) {
+            setPickerError("No pudimos leer ese archivo o carpeta. Elige otra referencia.");
+            restaurarFoco();
+            return;
+          }
+
+          const nombreEnlace = truncarNombreEnlace(doc.nombre, 40);
+          const urlEnlace = doc.url.trim();
+
+          if (!nombreEnlace || !esUrlHttpsValida(urlEnlace)) {
+            setPickerError("El elemento seleccionado no tiene un enlace https válido.");
+            restaurarFoco();
+            return;
+          }
+
+          const listaActual = enlacesActualesRef.current;
+          const claveNueva = normalizarUrlEnlace(urlEnlace);
+          if (listaActual.some((e) => normalizarUrlEnlace(e.url) === claveNueva)) {
+            setPickerError("Ese enlace ya está en la lista.");
+            restaurarFoco();
+            return;
+          }
+
+          if (listaActual.length >= 12) {
+            setPickerError("Máximo 12 enlaces rápidos permitidos.");
+            restaurarFoco();
+            return;
+          }
+
+          // Verificar si el token del Picker o el usuario del Picker corresponden a otra cuenta antes de crear
+          const esperada = cuentaEquipoEsperada(conf.cuenta_equipo ?? drive?.cuenta_equipo);
+          const correoToken = conf.correo?.trim() || "";
+          const correoEstado = drive?.correo?.trim() || "";
+          const mismatchPicker = Boolean(correoPicker && !esCuentaEquipoDrive(correoPicker, esperada));
+          const mismatchToken = Boolean(correoToken && !esCuentaEquipoDrive(correoToken, esperada));
+          const mismatchEstado = Boolean(correoEstado && !esCuentaEquipoDrive(correoEstado, esperada));
+          const discrepancia = Boolean(
+            correoEstado && correoToken && normalizarCorreoDrive(correoEstado) !== normalizarCorreoDrive(correoToken),
+          );
+
+          if (mismatchPicker || mismatchToken || mismatchEstado || discrepancia) {
+            const detectado =
+              (mismatchPicker && correoPicker) ||
+              (mismatchToken && correoToken) ||
+              (discrepancia && correoToken) ||
+              correoEstado ||
+              "otra cuenta";
+            setEnlacePendienteCuenta({
+              nombre: nombreEnlace,
+              url: urlEnlace,
+              correoDetectado: detectado,
+            });
+            restaurarFoco();
+            return;
+          }
+
+          await crearEnlaceDesdeDrive(nombreEnlace, urlEnlace);
+          restaurarFoco();
+        },
+      });
+    } catch (e) {
+      if (!pickerVigente.current) return;
+      setPickerError(e instanceof Error ? e.message : "No pudimos abrir Google Drive.");
+      setPickerAbriendo(false);
+      restaurarFoco();
+    }
+  };
+
   const conectarDrive = async () => {
     setConectando(true);
     try {
@@ -135,6 +317,7 @@ export function AdminEquipo() {
         titulo: "No se pudo iniciar la conexión",
         texto: err instanceof Error ? err.message : "Pide a soporte que revise la conexión.",
       });
+    } finally {
       setConectando(false);
     }
   };
@@ -143,12 +326,18 @@ export function AdminEquipo() {
     setAccionDrive("desconectar");
     try {
       await api.adminDesconectarDrive();
-      setConfirmar(false); setPlan(null); setMovimientos(null);
+      setConfirmar(false);
+      setPlan(null);
+      setMovimientos(null);
+      setAutorizacionDrive("");
+      setEnlacePendienteCuenta(null);
       await cargar();
       mostrarAviso({ tipo: "info", titulo: "Drive desconectado" });
     } catch {
       mostrarAviso({ tipo: "error", titulo: "No se pudo desconectar", texto: "Inténtalo de nuevo." });
-    } finally { setAccionDrive(""); }
+    } finally {
+      setAccionDrive("");
+    }
   };
 
   const organizar = async () => {
@@ -259,16 +448,22 @@ export function AdminEquipo() {
           <input
             type="text"
             value={enlaceNombre}
-            onChange={(e) => setEnlaceNombre(e.target.value)}
-            placeholder="Nombre (Drive del equipo)"
+            onChange={(e) => {
+              setEnlaceNombre(e.target.value);
+              if (pickerError) setPickerError("");
+            }}
+            placeholder="Nombre del enlace"
             maxLength={40}
             aria-label="Nombre del enlace"
           />
           <input
             type="url"
             value={enlaceUrl}
-            onChange={(e) => setEnlaceUrl(e.target.value)}
-            placeholder="https://drive.google.com/…"
+            onChange={(e) => {
+              setEnlaceUrl(e.target.value);
+              if (pickerError) setPickerError("");
+            }}
+            placeholder="https://…"
             aria-label="URL del enlace"
             inputMode="url"
           />
@@ -276,18 +471,103 @@ export function AdminEquipo() {
             variante="secundario"
             onClick={agregarEnlace}
             cargando={agregando}
-            disabled={agregando || !enlaceNombre.trim() || !enlaceUrl.trim()}
+            disabled={agregando || guardandoPicker || enlaces.length >= 12 || !enlaceNombre.trim() || !enlaceUrl.trim()}
           >
             <Plus size={13} style={{ marginRight: 4 }} />
             Agregar
           </Boton>
+          {drive?.conectado && (
+            <Boton
+              variante="secundario"
+              onClick={abrirPickerDrive}
+              cargando={pickerAbriendo || guardandoPicker}
+              disabled={pickerAbriendo || guardandoPicker || enlaces.length >= 12}
+              title="Elegir archivo o carpeta desde Google Drive"
+            >
+              <FolderOpen size={13} style={{ marginRight: 4 }} />
+              Elegir de Drive
+            </Boton>
+          )}
         </div>
+
+        {!drive?.conectado && (
+          <p className={styles.pickerNoConectado}>Conecta Drive del equipo para elegir.</p>
+        )}
+        {enlaces.length >= 12 && (
+          <p className={styles.pickerNoConectado}>Máximo 12 enlaces rápidos.</p>
+        )}
+        {(pickerAbriendo || guardandoPicker) && (
+          <p className={styles.pickerEstado} role="status">
+            {guardandoPicker ? "Guardando enlace de Drive…" : "Abriendo Google Drive…"}
+          </p>
+        )}
+        {pickerError && <p className={styles.pickerError} role="alert">{pickerError}</p>}
+
+        {enlacePendienteCuenta && (
+          <div className={styles.pickerCuentaAlerta}>
+            <Aviso
+              tipo="advertencia"
+              titulo="La cuenta del selector no coincide"
+              texto={
+                <>
+                  El selector usó <strong>{enlacePendienteCuenta.correoDetectado}</strong>. Reconecta Drive con{" "}
+                  <strong>{cuentaEquipo}</strong> antes de agregar «{enlacePendienteCuenta.nombre}».
+                </>
+              }
+            />
+            <div className={styles.driveAcciones}>
+              <Boton
+                variante="secundario"
+                tamano="sm"
+                onClick={() => setEnlacePendienteCuenta(null)}
+                disabled={guardandoPicker}
+              >
+                Cancelar
+              </Boton>
+              <Boton
+                variante="primario"
+                tamano="sm"
+                cargando={guardandoPicker}
+                onClick={async () => {
+                  const pendiente = enlacePendienteCuenta;
+                  setEnlacePendienteCuenta(null);
+                  await crearEnlaceDesdeDrive(pendiente.nombre, pendiente.url);
+                }}
+              >
+                Agregar de todas formas
+              </Boton>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className={styles.bloque}>
         <h2 className={styles.bloqueTitulo}>Google Drive del equipo</h2>
 
-        <Aviso tipo="advertencia" titulo="Inicia sesión con la cuenta del equipo" texto={<>Para usar bien la integración de Drive, inicia sesión con <strong>ladlejuan26@gmail.com</strong>. Con otra cuenta no verás las carpetas del equipo.</>} />
+        {cuentaDriveIncorrecta && (
+          <Aviso
+            tipo="advertencia"
+            titulo="Cuenta de Drive distinta a la del equipo"
+            texto={
+              <>
+                Drive está conectado con otra cuenta ({drive?.correo}). Reconecta con{" "}
+                <strong>{cuentaEquipo}</strong>.
+              </>
+            }
+          />
+        )}
+        {!drive?.conectado && (
+          <Aviso
+            tipo="advertencia"
+            titulo="Inicia sesión con la cuenta del equipo"
+            texto={
+              <>
+                Para usar bien la integración de Drive, inicia sesión con{" "}
+                <strong>{cuentaEquipo}</strong>. Con otra cuenta no verás las carpetas del equipo.
+              </>
+            }
+          />
+        )}
 
         <div className={styles.driveEstado}>
           <span className={`${styles.pastilla} ${drive?.conectado ? styles.pastillaOk : styles.pastillaTenue}`}>
@@ -302,7 +582,16 @@ export function AdminEquipo() {
             <p>Pide a soporte que habilite Google Drive.</p>
           </div>
         ) : !drive.conectado && (
-          <div className={styles.driveAcciones}><Boton variante="primario" onClick={conectarDrive} cargando={conectando}>Conectar Drive del equipo</Boton>{autorizacionDrive && <EnlaceExterno className="rc-btn rc-btn--secundario" href={autorizacionDrive}>Autorizar en Google <ExternalLink size={14} aria-hidden="true" /></EnlaceExterno>}</div>
+          <div className={styles.driveAcciones}>
+            <Boton variante="primario" onClick={conectarDrive} cargando={conectando}>
+              Conectar Drive del equipo
+            </Boton>
+            {autorizacionDrive && (
+              <EnlaceExterno className="rc-btn rc-btn--secundario" href={autorizacionDrive}>
+                Autorizar en Google <ExternalLink size={14} aria-hidden="true" />
+              </EnlaceExterno>
+            )}
+          </div>
         )}
         {drive?.conectado && <>
           <div className={styles.driveAcciones}>
@@ -315,8 +604,20 @@ export function AdminEquipo() {
             <Boton variante="secundario" tamano="sm" disabled={!!accionDrive} onClick={() => setConfirmar(false)}>No</Boton>
           </div> : <div className={styles.driveAcciones}>
             <Boton variante="secundario" onClick={organizar} disabled={!drive.configurado || !!accionDrive} cargando={accionDrive === "organizar"}>Organizar Drive</Boton>
+            {cuentaDriveIncorrecta && drive.configurado && (
+              <Boton variante="primario" onClick={conectarDrive} disabled={!!accionDrive} cargando={conectando}>
+                Reconectar
+              </Boton>
+            )}
             <Boton variante="peligro" onClick={() => setConfirmar(true)} disabled={!!accionDrive}>Desconectar Drive</Boton>
           </div>}
+          {cuentaDriveIncorrecta && autorizacionDrive && (
+            <div className={styles.driveAcciones}>
+              <EnlaceExterno className="rc-btn rc-btn--secundario rc-btn--sm" href={autorizacionDrive}>
+                Autorizar cuenta correcta en Google <ExternalLink size={14} aria-hidden="true" />
+              </EnlaceExterno>
+            </div>
+          )}
           {drive.organizado && <div className={styles.planDrive}>
             <h3>Carpetas antiguas</h3>
             <p className={styles.bloqueAyuda}>Revisa qué carpetas de Mi unidad se moverían. No se borra nada.</p>
