@@ -1,3 +1,17 @@
+# Informe Entrega por Drive o WhatsApp, Reversión y Adjuntos en Rechazo · RConcept Systems
+
+**Publicado en `desde-cero`:** commit [`47d8b68`](https://github.com/juanroblox89-lab/rconceptsys/commit/47d8b68ca5ede2c62b891676c4b1c96dbf567086) (sin cambios en `main`).
+
+- **«Marcar tarea como hecha» (Drive o WhatsApp):** selector segmentado entre **Entrega por Drive** (abre Google Picker para elegir carpeta o archivo, muestra tarjeta con nombre y botón **Quitar**, mantiene **Carpeta del trabajo** en solo lectura y **Pegar enlace manualmente** colapsado) y **Entrega por WhatsApp**. Para trabajadores, `GET /api/tareas/{id}/drive/picker-token` nunca entrega el token maestro de escritura del equipo (`auth/drive`): emite solo la configuración pública de selección `drive.file` sobre su propia sesión Google, manteniendo `/api/admin/drive/picker-token` exclusivo de administradores.
+- **Bandeja del admin:** muestra **Abrir en Drive** (con el nombre del elemento elegido) o la etiqueta **Entregado por WhatsApp**.
+- **Reversión atómica («Cambiar») y contraste:** en **Por revisar**, el trabajador puede pulsar **Cambiar** (`POST /api/tareas/{id}/revertir`), que revierte tarea y entrega en una sola transacción atómica e idempotente (devuelve `409` si ya fue aceptada, rechazada o retirada concurrentemente, deja `Entrega retirada por el trabajador` en el historial y avisa a los admins que la habían abierto) y reabre el modal prellenado. Se corrigió el contraste de **Tu nota:** a **6,98:1+** en claro, **13,26:1+** en oscuro y **16,53:1+** en Glass (`lib/fecha-entrega.ts` intacto).
+- **Adjuntos en «Rechazar tarea»:** el modal permite adjuntar audio (grabado o subido), imágenes, video (reutilizando `EditorAdjuntos` y el pipeline privado de `asignaciones-adjuntos`) y elementos de Google Drive (reutilizando `abrirSelectorGoogleDrive` de `PickerDriveCliente.tsx` sin modificarlo), visibles para el trabajador en la tarjeta rechazada y en `/trabajos/[id]`.
+- **Verificación:** `go build/vet/test` (incluidos tests de permisos y concurrencia con goroutines), `npm test`, `tsc --noEmit`, `eslint`, `next build`, `npm run mapa` y matriz Playwright Edge headless (`375×812` y `1280×800`, claro, oscuro y Glass) en verde. Quedan pendientes la aplicación de la [migración 025](<supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql>) en Supabase y prueba con cuenta Google real.
+
+[Reporte técnico y estado para retomar](<HARNESS-ENTREGA.md>) · [Migración 025](<supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql>)
+
+---
+
 # Informe Chat: entrada pareja, /ria y acciones de mensajes · RConcept Systems
 
 **Publicado en `desde-cero`:** commit [`e030649`](https://github.com/juanroblox89-lab/rconceptsys/commit/e0306493e955d374722bdf428b78dd7efa75ce) (sin cambios en `main`).

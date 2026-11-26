@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T05:44:06.052Z",
+  "generado_en": "2026-11-26T06:26:50.834Z",
   "version": "1.0",
   "modulos": [
     {
@@ -338,6 +338,27 @@
       "ruta": "/api/tareas/{id}/hecha",
       "handler": "backend/internal/httpapi/handlers.go:handlePostTareaHecha",
       "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaHecha",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/tareas/{id}/revertir",
+      "handler": "backend/internal/httpapi/handlers.go:handlePostTareaRevertir",
+      "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaRevertir",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/tareas/{id}/drive/picker-token",
+      "handler": "backend/internal/httpapi/drive_entrega_trabajador.go:handleTareaDrivePickerToken",
+      "archivo_funcion": "backend/internal/httpapi/drive_entrega_trabajador.go:handleTareaDrivePickerToken",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/tareas/{id}/drive/archivos",
+      "handler": "backend/internal/httpapi/drive_entrega_trabajador.go:handleTareaDriveArchivos",
+      "archivo_funcion": "backend/internal/httpapi/drive_entrega_trabajador.go:handleTareaDriveArchivos",
       "auth": "miembros_aprobados"
     },
     {
@@ -1277,6 +1298,40 @@
         "estado_archivo",
         "resumir"
       ]
+    },
+    {
+      "nombre": "tarea_entregas",
+      "migracion": "025_entrega_metodo_reversion_y_rechazo_adjuntos.sql",
+      "numero_migracion": 25,
+      "columnas_principales": [
+        "id",
+        "tarea_id",
+        "perfil_id",
+        "metodo_entrega",
+        "enlace_medios",
+        "entrega_nombre",
+        "entrega_tipo",
+        "nota",
+        "cantidad",
+        "estado"
+      ]
+    },
+    {
+      "nombre": "tarea_historial",
+      "migracion": "025_entrega_metodo_reversion_y_rechazo_adjuntos.sql",
+      "numero_migracion": 25,
+      "columnas_principales": [
+        "id",
+        "tarea_id",
+        "actor_id",
+        "evento",
+        "detalle",
+        "metodo_entrega",
+        "enlace_medios",
+        "entrega_nombre",
+        "entrega_tipo",
+        "nota"
+      ]
     }
   ],
   "variables_entorno": [
@@ -1372,58 +1427,88 @@
     },
     {
       "id": "entregar",
-      "nombre": "Entregar trabajo",
-      "descripcion": "Persona marca tarea como hecha, adjunta enlace de Drive, admin aprueba o rechaza",
+      "nombre": "Entregar trabajo, revertir envío y rechazar con adjuntos",
+      "descripcion": "Persona entrega por Drive (Google Picker de solo selección) o WhatsApp, puede retirar la entrega antes de la revisión, y el admin aprueba o rechaza con motivo y adjuntos.",
       "pasos": [
         {
           "orden": 1,
-          "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaHecha",
-          "descripcion": "Persona envía POST /api/tareas/{id}/hecha con nota_persona y enlace_medios"
+          "archivo_funcion": "components/MisTareas.tsx:MisTareas",
+          "descripcion": "Modal con selector segmentado Drive/WhatsApp, botón Cambiar en Por revisar y vista previa de adjuntos del rechazo."
         },
         {
           "orden": 2,
-          "archivo_funcion": "backend/internal/store/store.go:MarcarTareaHecha",
-          "descripcion": "Cambia estado a 'hecha', guarda hecha_en, nota_persona, enlace_medios"
+          "archivo_funcion": "lib/picker-trabajador.ts:abrirPickerTrabajador",
+          "descripcion": "Abre Google Picker para carpeta o archivo con token de solo selección (drive.file) de la cuenta Google del trabajador."
         },
         {
           "orden": 3,
-          "archivo_funcion": "backend/internal/httpapi/notificaciones_eventos.go:avisarEntregaAdmins",
-          "descripcion": "Encola aviso 'entrega-hecha' para todos los admins"
+          "archivo_funcion": "backend/internal/httpapi/drive_entrega_trabajador.go:handleTareaDrivePickerToken",
+          "descripcion": "GET /api/tareas/{id}/drive/picker-token valida asignación y devuelve config pública del selector sin exponer el token maestro del equipo."
         },
         {
           "orden": 4,
-          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaAceptar",
-          "descripcion": "Admin envía POST /api/admin/tareas/{id}/aceptar con cantidad (minutos si unidad=minuto)"
+          "archivo_funcion": "backend/internal/httpapi/drive_entrega_trabajador.go:handleTareaDriveArchivos",
+          "descripcion": "GET /api/tareas/{id}/drive/archivos lista en solo lectura la carpeta autorizada de la tarea desde el backend."
         },
         {
           "orden": 5,
-          "archivo_funcion": "backend/internal/store/store.go:AceptarTarea",
-          "descripcion": "Llama RPC aceptar_tarea: congela precio_unitario, cantidad_aceptada, precio_congelado, factura_id, estado='aceptada'"
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaHecha",
+          "descripcion": "Persona envía POST /api/tareas/{id}/hecha con metodo_entrega (drive|whatsapp), enlace_medios, entrega_nombre, entrega_tipo y nota."
         },
         {
           "orden": 6,
-          "archivo_funcion": "supabase/migrations/004_minutos_clientes_estadisticas.sql:aceptar_tarea",
-          "descripcion": "Función SQL atómica que crea/usa factura abierta y congela valores"
+          "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:rc_entregar_tarea",
+          "descripcion": "Transacción atómica: reemplaza entrega activa previa, actualiza tareas a hecha y registra entrega_enviada en tarea_historial."
         },
         {
           "orden": 7,
-          "archivo_funcion": "backend/internal/httpapi/push.go:AvisarEntregaAprobada",
-          "descripcion": "Encola aviso 'entrega-aprobada' para la persona"
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaRevertir",
+          "descripcion": "POST /api/tareas/{id}/revertir valida dueño, ejecuta reversión atómica (409 si ya fue revisada) y avisa a admins que la vieron."
         },
         {
           "orden": 8,
-          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaRechazar",
-          "descripcion": "Admin envía POST /api/admin/tareas/{id}/rechazar con motivo"
+          "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:rc_revertir_entrega_tarea",
+          "descripcion": "Retira entrega activa y vuelve tarea a pendiente en una sola transacción con WHERE estado='hecha', dejando auditoría en tarea_historial."
         },
         {
           "orden": 9,
-          "archivo_funcion": "backend/internal/store/store.go:RechazarTarea",
-          "descripcion": "Cambia estado a 'rechazada', guarda motivo_rechazo, resuelta_en, resuelta_por"
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaAceptar",
+          "descripcion": "Admin envía POST /api/admin/tareas/{id}/aceptar con cantidad (minutos si unidad=minuto)."
         },
         {
           "orden": 10,
-          "archivo_funcion": "backend/internal/httpapi/notificaciones_eventos.go:avisarSolicitud",
-          "descripcion": "Encola aviso 'entrega-devuelta' para la persona con el motivo (usa avisarSolicitud genérico)"
+          "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:aceptar_tarea",
+          "descripcion": "Función SQL atómica que sincroniza tarea_entregas/tarea_historial, crea/usa factura abierta y congela valores."
+        },
+        {
+          "orden": 11,
+          "archivo_funcion": "backend/internal/httpapi/push.go:AvisarEntregaAprobada",
+          "descripcion": "Encola aviso 'entrega-aprobada' para la persona."
+        },
+        {
+          "orden": 12,
+          "archivo_funcion": "components/AdminTareas.tsx:AdminTareas",
+          "descripcion": "Bandeja muestra Abrir en Drive o Entregado por WhatsApp; modal Rechazar tarea permite texto, audio/imagen/video y Google Picker."
+        },
+        {
+          "orden": 13,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaRechazar",
+          "descripcion": "Admin envía POST /api/admin/tareas/{id}/rechazar con motivo y drive_adjuntos validados."
+        },
+        {
+          "orden": 14,
+          "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:rc_rechazar_tarea",
+          "descripcion": "Marca entrega rechazada, devuelve tarea a rechazada y crea evento en tarea_historial con drive_adjuntos."
+        },
+        {
+          "orden": 15,
+          "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleReservarAdjunto",
+          "descripcion": "Reutiliza el pipeline F10 (origen='rechazo', historial_id) para subir audio, imagen o video del rechazo."
+        },
+        {
+          "orden": 16,
+          "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosRechazoVista",
+          "descripcion": "Trabajador ve y reproduce/descarga los adjuntos del rechazo en la tarjeta rechazada y en el historial."
         }
       ]
     },
@@ -2378,5 +2463,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "e0306493e955d374722bdf428b0778dd7efa75ce"
+  "commit_hash": "47d8b68ca5ede2c62b891676c4b1c96dbf567086"
 }
