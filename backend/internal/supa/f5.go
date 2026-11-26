@@ -347,18 +347,23 @@ func (s *SupabaseStore) ActualizarConfigEquipo(ctx context.Context, nombre, desc
 	return s.ObtenerConfigEquipo(ctx)
 }
 
-func (s *SupabaseStore) CrearEnlaceEquipo(ctx context.Context, nombre, url string) (*store.EnlaceEquipo, error) {
+func (s *SupabaseStore) CrearEnlaceEquipo(ctx context.Context, nombre, rawURL string) (*store.EnlaceEquipo, error) {
 	n := strings.TrimSpace(nombre)
-	u := strings.TrimSpace(url)
 	if len([]rune(n)) < 1 || len([]rune(n)) > 40 {
 		return nil, fmt.Errorf("%w: el nombre del enlace debe tener entre 1 y 40 caracteres", store.ErrValidation)
 	}
-	if len(u) < 8 || len(u) > 500 || !strings.HasPrefix(u, "https://") {
-		return nil, fmt.Errorf("%w: el enlace debe ser una URL https de máximo 500 caracteres", store.ErrValidation)
+	u, clave, err := store.NormalizarURLEnlaceEquipo(rawURL)
+	if err != nil {
+		return nil, err
 	}
 	cfg, err := s.leerConfigEquipo(ctx)
 	if err != nil {
 		return nil, err
+	}
+	for _, existente := range cfg.Enlaces {
+		if _, cExistente, err := store.NormalizarURLEnlaceEquipo(existente.URL); err == nil && cExistente == clave {
+			return nil, fmt.Errorf("%w: ese enlace ya está en la lista", store.ErrValidation)
+		}
 	}
 	if len(cfg.Enlaces) >= 12 {
 		return nil, fmt.Errorf("%w: ya hay 12 enlaces, quita uno antes de agregar otro", store.ErrValidation)
@@ -403,11 +408,18 @@ func (s *SupabaseStore) ActualizarEnlaceEquipo(ctx context.Context, id int, camp
 			if !ok {
 				return nil, store.ErrValidation
 			}
-			str = strings.TrimSpace(str)
-			if len(str) < 8 || len(str) > 500 || !strings.HasPrefix(str, "https://") {
-				return nil, fmt.Errorf("%w: el enlace debe ser una URL https de máximo 500 caracteres", store.ErrValidation)
+			u, clave, err := store.NormalizarURLEnlaceEquipo(str)
+			if err != nil {
+				return nil, err
 			}
-			e.URL = str
+			for _, otro := range cfg.Enlaces {
+				if otro.ID != id {
+					if _, cOtro, err := store.NormalizarURLEnlaceEquipo(otro.URL); err == nil && cOtro == clave {
+						return nil, fmt.Errorf("%w: ese enlace ya está en la lista", store.ErrValidation)
+					}
+				}
+			}
+			e.URL = u
 		}
 		if v, ok := campos["orden"]; ok {
 			switch n := v.(type) {

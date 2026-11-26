@@ -801,6 +801,60 @@
           "descripcion": "Abre _blank sin opener o _system cuando la WebView integra Cordova."
         }
       ]
+    },
+    {
+      "id": "enlaces-rapidos-drive",
+      "nombre": "Enlaces rápidos con Google Drive y validación de cuenta",
+      "descripcion": "Gestión → Equipo permite agregar enlaces rápidos desde Google Picker, evita duplicados y avisa si la cuenta conectada no coincide con la del equipo.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/admin/AdminEquipo.tsx:AdminEquipo",
+          "descripcion": "Muestra «Elegir de Drive» cuando Drive está conectado, valida duplicados y alerta si la cuenta conectada o del Picker difiere de cuenta_equipo."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "components/PickerDriveCliente.tsx:abrirSelectorGoogleDrive",
+          "descripcion": "Reutiliza Google Picker con /api/admin/drive/picker-token para elegir carpeta o archivo sin segundo OAuth."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "lib/drive-equipo.ts:esCuentaEquipoDrive",
+          "descripcion": "Compara el correo conectado con cuenta_equipo (ladlejuan26@gmail.com o env) ignorando mayúsculas y espacios."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePickerToken",
+          "descripcion": "Solo administradores aprobados reciben access_token efímero junto con correo verificado y cuenta_equipo."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/f5.go:handleAdminPostEnlaceEquipo",
+          "descripcion": "Valida URL https, tope de 12 y rechaza enlaces duplicados en el store."
+        }
+      ]
+    },
+    {
+      "id": "drive-chat-equipo",
+      "nombre": "Carpeta de Drive en el chat del equipo",
+      "descripcion": "Admins comparten con Google Picker; trabajadores eligen carpetas ya autorizadas o pegan enlace https sin permisos de edición en Drive.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "components/chat/MenuAdjuntos.tsx:MenuAdjuntos",
+          "descripcion": "Admins abren Google Picker vía abrirSelectorGoogleDrive; no-admins eligen carpetas ya autorizadas o pegan enlace Drive sin llamar /api/admin/drive/picker-token."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/f5.go:handlePostChatAdjunto",
+          "descripcion": "Registra adjunto tipo drive en borrador validando enlace https de Drive/Docs sin mutar archivos en Google Drive."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/chat/AdjuntoVista.tsx:AdjuntoVista",
+          "descripcion": "Muestra tarjetas de Drive en mensajes nuevos y anteriores con botón visible «Abrir carpeta» sin enlaces anidados."
+        }
+      ]
     }
   ]
 }

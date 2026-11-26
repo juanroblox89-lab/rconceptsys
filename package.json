@@ -8,7 +8,7 @@
     "start": "next start -p 3300",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npx tsx lib/__tests__/chat-utils.test.ts",
+    "test": "npx tsx --test lib/__tests__/chat-utils.test.ts lib/__tests__/drive-enlaces.test.ts",
     "mapa": "node scripts/generar-mapa.mjs"
   },
   "dependencies": {

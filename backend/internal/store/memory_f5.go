@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -97,17 +98,39 @@ func (m *MemoryStore) ActualizarConfigEquipo(ctx context.Context, nombre, descri
 	return m.clonarConfigEquipoLocked(), nil
 }
 
-func (m *MemoryStore) CrearEnlaceEquipo(ctx context.Context, nombre, url string) (*EnlaceEquipo, error) {
+// NormalizarURLEnlaceEquipo valida que sea https válido y devuelve forma canónica para comparar duplicados.
+func NormalizarURLEnlaceEquipo(raw string) (string, string, error) {
+	u := strings.TrimSpace(raw)
+	if len(u) < 8 || len(u) > 500 || !strings.HasPrefix(strings.ToLower(u), "https://") {
+		return "", "", fmt.Errorf("%w: el enlace debe ser una URL https de máximo 500 caracteres", ErrValidation)
+	}
+	parsed, err := url.Parse(u)
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.Host == "" || parsed.User != nil {
+		return "", "", fmt.Errorf("%w: el enlace debe ser una URL https de máximo 500 caracteres", ErrValidation)
+	}
+	canon := *parsed
+	canon.Scheme = strings.ToLower(canon.Scheme)
+	canon.Host = strings.ToLower(canon.Host)
+	clave := strings.TrimRight(canon.String(), "/")
+	return u, clave, nil
+}
+
+func (m *MemoryStore) CrearEnlaceEquipo(ctx context.Context, nombre, rawURL string) (*EnlaceEquipo, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	n := strings.TrimSpace(nombre)
-	u := strings.TrimSpace(url)
 	if len([]rune(n)) < 1 || len([]rune(n)) > 40 {
 		return nil, fmt.Errorf("%w: el nombre del enlace debe tener entre 1 y 40 caracteres", ErrValidation)
 	}
-	if len(u) < 8 || len(u) > 500 || !strings.HasPrefix(u, "https://") {
-		return nil, fmt.Errorf("%w: el enlace debe ser una URL https de máximo 500 caracteres", ErrValidation)
+	u, clave, err := NormalizarURLEnlaceEquipo(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	for _, existente := range m.enlaces {
+		if _, cExistente, err := NormalizarURLEnlaceEquipo(existente.URL); err == nil && cExistente == clave {
+			return nil, fmt.Errorf("%w: ese enlace ya está en la lista", ErrValidation)
+		}
 	}
 	if len(m.enlaces) >= 12 {
 		return nil, fmt.Errorf("%w: ya hay 12 enlaces, quita uno antes de agregar otro", ErrValidation)
@@ -144,11 +167,18 @@ func (m *MemoryStore) ActualizarEnlaceEquipo(ctx context.Context, id int, campos
 		if !ok {
 			return nil, ErrValidation
 		}
-		s = strings.TrimSpace(s)
-		if len(s) < 8 || len(s) > 500 || !strings.HasPrefix(s, "https://") {
-			return nil, fmt.Errorf("%w: el enlace debe ser una URL https de máximo 500 caracteres", ErrValidation)
+		u, clave, err := NormalizarURLEnlaceEquipo(s)
+		if err != nil {
+			return nil, err
 		}
-		e.URL = s
+		for otroID, existente := range m.enlaces {
+			if otroID != id {
+				if _, cExistente, err := NormalizarURLEnlaceEquipo(existente.URL); err == nil && cExistente == clave {
+					return nil, fmt.Errorf("%w: ese enlace ya está en la lista", ErrValidation)
+				}
+			}
+		}
+		e.URL = u
 	}
 	if v, exists := campos["orden"]; exists {
 		switch n := v.(type) {

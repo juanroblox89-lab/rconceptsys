@@ -149,6 +149,7 @@ export interface DriveEstado {
   configurado: boolean;
   conectado: boolean;
   correo: string;
+  cuenta_equipo?: string;
   carpeta_raiz_id: string;
   carpeta_raiz_nombre?: string;
   conectado_en?: string | null;

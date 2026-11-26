@@ -593,3 +593,48 @@
   border: 1px solid var(--rc-glass-borde); border-radius: var(--rc-glass-radio);
 }
 :global(html[data-rc-tema="glass"]) .corteCabecera:hover { background: var(--rc-glass-hover); }
+
+/* --- Selector de Drive (Enlaces rápidos) --- */
+.enlaceNuevo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rc-esp-6);
+  align-items: center;
+}
+
+.enlaceNuevo input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.enlaceNuevo :global(.rc-btn) {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.pickerNoConectado {
+  margin: 0;
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-texto-tenue);
+}
+
+.pickerEstado {
+  margin: 0;
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-texto-secundario);
+}
+
+.pickerError {
+  margin: 0;
+  padding: var(--rc-esp-6) var(--rc-esp-8);
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-rojo-suave);
+  color: var(--rc-rojo-texto);
+  font-size: var(--rc-fs-micro);
+}
+
+.pickerCuentaAlerta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+}

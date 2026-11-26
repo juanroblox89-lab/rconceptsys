@@ -1,7 +1,7 @@
 "use client";
 
 import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { ExternalLink, FileText, Plus, Trash2 } from "lucide-react";
 import { api, type ApiError } from "@/lib/api";
 import { cargarGooglePicker, type DialogoPicker } from "@/lib/google-picker";
@@ -10,6 +10,161 @@ import styles from "./FlujoTrabajo.module.css";
 
 export type ReferenciaDrive = { id: string; nombre: string; url?: string };
 export const MAX_REFERENCIAS = 10;
+
+export interface TokenPickerDrive {
+  access_token: string;
+  expires_in: number;
+  carpeta_id: string;
+  clave: string;
+  proyecto_id: string;
+  correo?: string;
+  cuenta_equipo?: string;
+}
+
+export interface ElementoDriveSeleccionado {
+  id: string;
+  nombre: string;
+  url: string;
+  tipo: "carpeta" | "archivo";
+}
+
+export interface OpcionesSelectorDrive {
+  clienteId?: number;
+  multiselect?: boolean;
+  maxItems?: number;
+  dialogoRef?: MutableRefObject<DialogoPicker | null>;
+  vigenteRef?: MutableRefObject<boolean>;
+  onAbrir?: (token: TokenPickerDrive) => void;
+  onSeleccion: (
+    elementos: ElementoDriveSeleccionado[],
+    token: TokenPickerDrive,
+    correoPicker?: string,
+  ) => void | Promise<void>;
+  onCancelar?: () => void;
+}
+
+/** Abre el Google Picker oficial usando el token temporal del Drive del equipo (/api/admin/drive/picker-token). */
+export async function abrirSelectorGoogleDrive(opts: OpcionesSelectorDrive): Promise<{
+  conf: TokenPickerDrive;
+  dialogo: DialogoPicker;
+} | null> {
+  const conf = await api.adminGetDrivePickerToken(opts.clienteId);
+  if (opts.vigenteRef && !opts.vigenteRef.current) return null;
+  const picker = await cargarGooglePicker();
+  if (opts.vigenteRef && !opts.vigenteRef.current) return null;
+
+  if (opts.dialogoRef?.current) {
+    try {
+      opts.dialogoRef.current.setVisible(false);
+      opts.dialogoRef.current.dispose?.();
+    } catch {
+      // Ignorar limpieza previa de diálogo cerrado
+    }
+    opts.dialogoRef.current = null;
+  }
+
+  const vista = new picker.DocsView()
+    .setIncludeFolders(true)
+    .setSelectFolderEnabled(true)
+    .setParent(conf.carpeta_id);
+
+  let builder = new picker.PickerBuilder()
+    .addView(vista)
+    .setOAuthToken(conf.access_token);
+
+  if (opts.multiselect && picker.Feature?.MULTISELECT_ENABLED) {
+    builder = builder.enableFeature(picker.Feature.MULTISELECT_ENABLED);
+  }
+
+  const dialogo = builder
+    .setMaxItems(Math.max(1, opts.maxItems ?? 1))
+    .setOrigin(window.location.origin)
+    .setDeveloperKey(conf.clave)
+    .setAppId(conf.proyecto_id)
+    .setLocale("es")
+    .setCallback((r) => {
+      if (opts.vigenteRef && !opts.vigenteRef.current) return;
+      if (r.action === picker.Action.CANCEL) {
+        if (opts.dialogoRef?.current) {
+          try {
+            opts.dialogoRef.current.setVisible(false);
+            opts.dialogoRef.current.dispose?.();
+          } catch {
+            // Ignorar cierre
+          }
+          opts.dialogoRef.current = null;
+        }
+        opts.onCancelar?.();
+        return;
+      }
+      if (r.action !== picker.Action.PICKED) return;
+
+      const extra = r as unknown as { userEmail?: string; email?: string };
+      const correoPicker =
+        typeof extra.userEmail === "string"
+          ? extra.userEmail
+          : typeof extra.email === "string"
+            ? extra.email
+            : undefined;
+
+      const elementos: ElementoDriveSeleccionado[] = [];
+      for (const d of r.docs ?? []) {
+        if (!d || !/^[\w-]{3,160}$/.test(d.id) || !d.name?.trim()) continue;
+        const esCarpeta =
+          d.mimeType === "application/vnd.google-apps.folder" ||
+          d.type === "folder" ||
+          Boolean(d.url?.includes("/folders/"));
+        const urlValida =
+          d.url && /^https:\/\/(drive|docs|drive\.usercontent)\.google\.com\//i.test(d.url)
+            ? d.url
+            : undefined;
+        const url =
+          urlValida ??
+          (esCarpeta
+            ? `https://drive.google.com/drive/folders/${d.id}`
+            : `https://drive.google.com/open?id=${d.id}`);
+        elementos.push({
+          id: d.id,
+          nombre: d.name.trim(),
+          url,
+          tipo: esCarpeta ? "carpeta" : "archivo",
+        });
+      }
+
+      if (opts.dialogoRef?.current) {
+        try {
+          opts.dialogoRef.current.setVisible(false);
+          opts.dialogoRef.current.dispose?.();
+        } catch {
+          // Ignorar cierre
+        }
+        opts.dialogoRef.current = null;
+      }
+
+      void opts.onSeleccion(elementos, conf, correoPicker);
+    })
+    .build();
+
+  if (opts.dialogoRef) {
+    opts.dialogoRef.current = dialogo;
+  }
+  dialogo.setVisible(true);
+  opts.onAbrir?.(conf);
+  return { conf, dialogo };
+}
+
+function limpiarDialogoPicker(ref: MutableRefObject<DialogoPicker | null>) {
+  const actual = ref.current;
+  if (!actual) return;
+  try {
+    actual.setVisible(false);
+    actual.dispose?.();
+  } catch {
+    // Ignorar limpieza de diálogo ya cerrado
+  }
+  ref.current = null;
+}
+
 /** Referencias de Drive del cliente: abrir, quitar (con confirmación) y añadir con el selector de Google. */
 export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
   clienteId?: number; valor: ReferenciaDrive[]; onChange(r: ReferenciaDrive[]): void; disabled: boolean;
@@ -28,30 +183,36 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
     api.adminGetDrive().then(drive => {
       if (activo) setEstado(!drive.conectado ? "sin_drive" : !drive.organizado ? "sin_organizar" : "listo");
     }).catch(() => { if (activo) setEstado("listo"); }); // El clic vuelve a consultar si falló la red.
-    return () => { activo = false; vigente.current = false; dialogo.current?.setVisible(false); dialogo.current?.dispose?.(); };
+    return () => {
+      activo = false;
+      vigente.current = false;
+      limpiarDialogoPicker(dialogo);
+    };
   }, []);
 
   async function abrir() {
     setError(""); setEstado("abriendo");
     try {
-      const conf = await api.adminGetDrivePickerToken(clienteId);
-      if (!vigente.current) return;
-      const picker = await cargarGooglePicker();
-      if (!vigente.current) return;
-      dialogo.current?.setVisible(false);
-      dialogo.current?.dispose?.();
-      const vista = new picker.DocsView().setIncludeFolders(true).setSelectFolderEnabled(true).setParent(conf.carpeta_id);
-      dialogo.current = new picker.PickerBuilder().addView(vista).setOAuthToken(conf.access_token)
-        .enableFeature(picker.Feature.MULTISELECT_ENABLED).setMaxItems(Math.max(1, MAX_REFERENCIAS - actual.current.length))
-        .setOrigin(window.location.origin).setDeveloperKey(conf.clave).setAppId(conf.proyecto_id).setLocale("es")
-        .setCallback(r => {
-          if (!vigente.current || r.action !== picker.Action.PICKED) return;
-          const nuevos = (r.docs ?? []).filter(d => d.id && d.name).map(d => ({ id: d.id, nombre: d.name, url: d.url }));
+      await abrirSelectorGoogleDrive({
+        clienteId,
+        multiselect: true,
+        maxItems: Math.max(1, MAX_REFERENCIAS - actual.current.length),
+        dialogoRef: dialogo,
+        vigenteRef: vigente,
+        onAbrir: () => setEstado("listo"),
+        onSeleccion: (elementos) => {
+          const nuevos = elementos.map(d => ({ id: d.id, nombre: d.nombre, url: d.url }));
           const ids = new Set(actual.current.map(x => x.id));
-          onChange([...actual.current, ...nuevos.filter(n => { if (ids.has(n.id)) return false; ids.add(n.id); return true; })].slice(0, MAX_REFERENCIAS));
-        }).build();
-      dialogo.current.setVisible(true);
-      setEstado("listo");
+          onChange([
+            ...actual.current,
+            ...nuevos.filter(n => {
+              if (ids.has(n.id)) return false;
+              ids.add(n.id);
+              return true;
+            }),
+          ].slice(0, MAX_REFERENCIAS));
+        },
+      });
     } catch (e) {
       if (!vigente.current) return;
       const codigo = (e as ApiError).codigo;

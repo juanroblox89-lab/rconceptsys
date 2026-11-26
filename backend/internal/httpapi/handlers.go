@@ -881,7 +881,10 @@ func validarEnlaceDrive(enlace *string) (*string, bool) {
 		return nil, false
 	}
 	u, err := url.Parse(limpio)
-	if err != nil || u.Scheme != "https" {
+	if err != nil || u.Scheme != "https" || u.User != nil {
+		return nil, false
+	}
+	if (u.Path == "" || u.Path == "/") && u.RawQuery == "" {
 		return nil, false
 	}
 	host := strings.ToLower(u.Hostname())

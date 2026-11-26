@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const cuentaEquipoDriveDefecto = "ladlejuan26@gmail.com"
+
 // ConfDrive es la configuración de Google Cloud para el conector de Drive.
 type ConfDrive struct {
 	ClientID     string
@@ -15,11 +17,20 @@ type ConfDrive struct {
 	RedirectURI  string
 	PickerKey    string
 	PickerAppID  string
+	CuentaEquipo string
 }
 
 // Configurado indica si hay credenciales de Google Cloud para conectar Drive.
 func (c ConfDrive) Configurado() bool {
 	return strings.TrimSpace(c.ClientID) != "" && strings.TrimSpace(c.ClientSecret) != ""
+}
+
+// CuentaEsperada devuelve el correo del equipo esperado para el conector de Drive.
+func (c ConfDrive) CuentaEsperada() string {
+	if v := strings.TrimSpace(c.CuentaEquipo); v != "" {
+		return v
+	}
+	return cuentaEquipoDriveDefecto
 }
 
 // ConfPush es la configuración de Web Push (claves VAPID).
@@ -52,6 +63,10 @@ type EstadoF5 struct {
 
 // NuevoEstadoF5 lee las claves del entorno. Nunca se registran en logs.
 func NuevoEstadoF5() *EstadoF5 {
+	cuentaEquipo := strings.TrimSpace(os.Getenv("DRIVE_CUENTA_EQUIPO"))
+	if cuentaEquipo == "" {
+		cuentaEquipo = strings.TrimSpace(os.Getenv("NEXT_PUBLIC_DRIVE_CUENTA_EQUIPO"))
+	}
 	return &EstadoF5{
 		Estados: make(map[string]oauthState),
 		Drive: ConfDrive{
@@ -60,6 +75,7 @@ func NuevoEstadoF5() *EstadoF5 {
 			RedirectURI:  strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URI")),
 			PickerKey:    strings.TrimSpace(os.Getenv("GOOGLE_PICKER_API_KEY")),
 			PickerAppID:  strings.TrimSpace(os.Getenv("GOOGLE_PICKER_APP_ID")),
+			CuentaEquipo: cuentaEquipo,
 		},
 		Push: ConfPush{
 			Publica: strings.TrimSpace(os.Getenv("VAPID_CLAVE_PUBLICA")),

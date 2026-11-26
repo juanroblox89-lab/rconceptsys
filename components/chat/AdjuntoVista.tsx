@@ -1,8 +1,9 @@
 "use client";
 
 import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
+import { errorEnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Download, FileText, FolderOpen, X } from "lucide-react";
+import { Download, FileText, FolderOpen, X, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
 import { ChatAdjunto } from "@/lib/types";
 import { ReproductorAudio } from "./ReproductorAudio";
@@ -91,21 +92,30 @@ export function AdjuntoVista({ adjunto, propio = false }: AdjuntoVistaProps) {
   }
 
   if (adjunto.tipo === "drive") {
+    const enlaceValido =
+      Boolean(adjunto.url_externa) &&
+      errorEnlaceDrive(url) === null &&
+      /^https:\/\/(drive|docs|drive\.usercontent)\.google\.com\//i.test(url);
     return (
-      <EnlaceExterno
-        href={url}
-        className={styles.tarjeta}
-        title="Abrir en Drive"
-      >
+      <div className={`${styles.tarjeta} ${styles.tarjetaDrive}`}>
         <span className={styles.tarjetaIcono}>
           <FolderOpen size={16} strokeWidth={1.75} aria-hidden="true" />
         </span>
         <span className={styles.tarjetaTexto}>
-          <strong className={styles.tarjetaNombre}>{adjunto.nombre}</strong>
-          <em className={styles.tarjetaMeta}>Carpeta de Drive · abrir en otra pestaña</em>
+          <strong className={styles.tarjetaNombre} title={adjunto.nombre}>{adjunto.nombre}</strong>
+          <em className={styles.tarjetaMeta}>Carpeta de Drive</em>
         </span>
-        <ArrowUpRight size={14} strokeWidth={1.9} aria-hidden="true" className={styles.tarjetaAccion} />
-      </EnlaceExterno>
+        {enlaceValido && (
+          <EnlaceExterno
+            href={url}
+            className={`rc-btn rc-btn--secundario rc-btn--sm ${styles.tarjetaBoton}`}
+            title={`Abrir ${adjunto.nombre} en Drive`}
+          >
+            <span>Abrir carpeta</span>
+            <ExternalLink size={13} strokeWidth={1.9} aria-hidden="true" />
+          </EnlaceExterno>
+        )}
+      </div>
     );
   }
 
