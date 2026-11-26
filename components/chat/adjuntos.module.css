@@ -38,12 +38,12 @@
   position: absolute;
   bottom: calc(100% + 6px);
   left: 0;
-  z-index: var(--rc-z-pill);
-  width: 232px;
+  z-index: var(--rc-z-menu);
+  width: min(232px, calc(100vw - 24px));
   padding: var(--rc-esp-4);
   border-radius: var(--rc-radio-md);
-  border: 1px solid var(--rc-gris-100);
-  background: var(--rc-superficie);
+  border: 1px solid var(--rc-sombra-suave);
+  background: var(--rc-superficie-clara);
   box-shadow: var(--rc-elev-relieve-lg);
   display: flex;
   flex-direction: column;

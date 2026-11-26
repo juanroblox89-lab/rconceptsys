@@ -5,9 +5,11 @@
   flex-direction: column;
   gap: var(--rc-esp-10);
   padding: var(--rc-esp-12);
+  padding-bottom: calc(var(--rc-esp-16) + env(safe-area-inset-bottom, 0px));
   max-width: 1040px;
   margin: 0 auto;
   width: 100%;
+  min-width: 0;
 }
 
 .cabecera {
@@ -77,11 +79,12 @@
 
 .campo select,
 .campo input {
-  height: 32px;
-  padding: 0 var(--rc-esp-8);
-  border: 1px solid var(--rc-gris-100);
+  height: 36px;
+  padding: 0 var(--rc-esp-10);
+  border: 1px solid transparent;
   border-radius: var(--rc-radio-sm);
   background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-hundido-sm);
   font-family: inherit;
   font-size: var(--rc-fs-secundario);
   color: var(--rc-gris-900);
@@ -207,8 +210,9 @@
   align-items: center;
   gap: var(--rc-esp-6);
   padding: var(--rc-esp-24, 24px) var(--rc-esp-16);
-  border-radius: var(--rc-radio-md);
-  background: var(--rc-gris-50);
+  border-radius: var(--rc-radio-lg);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
   color: var(--rc-texto-secundario);
   font-size: var(--rc-fs-cuerpo);
   text-align: center;
@@ -249,4 +253,10 @@
   .botonFiltros {
     display: none;
   }
+}
+
+:global(html[data-rc-tema="glass"]) :is(.filtros, .vacio) {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
 }

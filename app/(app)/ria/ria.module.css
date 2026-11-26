@@ -7,12 +7,13 @@
 .hiloVacio { justify-content: center; }
 .saludo { display: grid; justify-items: center; gap: 16px; text-align: center; }
 .saludo h2 { margin: 0; font-size: clamp(22px, 4vw, 32px); line-height: 1.2; font-weight: 600; overflow-wrap: break-word; max-width: 100%; }
-.sugerencia { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px; color: var(--rc-texto-secundario); background: var(--rc-superficie-clara); border: 1px solid var(--rc-border-subtle); border-radius: var(--rc-radio-md); font: inherit; text-align: start; cursor: pointer; }
+.sugerencia { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 14px; color: var(--rc-texto); background: var(--rc-superficie); border: 1px solid transparent; box-shadow: var(--rc-elev-relieve-sm); border-radius: var(--rc-radio-md); font: inherit; text-align: start; cursor: pointer; transition: box-shadow var(--rc-transicion), background var(--rc-transicion); }
 .sugerencia svg { flex: none; }
-.sugerencia:hover, .micro:hover { background: var(--rc-superficie-hundida); }
+.sugerencia:hover, .micro:hover { background: var(--rc-azul-suave); }
+.sugerencia:active { box-shadow: var(--rc-elev-hundido-sm); }
 .mensaje { align-self: flex-start; max-width: 100%; overflow-wrap: break-word; font-size: 15px; line-height: 1.6; }
 .mensaje p { margin: 0; white-space: pre-wrap; }
-.propia { align-self: flex-end; max-width: min(86%, 620px); padding: 8px 13px; border-radius: 18px; background: var(--rc-superficie-hundida); }
+.propia { align-self: flex-end; max-width: min(86%, 620px); padding: 8px 14px; border-radius: 18px; background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm); }
 [data-rc-mensaje-fila] .propia { max-width: 100%; }
 .hilo > [data-rc-mensaje-fila] { max-width: min(86%, 620px); }
 .hilo > [data-rc-mensaje-fila]:has(.mensaje:not(.propia)) { max-width: 100%; }
@@ -22,14 +23,21 @@
 @keyframes pensando { from { opacity: .78; } to { opacity: 1; } }
 .error { margin: 0; color: var(--rc-rojo-texto); font-size: 13px; overflow-wrap: break-word; }
 .pie { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 4px; padding: 6px 16px max(12px, env(safe-area-inset-bottom)); }
-.form { display: flex; gap: 4px; align-items: flex-end; min-width: 0; padding: var(--rc-compositor-marco, 4px); border: var(--rc-compositor-borde, 1px) solid var(--rc-border-subtle); border-radius: 26px; background: var(--rc-superficie-clara); }
-.form:focus-within { border-color: var(--rc-azul-texto); }
+.form { display: flex; gap: 4px; align-items: flex-end; min-width: 0; padding: var(--rc-compositor-marco, 4px); border: var(--rc-compositor-borde, 1px) solid transparent; border-radius: 26px; background: var(--rc-superficie); box-shadow: var(--rc-elev-hundido-sm); transition: box-shadow var(--rc-transicion); }
+.form:focus-within { box-shadow: var(--rc-elev-foco-azul); }
 .form textarea { flex: 1 1 0; min-width: 0; min-height: var(--rc-compositor-control, 44px); max-height: min(132px, 23dvh); padding: var(--rc-compositor-relleno, 11px) var(--rc-compositor-relleno-inline, 8px); resize: none; font: inherit; font-size: var(--rc-compositor-fuente, 16px); line-height: var(--rc-compositor-linea, 22px); color: var(--rc-texto); background: transparent; border: 0; outline: none; }
 .form textarea::placeholder { color: var(--rc-texto-secundario); opacity: 1; }
-.micro, .enviar { display: grid; place-items: center; width: var(--rc-compositor-control, 44px); height: var(--rc-compositor-control, 44px); flex: none; border-radius: 50%; border: none; cursor: pointer; }
-.micro { color: var(--rc-texto); background: transparent; }
-.micro[aria-pressed=true] { color: var(--rc-rojo-texto); background: var(--rc-superficie-hundida); }
-.enviar { color: var(--rc-superficie); background: var(--rc-texto); }
+.micro, .enviar { display: grid; place-items: center; width: var(--rc-compositor-control, 44px); height: var(--rc-compositor-control, 44px); flex: none; border-radius: 50%; border: none; cursor: pointer; transition: box-shadow var(--rc-transicion), background var(--rc-transicion); }
+.micro { color: var(--rc-icono); background: var(--rc-superficie); box-shadow: var(--rc-elev-relieve-sm); }
+.micro[aria-pressed=true] { color: var(--rc-rojo-texto); background: var(--rc-rojo-suave); box-shadow: var(--rc-elev-hundido-sm); }
+.enviar { color: var(--rc-azul-texto); background: var(--rc-azul-suave); box-shadow: var(--rc-elev-relieve-sm); }
+.enviar:hover:not(:disabled) { background: var(--rc-azul); color: var(--rc-luz); }
+:global(html[data-rc-tema="glass"]) .sugerencia { background: var(--rc-superficie-clara); border-color: var(--rc-glass-borde); }
+:global(html[data-rc-tema="glass"]) .form { border-color: var(--rc-gris-300); background: var(--rc-superficie-hundida); }
+:global(html[data-rc-tema="glass"]) .form:focus-within { border-color: var(--rc-azul-texto); box-shadow: none; }
+:global(html[data-rc-tema="glass"]) .micro { background: transparent; box-shadow: none; color: var(--rc-texto); }
+:global(html[data-rc-tema="glass"]) .micro:hover { background: var(--rc-glass-hover); }
+:global(html[data-rc-tema="glass"]) .enviar { background: var(--rc-texto); box-shadow: none; }
 .form button:disabled, .sugerencia:disabled { opacity: .5; cursor: default; }
 @media (min-width: 768px) { .hilo, .pie { padding-inline: 24px; } .cabecera { margin-inline: 24px; } }
 @media (prefers-reduced-motion: reduce) { .pensando { animation: none; } }

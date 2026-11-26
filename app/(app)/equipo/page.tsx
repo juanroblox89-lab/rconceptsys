@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Esqueleto } from "@/components/ui/Esqueleto";
+import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import styles from "./equipo.module.css";
 
 export default function EquipoPage() {
@@ -45,9 +46,7 @@ export default function EquipoPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Equipo</h1>
-      </div>
+      <CabeceraPagina titulo="Equipo" />
 
       {cargando ? (
         <div style={{ maxWidth: 480, margin: "2rem auto", width: "100%" }}>

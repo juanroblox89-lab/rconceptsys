@@ -23,21 +23,38 @@
   }
 }
 
-/* Pastilla flotante en móvil o en desktop cuando la barra está colapsada */
-.pill {
+.mainArea {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cabecera en flujo en móvil o en desktop cuando la barra está colapsada */
+.topChrome {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--rc-esp-8);
-  height: 34px;
+  flex: none;
+  position: relative;
+  z-index: var(--rc-z-pill);
+  padding: calc(8px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+  background: var(--rc-superficie);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rc-esp-8);
+  height: 36px;
   padding: 0 var(--rc-esp-12) 0 var(--rc-esp-6);
-  border: 1px solid var(--rc-gris-100);
+  border: 1px solid transparent;
   border-radius: var(--rc-radio-pildora);
   background: var(--rc-superficie);
   box-shadow: var(--rc-elev-relieve-sm);
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top, 0px));
-  left: 12px;
-  z-index: var(--rc-z-pill);
 }
 
 .menuButton {
@@ -67,8 +84,8 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--rc-z-pill);
-  background: rgba(31, 36, 48, 0.35);
+  z-index: var(--rc-z-drawer);
+  background: rgba(16, 20, 30, 0.35);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   animation: fade-in 200ms var(--rc-curva) both;
@@ -84,19 +101,15 @@
 }
 
 .main {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
-  height: 100%;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
+  scroll-padding-top: 12px;
+  scroll-padding-bottom: 16px;
   background-color: var(--rc-superficie);
-}
-
-@media (max-width: 767px) {
-  .main {
-    padding-top: 52px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -129,12 +142,14 @@
     display: none;
   }
 
-  .pill {
+  .topChrome {
     display: none;
   }
 
-  .pillDesktop {
+  .topChromeDesktop {
     display: flex;
+    justify-content: flex-start;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px 12px;
   }
 
   .sidebarWrap {
@@ -176,8 +191,10 @@
 }
 
 @media (min-width: 768px) {
-  html[data-sidebar="closed"] .pill {
+  html[data-sidebar="closed"] .topChrome {
     display: flex;
+    justify-content: flex-start;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px 12px;
   }
 
   html[data-sidebar="closed"] .sidebarWrap {
@@ -186,6 +203,10 @@
     flex: none;
     overflow: hidden;
     border-right: none;
+  }
+
+  html[data-sidebar="closed"] .main {
+    padding-left: 64px;
   }
 }
 
@@ -230,11 +251,10 @@
     pointer-events: none;
   }
 
-  /* Con la barra colapsada la pastilla flota arriba a la izquierda y el riel a la izquierda:
+  /* Con la barra colapsada la pastilla queda en topChrome arriba a la izquierda y el riel a la izquierda:
      el contenido reserva ese espacio para que ningun texto quede debajo (regla de diseno en DISENO.md) */
   .mainWithRail {
     padding-left: 64px;
-    padding-top: 52px;
   }
 }
 
@@ -256,7 +276,7 @@
   align-items: center;
   gap: var(--rc-esp-4);
   padding: var(--rc-esp-6);
-  border: 1px solid var(--rc-gris-100);
+  border: 1px solid transparent;
   border-radius: var(--rc-radio-pildora);
   background: var(--rc-superficie);
   box-shadow: var(--rc-elev-relieve-sm);
@@ -294,8 +314,9 @@
   padding: var(--rc-esp-4);
 }
 
-:global(html[data-rc-tema="glass"]) .main { background: transparent; }
+:global(html[data-rc-tema="glass"]) .topChrome, :global(html[data-rc-tema="glass"]) .main { background: transparent; }
 :global(html[data-rc-tema="glass"]) .pill, :global(html[data-rc-tema="glass"]) .sidebarWrap, :global(html[data-rc-tema="glass"]) .rail { background: var(--rc-glass-cromo); }
+:global(html[data-rc-tema="glass"]) :is(.pill, .railGroup) { border-color: var(--rc-glass-borde); }
 
 :global(html[data-rc-tema="glass"]) .rail { background: transparent; }
 :global(html[data-rc-tema="glass"]) .railGroup { background: var(--rc-menu-fondo); }

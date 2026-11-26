@@ -1,10 +1,11 @@
 .container {
-  padding: var(--rc-esp-20) var(--rc-esp-16);
+  padding: var(--rc-esp-20) var(--rc-esp-16) calc(var(--rc-esp-20) + env(safe-area-inset-bottom, 0px));
   max-width: 1040px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--rc-esp-20);
+  min-width: 0;
 }
 
 .header {
@@ -48,8 +49,12 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: var(--rc-esp-12);
+}
+
+.grid > * {
+  min-width: 0;
 }
 
 .tareaCard {
@@ -115,15 +120,16 @@
   color: var(--rc-verde-texto);
   font-weight: var(--rc-fw-semibold);
   font-variant-numeric: tabular-nums;
-  background-color: var(--rc-verde-fondo, var(--rc-verde-suave));
-  padding: 2px 6px;
-  border-radius: var(--rc-radio-xs);
+  background-color: var(--rc-verde-suave);
+  box-shadow: var(--rc-elev-relieve-sm);
+  padding: 2px 8px;
+  border-radius: var(--rc-radio-pildora);
 }
 
 .motivoRechazoBox {
-  background-color: var(--rc-rojo-fondo, var(--rc-rojo-suave));
+  background-color: var(--rc-rojo-suave);
   color: var(--rc-rojo-texto);
-  border: 1px solid color-mix(in srgb, var(--rc-rojo-texto) 22%, transparent);
+  box-shadow: var(--rc-elev-hundido-sm);
   border-radius: var(--rc-radio-sm);
   padding: var(--rc-esp-8) var(--rc-esp-10);
   font-size: var(--rc-fs-etiqueta);
@@ -139,8 +145,8 @@
 }
 
 .notaPersonaBox {
-  background-color: var(--rc-azul-fondo, var(--rc-azul-suave));
-  border: 1px solid color-mix(in srgb, var(--rc-azul-texto) 24%, transparent);
+  background-color: var(--rc-azul-suave);
+  box-shadow: var(--rc-elev-hundido-sm);
   color: var(--rc-texto);
   border-radius: var(--rc-radio-sm);
   padding: var(--rc-esp-8) var(--rc-esp-10);
@@ -150,7 +156,7 @@
 }
 
 .notaPersonaBox strong {
-  color: var(--rc-comando-texto, light-dark(#134e9b, #cfe5ff));
+  color: var(--rc-comando-texto, var(--rc-azul-texto));
   font-weight: var(--rc-fw-bold);
 }
 
@@ -168,9 +174,9 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--rc-radio-pildora);
-  background-color: var(--rc-verde-fondo, var(--rc-verde-suave));
+  background-color: var(--rc-verde-suave);
   color: var(--rc-verde-texto);
-  border: 1px solid color-mix(in srgb, var(--rc-verde-texto) 24%, transparent);
+  box-shadow: var(--rc-elev-relieve-sm);
   font-size: var(--rc-fs-etiqueta);
   font-weight: var(--rc-fw-semibold);
 }
@@ -289,8 +295,8 @@
   gap: 8px;
   padding: 10px 12px;
   border-radius: var(--rc-radio-md);
-  background-color: var(--rc-verde-fondo, var(--rc-verde-suave));
-  border: 1px solid color-mix(in srgb, var(--rc-verde-texto) 24%, transparent);
+  background-color: var(--rc-verde-suave);
+  box-shadow: var(--rc-elev-hundido-sm);
   color: var(--rc-texto);
   font-size: var(--rc-fs-secundario);
   line-height: 1.4;
@@ -358,9 +364,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: var(--rc-radio-sm);
-  background: var(--rc-superficie-clara);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
 }
 
 .carpetaEquipoNombre {
@@ -396,7 +403,8 @@
   gap: 8px;
   padding: 6px 8px;
   border-radius: var(--rc-radio-sm);
-  background: var(--rc-superficie-clara);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
   color: var(--rc-texto);
   flex-wrap: wrap;
 }
@@ -444,4 +452,10 @@
   .grid {
     grid-template-columns: 1fr;
   }
+}
+
+:global(html[data-rc-tema="glass"]) .tareaCard {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
 }

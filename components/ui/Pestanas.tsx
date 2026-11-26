@@ -55,8 +55,8 @@ export function Pestanas({
     if (!el || !tab) return;
     const r = tab.getBoundingClientRect();
     const cont = el.getBoundingClientRect();
-    if (r.left < cont.left + 20) el.scrollLeft += r.left - cont.left - 22;
-    else if (r.right > cont.right - 20) el.scrollLeft += r.right - cont.right + 22;
+    if (r.left < cont.left + 30) el.scrollLeft += r.left - cont.left - 32;
+    else if (r.right > cont.right - 30) el.scrollLeft += r.right - cont.right + 32;
   }, [indiceActivo]);
   function desplazar(dir: number) {
     if (barra.current) barra.current.scrollLeft += dir * Math.max(100, barra.current.clientWidth - 64);

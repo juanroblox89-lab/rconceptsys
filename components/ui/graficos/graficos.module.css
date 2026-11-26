@@ -58,19 +58,21 @@
 }
 
 .tabBtnActivo {
-  background: var(--rc-luz);
+  background: var(--rc-superficie-clara);
   color: var(--rc-azul-texto);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(31, 36, 48, 0.12);
+  box-shadow: var(--rc-elev-relieve-sm);
 }
 
 .cajaSvg {
   position: relative;
   width: 100%;
-  border-radius: var(--rc-radio-md);
-  background: var(--rc-superficie-clara);
-  border: 1px solid rgba(199, 205, 216, 0.4);
-  padding: var(--rc-esp-12) var(--rc-esp-8) var(--rc-esp-8) var(--rc-esp-8);
+  min-width: 0;
+  border-radius: var(--rc-radio-lg);
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  border: 1px solid transparent;
+  padding: var(--rc-esp-14) var(--rc-esp-10) var(--rc-esp-10);
   box-sizing: border-box;
 }
 
@@ -91,7 +93,8 @@
 }
 
 .gridLinea {
-  stroke: rgba(199, 205, 216, 0.45);
+  stroke: var(--rc-gris-300);
+  stroke-opacity: 0.45;
   stroke-dasharray: 4 4;
   stroke-width: 1px;
 }
@@ -106,14 +109,14 @@
   top: 10px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--rc-gris-900);
-  color: var(--rc-luz);
+  background: var(--rc-vidrio-oscuro-bg);
+  color: #ffffff;
   padding: 4px 10px;
   border-radius: var(--rc-radio-sm);
   font-size: var(--rc-fs-secundario);
   pointer-events: none;
   z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--rc-elev-vidrio);
   display: flex;
   gap: 8px;
   align-items: center;
@@ -121,7 +124,7 @@
 }
 
 .tooltipFecha {
-  color: var(--rc-gris-300);
+  color: rgba(255, 255, 255, 0.78);
   font-size: var(--rc-fs-etiqueta);
 }
 
@@ -148,10 +151,12 @@
 
 .infoBarra {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: var(--rc-esp-8);
+  flex-wrap: wrap;
+  gap: 2px var(--rc-esp-8);
   font-size: var(--rc-fs-secundario);
+  min-width: 0;
 }
 
 .nombreBarra {
@@ -160,6 +165,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -180,9 +187,10 @@
 .cifrasBarra {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .cifraPrincipal {
@@ -198,7 +206,7 @@
 .pistaBarra {
   width: 100%;
   height: 8px;
-  background: var(--rc-superficie-hundida);
+  background: var(--rc-superficie);
   border-radius: var(--rc-radio-pildora);
   overflow: hidden;
   box-shadow: var(--rc-elev-hundido-sm);
@@ -212,33 +220,37 @@
 }
 
 .barraAzul {
-  background: linear-gradient(90deg, #5AA9FF, #2F7FE0);
+  background: linear-gradient(90deg, var(--rc-azul), var(--rc-azul-texto));
 }
 
 .barraVerde {
-  background: linear-gradient(90deg, #2FA66A, #1E6B45);
+  background: linear-gradient(90deg, var(--rc-verde), var(--rc-verde-texto));
 }
 
 .barraAmbar {
-  background: linear-gradient(90deg, #E8A33D, #B9781A);
+  background: linear-gradient(90deg, var(--rc-ambar), var(--rc-ambar-texto));
 }
 
 .barraMorado {
-  background: linear-gradient(90deg, #9B6BFF, #6B3AE8);
+  background: linear-gradient(90deg, var(--rc-morado), color-mix(in srgb, var(--rc-morado), black 22%));
 }
 
 .barraGris {
-  background: linear-gradient(90deg, #8A93A5, #6B7385);
+  background: linear-gradient(90deg, var(--rc-gris-500), var(--rc-gris-700));
 }
 
 .tablaOculta {
   position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: 0;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border-width: 0;
 }
@@ -250,6 +262,13 @@
   font-size: var(--rc-fs-secundario);
 }
 
+:global(html[data-rc-tema="glass"]) .cajaSvg {
+  border-color: var(--rc-glass-borde);
+}
+:global(html[data-rc-tema="glass"]) .tabBtnActivo {
+  background: var(--rc-azul-fondo);
+  color: var(--rc-azul-texto);
+}
 :global(html[data-rc-tema="glass"]) .tooltipCaja {
   background: var(--rc-menu-fondo); border: 1px solid var(--rc-glass-borde-flotante);
   box-shadow: var(--rc-glass-sombra-flotante); color: var(--rc-texto);

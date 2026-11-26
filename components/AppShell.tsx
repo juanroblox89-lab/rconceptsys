@@ -99,25 +99,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PerfilActual.Provider value={yo}><FondoApariencia /><div className={styles.root} data-rc-shell>
-      {/* Pastilla: solo móvil, o desktop con la sidebar colapsada. */}
-      <div className={`${styles.pill} ${collapsed ? styles.pillDesktop : ""}`}>
-        <button
-          type="button"
-          className={styles.menuButton}
-          aria-label={collapsed ? "Abrir barra" : "Abrir menú"}
-          title={collapsed ? "Abrir barra" : undefined}
-          onClick={() => (collapsed && window.innerWidth >= 768 ? setHidden(false) : setMobileOpen(true))}
-        >
-          <PanelLeftOpen size={18} strokeWidth={1.75} />
-        </button>
-        <Link href="/" aria-label="Ir al inicio">
-          <Logo size={16} className={styles.mobileTitle} />
-        </Link>
-        {yo?.estado === "aprobado" && <CampanaNotificaciones />}
-      </div>
-
       {/* Riel flotante (solo desktop con la sidebar colapsada). */}
-      <nav className={`${styles.rail} ${collapsed ? styles.railVisible : ""}`} aria-label="Accesos">
+      <nav className={`${styles.rail} ${collapsed ? styles.railVisible : ""}`} data-rc-chrome="rail" aria-label="Accesos">
         <div className={styles.railGroup}>
           {navItems
             .filter((item) => rutaVisible(item, yo))
@@ -172,9 +155,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <main className={`${styles.main} ${collapsed ? styles.mainWithRail : ""}`}>
-        <div key={pathname} data-rc-entrada className={styles.pantalla}>{children}</div>
-      </main>
+      <div className={styles.mainArea}>
+        {/* Cabecera en flujo (móvil o desktop con la barra colapsada): reserva espacio real y nunca tapa el contenido. */}
+        <header className={`${styles.topChrome} ${collapsed ? styles.topChromeDesktop : ""}`}>
+          <div className={styles.pill} data-rc-chrome="pill">
+            <button
+              type="button"
+              className={styles.menuButton}
+              aria-label={collapsed ? "Abrir barra" : "Abrir menú"}
+              title={collapsed ? "Abrir barra" : undefined}
+              onClick={() => (collapsed && window.innerWidth >= 768 ? setHidden(false) : setMobileOpen(true))}
+            >
+              <PanelLeftOpen size={18} strokeWidth={1.75} />
+            </button>
+            <Link href="/" aria-label="Ir al inicio">
+              <Logo size={16} className={styles.mobileTitle} />
+            </Link>
+          </div>
+          {yo?.estado === "aprobado" && <CampanaNotificaciones />}
+        </header>
+
+        <main className={`${styles.main} ${collapsed ? styles.mainWithRail : ""}`}>
+          <div key={pathname} data-rc-entrada className={styles.pantalla}>{children}</div>
+        </main>
+      </div>
     </div></PerfilActual.Provider>
   );
 }

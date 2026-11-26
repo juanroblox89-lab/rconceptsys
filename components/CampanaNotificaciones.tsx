@@ -41,7 +41,7 @@ export function CampanaNotificaciones({ barra = false }: { barra?: boolean }) {
     try { await api.leerNotificaciones(); await cargar(); } catch { setError(true); }
     finally { setMarcando(false); }
   }
-  return <div className={`${styles.raiz} ${barra ? styles.barra : styles.pastilla}`} ref={raiz}>
+  return <div className={`${styles.raiz} ${barra ? styles.barra : styles.pastilla}`} data-rc-chrome={barra ? undefined : "campana"} ref={raiz}>
     <button type="button" ref={boton} className={styles.boton} aria-label={noLeidas ? `Notificaciones, ${noLeidas} sin leer` : "Notificaciones"} aria-expanded={abierta} aria-controls={panel} onClick={() => {
       setAbierta(!abierta); if (!abierta) void cargar();
     }}><Bell size={19} strokeWidth={1.75} aria-hidden="true" />{noLeidas > 0 && <span className={styles.punto} />}</button>

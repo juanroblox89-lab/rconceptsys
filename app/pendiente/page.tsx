@@ -79,7 +79,7 @@ export default function PendientePage() {
             onClick={verificarManual}
             cargando={comprobando}
             envoltorioClassName="rc-escena-vidrio--bloque"
-            style={{ width: "100%", height: "34px" }}
+            style={{ width: "100%" }}
           >
             <RefreshCw size={15} strokeWidth={1.75} className={comprobando ? styles.spin : ""} style={{ marginRight: 6 }} />
             {comprobando ? "Comprobando..." : "Comprobar ahora"}
@@ -89,7 +89,7 @@ export default function PendientePage() {
             type="button"
             variante="secundario"
             onClick={cerrarSesion}
-            style={{ width: "100%", height: "34px" }}
+            style={{ width: "100%" }}
           >
             Cerrar sesión
           </Boton>

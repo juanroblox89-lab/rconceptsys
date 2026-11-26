@@ -1,5 +1,5 @@
 .container {
-  padding: var(--rc-esp-20) var(--rc-esp-16);
+  padding: var(--rc-esp-20) var(--rc-esp-16) calc(var(--rc-esp-20) + env(safe-area-inset-bottom, 0px));
   max-width: 1080px;
   margin: 0 auto;
   display: flex;
@@ -28,7 +28,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: var(--rc-esp-14);
 }
 
@@ -76,4 +76,10 @@
   line-height: var(--rc-lh-micro);
   color: var(--rc-texto-tenue);
   margin-top: var(--rc-esp-2);
+}
+
+:global(html[data-rc-tema="glass"]) .card {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
 }

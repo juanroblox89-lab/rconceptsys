@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T07:10:31.355Z",
+  "generado_en": "2026-11-26T08:00:52.930Z",
   "version": "1.0",
   "modulos": [
     {
@@ -1391,6 +1391,7 @@
     "PORT",
     "QA_BASE",
     "QA_DIR",
+    "QA_FASE",
     "QA_GLASS_ONLY",
     "QA_MEDIA_DIR",
     "QA_MODE",
@@ -2508,5 +2509,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "b453aec6a69325b3412d110b384807f47212dd75"
+  "commit_hash": "334deb079289417d911d09a2e882492ce04a7569"
 }

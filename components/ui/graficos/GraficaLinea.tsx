@@ -181,8 +181,8 @@ export function GraficaLinea({
           >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#5AA9FF" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#5AA9FF" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="var(--rc-azul)" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="var(--rc-azul)" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
@@ -221,7 +221,7 @@ export function GraficaLinea({
               <path
                 d={lineaPath}
                 fill="none"
-                stroke="#2F7FE0"
+                stroke="var(--rc-azul-texto)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -237,8 +237,8 @@ export function GraficaLinea({
                     cx={coord.x}
                     cy={coord.y}
                     r={esHover ? 6 : serie.length <= 15 ? 4 : 2.5}
-                    fill={esHover ? "#2F7FE0" : "#FFFFFF"}
-                    stroke="#2F7FE0"
+                    fill={esHover ? "var(--rc-azul-texto)" : "var(--rc-superficie)"}
+                    stroke="var(--rc-azul-texto)"
                     strokeWidth={esHover ? "2.5" : "1.75"}
                     className={styles.puntoActivo}
                     onMouseEnter={() => setIndiceHover(i)}

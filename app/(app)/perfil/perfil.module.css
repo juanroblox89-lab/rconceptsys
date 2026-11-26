@@ -1,5 +1,5 @@
 .container {
-  padding: var(--rc-esp-20) var(--rc-esp-16);
+  padding: var(--rc-esp-20) var(--rc-esp-16) calc(var(--rc-esp-20) + env(safe-area-inset-bottom, 0px));
   max-width: 580px;
   margin: 0 auto;
   display: flex;
@@ -81,8 +81,9 @@
   align-items: center;
   padding: 2px 10px;
   border-radius: var(--rc-radio-pildora);
-  background: var(--rc-gris-900);
-  color: var(--rc-superficie);
+  background: var(--rc-azul-suave);
+  box-shadow: var(--rc-elev-relieve-sm);
+  color: var(--rc-azul-texto);
   font-size: var(--rc-fs-micro);
   font-weight: var(--rc-fw-semibold, 600);
   letter-spacing: 0.02em;
@@ -337,4 +338,10 @@
   .metricasGrid {
     grid-template-columns: 1fr;
   }
+}
+
+:global(html[data-rc-tema="glass"]) .card {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-glass-borde);
+  border-radius: var(--rc-glass-radio);
 }
