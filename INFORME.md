@@ -1,3 +1,48 @@
+# Informe Chat: entrada pareja, /ria y acciones de mensajes · RConcept Systems
+
+**Publicado en `desde-cero`:** commit [`e030649`](https://github.com/juanroblox89-lab/rconceptsys/commit/e0306493e955d374722bdf428b78dd7efa75ce) (sin cambios en `main`).
+
+- **Entrada del chat pareja (44 px):** unificado el compositor de `/` y `/ria` en claro, oscuro, Glass y RConcept. La caja, `+`, micrófono y enviar miden exactamente `44 px` centrados en una línea (sin envolver placeholders ni desbordar en 375 px) y los botones se alinean con la última línea al crecer el texto.
+- **`/ria` desde el chat del equipo:** al escribir `/ria` o `/ria <consulta>`, muestra un aviso claro y abre `/ria` enviando la consulta sin dejar mensajes basura en el chat del equipo (`@RIA` sigue respondiendo en el grupo).
+- **Copiar, editar y eliminar (estilo WhatsApp):** pulsación larga en móvil y botón `⋯` en escritorio. Copiar disponible en cualquier mensaje (incluidas respuestas de RIA); Editar solo propios (marca `editado`); Eliminar propios o cualquiera para administradores, con modal de confirmación y barra `Deshacer` corta (6 s en interfaz / 30 s en servidor).
+- **Backend y SQL:** endpoints `PATCH`/`DELETE`/`POST .../restaurar` para `/api/chat/{id}` y `/api/ria/{id}` con verificación de permisos en servidor, tests Go de permisos y migración idempotente [`024_chat_acciones_mensajes.sql`](<supabase/migrations/024_chat_acciones_mensajes.sql>).
+- **Verificación:** `go build/vet/test`, `tsc --noEmit`, `eslint`, `npm test`, `next build`, `npm run mapa` y matriz Playwright headless (375×480 con emulación Android, 375×812 y 1280×800, claro/oscuro, Glass/RConcept) en verde. La base real de Supabase y teléfono físico quedan pendientes tras aplicar la migración 024.
+
+[Reporte técnico y estado para retomar](<HARNESS-CHAT-ACCIONES.md>) · [Migración 024](<supabase/migrations/024_chat_acciones_mensajes.sql>)
+
+---
+
+# Informe F12 · RConcept Systems
+
+**Punto 7:** [`a4a458c`](https://github.com/juanroblox89-lab/rconceptsys/commit/a4a458c38578d6a2e2aea282b23021f07a08aaa5), solo a `desde-cero`; [preview confirmada](https://rconceptsys-nuevo-qfkwud6sz-juanroblox89-labs-projects.vercel.app). En Glass, escribe `/` en RIA o en el chat del equipo para ver rutas por rol. Enter abre la sugerencia; Escape cierra el menú y deja enviar el comando como enlace azul. [Capturas del punto 7](<CAPTURAS-F12-ANEXO-7.zip>).
+
+**Anexo 5–6:** [`8c415e3`](https://github.com/juanroblox89-lab/rconceptsys/commit/8c415e35270b4ef21ddbc97125efceb1263f3407), solo a `desde-cero`; [preview lista](https://rconceptsys-nuevo-lu2tm64cl-juanroblox89-labs-projects.vercel.app). Flotantes con 97% de opacidad sin destello inicial y compositores alineados, incluso con texto de 28 px. [Evidencia del anexo](<capturas-f12/INDICE.md#anexo-de-los-puntos-5-y-6>).
+
+**F12:** [`0f62dbc`](https://github.com/juanroblox89-lab/rconceptsys/commit/0f62dbce9930e84ef66b4d9e12cd89196cbef074) en `desde-cero`, con [vista previa confirmada](https://rconceptsys-nuevo-fuh4ogdyb-juanroblox89-labs-projects.vercel.app).
+
+**Producción:** esta sesión solo hizo push a `desde-cero`. Después hubo un [push separado a `main`](https://github.com/juanroblox89-lab/rconceptsys/actions/runs/45531999553) y Vercel [desplegó el mismo commit en producción](https://rconceptsys-nuevo-jovlgcs67-juanroblox89-labs-projects.vercel.app). No se promovió ni revirtió desde esta sesión.
+
+- Glass deja ver más la foto: una sola capa de fondo, tinte neutro y 5% de oscurecido inicial. Los porcentajes guardados se respetan; se ajustan en **Personalización → Fondo Glass**.
+- Notificaciones y menús casi opacos. Los botones de los chats de equipo y RIA quedan centrados con una línea y alineados abajo si la caja crece.
+- QA headless a 375 y 1280 px, claro y oscuro. En RIA, Cortes y Configuración, la paleta base dio un mínimo de **5,49:1** en las combinaciones de contraste medidas. Pasaron TypeScript, lint, tests y mapa. El servidor temporal quedó cerrado.
+
+[Reporte técnico](<HARNESS-REPORTE-F12.md>) · [Índice de capturas y mediciones](<capturas-f12/INDICE.md>)
+
+---
+
+# Informe F11 · RConcept Systems
+
+**F11 publicado en `desde-cero`:** [`143386c`](https://github.com/juanroblox89-lab/rconceptsys/commit/143386cd9ed182a06c3ca9dfed6ab9b995010f88). [Preview de Vercel](https://rconceptsys-nuevo-v0t29w8s4-juanroblox89-labs-projects.vercel.app) confirmada; no se cambió producción.
+
+- **Cortes:** PostgREST encontraba dos relaciones con `perfiles` y devolvía `PGRST201`. Ahora se indica la relación del participante y se distingue un listado vacío de un error. No hubo migración 024.
+- **RIA y apariencia:** Ayuda no envía nada al abrir; hay cinco fichas, menú `/` por rol y Markdown con enlaces. Glass usa un solo desenfoque. Personalización tiene carga de fondo con miniatura y controles de color con vista previa.
+- **Anexo:** se reemplazaron los controles nativos visibles en los flujos revisados, se alinearon Configuración y cabeceras, y Gestión muestra cómo desplazarse por las pestañas en móvil.
+- **Pruebas:** lint, TypeScript, tests frontend, Go build/vet/test, mapa, matriz Edge headless y regresiones F9/F10. Se comprobó que Drive abre otro contexto sin reemplazar la app. **Pendiente:** validar el mismo gesto en la PWA instalada; Edge headless no pudo lanzarla y no hay APK en el repo.
+
+[Reporte técnico con archivos y hashes por punto](<HARNESS-REPORTE-F11.md>) · [48 capturas y mediciones](<CAPTURAS-F11.zip>)
+
+---
+
 # Informe F10 · RConcept Systems
 
 **Código publicado:** [`86c6410`](https://github.com/juanroblox89-lab/rconceptsys/commit/86c6410974264fa17d4d6bee617f8ebb7c47234e), solo en `desde-cero`. Vercel confirmó el despliegue de la rama. `main` no cambió.
