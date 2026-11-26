@@ -4,8 +4,6 @@ import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePerfilActual } from "@/components/AppShell";
 import { RespuestaRIA } from "@/components/RespuestaRIA";
-import { comandoRIA, rutasVisiblesRIA } from "@/lib/rutas-ria";
-import { EntradaComandos, TextoComandos, useComandosChat, useGlassChat } from "@/components/ComandosChat";
 import { ArrowRight, ArrowUp, Mic, Square } from "lucide-react";
 import { MarcaRIA } from "@/components/MarcaRIA";
 import { useAviso } from "@/components/ui/Aviso";
@@ -21,7 +19,7 @@ import {
 } from "@/components/chat/AccionesMensaje";
 
 import { api } from "@/lib/api";
-import { preguntasAyudaRIA, transmitirRIA, type MensajeRIA } from "@/lib/ria";
+import { esComposicionIME, preguntasAyudaRIA, transmitirRIA, type MensajeRIA } from "@/lib/ria";
 import type { Perfil } from "@/lib/types";
 import { useDictadoRIA } from "@/lib/use-dictado-ria";
 import styles from "./ria.module.css";
@@ -46,10 +44,6 @@ function ConversacionRIA() {
   const { mostrarAviso } = useAviso();
   const modoAyuda = params.get("ayuda") === "1";
   const idMensaje = params.get("mensaje");
-  const consultaInicial = params.get("q");
-  const glass = useGlassChat();
-  const rutas = rutasVisiblesRIA(perfil);
-  const rutasMenu = rutas.filter(r => r.href !== "/ria");
   const [historial, setHistorial] = useState<MensajeRIA[]>([]);
   const [listo, setListo] = useState(false);
   const [intento, setIntento] = useState(0);
@@ -71,12 +65,10 @@ function ConversacionRIA() {
   const zona = useRef<HTMLDivElement>(null);
   const seguir = useRef(true);
   const saltarA = useRef("");
-  const consultaConsumidaRef = useRef<string | null>(null);
+  const entrada = useRef<HTMLTextAreaElement>(null);
   const dictado = useDictadoRIA(frase => setTexto(t => `${t.trimEnd()}${t.trim() ? " " : ""}${frase}`.slice(0, 2000)));
   const enviando = Boolean(pregunta);
   const microActivo = dictado.estado !== "listo";
-  const esComando = comandoRIA(texto) !== undefined;
-  const comandos = useComandosChat(texto, rutasMenu, !microActivo && !enviando, () => setTexto(""));
 
   useEffect(() => {
     return () => {
@@ -126,18 +118,15 @@ function ConversacionRIA() {
     };
   }, [intento]);
 
-  useEffect(() => {
-    if (!listo || !consultaInicial || enviando || control.current) return;
-    if (consultaConsumidaRef.current === consultaInicial) return;
-    const limpia = consultaInicial.replace(/^\/ria(?:\s+|$)/i, "").trim().slice(0, 2000);
-    const id = setTimeout(() => {
-      if (consultaConsumidaRef.current === consultaInicial) return;
-      consultaConsumidaRef.current = consultaInicial;
-      router.replace("/ria", { scroll: false });
-      if (limpia) void enviar(limpia);
-    }, 0);
-    return () => clearTimeout(id);
-  }, [listo, consultaInicial, enviando, router, enviar]);
+  useLayoutEffect(() => {
+    const campo = entrada.current;
+    if (!campo || CSS.supports("field-sizing", "content")) return;
+    if (!texto) campo.style.removeProperty("height");
+    else {
+      campo.style.height = "auto";
+      campo.style.height = `${Math.max(44, campo.scrollHeight)}px`;
+    }
+  }, [texto]);
 
   useLayoutEffect(() => {
     const scroll = zona.current;
@@ -157,11 +146,8 @@ function ConversacionRIA() {
 
   function publicar(valor: string) {
     if (!listo || microActivo || control.current) return;
-    const limpio = valor.trim().replace(/^\/ria(?:\s+|$)/i, "").trim();
-    if (!limpio) {
-      setTexto("");
-      return;
-    }
+    const limpio = valor.trim();
+    if (!limpio) return;
     dictado.limpiarErrorVoz();
     if (modoAyuda) router.replace("/ria", { scroll: false });
     void enviar(limpio);
@@ -312,19 +298,19 @@ function ConversacionRIA() {
                   />
                 ) : esUsuario ? (
                   <>
-                    <p>{glass ? <TextoComandos texto={m.cuerpo} rutas={rutas} /> : m.cuerpo}</p>
+                    <p>{m.cuerpo}</p>
                     <MarcaEditado fecha={m.editado_en} />
                   </>
                 ) : (
-                  <RespuestaRIA texto={m.cuerpo} rutas={rutas} />
+                  <RespuestaRIA texto={m.cuerpo} rutas={[]} />
                 )}
               </article>
             </AccionesMensaje>
           );
         })}
         {enviando && <>
-          <article className={`${styles.mensaje} ${styles.propia}`} aria-label="Tu mensaje"><p>{glass ? <TextoComandos texto={pregunta} rutas={rutas} /> : pregunta}</p></article>
-          {respuesta ? <article className={styles.mensaje} aria-label="Respuesta de RIA"><RespuestaRIA texto={respuesta} rutas={rutas} /></article> : <p role="status" className={styles.pensando}>Pensando</p>}
+          <article className={`${styles.mensaje} ${styles.propia}`} aria-label="Tu mensaje"><p>{pregunta}</p></article>
+          {respuesta ? <article className={styles.mensaje} aria-label="Respuesta de RIA"><RespuestaRIA texto={respuesta} rutas={[]} /></article> : <p role="status" className={styles.pensando}>Pensando</p>}
         </>}
         {error && <div role="alert" className={styles.error}>{error} {!listo && <Boton variante="secundario" tamano="sm" onClick={() => { setError(""); setIntento(n => n + 1); }}>Reintentar</Boton>}</div>}
       </div>
@@ -343,22 +329,20 @@ function ConversacionRIA() {
           }}
         />
       )}
-      {comandos.menu}
-      <form className={styles.form} data-rc-compositor data-rc-placeholder="Escribe a RIA…" onSubmit={e => { e.preventDefault(); if (glass || !esComando) publicar(texto); }}>
-        <EntradaComandos aria-label="Mensaje para RIA" placeholder="Escribe a RIA… o usa / para ir a una sección" rows={1} maxLength={2000}
-          texto={texto} rutas={rutas} glass={glass} autoAltura {...comandos.propsEntrada}
-          onChange={e => { setTexto(e.currentTarget.value); comandos.editar(); }} onKeyDown={e => {
-            if (e.nativeEvent.isComposing || comandos.teclado(e)) return;
+      <form className={styles.form} data-rc-compositor data-rc-placeholder="Escribe a RIA…" onSubmit={e => { e.preventDefault(); publicar(texto); }}>
+        <textarea ref={entrada} aria-label="Mensaje para RIA" placeholder="Escribe a RIA…" rows={1} maxLength={2000}
+          value={texto} onChange={e => setTexto(e.currentTarget.value)} onKeyDown={e => {
+            if (esComposicionIME(e.nativeEvent)) return;
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              if (glass || !esComando) publicar(texto);
+              publicar(texto);
             }
           }} />
         <button type="button" className={styles.micro} data-rc-compositor-boton aria-label={dictado.estado === "grabando" ? "Detener dictado" : "Dictar mensaje"}
           aria-pressed={dictado.estado === "grabando"} disabled={!listo || enviando || dictado.estado === "iniciando" || dictado.estado === "procesando"} onClick={dictado.alternar}>
           {dictado.estado === "grabando" ? <Square size={17} aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
         </button>
-        <button type="submit" className={styles.enviar} data-rc-compositor-boton aria-label="Enviar a RIA" disabled={!listo || !texto.trim() || (!glass && esComando) || enviando || microActivo}><ArrowUp size={20} aria-hidden="true" /></button>
+        <button type="submit" className={styles.enviar} data-rc-compositor-boton aria-label="Enviar a RIA" disabled={!listo || !texto.trim() || enviando || microActivo}><ArrowUp size={20} aria-hidden="true" /></button>
       </form>
       {dictado.errorVoz ? <p role="alert" className={styles.error}>{dictado.errorVoz}</p> : microActivo && <p role="status" className={styles.voz}>{dictado.estado === "grabando" ? "Escuchando…" : dictado.estado === "iniciando" ? "Activando micrófono…" : "Transcribiendo…"}</p>}
     </div>

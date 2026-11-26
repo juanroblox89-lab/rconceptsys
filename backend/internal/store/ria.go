@@ -19,7 +19,10 @@ type StoreRIA interface {
 	HistorialRIA(ctx context.Context, perfil string, limite int) ([]MensajeRIA, error)
 	GuardarConversacionRIA(ctx context.Context, perfil, pregunta, respuesta string) (MensajeRIA, error)
 	UsarCupoRIA(ctx context.Context, perfil, dia string, tope int) (bool, error)
-	CrearMensajeEquipoRIA(ctx context.Context, perfil, respuesta string) (*ChatMensaje, error)
+	IniciarRIAGrupo(ctx context.Context, perfil, solicitud, turno, comando, dia string, tope int) (InicioRIAGrupo, error)
+	ContextoRIAGrupo(ctx context.Context, antesID int64) ([]TextoRIAGrupo, error)
+	FinalizarRIAGrupo(ctx context.Context, perfil, solicitud, turno, respuesta string) (*ChatMensaje, error)
+	LiberarRIAGrupo(ctx context.Context, perfil, solicitud, turno string) error
 	EditarMensajeRIA(ctx context.Context, perfil string, id int64, cuerpo string) (MensajeRIA, error)
 	EliminarMensajeRIA(ctx context.Context, perfil string, id int64) error
 	RestaurarMensajeRIA(ctx context.Context, perfil string, id int64, ventana time.Duration) (MensajeRIA, error)
@@ -27,6 +30,7 @@ type StoreRIA interface {
 type memoriaRIA struct {
 	historial map[string][]MensajeRIA
 	usos      map[[2]string]int
+	grupo     map[[2]string]*turnoRIAGrupo
 	ultimo    int64
 }
 
@@ -76,23 +80,6 @@ func (m *MemoryStore) UsarCupoRIA(_ context.Context, perfil, dia string, tope in
 	s.usos[k]++
 	return true, nil
 }
-func (m *MemoryStore) CrearMensajeEquipoRIA(_ context.Context, perfil, respuesta string) (*ChatMensaje, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	p := m.perfiles[perfil]
-	if p == nil || p.Estado != EstadoAprobado {
-		return nil, ErrForbidden
-	}
-	if strings.TrimSpace(respuesta) == "" {
-		return nil, ErrValidation
-	}
-	msg := ChatMensaje{ID: m.nextMsgID, AutorID: "ria", EsRIA: true, Cuerpo: respuesta, CreadoEn: time.Now()}
-	m.nextMsgID++
-	m.mensajes = append(m.mensajes, &msg)
-	copia := msg
-	return &copia, nil
-}
-
 func (m *MemoryStore) buscarMensajeRIALocked(perfil string, id int64) (string, int, *MensajeRIA, error) {
 	s := m.riaLocked()
 	filas := s.historial[perfil]

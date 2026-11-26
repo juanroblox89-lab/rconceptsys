@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, Info, Send, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { ChatAdjunto, ChatMensaje, Perfil } from "@/lib/types";
+import type { ChatAdjunto, ChatMensaje, Perfil, SolicitudRIAPublica } from "@/lib/types";
 import { agruparMensajes } from "@/lib/chat-utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAviso } from "@/components/ui/Aviso";
@@ -34,20 +34,40 @@ interface Pendiente {
 }
 
 import { normalizarUrlEnlace } from "@/lib/drive-equipo";
-import { mencionaRIA, transmitirRIA } from "@/lib/ria";
+import {
+  LIMITE_COMANDO_RIA_PUBLICO,
+  combinarMensajesChat,
+  esComposicionIME,
+  guardarSolicitudRIAPublica,
+  leerComandoRIAPublico,
+  recuperarSolicitudRIAPublica,
+  transmitirRIAPublica,
+} from "@/lib/ria";
 import { MarcaRIA } from "@/components/MarcaRIA";
 import { EntradaComandos, TextoComandos, useComandosChat, useGlassChat } from "@/components/ComandosChat";
 import { rutasVisiblesRIA } from "@/lib/rutas-ria";
+
+function almacenamientoRIA() {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
 
 export default function ChatPage() {
   const router = useRouter();
   const { mostrarAviso } = useAviso();
   const [mensajes, setMensajes] = useState<ChatMensaje[]>([]);
   const [destinoMensaje, setDestinoMensaje] = useState(0);
-  const [riaTexto, setRiaTexto] = useState("");
+  const [riaPendiente, setRiaPendiente] = useState<SolicitudRIAPublica | null>(null);
   const [riaActiva, setRiaActiva] = useState(false);
-  const [riaError, setRiaError] = useState<{ id: number; texto: string } | null>(null);
+  const [riaError, setRiaError] = useState<string | null>(null);
+  const [avisoRIA, setAvisoRIA] = useState<string | null>(null);
   const riaControl = useRef<AbortController | null>(null);
+  const revisionChat = useRef(0);
+  const recibidosRIA = useRef(new Map<number, { mensaje: ChatMensaje; revision: number }>());
+  const destinoRef = useRef(0);
   const [cuerpo, setCuerpo] = useState("");
   const [yo, setYo] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -75,7 +95,10 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    const destino = () => setDestinoMensaje(Number(new URLSearchParams(location.search).get("mensaje")) || 0);
+    const destino = () => {
+      destinoRef.current = Number(new URLSearchParams(location.search).get("mensaje")) || 0;
+      setDestinoMensaje(destinoRef.current);
+    };
     destino(); window.addEventListener("hashchange", destino);
     return () => window.removeEventListener("hashchange", destino);
   }, []);
@@ -84,7 +107,7 @@ export default function ChatPage() {
     let activo = true;
     api.getChat(undefined, destinoMensaje - 1, 2).then((datos) => {
       const exacto = datos.find((m) => m.id === destinoMensaje);
-      if (activo && exacto) setMensajes((prev) => prev.some((m) => m.id === exacto.id) ? prev : [...prev, exacto].sort((a,b) => a.id-b.id));
+      if (activo && exacto) setMensajes((prev) => combinarMensajesChat(prev, [exacto]));
     }).catch(() => {});
     return () => { activo = false; };
   }, [destinoMensaje, yo]);
@@ -102,104 +125,79 @@ export default function ChatPage() {
           router.push("/pendiente");
           return;
         }
+        setRiaPendiente(recuperarSolicitudRIAPublica(almacenamientoRIA(), p.id));
         setYo(p);
       })
       .catch(() => {
-        router.push("/login");
+        if (activo) router.push("/login");
       });
     return () => {
       activo = false;
     };
   }, [router]);
 
-  const ultimoIdRef = useRef<number>(0);
-
-  // Mantener el último ID real registrado para polling con 'despues'
-  useEffect(() => {
-    if (mensajes.length > 0) {
-      const reales = mensajes.filter((m) => !m.enviando && m.id < 1000000000000);
-      if (reales.length > 0) {
-        const maxId = Math.max(...reales.map((m) => m.id));
-        if (maxId > ultimoIdRef.current) {
-          ultimoIdRef.current = maxId;
-        }
-      }
-    }
-  }, [mensajes]);
-
   useEffect(() => {
     if (!yo) return;
 
     let montado = true;
-    const cargar = async () => {
-      try {
-        const datos = await api.getChat(undefined, undefined, 40);
-        if (montado) {
-          const ordenados = [...datos].reverse();
-          setMensajes((prev) => { const exacto = prev.find((m) => m.id === destinoMensaje); return exacto && !ordenados.some((m) => m.id === exacto.id) ? [exacto,...ordenados] : ordenados; });
-          setCargando(false);
-        }
-      } catch {
-        if (montado) setCargando(false);
-      }
-    };
-    cargar();
-
-    let pollTimer: NodeJS.Timeout;
+    let consultando = false;
+    let ultimoIdVisto: number | undefined;
+    let pollTimer: ReturnType<typeof setTimeout>;
 
     const ejecutarPolling = async () => {
-      if (!montado) return;
+      if (!montado || consultando) return;
+      consultando = true;
+      const revisionAlIniciar = revisionChat.current;
       try {
         const datos = await api.getChat(undefined, undefined, 40);
-        if (montado && datos && Array.isArray(datos)) {
-          const ordenados = [...datos].reverse();
-          setMensajes((prev) => {
-            const exacto = prev.find((m) => m.id === destinoMensaje);
-            if (exacto && !ordenados.some((m) => m.id === exacto.id)) ordenados.unshift(exacto);
-            const locales = prev.filter((m) => (m.enviando || m.error) && !ordenados.some((o) => o.id === m.id));
-            const combinados = locales.length > 0 ? [...ordenados, ...locales] : ordenados;
-            if (combinados.length > prev.length) {
-              const diff = combinados.length - prev.length;
-              if (!isNearBottomRef.current) {
-                setNuevosMensajes((count) => count + diff);
-              }
-            }
-            return combinados;
-          });
+        if (!montado || !Array.isArray(datos)) return;
+        const ids = new Set(datos.map((m) => m.id));
+        const retenidos: ChatMensaje[] = [];
+        for (const [id, entrada] of recibidosRIA.current) {
+          if (ids.has(id) || entrada.revision <= revisionAlIniciar) {
+            recibidosRIA.current.delete(id);
+          } else {
+            // Un GET iniciado antes del SSE puede traer una lista que aún no lo incluye.
+            retenidos.push(entrada.mensaje);
+          }
         }
+        const destino = destinoRef.current;
+        setMensajes((prev) => combinarMensajesChat(datos, [
+          ...retenidos,
+          ...prev.filter((m) => m.enviando || m.error || m.id === destino),
+        ]));
+        if (ultimoIdVisto !== undefined && !isNearBottomRef.current) {
+          const anterior = ultimoIdVisto;
+          const nuevos = [...ids].filter((id) => id > anterior).length;
+          if (nuevos) setNuevosMensajes((count) => count + nuevos);
+        }
+        ultimoIdVisto = Math.max(ultimoIdVisto ?? 0, ...ids);
       } catch {
-        // Ignorar
+        // Mantener el chat visible y seguir consultando.
       } finally {
+        consultando = false;
         if (montado) {
-          const delay = typeof document !== "undefined" && document.hidden ? 15000 : 3000;
-          pollTimer = setTimeout(ejecutarPolling, delay);
+          setCargando(false);
+          pollTimer = setTimeout(ejecutarPolling, document.hidden ? 15000 : 3000);
         }
       }
     };
 
-    pollTimer = setTimeout(ejecutarPolling, 3000);
-
+    void ejecutarPolling();
     const onVisibilityChange = () => {
       clearTimeout(pollTimer);
-      if (typeof document !== "undefined" && !document.hidden) {
-        ejecutarPolling();
-      } else {
-        pollTimer = setTimeout(ejecutarPolling, 15000);
-      }
+      if (consultando) return;
+      if (document.hidden) pollTimer = setTimeout(ejecutarPolling, 15000);
+      else void ejecutarPolling();
     };
-
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", onVisibilityChange);
-    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       montado = false;
       clearTimeout(pollTimer);
-      if (typeof document !== "undefined") {
-        document.removeEventListener("visibilitychange", onVisibilityChange);
-      }
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [yo, destinoMensaje]);
+  }, [yo]);
 
   useEffect(() => {
     if (!destinoMensaje && isNearBottomRef.current && scrollRef.current) {
@@ -275,43 +273,77 @@ export default function ChatPage() {
   };
 
   useEffect(() => () => riaControl.current?.abort(), []);
-  const consultarRIA = async (id: number) => {
-    if (riaControl.current) return;
-    const c = new AbortController(); riaControl.current = c;
-    setRiaActiva(true); setRiaTexto(""); setRiaError(null); setDestinoMensaje(0);
+
+  function agregarMensajeRIA(mensaje: ChatMensaje) {
+    // Del polling se prefiere la versión ya visible (puede tener una edición posterior).
+    recibidosRIA.current.set(mensaje.id, { mensaje, revision: ++revisionChat.current });
+    setMensajes((prev) => combinarMensajesChat(prev, [mensaje]));
+  }
+
+  const consultarRIA = async (solicitud: SolicitudRIAPublica) => {
+    if (!yo || riaControl.current) return;
+    const c = new AbortController();
+    riaControl.current = c;
+    setRiaActiva(true);
+    setRiaError(null);
+    setAvisoRIA(null);
+    setRiaPendiente(solicitud);
+    guardarSolicitudRIAPublica(almacenamientoRIA(), yo.id, solicitud);
+    destinoRef.current = 0;
+    setDestinoMensaje(0);
     try {
-      const r = await transmitirRIA<ChatMensaje>({ mensaje_id: id }, (s) => setRiaTexto((t) => t + s), c.signal);
-      setMensajes((m) => m.some((v) => v.id === r.id) ? m : [...m, r].sort((a,b) => a.id-b.id));
+      const fin = await transmitirRIAPublica(solicitud, yo.id, (consulta) => {
+        if (!c.signal.aborted) agregarMensajeRIA(consulta);
+      }, c.signal);
+      if (!c.signal.aborted) {
+        agregarMensajeRIA(fin);
+        guardarSolicitudRIAPublica(almacenamientoRIA(), yo.id, null);
+        setRiaPendiente(null);
+      }
     } catch (e) {
-      if (!c.signal.aborted) setRiaError({ id, texto: e instanceof Error ? e.message : "RIA no pudo responder." });
+      if (!c.signal.aborted) setRiaError(e instanceof Error ? e.message : "RIA no pudo responder.");
     } finally {
-      riaControl.current = null; setRiaActiva(false); setRiaTexto("");
+      if (riaControl.current === c) riaControl.current = null;
+      if (!c.signal.aborted) setRiaActiva(false);
     }
   };
-  useEffect(() => {
-    if (riaActiva && isNearBottomRef.current && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [riaActiva, riaTexto]);
+
+  const descartarRIA = () => {
+    if (!yo || riaControl.current) return;
+    guardarSolicitudRIAPublica(almacenamientoRIA(), yo.id, null);
+    setRiaPendiente(null);
+    setRiaError(null);
+    setAvisoRIA(null);
+  };
 
   const enviarMensaje = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const texto = cuerpo.trim();
     const listos = pendientes.filter((p) => p.estado === "listo" && p.adjunto).map((p) => p.adjunto as ChatAdjunto);
     if ((!texto && listos.length === 0) || !yo) return;
-    if (pendientes.some((p) => p.estado === "subiendo")) {
-      setErrorAdjunto("Espera a que terminen de subir los archivos.");
+    const comando = leerComandoRIAPublico(texto);
+    if (comando !== null) {
+      if (comando === "") {
+        setAvisoRIA("Escribe tu pregunta después de /ria.");
+      } else if (pendientes.length) {
+        setAvisoRIA("Quita los adjuntos antes de enviar una consulta a RIA.");
+      } else if ([...comando].length > LIMITE_COMANDO_RIA_PUBLICO) {
+        setAvisoRIA(`El comando completo no puede superar ${LIMITE_COMANDO_RIA_PUBLICO} caracteres.`);
+      } else if (riaControl.current) {
+        return;
+      } else if (riaPendiente) {
+        setAvisoRIA("Reintenta o descarta la consulta pendiente antes de iniciar otra.");
+      } else {
+        setCuerpo("");
+        setErrorAdjunto(null);
+        void consultarRIA({ solicitud_id: crypto.randomUUID(), comando });
+      }
       return;
     }
 
-    // El comando /ria abre la conversación privada con RIA en lugar de publicar basura en el chat del equipo.
-    if (pendientes.length === 0) {
-      const riaCmd = texto.match(/^\/ria(?:\s+([\s\S]*))?$/i);
-      if (riaCmd) {
-        const consulta = (riaCmd[1] ?? "").trim();
-        setCuerpo("");
-        setErrorAdjunto(null);
-        router.push(consulta ? `/ria?q=${encodeURIComponent(consulta.slice(0, 2000))}` : "/ria");
-        return;
-      }
+    if (pendientes.some((p) => p.estado === "subiendo")) {
+      setErrorAdjunto("Espera a que terminen de subir los archivos.");
+      return;
     }
 
     // Solo se ejecuta desde eventos de envío; no durante el render.
@@ -337,7 +369,6 @@ export default function ChatPage() {
         [...prev.filter((m) => m.id !== tempID && m.id !== creado.id), creado].sort((a,b) => a.id-b.id),
       );
       isNearBottomRef.current = true;
-      if (mencionaRIA(texto)) void consultarRIA(creado.id);
     } catch {
       setMensajes((prev) =>
         prev.map((m) => (m.id === tempID ? { ...m, enviando: false, error: true } : m)),
@@ -347,14 +378,15 @@ export default function ChatPage() {
 
   const glass = useGlassChat();
   const rutas = rutasVisiblesRIA(yo);
-  const comandos = useComandosChat(cuerpo, rutas, glass && rutas.length > 0, () => setCuerpo(""));
-  const matchComandoRIA = pendientes.length === 0 ? cuerpo.trim().match(/^\/ria(?:\s+([\s\S]*))?$/i) : null;
+  const rutasMenu = rutas.filter((ruta) => ruta.href !== "/ria");
+  const comandoRIA = leerComandoRIAPublico(cuerpo);
+  const comandos = useComandosChat(cuerpo, rutasMenu, glass && rutasMenu.length > 0 && comandoRIA === null, () => setCuerpo(""));
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.nativeEvent.isComposing || comandos.teclado(e)) return;
+    if (esComposicionIME(e.nativeEvent) || comandos.teclado(e)) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      enviarMensaje();
+      void enviarMensaje();
     }
   };
 
@@ -367,7 +399,6 @@ export default function ChatPage() {
       setMensajes((prev) =>
         [...prev.filter((m) => m.id !== id && m.id !== creado.id), creado].sort((a,b) => a.id-b.id),
       );
-      if (mencionaRIA(texto)) void consultarRIA(creado.id);
     } catch {
       setMensajes((prev) =>
         prev.map((m) => (m.id === id ? { ...m, enviando: false, error: true } : m)),
@@ -404,6 +435,7 @@ export default function ChatPage() {
     setEliminando(true);
     try {
       await api.deleteChatMensaje(id);
+      recibidosRIA.current.delete(id);
       setMensajes((prev) => prev.filter((m) => m.id !== id));
       if (editandoId === id) setEditandoId(null);
       setConfirmarEliminar(null);
@@ -574,7 +606,9 @@ export default function ChatPage() {
                               <>
                                 {linea.cuerpo ? (
                                   <p className={styles.bubbleTexto}>
-                                    {glass ? <TextoComandos texto={linea.cuerpo} rutas={rutas} /> : linea.cuerpo}
+                                    {glass && !esRia && leerComandoRIAPublico(linea.cuerpo) === null
+                                      ? <TextoComandos texto={linea.cuerpo} rutas={rutas} />
+                                      : linea.cuerpo}
                                   </p>
                                 ) : null}
                                 {tieneAdjuntos && (
@@ -609,15 +643,6 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
-
-          {riaActiva && <div className={`${styles.group} ${styles.riaEntrada}`}>
-            <MarcaRIA size={32} />
-            <div className={styles.groupContent}><strong className={styles.authorName}>RIA</strong><div className={styles.bubble}>
-              {riaTexto && <p className={styles.bubbleTexto}>{riaTexto}</p>}
-              <span className={styles.riaEscribiendo} role="status">RIA está escribiendo…</span>
-            </div></div>
-          </div>}
-          {riaError && <p role="alert">{riaError.texto} <button type="button" className={styles.retryBtn} onClick={() => void consultarRIA(riaError.id)}>Reintentar</button></p>}
 
         </div>
 
@@ -658,7 +683,7 @@ export default function ChatPage() {
                     type="button"
                     className={adjuntosStyles.pendienteQuitar}
                     aria-label={`Quitar ${p.nombre}`}
-                    onClick={() => setPendientes((prev) => prev.filter((x) => x.id !== p.id))}
+                    onClick={() => { setPendientes((prev) => prev.filter((x) => x.id !== p.id)); setAvisoRIA(null); }}
                   >
                     <X size={12} strokeWidth={2} />
                   </button>
@@ -676,11 +701,25 @@ export default function ChatPage() {
             </p>
           )}
 
-          {matchComandoRIA && !comandos.menu && (
-            <p className={styles.riaAviso} role="status">
-              {matchComandoRIA[1]?.trim()
-                ? "Se abrirá en tu chat privado con RIA (para preguntar aquí al grupo usa @RIA)."
-                : "Pulsa Enviar para ir a tu chat privado con RIA (o escribe tu pregunta después de /ria)."}
+          {riaActiva ? (
+            <p className={styles.riaAviso} role="status">RIA está preparando una respuesta para el equipo…</p>
+          ) : riaPendiente && (
+            <div className={styles.riaAviso}>
+              <p className={styles.riaAvisoTexto} role={riaError ? "alert" : "status"}>
+                {riaError ?? "Tienes una consulta pendiente en el chat del equipo."}
+              </p>
+              <div className={styles.riaAcciones}>
+                <button type="button" className={styles.retryBtn} onClick={() => void consultarRIA(riaPendiente)}>Reintentar consulta</button>
+                <button type="button" className={styles.retryBtn} onClick={descartarRIA}>Descartar reintento</button>
+              </div>
+            </div>
+          )}
+
+          {(avisoRIA || comandoRIA !== null) && (
+            <p id="ayuda-ria-publica" className={styles.riaAviso} role={avisoRIA ? "alert" : "status"}>
+              {avisoRIA ?? (comandoRIA
+                ? "La pregunta y la respuesta se publicarán en el chat del equipo. No incluyas datos privados."
+                : "Escribe tu pregunta después de /ria. Ejemplo: /ria ¿Cómo entrego un trabajo?")}
             </p>
           )}
 
@@ -691,6 +730,7 @@ export default function ChatPage() {
               onDrive={agregarDrive}
               onError={(m) => setErrorAdjunto(m)}
               esAdmin={Boolean(yo?.es_admin)}
+              deshabilitado={comandoRIA !== null}
             />
             <div className={styles.composerCaja}>
               <EntradaComandos
@@ -699,21 +739,22 @@ export default function ChatPage() {
                 placeholder="Escribe al equipo..."
                 aria-label="Escribe al equipo"
                 title="Enter para enviar, Shift+Enter para salto de línea"
-                texto={cuerpo} rutas={rutas} glass={glass} autoAltura {...comandos.propsEntrada}
-                onChange={e => { setCuerpo(e.currentTarget.value); comandos.editar(); }}
+                texto={cuerpo} rutas={rutasMenu} glass={glass} autoAltura {...comandos.propsEntrada}
+                aria-describedby={avisoRIA || comandoRIA !== null ? "ayuda-ria-publica" : undefined}
+                onChange={e => { setCuerpo(e.currentTarget.value); setAvisoRIA(null); comandos.editar(); }}
                 onKeyDown={handleKeyDown}
               />
             </div>
             <GrabadorAudio
               onGrabado={(archivo, duracion) => agregarArchivos([{ archivo, duracionSeg: duracion }])}
               onError={(m) => setErrorAdjunto(m)}
-              deshabilitado={enviando}
+              deshabilitado={enviando || comandoRIA !== null}
             />
             <div className="rc-escena-vidrio">
               <span className="rc-mancha rc-mancha--azul" aria-hidden="true" />
               <button
                 type="submit"
-                disabled={(!cuerpo.trim() && !pendientes.some((p) => p.estado === "listo")) || enviando}
+                disabled={!yo || (comandoRIA === null ? (!cuerpo.trim() && !pendientes.some((p) => p.estado === "listo")) || enviando : riaActiva)}
                 className="rc-btn-enviar rc-vidrio rc-vidrio--azul"
                 data-rc-compositor-boton
                 aria-label="Enviar mensaje"

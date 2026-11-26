@@ -67,7 +67,7 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
     cabeceras.set("x-forwarded-proto", /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(hostPublico) ? req.nextUrl.protocol.slice(0, -1) : "https");
   }
 
-  const esRIA = req.method === "POST" && path.length === 1 && path[0] === "ria";
+  const esRIA = req.method === "POST" && (path.join("/") === "ria" || path.join("/") === "chat/ria");
   const controlador = new AbortController();
   const esFinalizarAdjunto = req.method === "POST" && path.length === 6 && path[0] === "admin" && path[1] === "tareas" && path[3] === "adjuntos" && path[5] === "finalizar";
   const esResumenAdjunto = req.method === "POST" && (

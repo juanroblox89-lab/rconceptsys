@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -19,13 +20,14 @@ import (
 )
 
 type API struct {
-	Store          store.Store
-	Auth           AuthVerifier
-	ChatLimiter    *RateLimiter
-	AuthLimiter    *RateLimiter
-	ModoDemoActivo bool
-	F5             *EstadoF5
-	claveBorrador  []byte
+	Store             store.Store
+	Auth              AuthVerifier
+	ChatLimiter       *RateLimiter
+	responderRIAGrupo func(context.Context, []riaMensajeModelo, func(string) error) error
+	AuthLimiter       *RateLimiter
+	ModoDemoActivo    bool
+	F5                *EstadoF5
+	claveBorrador     []byte
 }
 
 func NewAPI(s store.Store, auth AuthVerifier, modoDemoActivo bool) *API {
@@ -66,6 +68,7 @@ func (a *API) Routes() http.Handler {
 	// Chat (solo aprobados)
 	mux.HandleFunc("GET /api/chat", a.MiddlewareAuth(a.handleGetChat, true, false))
 	mux.HandleFunc("POST /api/chat", a.MiddlewareAuth(a.handlePostChat, true, false))
+	mux.HandleFunc("POST /api/chat/ria", a.MiddlewareAuth(a.handleRIAGrupo, true, false))
 	mux.HandleFunc("PATCH /api/chat/{id}", a.MiddlewareAuth(a.handlePatchChat, true, false))
 	mux.HandleFunc("DELETE /api/chat/{id}", a.MiddlewareAuth(a.handleDeleteChat, true, false))
 	mux.HandleFunc("POST /api/chat/{id}/restaurar", a.MiddlewareAuth(a.handleRestaurarChat, true, false))
