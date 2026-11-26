@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowUp, ArrowDown, Check, ExternalLink, Link2, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ConfigEquipo, DriveEstado, PlanDrive, ResultadoMovimientoDrive } from "@/lib/types";
-import { useAviso } from "@/components/ui/Aviso";
+import { Aviso, useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
 import styles from "./admin-paneles.module.css";
 
@@ -286,6 +286,8 @@ export function AdminEquipo() {
 
       <section className={styles.bloque}>
         <h2 className={styles.bloqueTitulo}>Google Drive del equipo</h2>
+
+        <Aviso tipo="advertencia" titulo="Inicia sesión con la cuenta del equipo" texto={<>Para usar bien la integración de Drive, inicia sesión con <strong>ladlejuan26@gmail.com</strong>. Con otra cuenta no verás las carpetas del equipo.</>} />
 
         <div className={styles.driveEstado}>
           <span className={`${styles.pastilla} ${drive?.conectado ? styles.pastillaOk : styles.pastillaTenue}`}>
