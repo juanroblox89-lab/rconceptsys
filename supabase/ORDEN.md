@@ -14,3 +14,4 @@ No se aplicaron desde el agente. Partir de una base que ya tenga 001–011 aplic
 10. `migrations/021_drive_organizado.sql` — registra `carpeta_clientes_id` de la cuenta del equipo; no mueve archivos, ni cambia permisos. Aplicar antes de desplegar F8.
 11. `migrations/022_tareas_referencias_drive.sql` — lista de hasta tres referencias por trabajo. No rellena trabajos anteriores ni toca permisos. Aplicar antes de desplegar F9.
 12. `migrations/023_asignaciones_adjuntos.sql` — bucket privado, metadatos, cupos y cola de resumen F10. Reusa los secretos de Vault de la 018; no toca Drive. Aplicar antes de habilitar los adjuntos con una base real.
+13. `migrations/024_chat_acciones_mensajes.sql` — columnas e índices idempotentes para `editado_en` y `borrado_en` en `chat_mensajes` y `ria_mensajes` (acciones copiar/editar/eliminar). Aplicar antes de usar edición o eliminación en /ria y el chat del equipo con base real.

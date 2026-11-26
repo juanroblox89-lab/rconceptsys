@@ -262,3 +262,74 @@ func (a *API) contextoRIA(ctx context.Context, p *store.Perfil, equipo bool, pre
 	}
 	return append(mensajes, riaMensajeModelo{"user", pregunta}), nil
 }
+
+func (a *API) handlePatchRIA(w http.ResponseWriter, r *http.Request) {
+	p := a.usuarioActual(r)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de mensaje inválido.")
+		return
+	}
+	var req struct {
+		Cuerpo string `json:"cuerpo"`
+	}
+	if leerJSONCuerpo(r, 16384, &req) != nil {
+		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "El formato del mensaje no es válido.")
+		return
+	}
+	msg, err := a.Store.EditarMensajeRIA(r.Context(), p.ID, id, req.Cuerpo)
+	switch err {
+	case nil:
+		ResponderJSON(w, http.StatusOK, msg)
+	case store.ErrNotFound:
+		ResponderError(w, http.StatusNotFound, "mensaje_no_encontrado", "No se encontró el mensaje.")
+	case store.ErrForbidden:
+		ResponderError(w, http.StatusForbidden, "sin_permiso", "Solo puedes editar tus propios mensajes.")
+	case store.ErrValidation:
+		ResponderError(w, http.StatusBadRequest, "mensaje_invalido", "Escribe entre 1 y 2000 caracteres.")
+	default:
+		ResponderError(w, http.StatusInternalServerError, "error_editar_ria", "No se pudo editar el mensaje.")
+	}
+}
+
+func (a *API) handleDeleteRIA(w http.ResponseWriter, r *http.Request) {
+	p := a.usuarioActual(r)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de mensaje inválido.")
+		return
+	}
+	err = a.Store.EliminarMensajeRIA(r.Context(), p.ID, id)
+	switch err {
+	case nil:
+		ResponderJSON(w, http.StatusOK, map[string]string{"mensaje": "Mensaje eliminado."})
+	case store.ErrNotFound:
+		ResponderError(w, http.StatusNotFound, "mensaje_no_encontrado", "No se encontró el mensaje.")
+	case store.ErrForbidden:
+		ResponderError(w, http.StatusForbidden, "sin_permiso", "Solo puedes eliminar tus propios mensajes.")
+	default:
+		ResponderError(w, http.StatusInternalServerError, "error_eliminar_ria", "No se pudo eliminar el mensaje.")
+	}
+}
+
+func (a *API) handleRestaurarRIA(w http.ResponseWriter, r *http.Request) {
+	p := a.usuarioActual(r)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		ResponderError(w, http.StatusBadRequest, "id_invalido", "ID de mensaje inválido.")
+		return
+	}
+	msg, err := a.Store.RestaurarMensajeRIA(r.Context(), p.ID, id, ventanaDeshacerMensaje)
+	switch err {
+	case nil:
+		ResponderJSON(w, http.StatusOK, msg)
+	case store.ErrNotFound:
+		ResponderError(w, http.StatusNotFound, "mensaje_no_encontrado", "No se encontró el mensaje eliminado.")
+	case store.ErrForbidden:
+		ResponderError(w, http.StatusForbidden, "sin_permiso", "Solo puedes restaurar tus propios mensajes.")
+	case store.ErrConflict:
+		ResponderError(w, http.StatusConflict, "tiempo_expirado", "Ya pasó el tiempo para deshacer la eliminación.")
+	default:
+		ResponderError(w, http.StatusInternalServerError, "error_restaurar_ria", "No se pudo restaurar el mensaje.")
+	}
+}

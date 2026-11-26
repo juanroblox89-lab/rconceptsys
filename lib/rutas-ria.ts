@@ -20,6 +20,7 @@ const rutas: RutaRIA[] = [
   { href: "/clientes/nuevo", descripcion: "Crea la ficha de un cliente.", adminOnly: true },
   { href: "/admin", alias: ["/gestion"], descripcion: "Abre Gestión: equipo, Drive y cortes.", adminOnly: true },
   { href: "/equipo", descripcion: "Consulta el directorio del equipo." },
+  { href: "/ria", descripcion: "Abre tu conversación privada con RIA." },
   { href: "/", descripcion: "Abre el chat del equipo." },
 ];
 

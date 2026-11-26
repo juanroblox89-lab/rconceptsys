@@ -1,4 +1,4 @@
-export interface MensajeRIA { id:number; rol:'user'|'assistant'; cuerpo:string; creado_en:string }
+export interface MensajeRIA { id:number; pregunta_id?:number; rol:'user'|'assistant'; cuerpo:string; creado_en:string; editado_en?:string|null; borrado_en?:string|null }
 export const preguntasAyudaRIA = (admin: boolean) => [
   "¿Cómo entrego un trabajo?",
   admin ? "¿Cómo veo los cortes del equipo?" : "¿Dónde veo mi corte?",

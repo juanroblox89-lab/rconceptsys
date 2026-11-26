@@ -13,6 +13,8 @@ export interface MensajeAgrupado {
     id: number;
     cuerpo: string;
     hora: string;
+    editado_en?: string | null;
+    es_ria?: boolean;
     adjuntos?: ChatAdjunto[];
     enviando?: boolean;
     error?: boolean;
@@ -94,6 +96,8 @@ export function agruparMensajes(mensajes: ChatMensaje[], miID: string): MensajeA
         id: msg.id,
         cuerpo: msg.cuerpo,
         hora: formatearHora(msg.creado_en),
+        editado_en: msg.editado_en ?? null,
+        es_ria: msg.es_ria,
         adjuntos: msg.adjuntos,
         enviando: msg.enviando,
         error: msg.error,
@@ -113,6 +117,8 @@ export function agruparMensajes(mensajes: ChatMensaje[], miID: string): MensajeA
             id: msg.id,
             cuerpo: msg.cuerpo,
             hora: formatearHora(msg.creado_en),
+            editado_en: msg.editado_en ?? null,
+            es_ria: msg.es_ria,
             adjuntos: msg.adjuntos,
             enviando: msg.enviando,
             error: msg.error,

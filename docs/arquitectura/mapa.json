@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T05:04:26.289Z",
+  "generado_en": "2026-11-26T05:40:51.151Z",
   "version": "1.0",
   "modulos": [
     {
@@ -233,6 +233,27 @@
       "ruta": "/api/chat",
       "handler": "backend/internal/httpapi/handlers.go:handlePostChat",
       "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostChat",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "PATCH",
+      "ruta": "/api/chat/{id}",
+      "handler": "backend/internal/httpapi/handlers.go:handlePatchChat",
+      "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePatchChat",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "DELETE",
+      "ruta": "/api/chat/{id}",
+      "handler": "backend/internal/httpapi/handlers.go:handleDeleteChat",
+      "archivo_funcion": "backend/internal/httpapi/handlers.go:handleDeleteChat",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/chat/{id}/restaurar",
+      "handler": "backend/internal/httpapi/handlers.go:handleRestaurarChat",
+      "archivo_funcion": "backend/internal/httpapi/handlers.go:handleRestaurarChat",
       "auth": "miembros_aprobados"
     },
     {
@@ -765,6 +786,27 @@
       "ruta": "/api/ria",
       "handler": "backend/internal/httpapi/ria.go:handleRIA",
       "archivo_funcion": "backend/internal/httpapi/ria.go:handleRIA",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "PATCH",
+      "ruta": "/api/ria/{id}",
+      "handler": "backend/internal/httpapi/ria.go:handlePatchRIA",
+      "archivo_funcion": "backend/internal/httpapi/ria.go:handlePatchRIA",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "DELETE",
+      "ruta": "/api/ria/{id}",
+      "handler": "backend/internal/httpapi/ria.go:handleDeleteRIA",
+      "archivo_funcion": "backend/internal/httpapi/ria.go:handleDeleteRIA",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "POST",
+      "ruta": "/api/ria/{id}/restaurar",
+      "handler": "backend/internal/httpapi/ria.go:handleRestaurarRIA",
+      "archivo_funcion": "backend/internal/httpapi/ria.go:handleRestaurarRIA",
       "auth": "miembros_aprobados"
     },
     {
@@ -2180,6 +2222,63 @@
           "descripcion": "Muestra tarjetas de Drive en mensajes nuevos y anteriores con botón visible «Abrir carpeta» sin enlaces anidados."
         }
       ]
+    },
+    {
+      "id": "chat-acciones-mensajes",
+      "nombre": "Entrada pareja, comando /ria y acciones por mensaje",
+      "descripcion": "Compositores alineados a 44 px, /ria desde el chat sin dejar basura y menú Copiar/Editar/Eliminar con permisos en servidor.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "app/(app)/page.tsx:ChatPage",
+          "descripcion": "Comandos /ria y /ria <texto> navegan a /ria sin publicar en el chat del equipo; muestra barra de deshacer y editor en línea."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "app/(app)/ria/page.tsx:ConversacionRIA",
+          "descripcion": "Recibe ?q= desde el chat, envía la pregunta y permite copiar respuestas y editar/eliminar mensajes propios."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/chat/AccionesMensaje.tsx:AccionesMensaje",
+          "descripcion": "Menú WhatsApp (pulsación larga en móvil, botón ⋯ en escritorio) con Copiar, Editar y Eliminar."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePatchChat",
+          "descripcion": "PATCH /api/chat/{id}: valida sesión aprobada, autoría propia no-RIA y actualiza cuerpo y editado_en."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleDeleteChat",
+          "descripcion": "DELETE /api/chat/{id}: permite borrado suave solo al autor propio no-RIA o a administradores."
+        },
+        {
+          "orden": 6,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handleRestaurarChat",
+          "descripcion": "POST /api/chat/{id}/restaurar: revierte borrado_en dentro de la ventana de deshacer con los mismos permisos."
+        },
+        {
+          "orden": 7,
+          "archivo_funcion": "backend/internal/httpapi/ria.go:handlePatchRIA",
+          "descripcion": "PATCH /api/ria/{id}: edita solo mensajes propios rol=user en ria_mensajes."
+        },
+        {
+          "orden": 8,
+          "archivo_funcion": "backend/internal/httpapi/ria.go:handleDeleteRIA",
+          "descripcion": "DELETE /api/ria/{id}: borra suavemente solo mensajes propios rol=user en ria_mensajes."
+        },
+        {
+          "orden": 9,
+          "archivo_funcion": "backend/internal/httpapi/ria.go:handleRestaurarRIA",
+          "descripcion": "POST /api/ria/{id}/restaurar: restaura mensajes propios de RIA dentro de la ventana de deshacer."
+        },
+        {
+          "orden": 10,
+          "archivo_funcion": "supabase/migrations/024_chat_acciones_mensajes.sql",
+          "descripcion": "Migración idempotente que asegura editado_en, borrado_en e índices activos en chat_mensajes y ria_mensajes."
+        }
+      ]
     }
   ],
   "reglas_proyecto": [
@@ -2279,5 +2378,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "86017d190aba2741c14e5ac66894a8171ea2a2f0"
+  "commit_hash": "82bf92931648af3c8aad6beab6ae318b8114c00b"
 }

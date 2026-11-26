@@ -1,4 +1,4 @@
-.chat { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; max-width: 760px; margin-inline: auto; }
+.chat { width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; max-width: 760px; margin-inline: auto; }
 .cabecera { display: flex; align-items: center; gap: 8px; margin-inline: 16px; padding-block: 10px; border-bottom: 1px solid var(--rc-border-subtle); }
 .cabecera h1 { margin: 0; font-size: 16px; }
 .cabecera span { margin-inline-start: auto; color: var(--rc-texto-secundario); font-size: 12px; }
@@ -12,17 +12,21 @@
 .sugerencia:hover, .micro:hover { background: var(--rc-superficie-hundida); }
 .mensaje { align-self: flex-start; max-width: 100%; overflow-wrap: break-word; font-size: 15px; line-height: 1.6; }
 .mensaje p { margin: 0; white-space: pre-wrap; }
-.propia { align-self: flex-end; max-width: 86%; padding: 8px 13px; border-radius: 18px; background: var(--rc-superficie-hundida); }
+.propia { align-self: flex-end; max-width: min(86%, 620px); padding: 8px 13px; border-radius: 18px; background: var(--rc-superficie-hundida); }
+[data-rc-mensaje-fila] .propia { max-width: 100%; }
+.hilo > [data-rc-mensaje-fila] { max-width: min(86%, 620px); }
+.hilo > [data-rc-mensaje-fila]:has(.mensaje:not(.propia)) { max-width: 100%; }
+.propia .editadoMarca { display: block; text-align: right; }
 .pensando, .voz { margin: 0; color: var(--rc-texto-secundario); font-size: 13px; }
 .pensando { animation: pensando 1.7s ease-in-out infinite alternate; }
 @keyframes pensando { from { opacity: .78; } to { opacity: 1; } }
 .error { margin: 0; color: var(--rc-rojo-texto); font-size: 13px; overflow-wrap: break-word; }
-.pie { position: relative; display: grid; gap: 4px; padding: 6px 16px max(12px, env(safe-area-inset-bottom)); }
-.form { display: flex; gap: 4px; align-items: flex-end; padding: 5px; border: 1px solid var(--rc-border-subtle); border-radius: 24px; background: var(--rc-superficie-clara); }
+.pie { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 4px; padding: 6px 16px max(12px, env(safe-area-inset-bottom)); }
+.form { display: flex; gap: 4px; align-items: flex-end; min-width: 0; padding: var(--rc-compositor-marco, 4px); border: var(--rc-compositor-borde, 1px) solid var(--rc-border-subtle); border-radius: 26px; background: var(--rc-superficie-clara); }
 .form:focus-within { border-color: var(--rc-azul-texto); }
-.form textarea { flex: 1; min-width: 0; min-height: 42px; max-height: min(132px, 22dvh); padding: 10px 8px 8px 10px; resize: none; font: inherit; font-size: 16px; line-height: 1.35; color: var(--rc-texto); background: transparent; border: 0; outline: none; }
+.form textarea { flex: 1 1 0; min-width: 0; min-height: var(--rc-compositor-control, 44px); max-height: min(132px, 23dvh); padding: var(--rc-compositor-relleno, 11px) var(--rc-compositor-relleno-inline, 8px); resize: none; font: inherit; font-size: var(--rc-compositor-fuente, 16px); line-height: var(--rc-compositor-linea, 22px); color: var(--rc-texto); background: transparent; border: 0; outline: none; }
 .form textarea::placeholder { color: var(--rc-texto-secundario); opacity: 1; }
-.micro, .enviar { display: grid; place-items: center; width: 42px; height: 42px; flex: none; border-radius: 50%; border: none; cursor: pointer; }
+.micro, .enviar { display: grid; place-items: center; width: var(--rc-compositor-control, 44px); height: var(--rc-compositor-control, 44px); flex: none; border-radius: 50%; border: none; cursor: pointer; }
 .micro { color: var(--rc-texto); background: transparent; }
 .micro[aria-pressed=true] { color: var(--rc-rojo-texto); background: var(--rc-superficie-hundida); }
 .enviar { color: var(--rc-superficie); background: var(--rc-texto); }
@@ -54,6 +58,7 @@
   content: attr(data-rc-placeholder); pointer-events: none; position: absolute;
   inset-inline-start: calc(var(--rc-compositor-borde) + var(--rc-compositor-marco) + var(--rc-compositor-relleno-inline));
   inset-block-start: calc(var(--rc-compositor-borde) + var(--rc-compositor-marco) + var(--rc-compositor-relleno));
+  max-width: calc(100% - 108px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: var(--rc-texto-secundario); font-size: var(--rc-compositor-fuente); line-height: var(--rc-compositor-linea);
 }
 :global(html[data-rc-tema="glass"]) .form textarea::placeholder { color: transparent; }

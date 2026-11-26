@@ -326,6 +326,107 @@ func (m *MemoryStore) CrearMensajeChat(ctx context.Context, autorID string, cuer
 	return &cpMsg, nil
 }
 
+func (m *MemoryStore) clonarMensajeChatLocked(msg *ChatMensaje, conservarBorrado bool) *ChatMensaje {
+	cp := *msg
+	if !conservarBorrado {
+		cp.BorradoEn = nil
+	}
+	cp.Adjuntos = m.adjuntosDeMensajeLocked(msg.ID)
+	if !msg.EsRIA {
+		if autor := m.perfiles[msg.AutorID]; autor != nil {
+			cp.Autor = m.clonarPerfilLocked(autor)
+		}
+	}
+	return &cp
+}
+
+func (m *MemoryStore) ObtenerMensajeChatPorID(_ context.Context, id int64, incluirBorrado bool) (*ChatMensaje, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for _, msg := range m.mensajes {
+		if msg.ID == id {
+			if !incluirBorrado && msg.BorradoEn != nil {
+				return nil, ErrNotFound
+			}
+			return m.clonarMensajeChatLocked(msg, incluirBorrado), nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
+func (m *MemoryStore) EditarMensajeChat(_ context.Context, id int64, autorID string, cuerpo string) (*ChatMensaje, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, msg := range m.mensajes {
+		if msg.ID != id {
+			continue
+		}
+		if msg.BorradoEn != nil {
+			return nil, ErrNotFound
+		}
+		if msg.EsRIA || msg.AutorID != autorID {
+			return nil, ErrForbidden
+		}
+		c := strings.TrimSpace(cuerpo)
+		long := len([]rune(c))
+		adjuntos := m.adjuntosDeMensajeLocked(msg.ID)
+		if long > 2000 || (long == 0 && len(adjuntos) == 0) {
+			return nil, ErrValidation
+		}
+		ahora := time.Now()
+		msg.Cuerpo = c
+		msg.EditadoEn = &ahora
+		return m.clonarMensajeChatLocked(msg, false), nil
+	}
+	return nil, ErrNotFound
+}
+
+func (m *MemoryStore) EliminarMensajeChat(_ context.Context, id int64, actorID string, esAdmin bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, msg := range m.mensajes {
+		if msg.ID != id {
+			continue
+		}
+		if msg.BorradoEn != nil {
+			return ErrNotFound
+		}
+		if !esAdmin && (msg.EsRIA || msg.AutorID != actorID) {
+			return ErrForbidden
+		}
+		ahora := time.Now()
+		msg.BorradoEn = &ahora
+		return nil
+	}
+	return ErrNotFound
+}
+
+func (m *MemoryStore) RestaurarMensajeChat(_ context.Context, id int64, actorID string, esAdmin bool, ventana time.Duration) (*ChatMensaje, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, msg := range m.mensajes {
+		if msg.ID != id {
+			continue
+		}
+		if msg.BorradoEn == nil {
+			return nil, ErrNotFound
+		}
+		if !esAdmin && (msg.EsRIA || msg.AutorID != actorID) {
+			return nil, ErrForbidden
+		}
+		if time.Since(*msg.BorradoEn) > ventana {
+			return nil, ErrConflict
+		}
+		msg.BorradoEn = nil
+		return m.clonarMensajeChatLocked(msg, false), nil
+	}
+	return nil, ErrNotFound
+}
+
 func (m *MemoryStore) ListarRoles(ctx context.Context, soloActivos bool) ([]*Rol, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

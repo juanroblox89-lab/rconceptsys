@@ -351,6 +351,10 @@ type Store interface {
 	// Chat
 	ListarMensajesChat(ctx context.Context, antesID int64, despuesID int64, limite int) ([]*ChatMensaje, error)
 	CrearMensajeChat(ctx context.Context, autorID string, cuerpo string) (*ChatMensaje, error)
+	ObtenerMensajeChatPorID(ctx context.Context, id int64, incluirBorrado bool) (*ChatMensaje, error)
+	EditarMensajeChat(ctx context.Context, id int64, autorID string, cuerpo string) (*ChatMensaje, error)
+	EliminarMensajeChat(ctx context.Context, id int64, actorID string, esAdmin bool) error
+	RestaurarMensajeChat(ctx context.Context, id int64, actorID string, esAdmin bool, ventana time.Duration) (*ChatMensaje, error)
 
 	// Roles
 	ListarRoles(ctx context.Context, soloActivos bool) ([]*Rol, error)

@@ -184,6 +184,32 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ cuerpo, adjuntos: adjuntos ?? [] }),
     }),
+  patchChatMensaje: (id: number, cuerpo: string) =>
+    fetchApi<ChatMensaje>(`/api/chat/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ cuerpo }),
+    }),
+  deleteChatMensaje: (id: number) =>
+    fetchApi<{ mensaje: string }>(`/api/chat/${id}`, {
+      method: 'DELETE',
+    }),
+  restaurarChatMensaje: (id: number) =>
+    fetchApi<ChatMensaje>(`/api/chat/${id}/restaurar`, {
+      method: 'POST',
+    }),
+  patchRIAMensaje: (id: number, cuerpo: string) =>
+    fetchApi<{ id: number; rol: 'user' | 'assistant'; cuerpo: string; creado_en: string; editado_en?: string | null }>(`/api/ria/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ cuerpo }),
+    }),
+  deleteRIAMensaje: (id: number) =>
+    fetchApi<{ mensaje: string }>(`/api/ria/${id}`, {
+      method: 'DELETE',
+    }),
+  restaurarRIAMensaje: (id: number) =>
+    fetchApi<{ id: number; rol: 'user' | 'assistant'; cuerpo: string; creado_en: string; editado_en?: string | null }>(`/api/ria/${id}/restaurar`, {
+      method: 'POST',
+    }),
   postChatAdjunto: (archivo: File, duracionSeg?: number) => {
     const fd = new FormData();
     fd.append('archivo', archivo);
