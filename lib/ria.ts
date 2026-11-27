@@ -11,11 +11,29 @@ export const preguntasAyudaRIA = (admin: boolean) => [
 
 export const LIMITE_COMANDO_RIA_PUBLICO = 2000;
 
+export const comandosEquipo = [
+  { nombre: '/ria', descripcion: 'Hazle una pregunta a RIA en el chat del equipo.', ejemplo: '/ria ¿Cómo entrego un trabajo?' },
+  { nombre: '/help', descripcion: 'Consulta los comandos sin publicar en el grupo.', ejemplo: '/help' },
+] as const;
+
+function normalizarNombreComando(nombre: string) {
+  return nombre.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+export function opcionesComandosEquipo(texto: string) {
+  const prefijo = normalizarNombreComando(texto.trimStart());
+  return /^\/[a-z]*$/.test(prefijo) ? comandosEquipo.filter(c => c.nombre.startsWith(prefijo)) : [];
+}
+
+export function esComandoAyuda(texto: string) {
+  return normalizarNombreComando(texto.trim()) === '/help';
+}
+
 // null: mensaje normal; '': falta la pregunta; otro valor: comando a enviar.
 export function leerComandoRIAPublico(texto: string): string | null {
-  const coincidencia = /^\/ria(?:\s+([\s\S]+))?$/i.exec(texto.trim());
-  if (!coincidencia) return null;
-  return coincidencia[1] ? `/ria ${coincidencia[1]}` : '';
+  const coincidencia = /^(\S+)(?:\s+([\s\S]+))?$/.exec(texto.trim());
+  if (!coincidencia || normalizarNombreComando(coincidencia[1]) !== '/ria') return null;
+  return coincidencia[2] ? `/ria ${coincidencia[2]}` : '';
 }
 
 export function esComposicionIME(evento: Pick<KeyboardEvent, 'isComposing' | 'keyCode'>): boolean {

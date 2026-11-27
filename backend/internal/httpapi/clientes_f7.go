@@ -197,7 +197,7 @@ func (a *API) handleAdminDrivePickerToken(w http.ResponseWriter, r *http.Request
 			return
 		}
 		if id := textoDrive(cliente.DriveCarpetaID); driveIDValido(id) {
-			if f, err := a.metadatosCarpeta(r.Context(), tok.AccessToken, id); err == nil && f.carpetaEn(conexion.CarpetaClientesID) {
+			if a.carpetaEnArbolEquipo(r.Context(), tok.AccessToken, id, conexion) {
 				padre = id
 			}
 		}
@@ -211,6 +211,7 @@ func (a *API) handleAdminDrivePickerToken(w http.ResponseWriter, r *http.Request
 		"access_token":  tok.AccessToken,
 		"expires_in":    tok.ExpiresIn,
 		"carpeta_id":    padre,
+		"raiz_id":       conexion.CarpetaRaizID,
 		"clave":         conf.PickerKey,
 		"proyecto_id":   conf.PickerAppID,
 		"correo":        correo,

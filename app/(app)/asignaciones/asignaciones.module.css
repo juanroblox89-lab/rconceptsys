@@ -200,8 +200,8 @@
 }
 
 .estadoVencida {
-  background: var(--rc-rojo-suave);
-  color: var(--rc-rojo-texto);
+  background: var(--rc-naranja-suave, var(--rc-ambar-suave));
+  color: var(--rc-naranja-texto, var(--rc-ambar-texto));
 }
 
 .vacio {

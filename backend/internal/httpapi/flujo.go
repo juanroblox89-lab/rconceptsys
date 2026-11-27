@@ -253,6 +253,18 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 		ResponderJSON(w, 200, t)
 		return
 	}
+	yo := a.usuarioActual(r)
+	actorID := ""
+	if yo != nil {
+		actorID = yo.ID
+	}
+	if _, cambiando := campos["asignado_a"]; cambiando {
+		if actorID != "" {
+			campos["asignador_id"] = actorID
+		} else {
+			campos["asignador_id"] = nil
+		}
+	}
 	actualizado, err := a.Store.ActualizarTarea(r.Context(), id, campos)
 	if err == store.ErrConflict {
 		ResponderError(w, 409, "trabajo_cerrado", "Solo puedes editar trabajos pendientes o devueltos.")
@@ -261,11 +273,6 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ResponderError(w, 500, "error_guardar", "No pudimos guardar los cambios.")
 		return
-	}
-	yo := a.usuarioActual(r)
-	actorID := ""
-	if yo != nil {
-		actorID = yo.ID
 	}
 	if nuevo, ok := campos["asignado_a"].(string); ok && nuevo != t.AsignadoA {
 		a.avisarCambioAsignacion(r.Context(), actualizado, t.AsignadoA, actorID)

@@ -20,6 +20,8 @@ No se aplicaron desde el agente. Partir de una base que ya tenga 001–011 aplic
 
 16. [`migrations/027_pedido_de_nuevo.sql`](migrations/027_pedido_de_nuevo.sql) — habilita `reabierta` y `pedido_de_nuevo`; el PATCH de reapertura y su historial son atómicos y se serializan con el pago de la factura. Aplicar antes de desplegar la ruta nueva. **Pendiente de aplicar.**
 
+17. [`migrations/028_entrega_drive_y_asignador.sql`](migrations/028_entrega_drive_y_asignador.sql) — agrega `asignador_id` en `tareas` (contacto exacto de WhatsApp tras reasignación) y `entrega_drive` (hasta 4 elementos de Google Drive) en `tareas`, `tarea_entregas` y `tarea_historial`, más el RPC `rc_entregar_tarea_drive`. Aplicar antes de desplegar estos cambios. **Pendiente de aplicar.**
+
 ## Aplicación de 026 · RIA en el grupo
 
 1. Valida primero en una base de pruebas aislada con 001–025 aplicadas y datos sintéticos. En el SQL Editor del proyecto autorizado, ejecuta **el archivo completo** como rol de migraciones (o `psql -v ON_ERROR_STOP=1 -f supabase/migrations/026_ria_grupo.sql` desde una conexión autorizada). Es transaccional e idempotente; no lo ejecutes aquí ni sobre una base sin verificar.

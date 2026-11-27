@@ -989,6 +989,7 @@ func (m *MemoryStore) clonarTareaLocked(t *Tarea) *Tarea {
 		return nil
 	}
 	cp := *t
+	cp.EntregaDrive = append([]ReferenciaDriveTrabajo(nil), t.EntregaDrive...)
 	if t.DriveReferencias != nil {
 		cp.DriveReferencias = append([]ReferenciaDriveTrabajo{}, t.DriveReferencias...)
 	}
@@ -1014,8 +1015,9 @@ func (m *MemoryStore) clonarTareaLocked(t *Tarea) *Tarea {
 	if t.Estado == EstadoTareaPendiente || t.Estado == EstadoTareaRechazada {
 		if entregas := m.entregasTareas[t.ID]; len(entregas) > 0 {
 			ultima := entregas[len(entregas)-1]
-			if ultima.Estado == "retirada" || ultima.Estado == "rechazada" {
+			if ultima.PerfilID == t.AsignadoA && (ultima.Estado == "retirada" || ultima.Estado == "rechazada") {
 				copiaEntrega := *ultima
+				copiaEntrega.EntregaDrive = append([]ReferenciaDriveTrabajo(nil), ultima.EntregaDrive...)
 				cp.BorradorEntrega = &copiaEntrega
 			}
 		}
@@ -1068,6 +1070,7 @@ func (m *MemoryStore) vistaAdjuntosRechazoLocked(tareaID, historialID int64) []*
 			EstadoResumen: a.EstadoResumen,
 			Resumen:       append([]string{}, a.Resumen...),
 			Transcripcion: a.Transcripcion,
+			ErrorResumen:  a.ErrorResumen,
 		})
 	}
 	return out
@@ -1143,6 +1146,7 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 		Descripcion:     t.Descripcion,
 		AsignadoA:       t.AsignadoA,
 		CreadoPor:       t.CreadoPor,
+		AsignadorID:     &t.CreadoPor,
 		Estado:          estado,
 		FechaLimite:     t.FechaLimite,
 		Cantidad:        t.Cantidad,
@@ -1311,6 +1315,10 @@ func (m *MemoryStore) EntregarTarea(ctx context.Context, id int64, asignadoID st
 		return nil, fmt.Errorf("%w: método de entrega inválido", ErrValidation)
 	}
 
+	t.EntregaDrive = nil
+	if metodo == "drive" {
+		t.EntregaDrive = append([]ReferenciaDriveTrabajo(nil), entrada.EntregaDrive...)
+	}
 	t.MetodoEntrega = metodoPtr
 	t.EnlaceMedios = enlaceLimpio
 	t.EntregaNombre = nombreLimpio
@@ -1342,6 +1350,7 @@ func (m *MemoryStore) EntregarTarea(ctx context.Context, id int64, asignadoID st
 		EnlaceMedios:  enlaceLimpio,
 		EntregaNombre: nombreLimpio,
 		EntregaTipo:   tipoEntregaLimpio,
+		EntregaDrive:  t.EntregaDrive,
 		Nota:          notaLimpia,
 		Cantidad:      t.Cantidad,
 		Estado:        "activa",
@@ -1354,6 +1363,7 @@ func (m *MemoryStore) EntregarTarea(ctx context.Context, id int64, asignadoID st
 		h.EnlaceMedios = enlaceLimpio
 		h.EntregaNombre = nombreLimpio
 		h.EntregaTipo = tipoEntregaLimpio
+		h.EntregaDrive = t.EntregaDrive
 		h.Nota = notaLimpia
 		h.Cantidad = t.Cantidad
 		h.CreadoEn = ahora
@@ -1440,6 +1450,7 @@ func (m *MemoryStore) RevertirEntregaTarea(ctx context.Context, id int64, asigna
 			EnlaceMedios:  t.EnlaceMedios,
 			EntregaNombre: t.EntregaNombre,
 			EntregaTipo:   t.EntregaTipo,
+			EntregaDrive:  t.EntregaDrive,
 			Nota:          t.NotaPersona,
 			Cantidad:      t.Cantidad,
 			Estado:        "retirada",
@@ -1455,6 +1466,7 @@ func (m *MemoryStore) RevertirEntregaTarea(ctx context.Context, id int64, asigna
 	t.EnlaceMedios = nil
 	t.EntregaNombre = nil
 	t.EntregaTipo = nil
+	t.EntregaDrive = nil
 	t.NotaPersona = nil
 	t.Cantidad = nil
 
@@ -1468,6 +1480,7 @@ func (m *MemoryStore) RevertirEntregaTarea(ctx context.Context, id int64, asigna
 		h.EnlaceMedios = retirada.EnlaceMedios
 		h.EntregaNombre = retirada.EntregaNombre
 		h.EntregaTipo = retirada.EntregaTipo
+		h.EntregaDrive = retirada.EntregaDrive
 		h.Nota = retirada.Nota
 		h.Cantidad = retirada.Cantidad
 		h.CreadoEn = ahora
@@ -1618,12 +1631,14 @@ func (m *MemoryStore) PedirDeNuevoTarea(ctx context.Context, id int64, adminID s
 		// El evento conserva la entrega visible incluso en trabajos anteriores al historial.
 		h.MetodoEntrega, h.EnlaceMedios, h.EntregaNombre, h.EntregaTipo = t.MetodoEntrega, t.EnlaceMedios, t.EntregaNombre, t.EntregaTipo
 		h.Nota, h.Cantidad = t.NotaPersona, t.Cantidad
+		h.EntregaDrive = t.EntregaDrive
 	})
 	t.Estado = EstadoTareaPendiente
 	t.CantidadAceptada, t.PrecioUnitarioCongelado, t.PrecioCongelado = nil, nil, nil
 	t.FacturaID, t.ResueltaEn, t.ResueltaPor, t.HechaEn = nil, nil, nil, nil
 	t.MetodoEntrega, t.EnlaceMedios, t.EntregaNombre, t.EntregaTipo = nil, nil, nil, nil
 	t.NotaPersona, t.Cantidad, t.MotivoRechazo = nil, nil, nil
+	t.EntregaDrive = nil
 	if hoy := ahora.In(LocBogota).Format("2006-01-02"); t.FechaLimite != nil && *t.FechaLimite < hoy {
 		t.FechaLimite = &hoy
 	}
@@ -1690,6 +1705,7 @@ func (m *MemoryStore) ObtenerHistorialTarea(ctx context.Context, tareaID int64) 
 	out := make([]*TareaHistorialItem, 0, len(items))
 	for _, h := range items {
 		cp := *h
+		cp.EntregaDrive = append([]ReferenciaDriveTrabajo(nil), h.EntregaDrive...)
 		if h.DriveAdjuntos != nil {
 			cp.DriveAdjuntos = append([]ReferenciaDriveTrabajo{}, h.DriveAdjuntos...)
 		}

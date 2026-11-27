@@ -141,27 +141,29 @@ type ReferenciaDriveTrabajo struct {
 }
 
 type EntregaInput struct {
-	Metodo        string  `json:"metodo_entrega"`
-	Nota          *string `json:"nota"`
-	Cantidad      *int    `json:"cantidad"`
-	EnlaceMedios  *string `json:"enlace_medios"`
-	EntregaNombre *string `json:"entrega_nombre"`
-	EntregaTipo   *string `json:"entrega_tipo"`
+	Metodo        string                   `json:"metodo_entrega"`
+	Nota          *string                  `json:"nota"`
+	Cantidad      *int                     `json:"cantidad"`
+	EnlaceMedios  *string                  `json:"enlace_medios"`
+	EntregaNombre *string                  `json:"entrega_nombre"`
+	EntregaTipo   *string                  `json:"entrega_tipo"`
+	EntregaDrive  []ReferenciaDriveTrabajo `json:"entrega_drive,omitempty"`
 }
 
 type EntregaTarea struct {
-	ID            int64      `json:"id"`
-	TareaID       int64      `json:"tarea_id"`
-	PerfilID      string     `json:"perfil_id"`
-	Metodo        string     `json:"metodo_entrega,omitempty"`
-	EnlaceMedios  *string    `json:"enlace_medios,omitempty"`
-	EntregaNombre *string    `json:"entrega_nombre,omitempty"`
-	EntregaTipo   *string    `json:"entrega_tipo,omitempty"`
-	Nota          *string    `json:"nota,omitempty"`
-	Cantidad      *int       `json:"cantidad,omitempty"`
-	Estado        string     `json:"estado"`
-	CreadaEn      time.Time  `json:"creada_en"`
-	RetiradaEn    *time.Time `json:"retirada_en,omitempty"`
+	ID            int64                    `json:"id"`
+	TareaID       int64                    `json:"tarea_id"`
+	PerfilID      string                   `json:"perfil_id"`
+	Metodo        string                   `json:"metodo_entrega,omitempty"`
+	EnlaceMedios  *string                  `json:"enlace_medios,omitempty"`
+	EntregaNombre *string                  `json:"entrega_nombre,omitempty"`
+	EntregaTipo   *string                  `json:"entrega_tipo,omitempty"`
+	EntregaDrive  []ReferenciaDriveTrabajo `json:"entrega_drive,omitempty"`
+	Nota          *string                  `json:"nota,omitempty"`
+	Cantidad      *int                     `json:"cantidad,omitempty"`
+	Estado        string                   `json:"estado"`
+	CreadaEn      time.Time                `json:"creada_en"`
+	RetiradaEn    *time.Time               `json:"retirada_en,omitempty"`
 }
 
 type VistaAdjuntoTarea struct {
@@ -175,6 +177,7 @@ type VistaAdjuntoTarea struct {
 	EstadoResumen string   `json:"estado_resumen"`
 	Resumen       []string `json:"resumen,omitempty"`
 	Transcripcion *string  `json:"transcripcion,omitempty"`
+	ErrorResumen  *string  `json:"error_resumen,omitempty"`
 }
 
 type RechazoEvento struct {
@@ -196,6 +199,7 @@ type TareaHistorialItem struct {
 	EnlaceMedios  *string                  `json:"enlace_medios,omitempty"`
 	EntregaNombre *string                  `json:"entrega_nombre,omitempty"`
 	EntregaTipo   *string                  `json:"entrega_tipo,omitempty"`
+	EntregaDrive  []ReferenciaDriveTrabajo `json:"entrega_drive,omitempty"`
 	Nota          *string                  `json:"nota,omitempty"`
 	Motivo        *string                  `json:"motivo,omitempty"`
 	Cantidad      *int                     `json:"cantidad,omitempty"`
@@ -223,6 +227,7 @@ type Tarea struct {
 	AsignadoA               string                   `json:"asignado_a"`
 	Asignado                *Perfil                  `json:"asignado,omitempty"`
 	CreadoPor               string                   `json:"creado_por"`
+	AsignadorID             *string                  `json:"-"`
 	Creador                 *Perfil                  `json:"creador,omitempty"`
 	Estado                  EstadoTarea              `json:"estado"`
 	FechaLimite             *string                  `json:"fecha_limite,omitempty"` // YYYY-MM-DD
@@ -231,6 +236,7 @@ type Tarea struct {
 	EnlaceMedios            *string                  `json:"enlace_medios,omitempty"`
 	EntregaNombre           *string                  `json:"entrega_nombre,omitempty"`
 	EntregaTipo             *string                  `json:"entrega_tipo,omitempty"`
+	EntregaDrive            []ReferenciaDriveTrabajo `json:"entrega_drive,omitempty"`
 	DriveCarpetaID          *string                  `json:"drive_carpeta_id,omitempty"`
 	DriveCarpetaURL         *string                  `json:"drive_carpeta_url,omitempty"`
 	DriveCarpetaNombre      *string                  `json:"drive_carpeta_nombre,omitempty"`

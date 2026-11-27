@@ -258,7 +258,7 @@ func (a *API) handleReservarAdjunto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.Tamano <= 0 || in.Tamano > f.maximo {
-		ResponderError(w, 413, "tamano_adjunto", fmt.Sprintf("El archivo debe pesar entre 1 byte y %d MB.", f.maximo/mibAdjunto))
+		ResponderError(w, 413, "tamano_adjunto", mensajeTamanoAdjunto(in.Tamano, f))
 		return
 	}
 	p := UsuarioDesdeContexto(r.Context())

@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-26T23:00:15.851Z",
+  "generado_en": "2026-11-27T03:38:54.302Z",
   "version": "1.0",
   "modulos": [
     {
@@ -338,6 +338,13 @@
       "ruta": "/api/tareas",
       "handler": "backend/internal/httpapi/handlers.go:handleGetTareas",
       "archivo_funcion": "backend/internal/httpapi/handlers.go:handleGetTareas",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "GET",
+      "ruta": "/api/tareas/{id}/whatsapp",
+      "handler": "backend/internal/httpapi/tarea_whatsapp.go:handleTareaWhatsApp",
+      "archivo_funcion": "backend/internal/httpapi/tarea_whatsapp.go:handleTareaWhatsApp",
       "auth": "miembros_aprobados"
     },
     {
@@ -1505,12 +1512,12 @@
         {
           "orden": 1,
           "archivo_funcion": "components/MisTareas.tsx:MisTareas",
-          "descripcion": "Modal con selector segmentado Drive/WhatsApp, botón Cambiar en Por revisar y vista previa de adjuntos del rechazo."
+          "descripcion": "Sección Por corregir con botón Corregir y confirmación en Volver a entregar; modal Drive (hasta 4 elementos) / WhatsApp con contacto de quien asignó, aviso de cuenta Drive y botón Cambiar con contraste corregido."
         },
         {
           "orden": 2,
           "archivo_funcion": "lib/picker-trabajador.ts:abrirPickerTrabajador",
-          "descripcion": "Abre Google Picker para carpeta o archivo con token de solo selección (drive.file) de la cuenta Google del trabajador."
+          "descripcion": "Abre Google Picker multiselección (hasta 4) con token de solo selección (drive.file) del trabajador y mensajes claros ante fallos de clave u origen."
         },
         {
           "orden": 3,
@@ -1520,67 +1527,77 @@
         {
           "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/drive_entrega_trabajador.go:handleTareaDriveArchivos",
-          "descripcion": "GET /api/tareas/{id}/drive/archivos lista en solo lectura la carpeta autorizada de la tarea desde el backend."
+          "descripcion": "GET /api/tareas/{id}/drive/archivos lista en solo lectura (paginado) la carpeta autorizada de la tarea desde el backend."
         },
         {
           "orden": 5,
-          "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaHecha",
-          "descripcion": "Persona envía POST /api/tareas/{id}/hecha con metodo_entrega (drive|whatsapp), enlace_medios, entrega_nombre, entrega_tipo y nota."
+          "archivo_funcion": "backend/internal/httpapi/tarea_whatsapp.go:handleTareaWhatsApp",
+          "descripcion": "GET /api/tareas/{id}/whatsapp resuelve por trabajo el contacto WhatsApp de quien asignó/reasignó (para trabajador) o quien entregó (para revisor), sin usar genéricos ni exponer a terceros."
         },
         {
           "orden": 6,
-          "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:rc_entregar_tarea",
-          "descripcion": "Transacción atómica: reemplaza entrega activa previa, actualiza tareas a hecha y registra entrega_enviada en tarea_historial."
+          "archivo_funcion": "backend/internal/httpapi/entrega_drive.go:validarEntregaDrive",
+          "descripcion": "Valida entre 1 y 4 elementos Drive únicos de la entrega y comprueba acceso sin ampliar el alcance del token ni alterar entregas por WhatsApp."
         },
         {
           "orden": 7,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaHecha",
+          "descripcion": "Persona envía POST /api/tareas/{id}/hecha con metodo_entrega (drive|whatsapp), entrega_drive (hasta 4), enlace_medios y nota."
+        },
+        {
+          "orden": 8,
+          "archivo_funcion": "supabase/migrations/028_entrega_drive_y_asignador.sql:rc_entregar_tarea_drive",
+          "descripcion": "Transacción atómica para entregas múltiples de Drive (y asignador_id en tareas), conservando compatibilidad con entregas simples."
+        },
+        {
+          "orden": 9,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostTareaRevertir",
           "descripcion": "POST /api/tareas/{id}/revertir valida dueño, ejecuta reversión atómica (409 si ya fue revisada) y avisa a admins que la vieron."
         },
         {
-          "orden": 8,
-          "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:rc_revertir_entrega_tarea",
-          "descripcion": "Retira entrega activa y vuelve tarea a pendiente en una sola transacción con WHERE estado='hecha', dejando auditoría en tarea_historial."
+          "orden": 10,
+          "archivo_funcion": "supabase/migrations/028_entrega_drive_y_asignador.sql:rc_revertir_entrega_tarea",
+          "descripcion": "Retira entrega activa (conservando entrega_drive en borrador e historial) y vuelve tarea a pendiente en una sola transacción."
         },
         {
-          "orden": 9,
+          "orden": 11,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaAceptar",
           "descripcion": "Admin envía POST /api/admin/tareas/{id}/aceptar con cantidad (minutos si unidad=minuto)."
         },
         {
-          "orden": 10,
+          "orden": 12,
           "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:aceptar_tarea",
           "descripcion": "Función SQL atómica que sincroniza tarea_entregas/tarea_historial, crea/usa factura abierta y congela valores."
         },
         {
-          "orden": 11,
+          "orden": 13,
           "archivo_funcion": "backend/internal/httpapi/push.go:AvisarEntregaAprobada",
           "descripcion": "Encola aviso 'entrega-aprobada' para la persona."
         },
         {
-          "orden": 12,
+          "orden": 14,
           "archivo_funcion": "components/AdminTareas.tsx:AdminTareas",
-          "descripcion": "Bandeja muestra Abrir en Drive o Entregado por WhatsApp; modal Rechazar tarea permite texto, audio/imagen/video y Google Picker."
+          "descripcion": "Bandeja rediseñada con Valor, hasta 4 entregables Drive o WhatsApp de quien entregó; modal Rechazar tarea con motivo, audio (con Resumir con IA), imagen/video y Google Picker con aviso de cuenta."
         },
         {
-          "orden": 13,
+          "orden": 15,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTareaRechazar",
           "descripcion": "Admin envía POST /api/admin/tareas/{id}/rechazar con motivo y drive_adjuntos validados."
         },
         {
-          "orden": 14,
+          "orden": 16,
           "archivo_funcion": "supabase/migrations/025_entrega_metodo_reversion_y_rechazo_adjuntos.sql:rc_rechazar_tarea",
           "descripcion": "Marca entrega rechazada, devuelve tarea a rechazada y crea evento en tarea_historial con drive_adjuntos."
         },
         {
-          "orden": 15,
+          "orden": 17,
           "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleReservarAdjunto",
           "descripcion": "Reutiliza el pipeline F10 (origen='rechazo', historial_id) para subir audio, imagen o video del rechazo."
         },
         {
-          "orden": 16,
+          "orden": 18,
           "archivo_funcion": "components/AdjuntosAsignacion.tsx:AdjuntosRechazoVista",
-          "descripcion": "Trabajador ve y reproduce/descarga los adjuntos del rechazo en la tarjeta rechazada y en el historial."
+          "descripcion": "Trabajador ve peso real, reproduce/descarga y consulta el resumen y transcripción IA de los audios del rechazo en Por corregir y el historial."
         }
       ]
     },
@@ -1809,7 +1826,7 @@
         {
           "orden": 1,
           "archivo_funcion": "app/(app)/page.tsx:ChatPage",
-          "descripcion": "El compositor reconoce solo /ria explícito; guarda la solicitud pendiente por usuario y no navega ni procesa @ria."
+          "descripcion": "El compositor ofrece autocompletado '/' (/ria, /help), ayuda local con /help, acepta /ria, /RIA y /ría y enlaza avatar/nombre de RIA a /ria."
         },
         {
           "orden": 2,
@@ -1819,7 +1836,7 @@
         {
           "orden": 3,
           "archivo_funcion": "backend/internal/httpapi/ria_grupo.go:handleRIAGrupo",
-          "descripcion": "Solo sesión aprobada; valida UUID, comando y longitud, sin aceptar autor, adjuntos ni parámetros de contexto."
+          "descripcion": "Solo sesión aprobada; normaliza /ria, /RIA y /ría, valida UUID y longitud sin aceptar autor, adjuntos ni parámetros de contexto."
         },
         {
           "orden": 4,
@@ -2059,7 +2076,7 @@
         {
           "orden": 4,
           "archivo_funcion": "components/RoadmapHistorial.tsx:RoadmapHistorial",
-          "descripcion": "Renderiza Historial y entregas como roadmap cronológico con nodos y flechas (↓ en móvil, → y salto ↓ en escritorio) con notas, motivos y adjuntos integrados."
+          "descripcion": "Renderiza Historial y entregas como roadmap cronológico con fecha y hora (America/Bogota), nodos y flechas, hasta cuatro entregables Drive, notas, motivos y adjuntos."
         },
         {
           "orden": 5,
@@ -2118,12 +2135,12 @@
         {
           "orden": 1,
           "archivo_funcion": "backend/internal/httpapi/clientes_f7.go:handleAdminDrivePickerToken",
-          "descripcion": "Devuelve a un admin un access token efímero sin caché ni refresh token, con carpeta del cliente o raíz como destino inicial."
+          "descripcion": "Devuelve a un admin un access token efímero sin caché ni refresh token, con carpeta del cliente en el árbol del equipo, raiz_id y cuenta_equipo."
         },
         {
           "orden": 2,
           "archivo_funcion": "components/PickerDriveCliente.tsx:PickerDriveCliente",
-          "descripcion": "Carga Google Picker al pulsar, resuelve ruta de carpetas padre desde /api/admin/drive/referencia y muestra ruta arriba y nombre real debajo."
+          "descripcion": "Muestra aviso de cuenta del equipo antes de abrir Google Picker multi-vista (cliente, raíz y unidades compartidas) y mensajes humanos si Picker falla por clave u origen."
         },
         {
           "orden": 3,
@@ -2241,7 +2258,7 @@
         {
           "orden": 1,
           "archivo_funcion": "components/AdjuntosAsignacion.tsx:EditorAdjuntos",
-          "descripcion": "Selección (con detección EBML de audio WebM), vista previa local, grabación con MediaRecorder y resumen inmediato en borrador."
+          "descripcion": "Selección (con detección EBML y validación exacta por tipo en lib/adjuntos-asignacion.ts), contador X / Y MB, barra de grabación viva (BarraGrabacion) y resumen IA inmediato en borrador."
         },
         {
           "orden": 2,
@@ -2641,5 +2658,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "96fbf06e27f1fe6015040f38e1abdd16921c02f1"
+  "commit_hash": "85fb44ffe7b7007129098ca9e5b0996d7b3cd3dc"
 }

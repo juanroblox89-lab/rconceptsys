@@ -53,7 +53,14 @@
   gap: var(--rc-esp-12);
 }
 
-.grid > * {
+.gridPorCorregir {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--rc-esp-12);
+}
+
+.grid > *,
+.gridPorCorregir > * {
   min-width: 0;
 }
 
@@ -66,6 +73,42 @@
   flex-direction: column;
   gap: var(--rc-esp-10);
   transition: transform var(--rc-transicion), box-shadow var(--rc-transicion);
+}
+
+.tareaCardPorCorregir {
+  gap: var(--rc-esp-8);
+  padding: var(--rc-esp-12) var(--rc-esp-14);
+  border-left: 3px solid var(--rc-naranja, var(--rc-rojo));
+}
+
+.porCorregirCuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  min-width: 0;
+}
+
+.porCorregirPrincipal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  min-width: 0;
+}
+
+.porCorregirAdjuntos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  min-width: 0;
+}
+
+@media (min-width: 880px) {
+  .porCorregirCuerpoConAdjuntos {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: var(--rc-esp-12);
+    align-items: start;
+  }
 }
 
 .tareaResaltada { outline: 2px solid var(--rc-azul-texto); outline-offset: -2px; }
@@ -112,8 +155,8 @@
 }
 
 .fechaVencida {
-  color: var(--rc-rojo-texto);
-  font-weight: var(--rc-fw-medio);
+  color: var(--rc-naranja-texto, var(--rc-ambar-texto));
+  font-weight: var(--rc-fw-semibold);
 }
 
 .precioCongelado {
@@ -145,7 +188,9 @@
 }
 
 .notaPersonaBox {
-  background-color: var(--rc-azul-suave);
+  background-color: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-gris-100);
+  border-left: 3px solid var(--rc-azul-texto);
   box-shadow: var(--rc-elev-hundido-sm);
   color: var(--rc-texto);
   border-radius: var(--rc-radio-sm);
@@ -156,7 +201,7 @@
 }
 
 .notaPersonaBox strong {
-  color: var(--rc-comando-texto, var(--rc-azul-texto));
+  color: var(--rc-texto);
   font-weight: var(--rc-fw-bold);
 }
 
@@ -241,6 +286,71 @@
 
 .driveAcciones button {
   min-height: 40px;
+}
+
+.driveSeleccionLista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.driveSeleccionCabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--rc-fs-etiqueta);
+  color: var(--rc-texto-secundario);
+}
+
+.entregaDriveLista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entregaDriveItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 8px;
+  padding: 6px 8px;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  min-width: 0;
+}
+
+.whatsappAvisoBloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+}
+
+.whatsappContactoFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rc-esp-8);
+}
+
+.whatsappNoDisponible {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-naranja-suave, var(--rc-ambar-suave));
+  color: var(--rc-naranja-texto, var(--rc-ambar-texto));
+  border: 1px solid var(--rc-naranja-borde, transparent);
+  font-size: var(--rc-fs-etiqueta);
+  line-height: 1.4;
 }
 
 .driveSeleccionCard {
@@ -388,12 +498,18 @@
 }
 
 .rechazoDriveLista {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+@media (min-width: 680px) {
+  .rechazoDriveLista {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  }
 }
 
 .rechazoDriveItem {
@@ -458,4 +574,19 @@
   background: var(--rc-superficie-clara);
   border: 1px solid var(--rc-glass-borde);
   border-radius: var(--rc-glass-radio);
+}
+
+:global(html[data-rc-tema="glass"]) .tareaCardPorCorregir {
+  border-left: 3px solid var(--rc-naranja, var(--rc-rojo));
+}
+
+:global(html[data-rc-tema="glass"]) .notaPersonaBox {
+  background-color: var(--rc-glass-campo);
+  border-color: var(--rc-glass-borde-flotante);
+  border-left-color: var(--rc-azul-texto);
+}
+
+:global(html[data-rc-tema="glass"]) .whatsappAvisoBox {
+  background-color: var(--rc-verde-suave);
+  border: 1px solid var(--rc-verde-btn-borde);
 }

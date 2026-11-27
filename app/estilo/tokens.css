@@ -45,10 +45,15 @@
   --rc-verde-halo: rgba(47, 166, 106, 0.24);
   --rc-verde-tinte: rgba(47, 166, 106, 0.13);
 
-  --rc-ambar: #E8A33D;
-  --rc-ambar-suave: #FDF3E4;
-  --rc-ambar-texto: #B9781A;
-  --rc-ambar-tinte: rgba(232, 163, 61, 0.14);
+  --rc-naranja: #EA6C1A;
+  --rc-naranja-suave: #FFF0E3;
+  --rc-naranja-texto: #B54708;
+  --rc-naranja-tinte: rgba(234, 108, 26, 0.16);
+
+  --rc-ambar: var(--rc-naranja);
+  --rc-ambar-suave: var(--rc-naranja-suave);
+  --rc-ambar-texto: var(--rc-naranja-texto);
+  --rc-ambar-tinte: var(--rc-naranja-tinte);
 
   --rc-morado: #9B6BFF;
 

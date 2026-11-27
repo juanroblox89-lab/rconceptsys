@@ -144,7 +144,7 @@ func (a *API) carpetaDentroDeRaicesTarea(ctx context.Context, token, carpetaID s
 	}
 	actual := carpetaID
 	visitados := make(map[string]bool, 6)
-	for range 5 {
+	for range 8 {
 		if visitados[actual] {
 			return false
 		}
@@ -158,9 +158,10 @@ func (a *API) carpetaDentroDeRaicesTarea(ctx context.Context, token, carpetaID s
 			if raices[p] {
 				return true
 			}
-			actual = p
-			encontrado = true
-			break
+			if !encontrado {
+				actual = p
+				encontrado = true
+			}
 		}
 		if !encontrado {
 			return false
@@ -241,55 +242,61 @@ func (a *API) handleTareaDriveArchivos(w http.ResponseWriter, r *http.Request) {
 
 	q := url.Values{}
 	q.Set("q", fmt.Sprintf("trashed = false and '%s' in parents", escaparQueryDrive(carpeta)))
-	q.Set("fields", "files(id,name,mimeType,size,iconLink,thumbnailLink,webViewLink,modifiedTime)")
-	q.Set("pageSize", "60")
+	q.Set("fields", "nextPageToken,files(id,name,mimeType,size,iconLink,thumbnailLink,webViewLink,modifiedTime)")
+	q.Set("pageSize", "100")
 	q.Set("orderBy", "folder,name")
 	q.Set("supportsAllDrives", "true")
 	q.Set("includeItemsFromAllDrives", "true")
 
-	var resp struct {
-		Files []struct {
-			ID            string `json:"id"`
-			Name          string `json:"name"`
-			MimeType      string `json:"mimeType"`
-			Size          string `json:"size"`
-			IconLink      string `json:"iconLink"`
-			ThumbnailLink string `json:"thumbnailLink"`
-			WebViewLink   string `json:"webViewLink"`
-			ModifiedTime  string `json:"modifiedTime"`
-		} `json:"files"`
-	}
-	if err := a.pedirDrive(r.Context(), token, driveAPIBase+"/files?"+q.Encode(), &resp); err != nil {
-		ResponderError(w, http.StatusBadGateway, "drive_error", "No pudimos consultar la carpeta de Drive. Inténtalo de nuevo.")
-		return
-	}
-
-	res := make([]DriveArchivo, 0, len(resp.Files))
-	for _, f := range resp.Files {
-		var tam int64
-		if f.Size != "" {
-			_, _ = fmt.Sscan(f.Size, &tam)
+	res := make([]DriveArchivo, 0, 60)
+	for range 3 {
+		var resp struct {
+			Files []struct {
+				ID            string `json:"id"`
+				Name          string `json:"name"`
+				MimeType      string `json:"mimeType"`
+				Size          string `json:"size"`
+				IconLink      string `json:"iconLink"`
+				ThumbnailLink string `json:"thumbnailLink"`
+				WebViewLink   string `json:"webViewLink"`
+				ModifiedTime  string `json:"modifiedTime"`
+			} `json:"files"`
+			NextPageToken string `json:"nextPageToken"`
 		}
-		esCarpeta := f.MimeType == driveCarpetaMime
-		enlace := strings.TrimSpace(f.WebViewLink)
-		if enlace == "" {
-			if esCarpeta {
-				enlace = urlCarpetaDrive(f.ID)
-			} else {
-				enlace = "https://drive.google.com/open?id=" + f.ID
+		if err := a.pedirDrive(r.Context(), token, driveAPIBase+"/files?"+q.Encode(), &resp); err != nil {
+			ResponderError(w, http.StatusBadGateway, "drive_error", "No pudimos consultar la carpeta de Drive. Inténtalo de nuevo.")
+			return
+		}
+		for _, f := range resp.Files {
+			var tam int64
+			if f.Size != "" {
+				_, _ = fmt.Sscan(f.Size, &tam)
 			}
+			esCarpeta := f.MimeType == driveCarpetaMime
+			enlace := strings.TrimSpace(f.WebViewLink)
+			if enlace == "" {
+				if esCarpeta {
+					enlace = urlCarpetaDrive(f.ID)
+				} else {
+					enlace = "https://drive.google.com/open?id=" + f.ID
+				}
+			}
+			res = append(res, DriveArchivo{
+				ID:           f.ID,
+				Nombre:       f.Name,
+				Mime:         f.MimeType,
+				Icono:        f.IconLink,
+				Miniatura:    f.ThumbnailLink,
+				Enlace:       enlace,
+				Tamano:       tam,
+				ModificadoEn: f.ModifiedTime,
+				EsCarpeta:    esCarpeta,
+			})
 		}
-		res = append(res, DriveArchivo{
-			ID:           f.ID,
-			Nombre:       f.Name,
-			Mime:         f.MimeType,
-			Icono:        f.IconLink,
-			Miniatura:    f.ThumbnailLink,
-			Enlace:       enlace,
-			Tamano:       tam,
-			ModificadoEn: f.ModifiedTime,
-			EsCarpeta:    esCarpeta,
-		})
+		if resp.NextPageToken == "" || len(res) >= 300 {
+			break
+		}
+		q.Set("pageToken", resp.NextPageToken)
 	}
 	ResponderJSON(w, http.StatusOK, res)
 }

@@ -29,6 +29,20 @@ export type AdjuntoLocal = {
 };
 export const aceptarAdjuntos = ".jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.webm,.ogg,.opus,.m4a,.mp3,.wav";
 export const limiteAdjunto = { imagen: 10, video: 50, audio: 25 };
+export const bytesPorMBAdjunto = 1024 * 1024;
+const etiquetasTipo = { imagen: "La imagen", audio: "El audio", video: "El video" };
+const formatoPeso = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 });
+
+export function validarPesoAdjunto(tamano: number, tipo: TipoAdjunto) {
+  if (!Number.isFinite(tamano) || tamano <= 0) return `${etiquetasTipo[tipo]} está ${tipo === "imagen" ? "vacía" : "vacío"}.`;
+  if (tamano > limiteAdjunto[tipo] * bytesPorMBAdjunto) return `${etiquetasTipo[tipo]} supera el límite de ${limiteAdjunto[tipo]} MB.`;
+  return null;
+}
+
+export function pesoAdjunto(tamano: number, tipo: TipoAdjunto) {
+  const peso = tamano / bytesPorMBAdjunto;
+  return `${peso > 0 && peso < .05 ? "< 0,1" : formatoPeso.format(peso)} / ${limiteAdjunto[tipo]} MB`;
+}
 const PARTE_BYTES = 2 * 1024 * 1024;
 const base = (id: number) => `/api/tareas/${id}/adjuntos`;
 const admin = (id: number) => `/api/admin/tareas/${id}/adjuntos`;

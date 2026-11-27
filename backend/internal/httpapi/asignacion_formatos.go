@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,31 @@ const parteAdjunto = 2 * mibAdjunto
 type formatoAdjunto struct {
 	tipo, mime string
 	maximo     int
+}
+
+func mensajeTamanoAdjunto(tamano int, f formatoAdjunto) string {
+	switch f.tipo {
+	case "imagen":
+		if tamano <= 0 {
+			return "La imagen está vacía."
+		}
+		return fmt.Sprintf("La imagen supera el límite de %d MB.", f.maximo/mibAdjunto)
+	case "audio":
+		if tamano <= 0 {
+			return "El audio está vacío."
+		}
+		return fmt.Sprintf("El audio supera el límite de %d MB.", f.maximo/mibAdjunto)
+	case "video":
+		if tamano <= 0 {
+			return "El video está vacío."
+		}
+		return fmt.Sprintf("El video supera el límite de %d MB.", f.maximo/mibAdjunto)
+	default:
+		if tamano <= 0 {
+			return "El archivo está vacío."
+		}
+		return fmt.Sprintf("El archivo supera el límite de %d MB.", f.maximo/mibAdjunto)
+	}
 }
 
 func formatoAsignacion(nombre, tipo string) (formatoAdjunto, bool) {

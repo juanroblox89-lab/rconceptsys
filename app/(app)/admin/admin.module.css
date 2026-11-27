@@ -261,7 +261,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--rc-esp-10);
-  border-left: 3px solid var(--rc-azul);
+  border: 1px solid var(--rc-gris-100);
+  border-left: 3px solid var(--rc-azul-texto);
   min-width: 0;
 }
 
@@ -270,25 +271,39 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--rc-esp-8);
+  flex-wrap: wrap;
 }
 
 .reviewPersona {
   font-weight: var(--rc-fw-bold);
   font-size: var(--rc-fs-cuerpo);
   color: var(--rc-gris-900);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .reviewTitulo {
-  font-size: var(--rc-fs-secundario);
+  font-size: var(--rc-fs-cuerpo);
   color: var(--rc-gris-900);
   font-weight: var(--rc-fw-semibold);
+  overflow-wrap: anywhere;
+}
+
+.reviewDescripcion {
+  font-size: var(--rc-fs-secundario);
+  color: var(--rc-texto-secundario);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .reviewNota {
-  background-color: var(--rc-azul-suave);
+  background-color: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-gris-100);
+  border-left: 3px solid var(--rc-azul-texto);
   box-shadow: var(--rc-elev-hundido-sm);
   color: var(--rc-texto);
-  padding: var(--rc-esp-8);
+  padding: var(--rc-esp-8) var(--rc-esp-10);
   border-radius: var(--rc-radio-sm);
   font-size: var(--rc-fs-etiqueta);
   line-height: 1.45;
@@ -296,8 +311,55 @@
 }
 
 .reviewNota strong {
-  color: var(--rc-comando-texto, var(--rc-azul-texto));
+  color: var(--rc-texto);
   font-weight: var(--rc-fw-bold);
+}
+
+.reviewEntregaCaja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-esp-8);
+  padding: var(--rc-esp-10);
+  border-radius: var(--rc-radio-md);
+  background: var(--rc-superficie-hundida);
+  box-shadow: var(--rc-elev-hundido-sm);
+  min-width: 0;
+}
+
+.reviewEntregaLista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reviewEntregaItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 8px;
+  padding: 6px 8px;
+  border-radius: var(--rc-radio-sm);
+  background: var(--rc-superficie);
+  box-shadow: var(--rc-elev-relieve-sm);
+  min-width: 0;
+}
+
+.reviewCarpetaFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rc-esp-8);
+}
+
+.whatsappNoDisponible {
+  margin: 0;
+  font-size: var(--rc-fs-etiqueta);
+  line-height: 1.4;
+  color: var(--rc-naranja-texto, var(--rc-ambar-texto));
 }
 
 .entregaWhatsappChip {
@@ -399,12 +461,14 @@
 
 .reviewValor {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   font-size: var(--rc-fs-etiqueta);
   color: var(--rc-texto-secundario);
   margin-top: auto;
-  padding-top: var(--rc-esp-4);
+  padding-top: var(--rc-esp-8);
   border-top: 1px solid var(--rc-gris-100);
 }
 
@@ -421,7 +485,7 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: var(--rc-esp-8);
-  margin-top: var(--rc-esp-6);
+  padding-top: var(--rc-esp-4);
 }
 
 .modalForm {
@@ -551,4 +615,25 @@
   box-shadow: inset 0 0 0 1px var(--rc-gris-100), var(--rc-elev-relieve-sm);
   background: var(--rc-superficie-clara);
   border-radius: var(--rc-glass-radio);
+}
+
+:global(html[data-rc-tema="glass"]) .reviewCard {
+  border-color: var(--rc-glass-borde);
+  border-left: 3px solid var(--rc-azul-texto);
+}
+
+:global(html[data-rc-tema="glass"]) .reviewNota {
+  background-color: var(--rc-glass-campo);
+  border-color: var(--rc-glass-borde-flotante);
+  border-left-color: var(--rc-azul-texto);
+}
+
+:global(html[data-rc-tema="glass"]) .reviewEntregaCaja {
+  background: var(--rc-superficie-hundida);
+  border: 1px solid var(--rc-glass-borde);
+}
+
+:global(html[data-rc-tema="glass"]) .reviewEntregaItem {
+  background: var(--rc-superficie-clara);
+  border: 1px solid var(--rc-glass-borde);
 }

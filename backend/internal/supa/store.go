@@ -100,6 +100,7 @@ type dbTarea struct {
 	Descripcion             *string                        `json:"descripcion"`
 	AsignadoA               string                         `json:"asignado_a"`
 	CreadoPor               string                         `json:"creado_por"`
+	AsignadorID             *string                        `json:"asignador_id"`
 	Estado                  string                         `json:"estado"`
 	FechaLimite             *string                        `json:"fecha_limite"`
 	NotaPersona             *string                        `json:"nota_persona"`
@@ -107,6 +108,7 @@ type dbTarea struct {
 	EnlaceMedios            *string                        `json:"enlace_medios"`
 	EntregaNombre           *string                        `json:"entrega_nombre"`
 	EntregaTipo             *string                        `json:"entrega_tipo"`
+	EntregaDrive            []store.ReferenciaDriveTrabajo `json:"entrega_drive"`
 	DriveCarpetaID          *string                        `json:"drive_carpeta_id"`
 	DriveCarpetaURL         *string                        `json:"drive_carpeta_url"`
 	DriveReferencias        []store.ReferenciaDriveTrabajo `json:"drive_referencias"`
@@ -834,6 +836,7 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 		Descripcion:             dt.Descripcion,
 		AsignadoA:               dt.AsignadoA,
 		CreadoPor:               dt.CreadoPor,
+		AsignadorID:             dt.AsignadorID,
 		Estado:                  store.EstadoTarea(dt.Estado),
 		FechaLimite:             dt.FechaLimite,
 		NotaPersona:             dt.NotaPersona,
@@ -841,6 +844,7 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 		EnlaceMedios:            dt.EnlaceMedios,
 		EntregaNombre:           dt.EntregaNombre,
 		EntregaTipo:             dt.EntregaTipo,
+		EntregaDrive:            dt.EntregaDrive,
 		MotivoRechazo:           dt.MotivoRechazo,
 		Cantidad:                dt.Cantidad,
 		CantidadAceptada:        dt.CantidadAceptada,
@@ -957,6 +961,7 @@ func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.
 		"descripcion":      t.Descripcion,
 		"asignado_a":       t.AsignadoA,
 		"creado_por":       t.CreadoPor,
+		"asignador_id":     t.CreadoPor,
 		"estado":           store.EstadoTareaPendiente,
 		"fecha_limite":     t.FechaLimite,
 		"cantidad":         t.Cantidad,
@@ -1113,7 +1118,12 @@ func (s *SupabaseStore) EntregarTarea(ctx context.Context, id int64, asignadoID 
 		payload["p_entrega_tipo"] = *entrada.EntregaTipo
 	}
 	var res map[string]any
-	if err := s.client.RPC(ctx, "rc_entregar_tarea", payload, &res); err != nil {
+	rpc := "rc_entregar_tarea"
+	if len(entrada.EntregaDrive) > 0 {
+		rpc = "rc_entregar_tarea_drive"
+		payload["p_elementos"] = entrada.EntregaDrive
+	}
+	if err := s.client.RPC(ctx, rpc, payload, &res); err != nil {
 		return nil, mapearErrorRPCTarea(err)
 	}
 	return s.ObtenerTareaPorID(ctx, id)
@@ -1213,18 +1223,19 @@ func (s *SupabaseStore) RechazarTareaConDetalle(ctx context.Context, id int64, a
 }
 
 type dbEntregaTarea struct {
-	ID            int64   `json:"id"`
-	TareaID       int64   `json:"tarea_id"`
-	PerfilID      string  `json:"perfil_id"`
-	Metodo        *string `json:"metodo_entrega"`
-	EnlaceMedios  *string `json:"enlace_medios"`
-	EntregaNombre *string `json:"entrega_nombre"`
-	EntregaTipo   *string `json:"entrega_tipo"`
-	Nota          *string `json:"nota"`
-	Cantidad      *int    `json:"cantidad"`
-	Estado        string  `json:"estado"`
-	CreadaEn      string  `json:"creada_en"`
-	RetiradaEn    *string `json:"retirada_en"`
+	ID            int64                          `json:"id"`
+	TareaID       int64                          `json:"tarea_id"`
+	PerfilID      string                         `json:"perfil_id"`
+	Metodo        *string                        `json:"metodo_entrega"`
+	EnlaceMedios  *string                        `json:"enlace_medios"`
+	EntregaNombre *string                        `json:"entrega_nombre"`
+	EntregaTipo   *string                        `json:"entrega_tipo"`
+	EntregaDrive  []store.ReferenciaDriveTrabajo `json:"entrega_drive"`
+	Nota          *string                        `json:"nota"`
+	Cantidad      *int                           `json:"cantidad"`
+	Estado        string                         `json:"estado"`
+	CreadaEn      string                         `json:"creada_en"`
+	RetiradaEn    *string                        `json:"retirada_en"`
 }
 
 type dbTareaHistorial struct {
@@ -1237,6 +1248,7 @@ type dbTareaHistorial struct {
 	EnlaceMedios  *string                        `json:"enlace_medios"`
 	EntregaNombre *string                        `json:"entrega_nombre"`
 	EntregaTipo   *string                        `json:"entrega_tipo"`
+	EntregaDrive  []store.ReferenciaDriveTrabajo `json:"entrega_drive"`
 	Nota          *string                        `json:"nota"`
 	Motivo        *string                        `json:"motivo"`
 	Cantidad      *int                           `json:"cantidad"`
@@ -1262,6 +1274,7 @@ func vistaAdjuntosDeLista(lista []*store.AdjuntoAsignacion) map[int64][]*store.V
 			EstadoResumen: a.EstadoResumen,
 			Resumen:       a.Resumen,
 			Transcripcion: a.Transcripcion,
+			ErrorResumen:  a.ErrorResumen,
 		})
 	}
 	return porHist
@@ -1312,6 +1325,7 @@ func (s *SupabaseStore) hidratarExtrasTareas(ctx context.Context, tareas []*stor
 					EnlaceMedios:  r.EnlaceMedios,
 					EntregaNombre: r.EntregaNombre,
 					EntregaTipo:   r.EntregaTipo,
+					EntregaDrive:  r.EntregaDrive,
 					Nota:          r.Nota,
 					Cantidad:      r.Cantidad,
 					Estado:        r.Estado,
@@ -1320,7 +1334,7 @@ func (s *SupabaseStore) hidratarExtrasTareas(ctx context.Context, tareas []*stor
 				}
 			}
 			for _, t := range tareas {
-				if e, ok := porTarea[t.ID]; ok && e.Estado != "reabierta" {
+				if e, ok := porTarea[t.ID]; ok && e.Estado != "reabierta" && e.PerfilID == t.AsignadoA {
 					t.BorradorEntrega = e
 				}
 			}
@@ -1394,6 +1408,7 @@ func (s *SupabaseStore) ObtenerHistorialTarea(ctx context.Context, tareaID int64
 			EnlaceMedios:  r.EnlaceMedios,
 			EntregaNombre: r.EntregaNombre,
 			EntregaTipo:   r.EntregaTipo,
+			EntregaDrive:  r.EntregaDrive,
 			Nota:          r.Nota,
 			Motivo:        r.Motivo,
 			Cantidad:      r.Cantidad,

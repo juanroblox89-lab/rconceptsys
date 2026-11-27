@@ -16,8 +16,12 @@ func (m *MemoryStore) ActualizarTarea(ctx context.Context, id int64, campos map[
 	if v, ok := campos["tipo_id"].(int); ok {
 		t.TipoID = v
 	}
-	if v, ok := campos["asignado_a"].(string); ok {
+	if v, ok := campos["asignado_a"].(string); ok && v != t.AsignadoA {
 		t.AsignadoA = v
+		t.AsignadorID = nil
+		if actor, ok := campos["asignador_id"].(string); ok {
+			t.AsignadorID = &actor
+		}
 	}
 	if v, ok := campos["titulo"].(string); ok {
 		t.Titulo = v

@@ -301,8 +301,13 @@ func (a *API) asegurarCarpetaMarcada(ctx context.Context, token, nombre, padre, 
 	if tarea != "" {
 		criterio = "appProperties has { key='" + propiedadTareaDrive + "' and value='" + tarea + "' }"
 	}
-	q := url.Values{"q": {"trashed = false and mimeType = '" + driveCarpetaMime + "' and " + criterio + " and '" + escaparQueryDrive(padre) + "' in parents"},
-		"fields": {"nextPageToken,files(id,name)"}, "orderBy": {"createdTime asc"}}
+	q := url.Values{
+		"q":                         {"trashed = false and mimeType = '" + driveCarpetaMime + "' and " + criterio + " and '" + escaparQueryDrive(padre) + "' in parents"},
+		"fields":                    {"nextPageToken,files(id,name)"},
+		"orderBy":                   {"createdTime asc"},
+		"supportsAllDrives":         {"true"},
+		"includeItemsFromAllDrives": {"true"},
+	}
 	for {
 		var lista struct {
 			Files     []struct{ ID, Name string } `json:"files"`
@@ -352,6 +357,27 @@ func (f metadatosCarpetaDrive) carpetaActiva() bool {
 
 func (f metadatosCarpetaDrive) carpetaEn(padre string) bool {
 	return padre != "" && f.carpetaActiva() && len(f.Padres) == 1 && f.Padres[0] == padre
+}
+
+func (a *API) carpetaEnArbolEquipo(ctx context.Context, token, carpetaID string, c *store.ConexionDrive) bool {
+	if !driveIDValido(carpetaID) || c == nil {
+		return false
+	}
+	f, err := a.metadatosCarpeta(ctx, token, carpetaID)
+	if err != nil || !f.carpetaActiva() {
+		return false
+	}
+	raices := map[string]bool{}
+	if driveIDValido(c.CarpetaClientesID) {
+		raices[c.CarpetaClientesID] = true
+	}
+	if driveIDValido(c.CarpetaRaizID) {
+		raices[c.CarpetaRaizID] = true
+	}
+	if raices["root"] {
+		return true
+	}
+	return a.carpetaDentroDeRaicesTarea(ctx, token, carpetaID, raices)
 }
 
 type movimientoDrive struct {

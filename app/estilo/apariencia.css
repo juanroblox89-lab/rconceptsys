@@ -25,6 +25,11 @@ html:root {
   --rc-azul-oscuro: var(--rc-azul-texto);
   --rc-azul-suave: color-mix(in srgb,var(--rc-azul),var(--rc-superficie) 83%);
   --rc-azul-tinte: color-mix(in srgb,var(--rc-azul),transparent 86%);
+  --rc-azul-btn-texto: light-dark(color-mix(in srgb, var(--rc-azul-texto) 86%, var(--rc-texto)), color-mix(in srgb, var(--rc-azul-texto) 86%, #ffffff));
+  --rc-azul-btn-bg: light-dark(color-mix(in srgb, var(--rc-azul) 18%, var(--rc-superficie)), color-mix(in srgb, var(--rc-azul) 22%, var(--rc-superficie)));
+  --rc-azul-btn-hover: light-dark(color-mix(in srgb, var(--rc-azul) 26%, var(--rc-superficie)), color-mix(in srgb, var(--rc-azul) 30%, var(--rc-superficie)));
+  --rc-azul-btn-activo: light-dark(color-mix(in srgb, var(--rc-azul) 30%, var(--rc-superficie-hundida)), color-mix(in srgb, var(--rc-azul) 34%, var(--rc-superficie-hundida)));
+  --rc-azul-btn-borde: light-dark(color-mix(in srgb, var(--rc-azul) 30%, transparent), color-mix(in srgb, var(--rc-azul-texto) 32%, transparent));
   --rc-rojo-texto: light-dark(#c2383d,#ff9298);
   --rc-rojo-suave: light-dark(#fdecec,#45262d);
   --rc-rojo-btn-texto: light-dark(#a8242a,#ffadb1);
@@ -39,8 +44,15 @@ html:root {
   --rc-verde-btn-hover: light-dark(color-mix(in srgb, #2fa66a 21%, var(--rc-superficie)), color-mix(in srgb, #2fa66a 27%, var(--rc-superficie)));
   --rc-verde-btn-activo: light-dark(color-mix(in srgb, #2fa66a 25%, var(--rc-superficie-hundida)), color-mix(in srgb, #2fa66a 31%, var(--rc-superficie-hundida)));
   --rc-verde-btn-borde: light-dark(color-mix(in srgb, #2fa66a 26%, transparent), color-mix(in srgb, #83d8ad 28%, transparent));
-  --rc-ambar-texto: light-dark(#a76410,#f6c784);
-  --rc-ambar-suave: light-dark(#fdf3e4,#453729);
+  --rc-naranja: light-dark(#e06514,#fb923c);
+  --rc-naranja-texto: light-dark(#b04305,#ffbd80);
+  --rc-naranja-suave: light-dark(#fff0e3,#422511);
+  --rc-naranja-tinte: color-mix(in srgb, var(--rc-naranja) 16%, transparent);
+  --rc-naranja-borde: light-dark(color-mix(in srgb, #e06514 28%, transparent), color-mix(in srgb, #fb923c 32%, transparent));
+  --rc-ambar: var(--rc-naranja);
+  --rc-ambar-texto: var(--rc-naranja-texto);
+  --rc-ambar-suave: var(--rc-naranja-suave);
+  --rc-ambar-tinte: var(--rc-naranja-tinte);
   --rc-elev-hundido-sm: inset 2px 2px 5px var(--rc-sombra-suave), inset -2px -2px 5px var(--rc-luz-suave);
   --rc-elev-hundido-md: inset 3px 3px 7px var(--rc-sombra-fuerte), inset -3px -3px 7px var(--rc-luz-fuerte);
   --rc-elev-plano: 0 0 0 rgba(0, 0, 0, 0), inset 0 0 0 1px var(--rc-gris-100);
@@ -147,19 +159,32 @@ html[data-rc-tema="glass"] {
   --rc-azul: var(--rc-azul-texto);
   --rc-azul-fondo: color-mix(in srgb, var(--rc-azul-texto) 10%, var(--rc-glass-campo));
   --rc-azul-suave: var(--rc-azul-fondo);
+  --rc-azul-btn-texto: var(--rc-azul-texto);
+  --rc-azul-btn-bg: color-mix(in srgb, var(--rc-azul-texto) 16%, var(--rc-glass-cromo));
+  --rc-azul-btn-hover: color-mix(in srgb, var(--rc-azul-texto) 24%, var(--rc-glass-cromo));
+  --rc-azul-btn-activo: color-mix(in srgb, var(--rc-azul-texto) 30%, var(--rc-superficie-hundida));
+  --rc-azul-btn-borde: color-mix(in srgb, var(--rc-azul-texto) 36%, var(--rc-glass-borde));
   --rc-rojo-texto: light-dark(#680d1c,#ffe4e6);
+  --rc-rojo-suave: color-mix(in srgb, #e5484d 18%, var(--rc-glass-campo));
   --rc-rojo-btn-texto: light-dark(#680d1c,#ffe4e6);
   --rc-rojo-btn-bg: color-mix(in srgb, #e5484d 18%, var(--rc-superficie-clara));
   --rc-rojo-btn-hover: color-mix(in srgb, #e5484d 26%, var(--rc-superficie-clara));
   --rc-rojo-btn-activo: color-mix(in srgb, #e5484d 30%, var(--rc-superficie-hundida));
   --rc-rojo-btn-borde: color-mix(in srgb, #e5484d 34%, var(--rc-glass-borde));
   --rc-verde-texto: light-dark(#073b26,#d2fae4);
+  --rc-verde-suave: color-mix(in srgb, #2fa66a 18%, var(--rc-glass-campo));
   --rc-verde-btn-texto: light-dark(#073b26,#d2fae4);
   --rc-verde-btn-bg: color-mix(in srgb, #2fa66a 18%, var(--rc-superficie-clara));
   --rc-verde-btn-hover: color-mix(in srgb, #2fa66a 26%, var(--rc-superficie-clara));
   --rc-verde-btn-activo: color-mix(in srgb, #2fa66a 30%, var(--rc-superficie-hundida));
   --rc-verde-btn-borde: color-mix(in srgb, #2fa66a 34%, var(--rc-glass-borde));
-  --rc-ambar-texto: light-dark(#502a01,#fff0d4);
+  --rc-naranja: light-dark(#d95c0f,#fb923c);
+  --rc-naranja-suave: color-mix(in srgb, #ea6c1a 20%, var(--rc-glass-campo));
+  --rc-naranja-texto: light-dark(#7c2d00,#ffd6ad);
+  --rc-naranja-borde: color-mix(in srgb, #ea6c1a 38%, var(--rc-glass-borde));
+  --rc-ambar: var(--rc-naranja);
+  --rc-ambar-suave: var(--rc-naranja-suave);
+  --rc-ambar-texto: var(--rc-naranja-texto);
   --rc-elev-relieve-sm: 0 2px 8px #00000018;
   --rc-elev-relieve-md: 0 4px 16px #00000024;
   --rc-elev-relieve-lg: 0 6px 24px #00000028;
@@ -238,6 +263,32 @@ html[data-rc-tema="glass"] dialog::backdrop {
   backdrop-filter: blur(10px);
 }
 html[data-rc-tema="glass"] :is(.rc-modal, dialog) select option { background: var(--rc-glass-campo); color: var(--rc-texto); }
+
+html[data-rc-tema="glass"] .rc-btn--secundario {
+  background: var(--rc-glass-cromo);
+  color: var(--rc-texto);
+  border: 1px solid var(--rc-glass-borde-flotante);
+}
+html[data-rc-tema="glass"] .rc-btn--secundario:hover:not(:disabled):not(.rc-btn--deshabilitado) {
+  background: var(--rc-superficie-hundida);
+  color: var(--rc-texto);
+}
+html[data-rc-tema="glass"] .rc-toast--advertencia {
+  background: var(--rc-naranja-suave);
+  border-color: var(--rc-naranja-borde);
+}
+html[data-rc-tema="glass"] .rc-toast--error {
+  background: var(--rc-rojo-suave);
+  border-color: var(--rc-rojo-btn-borde);
+}
+html[data-rc-tema="glass"] .rc-toast--exito {
+  background: var(--rc-verde-suave);
+  border-color: var(--rc-verde-btn-borde);
+}
+html[data-rc-tema="glass"] .rc-toast--info {
+  background: var(--rc-azul-fondo);
+  border-color: var(--rc-azul-btn-borde);
+}
 
 html:not([data-rc-tema="glass"]) [data-rc-avisos-flotantes] .rc-toast {
   background: var(--rc-superficie-clara);

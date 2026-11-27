@@ -212,7 +212,7 @@ func (a *API) enviarPush(ctx context.Context, suscripcion *store.SuscripcionPush
 	req.Header.Set("Content-Encoding", "aes128gcm")
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("TTL", fmt.Sprintf("%d", ttlPush))
-	req.Header.Set("Urgency", "normal")
+	req.Header.Set("Urgency", "high")
 
 	cliente := *a.F5.HTTP
 	cliente.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }

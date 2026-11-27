@@ -39,6 +39,9 @@ import { normalizarUrlEnlace } from "@/lib/drive-equipo";
 import {
   LIMITE_COMANDO_RIA_PUBLICO,
   combinarMensajesChat,
+  comandosEquipo,
+  esComandoAyuda,
+  opcionesComandosEquipo,
   esComposicionIME,
   guardarSolicitudRIAPublica,
   leerComandoRIAPublico,
@@ -46,7 +49,7 @@ import {
   transmitirRIAPublica,
 } from "@/lib/ria";
 import { MarcaRIA } from "@/components/MarcaRIA";
-import { EntradaComandos, TextoComandos, useComandosChat, useGlassChat } from "@/components/ComandosChat";
+import { EntradaComandos, TextoComandos, useComandosChat, useComandosEquipo, useGlassChat } from "@/components/ComandosChat";
 import { rutasVisiblesRIA } from "@/lib/rutas-ria";
 
 function almacenamientoRIA() {
@@ -65,6 +68,7 @@ export default function ChatPage() {
   const [riaPendiente, setRiaPendiente] = useState<SolicitudRIAPublica | null>(null);
   const [riaActiva, setRiaActiva] = useState(false);
   const [riaError, setRiaError] = useState<string | null>(null);
+  const [ayudaComandos, setAyudaComandos] = useState(false);
   const [avisoRIA, setAvisoRIA] = useState<string | null>(null);
   const riaControl = useRef<AbortController | null>(null);
   const revisionChat = useRef(0);
@@ -324,11 +328,21 @@ export default function ChatPage() {
     setAvisoRIA(null);
   };
 
+  const mostrarAyudaComandos = () => {
+    setCuerpo("");
+    setAvisoRIA(null);
+    setAyudaComandos(true);
+  };
+
   const enviarMensaje = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const texto = cuerpo.trim();
     const listos = pendientes.filter((p) => p.estado === "listo" && p.adjunto).map((p) => p.adjunto as ChatAdjunto);
     if ((!texto && listos.length === 0) || !yo) return;
+    if (esComandoAyuda(texto)) {
+      mostrarAyudaComandos();
+      return;
+    }
     const comando = leerComandoRIAPublico(texto);
     if (comando !== null) {
       if (comando === "") {
@@ -388,10 +402,21 @@ export default function ChatPage() {
   const rutas = rutasVisiblesRIA(yo);
   const rutasMenu = rutas.filter((ruta) => ruta.href !== "/ria");
   const comandoRIA = leerComandoRIAPublico(cuerpo);
-  const comandos = useComandosChat(cuerpo, rutasMenu, glass && rutasMenu.length > 0 && comandoRIA === null, () => setCuerpo(""));
+  const usarComandosEquipo = opcionesComandosEquipo(cuerpo).length > 0 || !glass;
+  const equipo = useComandosEquipo(cuerpo, usarComandosEquipo, nombre => {
+    if (nombre === "/help") mostrarAyudaComandos();
+    else { setCuerpo("/ria "); setAyudaComandos(false); setAvisoRIA(null); }
+  });
+  const secciones = useComandosChat(cuerpo, rutasMenu, glass && !usarComandosEquipo && rutasMenu.length > 0 && comandoRIA === null, () => setCuerpo(""));
+  const comandos = usarComandosEquipo ? equipo : secciones;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (esComposicionIME(e.nativeEvent) || comandos.teclado(e)) return;
+    if (e.key === "Escape" && ayudaComandos) {
+      e.preventDefault();
+      setAyudaComandos(false);
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void enviarMensaje();
@@ -529,7 +554,7 @@ export default function ChatPage() {
               )}
 
               <div className={`${styles.group} ${grupo.es_mio ? styles.groupMine : ""}`}>
-                {grupo.autor_id === "ria" ? <MarcaRIA size={32} /> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.avatarLink}>
+                {grupo.autor_id === "ria" ? <Link href="/ria" className={styles.avatarLink} aria-label="Abrir conversación privada con RIA"><MarcaRIA size={32} /></Link> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.avatarLink}>
                   <Avatar
                     tamano={32}
                     src={grupo.autor_foto || undefined}
@@ -540,7 +565,7 @@ export default function ChatPage() {
 
                 <div className={`${styles.groupContent} ${grupo.autor_id === "ria" ? styles.groupContentRIA : ""}`}>
                   <div className={styles.groupHeader}>
-                    {grupo.autor_id === "ria" ? <strong className={styles.authorName}>RIA</strong> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.authorName}>
+                    {grupo.autor_id === "ria" ? <Link href="/ria" className={styles.authorName} aria-label="RIA: abrir conversación privada">RIA</Link> : <Link href={`/equipo/${grupo.autor_id}`} className={styles.authorName}>
                       {grupo.autor_nombre}
                     </Link>}
 
@@ -734,8 +759,15 @@ export default function ChatPage() {
             </p>
           )}
 
-          {comandos.menu}
+          {ayudaComandos && <section className={styles.ayudaComandos} aria-label="Ayuda de comandos">
+            <div className={styles.ayudaCabecera}>
+              <strong role="status">Comandos del chat · Solo tú ves esta ayuda</strong>
+              <button type="button" aria-label="Cerrar ayuda de comandos" onClick={() => setAyudaComandos(false)}><X size={16} /></button>
+            </div>
+            <ul>{comandosEquipo.map(c => <li key={c.nombre}><code>{c.ejemplo}</code><span>{c.descripcion}</span></li>)}</ul>
+          </section>}
           <form className={styles.composer} data-rc-compositor onSubmit={enviarMensaje}>
+             {comandos.menu}
             <MenuAdjuntos
               onArchivos={agregarArchivos}
               onDrive={agregarDrive}
@@ -751,8 +783,12 @@ export default function ChatPage() {
                 aria-label="Escribe al equipo"
                 title="Enter para enviar, Shift+Enter para salto de línea"
                 texto={cuerpo} rutas={rutasMenu} glass={glass} autoAltura {...comandos.propsEntrada}
+                 onFocus={() => { equipo.propsEntrada.onFocus(); secciones.propsEntrada.onFocus(); }}
+                 onBlur={() => { equipo.propsEntrada.onBlur(); secciones.propsEntrada.onBlur(); }}
+                 onCompositionStart={() => { equipo.propsEntrada.onCompositionStart(); secciones.propsEntrada.onCompositionStart(); }}
+                 onCompositionEnd={() => { equipo.propsEntrada.onCompositionEnd(); secciones.propsEntrada.onCompositionEnd(); }}
                 aria-describedby={avisoRIA || comandoRIA !== null ? "ayuda-ria-publica" : undefined}
-                onChange={e => { setCuerpo(e.currentTarget.value); setAvisoRIA(null); comandos.editar(); }}
+                onChange={e => { setCuerpo(e.currentTarget.value); setAvisoRIA(null); equipo.editar(); secciones.editar(); }}
                 onKeyDown={handleKeyDown}
               />
             </div>

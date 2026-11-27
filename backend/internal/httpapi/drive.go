@@ -258,44 +258,52 @@ func (a *API) handleAdminGetDriveArchivos(w http.ResponseWriter, r *http.Request
 
 	q := url.Values{}
 	q.Set("q", strings.Join(partes, " and "))
-	q.Set("fields", "files(id,name,mimeType,size,iconLink,thumbnailLink,webViewLink,modifiedTime)")
-	q.Set("pageSize", "60")
+	q.Set("fields", "nextPageToken,files(id,name,mimeType,size,iconLink,thumbnailLink,webViewLink,modifiedTime)")
+	q.Set("pageSize", "100")
 	q.Set("orderBy", "modifiedTime desc")
+	q.Set("supportsAllDrives", "true")
+	q.Set("includeItemsFromAllDrives", "true")
 
-	var resp struct {
-		Files []struct {
-			ID            string `json:"id"`
-			Name          string `json:"name"`
-			MimeType      string `json:"mimeType"`
-			Size          string `json:"size"`
-			IconLink      string `json:"iconLink"`
-			ThumbnailLink string `json:"thumbnailLink"`
-			WebViewLink   string `json:"webViewLink"`
-			ModifiedTime  string `json:"modifiedTime"`
-		} `json:"files"`
-	}
-	if err := a.pedirDrive(r.Context(), token, driveAPIBase+"/files?"+q.Encode(), &resp); err != nil {
-		ResponderError(w, http.StatusBadGateway, "drive_error", "Google no respondió. Inténtalo de nuevo en un momento.")
-		return
-	}
-
-	res := make([]DriveArchivo, 0, len(resp.Files))
-	for _, f := range resp.Files {
-		var tam int64
-		if f.Size != "" {
-			_, _ = fmt.Sscan(f.Size, &tam)
+	res := make([]DriveArchivo, 0, 60)
+	for range 3 {
+		var resp struct {
+			Files []struct {
+				ID            string `json:"id"`
+				Name          string `json:"name"`
+				MimeType      string `json:"mimeType"`
+				Size          string `json:"size"`
+				IconLink      string `json:"iconLink"`
+				ThumbnailLink string `json:"thumbnailLink"`
+				WebViewLink   string `json:"webViewLink"`
+				ModifiedTime  string `json:"modifiedTime"`
+			} `json:"files"`
+			NextPageToken string `json:"nextPageToken"`
 		}
-		res = append(res, DriveArchivo{
-			ID:           f.ID,
-			Nombre:       f.Name,
-			Mime:         f.MimeType,
-			Icono:        f.IconLink,
-			Miniatura:    f.ThumbnailLink,
-			Enlace:       f.WebViewLink,
-			Tamano:       tam,
-			ModificadoEn: f.ModifiedTime,
-			EsCarpeta:    f.MimeType == driveCarpetaMime,
-		})
+		if err := a.pedirDrive(r.Context(), token, driveAPIBase+"/files?"+q.Encode(), &resp); err != nil {
+			ResponderError(w, http.StatusBadGateway, "drive_error", "Google no respondió. Inténtalo de nuevo en un momento.")
+			return
+		}
+		for _, f := range resp.Files {
+			var tam int64
+			if f.Size != "" {
+				_, _ = fmt.Sscan(f.Size, &tam)
+			}
+			res = append(res, DriveArchivo{
+				ID:           f.ID,
+				Nombre:       f.Name,
+				Mime:         f.MimeType,
+				Icono:        f.IconLink,
+				Miniatura:    f.ThumbnailLink,
+				Enlace:       f.WebViewLink,
+				Tamano:       tam,
+				ModificadoEn: f.ModifiedTime,
+				EsCarpeta:    f.MimeType == driveCarpetaMime,
+			})
+		}
+		if resp.NextPageToken == "" || len(res) >= 240 {
+			break
+		}
+		q.Set("pageToken", resp.NextPageToken)
 	}
 	ResponderJSON(w, http.StatusOK, res)
 }
@@ -559,18 +567,30 @@ func (a *API) copiarArchivoDrive(ctx context.Context, token, archivoID, carpetaI
 // SincronizarEntregaConDrive copia a la subcarpeta de la tarea el archivo
 // entregado. Es best effort: nunca bloquea la entrega de la persona.
 func (a *API) SincronizarEntregaConDrive(ctx context.Context, tarea *store.Tarea) {
-	if tarea == nil || tarea.EnlaceMedios == nil || tarea.DriveCarpetaID == nil {
+	if tarea == nil || tarea.DriveCarpetaID == nil {
 		return
 	}
 	if tarea.MetodoEntrega != nil && *tarea.MetodoEntrega == "whatsapp" {
 		return
 	}
-	if tarea.EntregaTipo != nil && *tarea.EntregaTipo == "carpeta" {
-		return
+	var archivos []string
+	if len(tarea.EntregaDrive) > 0 {
+		for _, el := range tarea.EntregaDrive {
+			if el.Tipo == "carpeta" {
+				continue
+			}
+			if fid := idDeArchivoDrive(el.URL); fid != "" && fid != *tarea.DriveCarpetaID {
+				archivos = append(archivos, fid)
+			} else if driveIDValido(el.ID) && el.ID != *tarea.DriveCarpetaID && el.Tipo == "archivo" {
+				archivos = append(archivos, el.ID)
+			}
+		}
+	} else if tarea.EnlaceMedios != nil && (tarea.EntregaTipo == nil || *tarea.EntregaTipo != "carpeta") {
+		if fid := idDeArchivoDrive(*tarea.EnlaceMedios); fid != "" && fid != *tarea.DriveCarpetaID {
+			archivos = append(archivos, fid)
+		}
 	}
-	archivoID := idDeArchivoDrive(*tarea.EnlaceMedios)
-	if archivoID == "" || archivoID == *tarea.DriveCarpetaID {
-		// El enlace es de carpeta o no se pudo leer: no hay nada que copiar.
+	if len(archivos) == 0 {
 		return
 	}
 	token, err := a.tokenDrive(ctx)
@@ -581,7 +601,9 @@ func (a *API) SincronizarEntregaConDrive(ctx context.Context, tarea *store.Tarea
 	if err != nil {
 		return
 	}
-	_, _ = a.copiarArchivoDrive(ctx, token, archivoID, entregas.ID, "")
+	for _, fid := range archivos {
+		_, _ = a.copiarArchivoDrive(ctx, token, fid, entregas.ID, "")
+	}
 }
 
 var (

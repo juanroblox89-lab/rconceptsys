@@ -393,6 +393,8 @@ export const api = {
     if (estado) q.set('estado', estado);
     return fetchApi<Tarea[]>(`/api/tareas?${q.toString()}`);
   },
+  getTareaWhatsApp: (id: number) =>
+    fetchApi<{ url: string; disponible?: boolean; nombre?: string }>(`/api/tareas/${id}/whatsapp`, { cache: 'no-store' }),
   postTareaHecha: (
     id: number,
     nota?: string,
@@ -402,6 +404,8 @@ export const api = {
       metodo_entrega?: MetodoEntrega;
       entrega_nombre?: string;
       entrega_tipo?: TipoElementoEntrega;
+      entrega_drive?: ReferenciaDriveTrabajo[];
+      token_selector?: string;
     },
   ) =>
     fetchApi<Tarea>(`/api/tareas/${id}/hecha`, {
@@ -452,7 +456,7 @@ export const api = {
     form.append('foto', foto);
     return fetchApi<Cliente>(`/api/admin/clientes/${id}/foto`, { method: 'POST', body: form });
   },
-  adminGetDrivePickerToken: (id?: number) => fetchApi<{ access_token: string; expires_in: number; carpeta_id: string; clave: string; proyecto_id: string; correo?: string; cuenta_equipo?: string }>(
+  adminGetDrivePickerToken: (id?: number) => fetchApi<{ access_token: string; expires_in: number; carpeta_id: string; raiz_id?: string; clave: string; proyecto_id: string; correo?: string; cuenta_equipo?: string }>(
     `/api/admin/drive/picker-token${id === undefined ? '' : `?cliente_id=${id}`}`, { cache: 'no-store' }),
   adminGetDriveReferencia: (id: string) =>
     fetchApi<ReferenciaDriveTrabajo>(`/api/admin/drive/referencia?id=${encodeURIComponent(id)}`, { cache: 'no-store' }),

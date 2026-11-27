@@ -88,6 +88,7 @@ func (a *API) Routes() http.Handler {
 	// F2: Miembros aprobados (Trabajos, Tareas y Factura propia)
 	mux.HandleFunc("GET /api/trabajos", a.MiddlewareAuth(a.handleGetTrabajos, true, false))
 	mux.HandleFunc("GET /api/tareas", a.MiddlewareAuth(a.handleGetTareas, true, false))
+	mux.HandleFunc("GET /api/tareas/{id}/whatsapp", a.MiddlewareAuth(a.handleTareaWhatsApp, true, false))
 	mux.HandleFunc("POST /api/tareas/{id}/hecha", a.MiddlewareAuth(a.handlePostTareaHecha, true, false))
 	mux.HandleFunc("POST /api/tareas/{id}/revertir", a.MiddlewareAuth(a.handlePostTareaRevertir, true, false))
 	mux.HandleFunc("GET /api/tareas/{id}/drive/picker-token", a.MiddlewareAuth(a.handleTareaDrivePickerToken, true, false))
@@ -1022,12 +1023,14 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*16)
 	var body struct {
-		Nota          *string `json:"nota"`
-		Cantidad      *int    `json:"cantidad"`
-		EnlaceMedios  *string `json:"enlace_medios"`
-		MetodoEntrega *string `json:"metodo_entrega"`
-		EntregaNombre *string `json:"entrega_nombre"`
-		EntregaTipo   *string `json:"entrega_tipo"`
+		Nota          *string                         `json:"nota"`
+		Cantidad      *int                            `json:"cantidad"`
+		EnlaceMedios  *string                         `json:"enlace_medios"`
+		MetodoEntrega *string                         `json:"metodo_entrega"`
+		EntregaNombre *string                         `json:"entrega_nombre"`
+		EntregaTipo   *string                         `json:"entrega_tipo"`
+		EntregaDrive  *[]store.ReferenciaDriveTrabajo `json:"entrega_drive"`
+		TokenSelector string                          `json:"token_selector"`
 	}
 	// El cuerpo es opcional
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
@@ -1080,7 +1083,7 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 			ResponderError(w, http.StatusBadRequest, "enlace_invalido", "El enlace debe ser una URL https de Google Drive (drive.google.com, docs.google.com o drive.usercontent.google.com) y tener máximo 500 caracteres.")
 			return
 		}
-		if metodo == "drive" && enlacePtr == nil {
+		if metodo == "drive" && enlacePtr == nil && body.EntregaDrive == nil {
 			ResponderError(w, http.StatusBadRequest, "enlace_requerido", "Selecciona una carpeta o archivo de Google Drive, o elige entrega por WhatsApp.")
 			return
 		}
@@ -1134,6 +1137,21 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var elementos []store.ReferenciaDriveTrabajo
+	if metodo != "whatsapp" && body.EntregaDrive != nil {
+		elementos, err = a.validarEntregaDrive(r.Context(), tarea, *body.EntregaDrive, body.TokenSelector)
+		if err != nil {
+			if errors.Is(err, errEntregaDrivePermisos) {
+				ResponderError(w, 403, "drive_sin_acceso", err.Error())
+			} else {
+				ResponderError(w, 400, "elementos_drive_invalidos", err.Error())
+			}
+			return
+		}
+		metodo = "drive"
+		enlacePtr, entregaNombrePtr, entregaTipoPtr = &elementos[0].URL, &elementos[0].Nombre, &elementos[0].Tipo
+	}
+
 	actualizada, err := a.Store.EntregarTarea(r.Context(), id, yo.ID, store.EntregaInput{
 		Metodo:        metodo,
 		Nota:          notaPtr,
@@ -1141,6 +1159,7 @@ func (a *API) handlePostTareaHecha(w http.ResponseWriter, r *http.Request) {
 		EnlaceMedios:  enlacePtr,
 		EntregaNombre: entregaNombrePtr,
 		EntregaTipo:   entregaTipoPtr,
+		EntregaDrive:  elementos,
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrConflict) || errors.Is(err, store.ErrValidation) {

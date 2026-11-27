@@ -5,7 +5,9 @@ import { readFileSync } from "node:fs";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Boton } from "../../components/ui/Boton";
-import { nombreReferenciaVisible, referenciasDelTrabajo } from "../referencias-trabajo";
+import { IconoWhatsApp } from "../../components/ui/IconoWhatsApp";
+import { traducirErrorGooglePicker } from "../google-picker";
+import { elementosEntregaDrive, nombreReferenciaVisible, referenciasDelTrabajo } from "../referencias-trabajo";
 import type { Tarea } from "../types";
 
 const cssProxy = new Proxy({}, { get: (_t, prop) => String(prop) });
@@ -220,4 +222,51 @@ test("RoadmapHistorial construye flujo cronológico completo con flechas, notas 
   const htmlReapertura = renderToStaticMarkup(React.createElement(RoadmapHistorial, { tarea: reabierta }));
   assert.match(htmlReapertura, /Cambiar el cierre/);
   assert.match(htmlReapertura, /drive\.google\.com\/drive\/folders\/ent1/);
+  // Hora visible en historial y entregas (Bogotá UTC-5: 14:00Z = 9:00 a. m., 19:16Z = 2:16 p. m.)
+  assert.match(html, /a\.\s*m\.|p\.\s*m\.|\d{1,2}:\d{2}/);
+
+  // Entrega múltiple de hasta 4 elementos en RoadmapHistorial
+  const tareaMulti: Tarea = {
+    ...tarea,
+    historial: [
+      {
+        id: 10,
+        tarea_id: 55,
+        actor_nombre: "Lina Editor",
+        evento: "entrega_enviada",
+        detalle: "Entrega enviada por Drive",
+        metodo_entrega: "drive",
+        entrega_drive: [
+          { id: "c1", nombre: "Carpeta brutos", url: "https://drive.google.com/drive/folders/c1", tipo: "carpeta" },
+          { id: "a1", nombre: "Reel_v1.mp4", url: "https://drive.google.com/file/d/a1/view", tipo: "archivo" },
+          { id: "a2", nombre: "Portada.png", url: "https://drive.google.com/open?id=a2", tipo: "archivo" },
+        ],
+        creado_en: "2026-11-26T19:16:00Z",
+      },
+    ],
+  };
+  const htmlMulti = renderToStaticMarkup(React.createElement(RoadmapHistorial, { tarea: tareaMulti }));
+  assert.ok(htmlMulti.includes("Carpeta brutos"));
+  assert.ok(htmlMulti.includes("Reel_v1.mp4"));
+  assert.ok(htmlMulti.includes("Portada.png"));
+  assert.ok(htmlMulti.includes("2:16"));
+});
+
+test("elementosEntregaDrive, IconoWhatsApp y traducirErrorGooglePicker", () => {
+  assert.equal(elementosEntregaDrive({ metodo_entrega: "whatsapp", enlace_medios: "https://drive.google.com/open?id=x" }).length, 0);
+  const legado = elementosEntregaDrive({
+    metodo_entrega: "drive",
+    enlace_medios: "https://drive.google.com/drive/folders/leg1",
+    entrega_nombre: "Entrega única",
+    entrega_tipo: "carpeta",
+  });
+  assert.equal(legado.length, 1);
+  assert.equal(legado[0].nombre, "Entrega única");
+  assert.equal(legado[0].tipo, "carpeta");
+
+  const svg = renderToStaticMarkup(React.createElement(IconoWhatsApp, { size: 16 }));
+  assert.ok(svg.includes("<svg") && svg.includes("<path"));
+
+  assert.match(traducirErrorGooglePicker("The API developer key is invalid"), /GOOGLE_PICKER_KEY/);
+  assert.match(traducirErrorGooglePicker("origin_mismatch"), /autorizado/);
 });
