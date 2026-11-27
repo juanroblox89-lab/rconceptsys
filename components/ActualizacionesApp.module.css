@@ -1,0 +1,135 @@
+.caja {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.titulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--rc-texto);
+}
+
+.grupo {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rc-borde);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--rc-superficie-alt, var(--rc-superficie));
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.subFila {
+  padding-left: 42px;
+  border-top: 1px solid var(--rc-borde);
+}
+
+.pieFila {
+  border-top: 1px solid var(--rc-borde);
+}
+
+.izq {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.icono {
+  color: var(--rc-texto-suave);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.girando {
+  animation: rcGirarAct 0.8s linear infinite;
+}
+
+@keyframes rcGirarAct {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.etiqueta {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--rc-texto);
+}
+
+.desc {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--rc-texto-suave);
+}
+
+.interruptor {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: var(--rc-borde);
+  padding: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 180ms ease;
+}
+
+.interruptorActivo {
+  background: #22c55e;
+}
+
+.bolita {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transform: translateX(0);
+  transition: transform 180ms ease;
+}
+
+.interruptorActivo .bolita {
+  transform: translateX(18px);
+}
+
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.enlaceAct {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--rc-acento);
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interruptor,
+  .bolita {
+    transition: none;
+  }
+  .girando {
+    animation: none;
+  }
+}

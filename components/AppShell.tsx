@@ -72,6 +72,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Deslizar desde el borde izquierdo abre la sidebar; hacia la izquierda la cierra.
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+    let mode: "open" | "close" | null = null;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || window.innerWidth >= 1024) return;
+      const t = e.touches[0];
+      if (!t) return;
+      startX = t.clientX;
+      startY = t.clientY;
+      if (!mobileOpen && startX <= 56) {
+        tracking = true;
+        mode = "open";
+      } else if (mobileOpen) {
+        tracking = true;
+        mode = "close";
+      } else {
+        tracking = false;
+        mode = null;
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!tracking || !mode || e.changedTouches.length === 0) return;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - startX;
+      const dy = Math.abs(t.clientY - startY);
+      tracking = false;
+      if (mode === "open" && dx > 48 && dx > dy * 1.4) setMobileOpen(true);
+      else if (mode === "close" && dx < -48 && Math.abs(dx) > dy * 1.4) setMobileOpen(false);
+      mode = null;
+    };
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [mobileOpen]);
+
   // Con el drawer abierto el body no scrollea detrás; Escape lo cierra.
   useEffect(() => {
     if (!mobileOpen) return;

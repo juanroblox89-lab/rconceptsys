@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import type { PreferenciasNotificaciones } from "@/lib/types";
 import { FormularioCelular } from "@/components/Celular";
 import { AvisosPush } from "@/components/AvisosPush";
+import { ActualizacionesApp } from "@/components/ActualizacionesApp";
 import { CampoHora } from "@/components/ui/CamposEspeciales";
 import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { Casilla } from "@/components/ui/Casilla";
@@ -69,6 +70,7 @@ export default function ConfiguracionPage() {
       </form>}
     <FormularioCelular />
     <AvisosPush />
+    <ActualizacionesApp />
     {prefs && <footer className={conf.acciones}>
       {estado.texto && <p role={estado.error ? "alert" : "status"}>{estado.texto}</p>}
       <Boton type="submit" variante="guardar" form="preferencias-avisos" cargando={ocupado}>Guardar preferencias</Boton>
