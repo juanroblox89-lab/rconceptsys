@@ -58,7 +58,7 @@ func (a *API) avisarChat(ctx context.Context, autor *store.Perfil, msg *store.Ch
 		}
 		n := AvisoPush{Titulo: autor.Nombre, Cuerpo: cuerpo, URL: ruta, Etiqueta: "chat"}
 		grupo := "equipo"
-		ventana := 35 * time.Second
+		ventana := time.Duration(0)
 		if mencionaPersona(msg.Cuerpo, p.Nombre) {
 			n.Titulo = autor.Nombre + " te mencionó"
 			n.Etiqueta = "mencion"
@@ -69,6 +69,7 @@ func (a *API) avisarChat(ctx context.Context, autor *store.Perfil, msg *store.Ch
 			log.Printf("[avisos] chat: %v", e)
 		}
 	}
+	a.despacharYa(ctx)
 }
 
 func (a *API) avisarEntregaAdmins(ctx context.Context, t *store.Tarea, persona string) {
