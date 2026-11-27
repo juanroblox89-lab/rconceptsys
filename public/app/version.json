@@ -1,0 +1,6 @@
+{
+  "versionCode": 2,
+  "versionName": "1.0.1",
+  "apkUrl": "https://rconceptsys-nuevo.vercel.app/app/RConcept.apk",
+  "notes": "Incluye detección y descarga automática de actualizaciones."
+}
