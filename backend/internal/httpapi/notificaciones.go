@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"strings"
 	"time"
 
@@ -33,7 +34,7 @@ func (a *API) encolarSinEnviar(ctx context.Context, perfil string, aviso AvisoPu
 // despacharYa envia en el momento del evento lo que ya esta disponible en la cola.
 // Si falla, el aviso queda en la cola y el cron lo reintenta.
 func (a *API) despacharYa(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 4*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
 	defer cancel()
 	if e := a.enviarColaNotificaciones(ctx); e != nil {
 		log.Printf("[avisos] envio inmediato incompleto: %v", e)
@@ -169,30 +170,51 @@ func (a *API) enviarColaNotificaciones(ctx context.Context) error {
 	if e != nil {
 		return e
 	}
-	var fallos error
+	var (
+		mu     sync.Mutex
+		fallos error
+		wg     sync.WaitGroup
+		sem    = make(chan struct{}, 4)
+	)
 	for _, n := range entradas {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		p, e := a.Store.PreferenciasNotificaciones(ctx, n.PerfilID)
-		var proximo *time.Time
-		if e == nil && !p.Silencia(n.Tipo) {
-			if n.Tipo != "mencion" {
-				proximo = finSilencio(p, time.Now())
+		n := n
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if ctx.Err() != nil {
+				mu.Lock()
+				fallos = errors.Join(fallos, ctx.Err())
+				mu.Unlock()
+				return
 			}
-			if proximo == nil {
-				e = a.enviarADispositivos(ctx, n)
+			p, e := a.Store.PreferenciasNotificaciones(ctx, n.PerfilID)
+			var proximo *time.Time
+			if e == nil && !p.Silencia(n.Tipo) {
+				if n.Tipo != "mencion" {
+					proximo = finSilencio(p, time.Now())
+				}
+				if proximo == nil {
+					e = a.enviarADispositivos(ctx, n)
+				}
 			}
-		}
-		if e != nil && n.Intentos < 8 {
-			t := time.Now().Add(time.Minute * time.Duration(1<<min(n.Intentos-1, 6)))
-			proximo = &t
-		}
-		if e != nil && n.Intentos >= 8 {
-			log.Printf("[avisos] %d agotó reintentos: %v", n.ID, e)
-		}
-		fallos = errors.Join(fallos, a.Store.ResolverNotificacion(ctx, n, proximo))
+			if e != nil && n.Intentos < 8 {
+				t := time.Now().Add(time.Minute * time.Duration(1<<min(n.Intentos-1, 6)))
+				proximo = &t
+			}
+			if e != nil && n.Intentos >= 8 {
+				log.Printf("[avisos] %d agotó reintentos: %v", n.ID, e)
+			}
+			errRes := a.Store.ResolverNotificacion(ctx, n, proximo)
+			if errRes != nil {
+				mu.Lock()
+				fallos = errors.Join(fallos, errRes)
+				mu.Unlock()
+			}
+		}()
 	}
+	wg.Wait()
 	return fallos
 }
 func (a *API) enviarADispositivos(ctx context.Context, n store.Notificacion) error {
