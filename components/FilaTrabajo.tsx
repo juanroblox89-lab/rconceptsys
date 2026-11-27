@@ -17,6 +17,21 @@ export function fechaTrabajo(iso?: string | null) {
   return fecha.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric", timeZone: fechaCivil ? "UTC" : "America/Bogota" });
 }
 
+export function fechaHoraTrabajo(iso?: string | null) {
+  if (!iso) return "Sin fecha";
+  if (iso.length === 10) return fechaTrabajo(iso);
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return "Sin fecha";
+  return fecha.toLocaleString("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Bogota",
+  });
+}
+
 export function trabajoVencido(tarea: Tarea) {
   if (!tarea.fecha_limite || !["pendiente", "rechazada"].includes(tarea.estado)) return false;
   const partes = new Intl.DateTimeFormat("en", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());

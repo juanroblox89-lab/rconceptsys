@@ -116,6 +116,7 @@
   flex-shrink: 0;
   cursor: pointer;
   display: block;
+  border-radius: 50%;
 }
 
 .groupContent {
@@ -301,6 +302,8 @@
 }
 
 .composer {
+  position: relative;
+  --rc-comandos-inset: 0;
   display: flex;
   gap: var(--rc-esp-6);
   align-items: flex-end;
@@ -368,6 +371,23 @@
   font-size: var(--rc-fs-micro);
   line-height: 1.4;
 }
+
+.ayudaComandos {
+  padding: 6px 12px 12px;
+  margin-bottom: 6px;
+  color: var(--rc-texto);
+  background: var(--rc-menu-fondo, var(--rc-superficie-clara));
+  border: 1px solid var(--rc-border-subtle, var(--rc-gris-300));
+  border-radius: var(--rc-radio-md);
+  box-shadow: var(--rc-elev-relieve-md);
+  font-size: var(--rc-fs-secundario);
+}
+.ayudaCabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ayudaCabecera button { display: grid; place-items: center; min-width: 40px; min-height: 40px; background: none; color: inherit; border: 0; cursor: pointer; border-radius: var(--rc-radio-sm); }
+.ayudaCabecera button:hover { background: var(--rc-superficie-hundida); }
+.ayudaComandos ul { margin: 0; padding: 0; display: grid; gap: 6px; list-style: none; }
+.ayudaComandos li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; overflow-wrap: anywhere; }
+.ayudaComandos code { color: var(--rc-azul-texto); font-weight: var(--rc-fw-semibold); }
 
 .riaAvisoTexto {
   margin: 0;

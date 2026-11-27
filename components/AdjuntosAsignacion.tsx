@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Check, Download, Film, ImageIcon, Mic, Music2, Paperclip, Square, Trash2 } from "lucide-react";
+import { Check, Download, Film, ImageIcon, Mic, Music2, Paperclip, Trash2 } from "lucide-react";
 import { Boton } from "@/components/ui/Boton";
-import { aceptarAdjuntos, adjuntos, detectarTipoArchivo, limiteAdjunto, type AdjuntoAsignacion, type AdjuntoLocal, type TipoAdjunto } from "@/lib/adjuntos-asignacion";
+import { aceptarAdjuntos, adjuntos, bytesPorMBAdjunto, detectarTipoArchivo, limiteAdjunto, pesoAdjunto, validarPesoAdjunto, type AdjuntoAsignacion, type AdjuntoLocal, type TipoAdjunto } from "@/lib/adjuntos-asignacion";
+import { BarraGrabacion, useGrabacionAudio } from '@/components/ui/BarraGrabacion';
 import styles from "./AdjuntosAsignacion.module.css";
 
 const textoError = (e: unknown) => e instanceof Error ? e.message : "No se pudo completar la acción.";
-const mb = 1024 * 1024;
 const posterVideo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#252832"/><path d="M145 64v52l42-26z" fill="#ffffff"/></svg>')}`;
 
 function duracionMedio(e: React.SyntheticEvent<HTMLMediaElement>, guardar?: (d: number) => void) {
@@ -77,7 +77,7 @@ function FilaLocal({
   const estado = a.estadoResumen;
   const resumiendo = estado === "procesando";
   return <li>
-    <strong className={styles.nombre}>{archivo.name}</strong>
+    <strong className={styles.nombre}>{archivo.name}</strong><span className={styles.ayuda}>{pesoAdjunto(archivo.size, a.tipo)}</span>
     <Medio tipo={a.tipo} url={url} nombre={archivo.name} duracion={d => { if (!bloqueado && a.duracion === undefined) actualizarItem(a.id, x => x.duracion === undefined ? { ...x, duracion: d } : x); }} />
     {a.avance !== undefined && <><progress className={styles.progreso} aria-label={`Subida de ${archivo.name}`} max={100} value={a.avance} /><span className={styles.ayuda}>{a.avance === 95 && bloqueado ? "Guardando archivo…" : `${a.avance}%`}</span></>}
     {a.error && <span className={styles.error} role="alert">{a.error}</span>}
@@ -150,17 +150,13 @@ export function EditorAdjuntos({
   compacto?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const grabacion = useRef<{ r: MediaRecorder; s: MediaStream; viva: boolean } | null>(null);
   const vivo = useRef(false);
   const enCursoBorrador = useRef<Set<string>>(new Set());
-  const [soporta, setSoporta] = useState(false);
-  const [grabando, setGrabando] = useState(false);
   const [error, setError] = useState("");
   const titulo = useId();
   useEffect(() => {
     vivo.current = true;
-    const t = setTimeout(() => setSoporta(typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia), 0);
-    return () => { vivo.current = false; clearTimeout(t); const g = grabacion.current; if (g) { g.viva = false; if (g.r.state !== "inactive") g.r.stop(); g.s.getTracks().forEach(p => p.stop()); } };
+    return () => { vivo.current = false; };
   }, []);
 
   function actualizarItem(id: string, fn: (actual: AdjuntoLocal) => AdjuntoLocal) {
@@ -214,7 +210,8 @@ export function EditorAdjuntos({
       const tipo = await detectarTipoArchivo(archivo);
       if (!vivo.current) return;
       if (!tipo) { problemas.push("Hay un formato no compatible."); continue; }
-      if (!archivo.size || archivo.size > limiteAdjunto[tipo] * mb) { problemas.push(`El archivo debe pesar entre 1 byte y ${limiteAdjunto[tipo]} MB.`); continue; }
+      const errorPeso = validarPesoAdjunto(archivo.size, tipo);
+      if (errorPeso) { problemas.push(errorPeso); continue; }
       if (tipo === "audio" && archivo.name.toLowerCase().endsWith(".webm") && archivo.type !== "audio/webm") {
         archivo = new File([archivo], archivo.name, { type: "audio/webm", lastModified: archivo.lastModified });
       }
@@ -223,45 +220,17 @@ export function EditorAdjuntos({
     setError([...new Set(problemas)].join(" ")); if (lote.length) cambiar(v => [...v, ...lote]);
   }
 
-  async function grabar() {
-    setError(""); setGrabando(true); onGrabando(true);
-    let salida: MediaStream | undefined;
-    try {
-      salida = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!vivo.current) { salida.getTracks().forEach(p => p.stop()); return; }
-      const s = salida;
-      const mime = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"].find(v => MediaRecorder.isTypeSupported(v));
-      if (!mime) throw new Error("formato");
-      const r = new MediaRecorder(s, { mimeType: mime });
-      const g = { r, s, viva: true }; grabacion.current = g;
-      const bloques: Blob[] = []; let bytes = 0; const inicio = performance.now();
-      r.ondataavailable = e => { if (!e.data.size) return; bloques.push(e.data); bytes += e.data.size; if (bytes > 25 * mb && r.state !== "inactive") r.stop(); };
-      r.onerror = () => { g.viva = false; if (r.state !== "inactive") r.stop(); s.getTracks().forEach(p => p.stop()); if (vivo.current) { setError("No se pudo grabar el audio."); setGrabando(false); onGrabando(false); } };
-      r.onstop = () => {
-        s.getTracks().forEach(p => p.stop()); grabacion.current = null;
-        if (!vivo.current) return;
-        if (g.viva) {
-          let tipo = (r.mimeType || mime).split(";")[0].toLowerCase();
-          if (tipo === "video/webm") tipo = "audio/webm";
-          if (tipo === "video/mp4") tipo = "audio/mp4";
-          const ext = tipo === "audio/mp4" ? "m4a" : tipo === "audio/ogg" ? "ogg" : "webm";
-          void agregar([new File(bloques, `Grabación-${new Date().toISOString().slice(11, 19).replaceAll(":", "-")}.${ext}`, { type: tipo })], Math.round(performance.now() - inicio));
-        }
-        setGrabando(false); onGrabando(false);
-      };
-      r.start(500);
-    } catch { salida?.getTracks().forEach(p => p.stop()); if (vivo.current) { setError("No pudimos usar el micrófono."); setGrabando(false); onGrabando(false); } }
-  }
+  const grabacion = useGrabacionAudio((archivo, duracion) => void agregar([archivo], duracion), setError, onGrabando, limiteAdjunto.audio * bytesPorMBAdjunto);
+  const grabando = grabacion.ocupado;
 
   return <section className={styles.seccion} aria-labelledby={titulo}>
     <div className={styles.cabecera}><h3 id={titulo}>{tituloSeccion}</h3><div className={styles.acciones}>
       <input ref={input} hidden type="file" multiple accept={aceptarAdjuntos} onChange={e => { const fs = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; void agregar(fs); }} />
       <Boton variante="secundario" tamano="sm" disabled={bloqueado || grabando || cantidad >= 10} onClick={() => input.current?.click()}><Paperclip size={16} aria-hidden="true" /> Adjuntar</Boton>
-      {soporta && (grabando ? <Boton variante="secundario" tamano="sm" onClick={() => { const r = grabacion.current?.r; if (r?.state === "recording") r.stop(); }}><Square size={15} aria-hidden="true" /> Detener</Boton> :
-        <Boton variante="fantasma" tamano="sm" disabled={bloqueado || cantidad >= 10} onClick={() => void grabar()}><Mic size={16} aria-hidden="true" /> Grabar audio</Boton>)}
+      {grabacion.soporta && !grabacion.activa && <Boton variante="fantasma" tamano="sm" disabled={bloqueado || grabando || cantidad >= 10} onClick={() => { setError(""); void grabacion.empezar(); }}><Mic size={16} aria-hidden="true" /> Grabar audio</Boton>}
     </div></div>
     <span className={styles.ayuda}>{cantidad}/10 · Imagen 10 MB · Video 50 MB · Audio 25 MB</span>
-    {grabando && <span role="status" className={styles.ayuda}>Grabando audio…</span>}
+    {grabacion.activa ? <BarraGrabacion grabacion={grabacion.activa} detener={grabacion.detener} cancelar={grabacion.cancelar} /> : grabando && <span role="status" className={styles.ayuda}>Esperando acceso al micrófono…</span>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {locales.length > 0 && <ul className={`${styles.lista} ${compacto ? styles.listaCompacta : ""}`.trim()}>{locales.map(a => <FilaLocal key={a.id} a={a} bloqueado={bloqueado || grabando} permitirResumen={permitirResumen} quitar={() => quitar(a)} actualizarItem={actualizarItem} onResumir={item => void resumirBorrador(item)} />)}</ul>}
   </section>;
@@ -304,7 +273,7 @@ function FilaGuardada({
   const estado = a.estado_resumen;
   const resumiendo = a.resumir && (estado === "pendiente" || estado === "procesando");
   return <li>
-    <strong className={styles.nombre}>{a.nombre}</strong>
+    <strong className={styles.nombre}>{a.nombre}</strong><span className={styles.ayuda}>{pesoAdjunto(a.tamano, a.tipo)}</span>
     <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
     <div className={styles.acciones}>
       <Boton variante="secundario" tamano="sm" aria-label={`Descargar ${a.nombre}`} disabled={ocupado} onClick={() => void accion(descargar)}><Download size={15} aria-hidden="true" /> Descargar</Boton>
@@ -444,18 +413,36 @@ export interface AdjuntoRechazoItem {
   mime: string;
   tamano: number;
   duracion_ms?: number | null;
+  resumir?: boolean;
+  estado_resumen?: string;
+  resumen?: string[];
+  transcripcion?: string | null;
+  error_resumen?: string | null;
 }
 
-function FilaRechazo({ tarea, a }: { tarea: number; a: AdjuntoRechazoItem }) {
+function FilaRechazo({ tarea, a: inicial }: { tarea: number; a: AdjuntoRechazoItem }) {
+  const [override, setOverride] = useState<{ fuente: AdjuntoRechazoItem; valor: AdjuntoRechazoItem } | null>(null);
+  const item = override?.fuente === inicial ? override.valor : inicial;
   const [medio, setMedio] = useState<{ url: string; expira: number }>();
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [version, setVersion] = useState(0);
+  const procesandoRef = useRef(false);
+
+  const actualizarItem = useCallback(
+    (fn: (actual: AdjuntoRechazoItem) => AdjuntoRechazoItem) => {
+      setOverride((prev) => {
+        const base = prev?.fuente === inicial ? prev.valor : inicial;
+        return { fuente: inicial, valor: fn(base) };
+      });
+    },
+    [inicial],
+  );
 
   useEffect(() => {
     let vivo = true;
     adjuntos
-      .firma(tarea, a.id)
+      .firma(tarea, item.id)
       .then((r) => {
         if (vivo) setMedio({ url: r.url, expira: Date.now() + r.expira_en * 1000 });
       })
@@ -465,7 +452,40 @@ function FilaRechazo({ tarea, a }: { tarea: number; a: AdjuntoRechazoItem }) {
     return () => {
       vivo = false;
     };
-  }, [tarea, a.id, version]);
+  }, [tarea, item.id, version]);
+
+  useEffect(() => {
+    if (
+      item.tipo !== "audio" ||
+      !item.resumir ||
+      (item.estado_resumen !== "pendiente" && item.estado_resumen !== "procesando") ||
+      procesandoRef.current
+    ) {
+      return;
+    }
+    procesandoRef.current = true;
+    let vivo = true;
+    adjuntos
+      .procesarResumen(tarea, item.id)
+      .then((res) => {
+        if (vivo) actualizarItem((prev) => ({ ...prev, ...res }));
+      })
+      .catch((e) => {
+        if (vivo) {
+          actualizarItem((prev) => ({
+            ...prev,
+            estado_resumen: "fallido",
+            error_resumen: textoError(e),
+          }));
+        }
+      })
+      .finally(() => {
+        procesandoRef.current = false;
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [tarea, item.id, item.tipo, item.resumir, item.estado_resumen, actualizarItem]);
 
   function renovar() {
     if (medio && Date.now() >= medio.expira - 3000) setVersion((n) => n + 1);
@@ -475,11 +495,11 @@ function FilaRechazo({ tarea, a }: { tarea: number; a: AdjuntoRechazoItem }) {
     setOcupado(true);
     setError("");
     try {
-      const { url } = await adjuntos.firma(tarea, a.id, true);
+      const { url } = await adjuntos.firma(tarea, item.id, true);
       const enlace = document.createElement("a");
       enlace.href = url;
       enlace.rel = "noreferrer";
-      enlace.download = a.nombre;
+      enlace.download = item.nombre;
       document.body.append(enlace);
       enlace.click();
       enlace.remove();
@@ -490,21 +510,66 @@ function FilaRechazo({ tarea, a }: { tarea: number; a: AdjuntoRechazoItem }) {
     }
   }
 
+  async function reintentarResumen() {
+    setOcupado(true);
+    setError("");
+    try {
+      const resp = await adjuntos.reintentar(tarea, item.id);
+      actualizarItem((prev) => ({ ...prev, ...resp }));
+    } catch (e) {
+      setError(textoError(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  const estado = item.estado_resumen;
   return (
     <li>
-      <strong className={styles.nombre}>{a.nombre}</strong>
-      <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
+      <strong className={styles.nombre}>{item.nombre}</strong>
+      <span className={styles.ayuda}>{pesoAdjunto(item.tamano, item.tipo)}</span>
+      <Medio key={medio?.url} tipo={item.tipo} url={medio?.url ?? ""} nombre={item.nombre} visor renovar={renovar} />
       <div className={styles.acciones}>
         <Boton
           variante="secundario"
           tamano="sm"
-          aria-label={`Descargar ${a.nombre}`}
+          aria-label={`Descargar ${item.nombre}`}
           disabled={ocupado}
           onClick={() => void descargar()}
         >
           <Download size={15} aria-hidden="true" /> Descargar
         </Boton>
       </div>
+      {item.resumir && item.tipo === "audio" && (
+        <div className={styles.resumen}>
+          <strong role="status">
+            {estado === "listo" ? "Listo" : estado === "fallido" ? "No se pudo" : "Resumiendo…"}
+          </strong>
+          {estado === "fallido" && (
+            <>
+              <p role="alert" className={styles.error}>
+                {item.error_resumen || "No pudimos resumir este audio. Pulsa Reintentar para intentarlo de nuevo."}
+              </p>
+              <div className={styles.acciones}>
+                <Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={() => void reintentarResumen()}>
+                  Reintentar
+                </Boton>
+              </div>
+            </>
+          )}
+          {estado === "listo" && (
+            <>
+              <ul aria-label="Resumen">{item.resumen?.map((p, i) => <li key={i}>{p}</li>)}</ul>
+              {item.transcripcion && (
+                <details>
+                  <summary>Transcripción</summary>
+                  <p>{item.transcripcion}</p>
+                </details>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {error && (
         <span role="alert" className={styles.error}>
           {error}

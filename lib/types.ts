@@ -263,6 +263,7 @@ export interface EntregaTarea {
   enlace_medios?: string | null;
   entrega_nombre?: string | null;
   entrega_tipo?: TipoElementoEntrega | null;
+  entrega_drive?: ReferenciaDriveTrabajo[] | null;
   nota?: string | null;
   cantidad?: number | null;
   estado: string;
@@ -279,6 +280,9 @@ export interface AdjuntoRechazoVista {
   duracion_ms?: number | null;
   resumir?: boolean;
   estado_resumen?: string;
+  resumen?: string[];
+  transcripcion?: string | null;
+  error_resumen?: string | null;
 }
 
 export interface RechazoEvento {
@@ -300,6 +304,7 @@ export interface TareaHistorialItem {
   enlace_medios?: string | null;
   entrega_nombre?: string | null;
   entrega_tipo?: TipoElementoEntrega | null;
+  entrega_drive?: ReferenciaDriveTrabajo[] | null;
   nota?: string | null;
   motivo?: string | null;
   cantidad?: number | null;
@@ -350,6 +355,7 @@ export interface Tarea {
   enlace_medios?: string | null;
   entrega_nombre?: string | null;
   entrega_tipo?: TipoElementoEntrega | null;
+  entrega_drive?: ReferenciaDriveTrabajo[] | null;
   drive_carpeta_id?: string | null;
   drive_carpeta_url?: string | null;
   drive_carpeta_nombre?: string | null;

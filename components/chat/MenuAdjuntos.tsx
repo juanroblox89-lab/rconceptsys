@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { api, type ApiError } from "@/lib/api";
-import { type DialogoPicker } from "@/lib/google-picker";
+import { type DialogoPicker, traducirErrorGooglePicker } from "@/lib/google-picker";
 import { abrirSelectorGoogleDrive } from "@/components/PickerDriveCliente";
 import { usePerfilActual } from "@/components/AppShell";
 import { errorEnlaceDrive } from "@/components/ui/EnlaceDrive";
@@ -217,6 +217,11 @@ export function MenuAdjuntos({
           setModoDrive(false);
           requestAnimationFrame(() => masBotonRef.current?.focus());
         },
+        onError: (msg) => {
+          if (!vigenteRef.current) return;
+          setEstadoPicker("listo");
+          setErrorDrive(msg);
+        },
         onSeleccion: (elementos) => {
           if (!vigenteRef.current) return;
           const doc = elementos[0];
@@ -239,7 +244,7 @@ export function MenuAdjuntos({
         setEstadoPicker("sin_organizar");
       } else {
         setEstadoPicker("listo");
-        setErrorDrive(e instanceof Error ? e.message : "No pudimos abrir Google Drive.");
+        setErrorDrive(traducirErrorGooglePicker(e));
       }
     }
   };

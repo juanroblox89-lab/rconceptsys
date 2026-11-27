@@ -1,6 +1,11 @@
 import type { MutableRefObject } from "react";
 import { api } from "@/lib/api";
-import { cargarGooglePicker, type DialogoPicker } from "@/lib/google-picker";
+import {
+  cargarGooglePicker,
+  observarErroresPicker,
+  traducirErrorGooglePicker,
+  type DialogoPicker,
+} from "@/lib/google-picker";
 import type { TipoElementoEntrega, WorkerPickerConfig } from "@/lib/types";
 
 export interface ElementoDriveTrabajador {
@@ -12,11 +17,14 @@ export interface ElementoDriveTrabajador {
 
 export interface OpcionesPickerTrabajador {
   tareaId: number;
+  multiselect?: boolean;
+  maxItems?: number;
   dialogoRef?: MutableRefObject<DialogoPicker | null>;
   vigenteRef?: MutableRefObject<boolean>;
   onAbrir?: (conf: WorkerPickerConfig) => void;
-  onSeleccion: (elemento: ElementoDriveTrabajador) => void;
+  onSeleccion: (elementos: ElementoDriveTrabajador[], accessToken: string) => void;
   onCancelar?: () => void;
+  onError?: (mensaje: string) => void;
 }
 
 type GISWindow = Window & {
@@ -94,7 +102,7 @@ async function solicitarTokenTrabajadorGIS(clientId: string, scope: string): Pro
             reject(new Error("__CANCELADO__"));
             return;
           }
-          reject(new Error("No se pudo autorizar el selector de Google Drive."));
+          reject(new Error(traducirErrorGooglePicker(`${res.error ?? ""} ${res.error_description ?? ""}`)));
           return;
         }
         const ttl = Math.max(60, Number(res.expires_in ?? 3000));
@@ -111,11 +119,7 @@ async function solicitarTokenTrabajadorGIS(clientId: string, scope: string): Pro
           reject(new Error("__CANCELADO__"));
           return;
         }
-        if (err?.type === "popup_failed_to_open") {
-          reject(new Error("El navegador bloqueó la ventana de Google. Permite ventanas emergentes o elige desde la carpeta del trabajo."));
-          return;
-        }
-        reject(new Error("No pudimos abrir la sesión de Google Drive."));
+        reject(new Error(traducirErrorGooglePicker(`${err?.type ?? ""} ${err?.message ?? ""}`)));
       },
     });
     client.requestAccessToken();
@@ -171,72 +175,102 @@ export async function abrirPickerTrabajador(opts: OpcionesPickerTrabajador): Pro
   const vistaPropia = new picker.DocsView()
     .setIncludeFolders(true)
     .setSelectFolderEnabled(true);
+  vistaPropia.setEnableDrives?.(true);
 
   const vistaCompartidos = new picker.DocsView()
     .setIncludeFolders(true)
     .setSelectFolderEnabled(true);
-  const vistaConFiltro = vistaCompartidos as unknown as {
-    setOwnedByMe?: (owned: boolean) => unknown;
-    setEnableDrives?: (enabled: boolean) => unknown;
-  };
-  const tieneCompartidos = typeof vistaConFiltro.setOwnedByMe === "function";
+  const tieneCompartidos = typeof vistaCompartidos.setOwnedByMe === "function";
   if (tieneCompartidos) {
-    vistaConFiltro.setOwnedByMe?.(false);
+    vistaCompartidos.setOwnedByMe?.(false);
+    vistaCompartidos.setEnableDrives?.(true);
+    vistaCompartidos.setLabel?.("Compartidos conmigo");
   }
 
-  let builder = new picker.PickerBuilder()
-    .addView(vistaPropia);
+  let builder = new picker.PickerBuilder().addView(vistaPropia);
   if (tieneCompartidos) {
     builder = builder.addView(vistaCompartidos);
   }
-
-  const dialogo = builder
-    .setOAuthToken(accessToken)
-    .setMaxItems(1)
-    .setOrigin(window.location.origin)
-    .setDeveloperKey(conf.clave)
-    .setAppId(conf.proyecto_id)
-    .setLocale("es")
-    .setCallback((r) => {
-      if (opts.vigenteRef && !opts.vigenteRef.current) return;
-      if (r.action === picker.Action.CANCEL) {
-        limpiarDialogo(opts.dialogoRef);
-        opts.onCancelar?.();
-        return;
-      }
-      if (r.action !== picker.Action.PICKED) return;
-
-      const d = r.docs?.[0];
-      limpiarDialogo(opts.dialogoRef);
-      if (!d || !/^[\w-]{3,160}$/.test(d.id) || !d.name?.trim()) {
-        return;
-      }
-      const esCarpeta =
-        d.mimeType === "application/vnd.google-apps.folder" ||
-        d.type === "folder" ||
-        Boolean(d.url?.includes("/folders/"));
-      const urlValida =
-        d.url && /^https:\/\/(drive|docs|drive\.usercontent)\.google\.com\//i.test(d.url)
-          ? d.url
-          : undefined;
-      const url =
-        urlValida ??
-        (esCarpeta
-          ? `https://drive.google.com/drive/folders/${d.id}`
-          : `https://drive.google.com/open?id=${d.id}`);
-
-      opts.onSeleccion({
-        id: d.id,
-        nombre: d.name.trim(),
-        url,
-        tipo: esCarpeta ? "carpeta" : "archivo",
-      });
-    })
-    .build();
-
-  if (opts.dialogoRef) {
-    opts.dialogoRef.current = dialogo;
+  if (picker.Feature?.SUPPORT_DRIVES) {
+    builder = builder.enableFeature(picker.Feature.SUPPORT_DRIVES);
   }
-  dialogo.setVisible(true);
-  opts.onAbrir?.(conf);
+  const limite = Math.max(1, Math.min(4, opts.maxItems ?? 1));
+  if (opts.multiselect && limite > 1 && picker.Feature?.MULTISELECT_ENABLED) {
+    builder = builder.enableFeature(picker.Feature.MULTISELECT_ENABLED);
+  }
+
+  let dejarObservar: (() => void) | null = null;
+  const cerrarYLimpiar = () => {
+    dejarObservar?.();
+    dejarObservar = null;
+    limpiarDialogo(opts.dialogoRef);
+  };
+
+  try {
+    dejarObservar = observarErroresPicker((msg) => {
+      if (opts.vigenteRef && !opts.vigenteRef.current) return;
+      cerrarYLimpiar();
+      opts.onError?.(msg);
+    });
+
+    const dialogo = builder
+      .setOAuthToken(accessToken)
+      .setMaxItems(limite)
+      .setOrigin(window.location.origin)
+      .setDeveloperKey(conf.clave)
+      .setAppId(conf.proyecto_id)
+      .setLocale("es")
+      .setCallback((r) => {
+        if (opts.vigenteRef && !opts.vigenteRef.current) return;
+        if (r.action === picker.Action.CANCEL) {
+          cerrarYLimpiar();
+          opts.onCancelar?.();
+          return;
+        }
+        if (r.action === picker.Action.ERROR || r.action === "error" || r.error) {
+          cerrarYLimpiar();
+          opts.onError?.(traducirErrorGooglePicker(r.error ?? r.message ?? "Error al abrir Google Picker."));
+          return;
+        }
+        if (r.action !== picker.Action.PICKED) return;
+
+        const elementos: ElementoDriveTrabajador[] = [];
+        for (const d of r.docs ?? []) {
+          if (!d || !/^[\w-]{3,160}$/.test(d.id) || !d.name?.trim()) continue;
+          const esCarpeta =
+            d.mimeType === "application/vnd.google-apps.folder" ||
+            d.type === "folder" ||
+            Boolean(d.url?.includes("/folders/"));
+          const urlValida =
+            d.url && /^https:\/\/(drive|docs|drive\.usercontent)\.google\.com\//i.test(d.url)
+              ? d.url
+              : undefined;
+          const url =
+            urlValida ??
+            (esCarpeta
+              ? `https://drive.google.com/drive/folders/${d.id}`
+              : `https://drive.google.com/open?id=${d.id}`);
+          elementos.push({
+            id: d.id,
+            nombre: d.name.trim(),
+            url,
+            tipo: esCarpeta ? "carpeta" : "archivo",
+          });
+        }
+        cerrarYLimpiar();
+        if (elementos.length > 0) {
+          opts.onSeleccion(elementos, accessToken);
+        }
+      })
+      .build();
+
+    if (opts.dialogoRef) {
+      opts.dialogoRef.current = dialogo;
+    }
+    dialogo.setVisible(true);
+    opts.onAbrir?.(conf);
+  } catch (e) {
+    cerrarYLimpiar();
+    throw new Error(traducirErrorGooglePicker(e));
+  }
 }

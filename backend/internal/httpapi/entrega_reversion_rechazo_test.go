@@ -594,3 +594,211 @@ func TestRechazoConAdjuntosMultimediaYDrive(t *testing.T) {
 		t.Fatalf("ajeno listando adjuntos rechazo esperaba 403, obtuvo %d", r.Code)
 	}
 }
+
+func TestEntregaDriveMultiplePermisosYHistorial(t *testing.T) {
+	ctx := context.Background()
+	api, s := configurarTestAPI()
+	_ = s.CrearOActualizarPerfil(ctx, &store.Perfil{
+		ID: "admin-1", Correo: "admin@rconcept.com", Nombre: "Admin", Estado: store.EstadoAprobado, EsAdmin: true,
+	})
+	_ = s.CrearOActualizarPerfil(ctx, &store.Perfil{
+		ID: "ed-1", Correo: "ed@rconcept.com", Nombre: "Editor", Estado: store.EstadoAprobado, EsAdmin: false,
+	})
+	_ = s.GuardarConexionDrive(ctx, &store.ConexionDrive{
+		Correo: "equipo@gmail.com", CarpetaRaizID: "raiz_1", CarpetaClientesID: "raiz_1", RefreshToken: "ref-secreto",
+	})
+	api.F5.Drive = httpapi.ConfDrive{ClientID: "cid", ClientSecret: "csec", PickerKey: "pk", PickerAppID: "123"}
+
+	var copiasArchivo atomic.Int32
+	api.F5.HTTP = &http.Client{Transport: transporteDrivePruebas(func(r *http.Request) (*http.Response, error) {
+		send := func(code int, v any) (*http.Response, error) {
+			b, _ := json.Marshal(v)
+			return &http.Response{StatusCode: code, Body: io.NopCloser(strings.NewReader(string(b))), Header: make(http.Header)}, nil
+		}
+		if r.URL.Host == "oauth2.googleapis.com" {
+			return send(200, map[string]any{"access_token": "tok-team", "expires_in": 3600})
+		}
+		if strings.Contains(r.URL.Path, "/copy") {
+			copiasArchivo.Add(1)
+			return send(200, map[string]any{"id": "copia_1", "name": "Clip.mp4", "mimeType": "video/mp4", "webViewLink": "https://drive.google.com/file/d/copia_1/view"})
+		}
+		switch r.URL.Path {
+		case "/drive/v3/files":
+			return send(200, map[string]any{"files": []map[string]any{{"id": "entregas_sub", "name": "Entregas"}}})
+		case "/drive/v3/files/carp_dentro":
+			return send(200, map[string]any{"id": "carp_dentro", "name": "B-roll", "mimeType": "application/vnd.google-apps.folder", "parents": []string{"carpeta_tarea_m"}})
+		case "/drive/v3/files/arch_dentro":
+			return send(200, map[string]any{"id": "arch_dentro", "name": "Master.mp4", "mimeType": "video/mp4", "parents": []string{"carpeta_tarea_m"}})
+		case "/drive/v3/files/arch_picker":
+			if r.Header.Get("Authorization") == "Bearer tok-worker-picker" || r.Header.Get("Authorization") == "Bearer tok-team" {
+				return send(200, map[string]any{"id": "arch_picker", "name": "Portada.png", "mimeType": "image/png", "parents": []string{"mi_unidad_worker"}})
+			}
+		case "/drive/v3/files/arch_ajeno":
+			if r.Header.Get("Authorization") == "Bearer tok-team" {
+				return send(200, map[string]any{"id": "arch_ajeno", "name": "OtroCliente.mp4", "mimeType": "video/mp4", "parents": []string{"otro_cliente"}})
+			}
+		}
+		return send(404, nil)
+	})}
+
+	carpetaID := "carpeta_tarea_m"
+	carpetaURL := "https://drive.google.com/drive/folders/" + carpetaID
+	tarea, err := s.CrearTarea(ctx, &store.Tarea{
+		TipoID: 2, Titulo: "Multi entrega", AsignadoA: "ed-1", CreadoPor: "admin-1",
+		DriveCarpetaID: &carpetaID, DriveCarpetaURL: &carpetaURL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes := api.Routes()
+	ruta := fmt.Sprintf("/api/tareas/%d/hecha", tarea.ID)
+
+	// 1. Duplicado rechazado (400)
+	if r := doRequest(routes, "POST", ruta, "ed-1", map[string]any{
+		"metodo_entrega": "drive",
+		"entrega_drive": []map[string]any{
+			{"id": "carp_dentro", "nombre": "B-roll", "url": "https://drive.google.com/drive/folders/carp_dentro", "tipo": "carpeta"},
+			{"id": "carp_dentro", "nombre": "B-roll", "url": "https://drive.google.com/drive/folders/carp_dentro", "tipo": "carpeta"},
+		},
+	}); r.Code != http.StatusBadRequest {
+		t.Fatalf("duplicado esperaba 400, obtuvo %d: %s", r.Code, r.Body.String())
+	}
+
+	// 2. Más de 4 elementos rechazado (400)
+	var cinco []map[string]any
+	for i := range 5 {
+		cinco = append(cinco, map[string]any{
+			"id": fmt.Sprintf("item_%d", i), "nombre": fmt.Sprintf("Archivo %d", i),
+			"url": fmt.Sprintf("https://drive.google.com/open?id=item_%d", i), "tipo": "archivo",
+		})
+	}
+	if r := doRequest(routes, "POST", ruta, "ed-1", map[string]any{
+		"metodo_entrega": "drive", "entrega_drive": cinco,
+	}); r.Code != http.StatusBadRequest {
+		t.Fatalf("5 elementos esperaba 400, obtuvo %d", r.Code)
+	}
+
+	// 3. Elemento fuera de carpeta de tarea sin token_selector -> 403
+	if r := doRequest(routes, "POST", ruta, "ed-1", map[string]any{
+		"metodo_entrega": "drive",
+		"entrega_drive": []map[string]any{
+			{"id": "arch_ajeno", "nombre": "OtroCliente.mp4", "url": "https://drive.google.com/file/d/arch_ajeno/view", "tipo": "archivo"},
+		},
+	}); r.Code != http.StatusForbidden {
+		t.Fatalf("ajeno sin token_selector esperaba 403, obtuvo %d: %s", r.Code, r.Body.String())
+	}
+
+	// 4. Combinación válida de hasta 4 elementos (carpeta + archivo dentro + archivo picker)
+	rOK := doRequest(routes, "POST", ruta, "ed-1", map[string]any{
+		"metodo_entrega": "drive",
+		"token_selector": "tok-worker-picker",
+		"nota":           "Tres entregables listos",
+		"entrega_drive": []map[string]any{
+			{"id": "carp_dentro", "nombre": "B-roll", "url": "https://drive.google.com/drive/folders/carp_dentro", "tipo": "carpeta"},
+			{"id": "arch_dentro", "nombre": "Master.mp4", "url": "https://drive.google.com/file/d/arch_dentro/view", "tipo": "archivo"},
+			{"id": "arch_picker", "nombre": "Portada.png", "url": "https://drive.google.com/file/d/arch_picker/view", "tipo": "archivo"},
+		},
+	})
+	if rOK.Code != http.StatusOK {
+		t.Fatalf("entrega múltiple esperaba 200, obtuvo %d: %s", rOK.Code, rOK.Body.String())
+	}
+	if strings.Contains(rOK.Body.String(), "tok-worker-picker") {
+		t.Fatal("nunca debe devolver token_selector")
+	}
+	// Solo los 2 archivos (no la carpeta) deben haberse copiado a Entregas
+	if copiasArchivo.Load() != 2 {
+		t.Fatalf("esperaba 2 copias de archivos a Entregas, obtuvo %d", copiasArchivo.Load())
+	}
+	var tOut store.Tarea
+	_ = json.Unmarshal(rOK.Body.Bytes(), &tOut)
+	if len(tOut.EntregaDrive) != 3 {
+		t.Fatalf("esperaba 3 elementos en entrega_drive, obtuvo %+v", tOut.EntregaDrive)
+	}
+
+	// 5. Revertir conserva entrega_drive en borrador_entrega y en historial
+	rRev := doRequest(routes, "POST", fmt.Sprintf("/api/tareas/%d/revertir", tarea.ID), "ed-1", nil)
+	if rRev.Code != http.StatusOK {
+		t.Fatalf("revertir: %d %s", rRev.Code, rRev.Body.String())
+	}
+	var tRev store.Tarea
+	_ = json.Unmarshal(rRev.Body.Bytes(), &tRev)
+	if len(tRev.EntregaDrive) != 0 || tRev.BorradorEntrega == nil || len(tRev.BorradorEntrega.EntregaDrive) != 3 {
+		t.Fatalf("borrador debe conservar los 3 elementos al revertir: %+v", tRev.BorradorEntrega)
+	}
+	rDet := doRequest(routes, "GET", fmt.Sprintf("/api/tareas/%d/detalle", tarea.ID), "ed-1", nil)
+	var tDet store.Tarea
+	_ = json.Unmarshal(rDet.Body.Bytes(), &tDet)
+	if len(tDet.Historial) < 2 || len(tDet.Historial[0].EntregaDrive) != 3 || len(tDet.Historial[1].EntregaDrive) != 3 {
+		t.Fatalf("historial debe conservar entrega_drive: %+v", tDet.Historial)
+	}
+}
+
+func TestWhatsAppPorTrabajoYReasignacion(t *testing.T) {
+	routes, s, admin1, editorID, camID, _ := setupF2TestEnvironment(t)
+	ctx := context.Background()
+	admin2 := "admin-2-reasig"
+	if err := s.CrearOActualizarPerfil(ctx, &store.Perfil{
+		ID: admin2, Correo: "admin2@rconcept.com", Nombre: "Admin Dos", Estado: store.EstadoAprobado, EsAdmin: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.GuardarCelular(ctx, admin1, "+573001112233"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.GuardarCelular(ctx, editorID, "+573005554433"); err != nil {
+		t.Fatal(err)
+	}
+
+	tarea := crearTareaF4(t, routes, admin1, editorID, "Video WhatsApp")
+
+	// 1. Editor ve el WhatsApp del asignador inicial (admin1)
+	rEd := doRequest(routes, "GET", fmt.Sprintf("/api/tareas/%d/whatsapp", tarea.ID), editorID, nil)
+	if rEd.Code != http.StatusOK || !strings.Contains(rEd.Body.String(), "https://wa.me/573001112233") {
+		t.Fatalf("editor debía ver WhatsApp de admin1: %d %s", rEd.Code, rEd.Body.String())
+	}
+	// Otro trabajador no asignado recibe 404
+	if rAjeno := doRequest(routes, "GET", fmt.Sprintf("/api/tareas/%d/whatsapp", tarea.ID), camID, nil); rAjeno.Code != http.StatusNotFound {
+		t.Fatalf("ajeno esperaba 404, obtuvo %d", rAjeno.Code)
+	}
+
+	// 2. Admin2 (SIN celular configurado) reasigna la tarea a camID -> NO debe caer al creador (admin1)!
+	if rPatch := doRequest(routes, "PATCH", fmt.Sprintf("/api/admin/tareas/%d", tarea.ID), admin2, map[string]any{
+		"asignado_a": camID, "forzar": true,
+	}); rPatch.Code != http.StatusOK {
+		t.Fatalf("reasignar: %d %s", rPatch.Code, rPatch.Body.String())
+	}
+	rCamSinTel := doRequest(routes, "GET", fmt.Sprintf("/api/tareas/%d/whatsapp", tarea.ID), camID, nil)
+	if rCamSinTel.Code != http.StatusOK {
+		t.Fatalf("esperaba 200 sin URL: %d", rCamSinTel.Code)
+	}
+	var respSin map[string]any
+	_ = json.Unmarshal(rCamSinTel.Body.Bytes(), &respSin)
+	if respSin["url"] != "" || respSin["disponible"] != false {
+		t.Fatalf("tras reasignar sin teléfono del reasignador no debe usar creador: %+v", respSin)
+	}
+
+	// 3. Cuando admin2 configura su celular, camID ve el WhatsApp de admin2 (no admin1)
+	if err := s.GuardarCelular(ctx, admin2, "+573009998877"); err != nil {
+		t.Fatal(err)
+	}
+	rCamConTel := doRequest(routes, "GET", fmt.Sprintf("/api/tareas/%d/whatsapp", tarea.ID), camID, nil)
+	if !strings.Contains(rCamConTel.Body.String(), "https://wa.me/573009998877") || !strings.Contains(rCamConTel.Body.String(), "Admin Dos") {
+		t.Fatalf("camID debía ver WhatsApp de Admin Dos: %s", rCamConTel.Body.String())
+	}
+
+	// 4. Reasignar de vuelta a editorID y entregar por WhatsApp -> admin ve WhatsApp del editor
+	_ = doRequest(routes, "PATCH", fmt.Sprintf("/api/admin/tareas/%d", tarea.ID), admin2, map[string]any{
+		"asignado_a": editorID, "forzar": true,
+	})
+	// Solo consultar WhatsApp no marca como entregada la tarea
+	if tCheck, _ := s.ObtenerTareaPorID(ctx, tarea.ID); tCheck.Estado != store.EstadoTareaPendiente {
+		t.Fatalf("consultar WhatsApp no debe cambiar estado: %s", tCheck.Estado)
+	}
+	_ = doRequest(routes, "POST", fmt.Sprintf("/api/tareas/%d/hecha", tarea.ID), editorID, map[string]any{
+		"metodo_entrega": "whatsapp",
+	})
+	rRev := doRequest(routes, "GET", fmt.Sprintf("/api/tareas/%d/whatsapp", tarea.ID), admin1, nil)
+	if rRev.Code != http.StatusOK || !strings.Contains(rRev.Body.String(), "https://wa.me/573005554433") {
+		t.Fatalf("revisor debía ver WhatsApp de quien entregó: %d %s", rRev.Code, rRev.Body.String())
+	}
+}

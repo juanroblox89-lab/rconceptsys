@@ -5,10 +5,13 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   adjuntos,
+  bytesPorMBAdjunto,
   detectarTipoArchivo,
+  pesoAdjunto,
   pistasWebMDesdeBytes,
   subirAdjunto,
   tipoDeArchivo,
+  validarPesoAdjunto,
   type AdjuntoLocal,
 } from "../adjuntos-asignacion";
 
@@ -187,4 +190,43 @@ test("EditorAdjuntos muestra estados de borrador: Resumiendo, Listo con viñetas
   assert.ok(html.includes("No se pudo"));
   assert.ok(html.includes("No se escuchó voz clara en el audio para resumir."));
   assert.ok(html.includes("Reintentar"));
+});
+
+test("validarPesoAdjunto y pesoAdjunto muestran límites reales por tipo y contador X / Y MB", async () => {
+  assert.equal(validarPesoAdjunto(0, "imagen"), "La imagen está vacía.");
+  assert.equal(validarPesoAdjunto(0, "audio"), "El audio está vacío.");
+  assert.equal(validarPesoAdjunto(0, "video"), "El video está vacío.");
+  assert.equal(validarPesoAdjunto(10 * bytesPorMBAdjunto + 1, "imagen"), "La imagen supera el límite de 10 MB.");
+  assert.equal(validarPesoAdjunto(25 * bytesPorMBAdjunto + 1, "audio"), "El audio supera el límite de 25 MB.");
+  assert.equal(validarPesoAdjunto(50 * bytesPorMBAdjunto + 1, "video"), "El video supera el límite de 50 MB.");
+  assert.equal(validarPesoAdjunto(24 * bytesPorMBAdjunto, "audio"), null);
+  assert.equal(validarPesoAdjunto(49 * bytesPorMBAdjunto, "video"), null);
+
+  assert.equal(pesoAdjunto(Math.round(2.4 * bytesPorMBAdjunto), "audio"), "2,4 / 25 MB");
+  assert.equal(pesoAdjunto(Math.round(1.2 * bytesPorMBAdjunto), "imagen"), "1,2 / 10 MB");
+  assert.equal(pesoAdjunto(Math.round(14.5 * bytesPorMBAdjunto), "video"), "14,5 / 50 MB");
+  assert.equal(pesoAdjunto(1024, "audio"), "< 0,1 / 25 MB");
+
+  const { AdjuntosRechazoVista } = await import("../../components/AdjuntosAsignacion");
+  const html = renderToStaticMarkup(
+    React.createElement(AdjuntosRechazoVista, {
+      tarea: 20,
+      items: [
+        {
+          id: "aud-1",
+          tipo: "audio",
+          nombre: "correccion.webm",
+          mime: "audio/webm",
+          tamano: Math.round(2.4 * bytesPorMBAdjunto),
+          resumir: true,
+          estado_resumen: "listo",
+          resumen: ["Recortar inicio.", "Subir música."],
+          transcripcion: "Recortar el inicio y subir música.",
+        },
+      ],
+    }),
+  );
+  assert.ok(html.includes("2,4 / 25 MB"));
+  assert.ok(html.includes("Recortar inicio."));
+  assert.ok(html.includes("Transcripción"));
 });

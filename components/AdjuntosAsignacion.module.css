@@ -7,6 +7,9 @@
 .error { color: var(--rc-rojo-texto); font-size: 13px; overflow-wrap: anywhere; }
 .lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .listaCompacta { grid-template-columns: minmax(0, 1fr) !important; }
+@media (min-width: 680px) {
+  .lista { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+}
 .lista > li { display: grid; gap: 6px; align-content: start; min-width: 0; padding: 10px; border: 1px solid transparent; border-radius: var(--rc-radio-md); background: var(--rc-superficie); box-shadow: var(--rc-elev-relieve-sm); }
 .nombre { display: block; overflow-wrap: anywhere; font-size: 14px; }
 .visual, .miniatura, .marcoVideo { display: grid; place-items: center; width: 100%; min-width: 0; aspect-ratio: 16/9; max-height: 190px; overflow: hidden; border-radius: var(--rc-radio-md); background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm); color: var(--rc-texto-secundario); }
@@ -27,7 +30,6 @@
 .visor img { display: block; width: 100%; max-height: 72dvh; object-fit: contain; }
 .visor .acciones { justify-content: space-between; margin-bottom: 6px; overflow-wrap: anywhere; }
 .lista > li button.miniatura { height: auto; max-height: 190px; padding: 0; border: 0; box-shadow: none; }
-@media (min-width: 800px) { .lista { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 :global(html[data-rc-tema="glass"]) .lista > li {
   background: var(--rc-superficie-clara);

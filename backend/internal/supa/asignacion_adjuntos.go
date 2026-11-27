@@ -82,7 +82,7 @@ func (s *SupabaseStore) CambiarAdjunto(ctx context.Context, a *store.AdjuntoAsig
 		q.Set("actualizado_en", "lt."+f.AntesDe.UTC().Format(time.RFC3339Nano))
 	}
 	campos := map[string]any{"estado_archivo": a.EstadoArchivo, "resumir": a.Resumir, "estado_resumen": a.EstadoResumen,
-		"resumen": a.Resumen, "transcripcion": a.Transcripcion, "proveedor": a.Proveedor, "resumen_intento": a.ResumenIntento,
+		"resumen": a.Resumen, "transcripcion": a.Transcripcion, "error_resumen": a.ErrorResumen, "proveedor": a.Proveedor, "resumen_intento": a.ResumenIntento,
 		"resumen_hasta": a.ResumenHasta, "actualizado_en": time.Now().UTC()}
 	var filas []*store.AdjuntoAsignacion
 	err := s.client.REST(ctx, http.MethodPatch, tablaAdjuntos, q, campos, "return=representation", &filas)

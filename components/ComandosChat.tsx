@@ -6,6 +6,7 @@ import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type Ke
 import { eventoApariencia } from "@/lib/apariencia";
 import { buscarRutasRIA, comandoRIA, fragmentosRutasRIA, type RutaRIA } from "@/lib/rutas-ria";
 import { useConfirmarSalida } from "@/components/CambiosSinGuardar";
+import { opcionesComandosEquipo } from "@/lib/ria";
 import styles from "./ComandosChat.module.css";
 
 function suscribirTema(avisar: () => void) {
@@ -88,6 +89,59 @@ export function useComandosChat(texto: string, rutas: RutaRIA[], habilitado: boo
         </li>)}
       </ul>
       {!opciones.length && <p role="status">No hay secciones que coincidan.</p>}
+    </div>,
+  };
+}
+
+export function useComandosEquipo(texto: string, habilitado: boolean, elegir: (nombre: '/ria' | '/help') => void) {
+  const id = useId();
+  const [foco, setFoco] = useState(false);
+  const [cerrado, setCerrado] = useState(false);
+  const [seleccion, setSeleccion] = useState(0);
+  const [componiendo, setComponiendo] = useState(false);
+  const opciones = opcionesComandosEquipo(texto);
+  const abierto = habilitado && foco && !cerrado && !componiendo && opciones.length > 0;
+  const actual = Math.min(seleccion, opciones.length - 1);
+  const idOpcion = (i: number) => `${id}-${i}`;
+
+  function escoger(i: number) {
+    setCerrado(true);
+    elegir(opciones[i].nombre);
+  }
+
+  function teclado(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (!abierto || e.nativeEvent.isComposing || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return false;
+    if (e.key === 'Escape') setCerrado(true);
+    else if (e.key === 'Enter') escoger(actual);
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const siguiente = (actual + (e.key === 'ArrowDown' ? 1 : -1) + opciones.length) % opciones.length;
+      setSeleccion(siguiente);
+      document.getElementById(idOpcion(siguiente))?.scrollIntoView({ block: 'nearest' });
+    } else return false;
+    e.preventDefault();
+    return true;
+  }
+
+  return {
+    teclado,
+    editar: () => { setCerrado(false); setSeleccion(0); },
+    propsEntrada: {
+      onFocus: () => { setFoco(true); setCerrado(false); },
+      onBlur: () => { setFoco(false); setComponiendo(false); },
+      onCompositionStart: () => setComponiendo(true),
+      onCompositionEnd: () => setComponiendo(false),
+      'aria-autocomplete': 'list' as const,
+      'aria-controls': abierto ? id : undefined,
+      'aria-activedescendant': abierto ? idOpcion(actual) : undefined,
+    },
+    menu: abierto && <div className={styles.menu} data-rc-menu-comandos>
+      <p className={styles.titulo}>Comandos del chat</p>
+      <ul id={id} role="listbox" aria-label="Comandos del chat">
+        {opciones.map((opcion, i) => <li key={opcion.nombre} id={idOpcion(i)} role="option" aria-selected={i === actual}
+          onPointerMove={() => setSeleccion(i)} onMouseDown={e => e.preventDefault()} onClick={() => escoger(i)}>
+          <strong>{opcion.nombre}</strong><span>{opcion.descripcion}</span>
+        </li>)}
+      </ul>
     </div>,
   };
 }

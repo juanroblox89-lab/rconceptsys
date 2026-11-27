@@ -8,7 +8,7 @@ import { ConfigEquipo, DriveEstado, PlanDrive, ResultadoMovimientoDrive } from "
 import { Aviso, useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
 import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
-import { type DialogoPicker } from "@/lib/google-picker";
+import { type DialogoPicker, traducirErrorGooglePicker } from "@/lib/google-picker";
 import { abrirSelectorGoogleDrive } from "@/components/PickerDriveCliente";
 import {
   cuentaEquipoEsperada,
@@ -244,6 +244,12 @@ export function AdminEquipo() {
           setPickerAbriendo(false);
           restaurarFoco();
         },
+        onError: (msg) => {
+          if (!pickerVigente.current) return;
+          setPickerError(msg);
+          setPickerAbriendo(false);
+          restaurarFoco();
+        },
         onSeleccion: async (elementos, conf, correoPicker) => {
           if (!pickerVigente.current) return;
           const doc = elementos[0];
@@ -309,7 +315,7 @@ export function AdminEquipo() {
       });
     } catch (e) {
       if (!pickerVigente.current) return;
-      setPickerError(e instanceof Error ? e.message : "No pudimos abrir Google Drive.");
+      setPickerError(traducirErrorGooglePicker(e));
       setPickerAbriendo(false);
       restaurarFoco();
     }

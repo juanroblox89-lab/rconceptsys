@@ -6,7 +6,6 @@ import {
   Check,
   FileText,
   FolderOpen,
-  MessageCircle,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -22,11 +21,13 @@ import {
   ReferenciaDriveTrabajo,
   Tarea,
 } from "@/lib/types";
-import { type DialogoPicker } from "@/lib/google-picker";
+import { type DialogoPicker, traducirErrorGooglePicker } from "@/lib/google-picker";
 import { abrirSelectorGoogleDrive, resolverReferenciaDriveSeleccionada } from "@/components/PickerDriveCliente";
 import { EditorAdjuntos } from "@/components/AdjuntosAsignacion";
 import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { subirAdjunto, type AdjuntoLocal } from "@/lib/adjuntos-asignacion";
+import { elementosEntregaDrive } from "@/lib/referencias-trabajo";
+import { AvisoCuentaDrive } from "@/components/ui/AvisoCuentaDrive";
 import { Boton } from "@/components/ui/Boton";
 import { Tarjeta } from "@/components/ui/Tarjeta";
 import { Esqueleto } from "@/components/ui/Esqueleto";
@@ -34,8 +35,10 @@ import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { Campo } from "@/components/ui/Campo";
 import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
+import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { CarpetaDriveTarea } from "@/components/ui/CarpetaDriveTarea";
 import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
+import { IconoWhatsApp } from "@/components/ui/IconoWhatsApp";
 import { useAviso } from "@/components/ui/Aviso";
 import styles from "@/app/(app)/admin/admin.module.css";
 
@@ -53,6 +56,9 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   const [miembros, setMiembros] = useState<Perfil[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [tareaAReabrir, setTareaAReabrir] = useState<Tarea | null>(null);
+  const [whatsappPorTarea, setWhatsappPorTarea] = useState<
+    Record<number, { estado: "cargando" | "listo" | "error"; url: string; nombre: string }>
+  >({});
 
   // Filtros
   const [filtroPersona, setFiltroPersona] = useState<string>("");
@@ -69,6 +75,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
   const [rechazoLocales, setRechazoLocales] = useState<AdjuntoLocal[]>([]);
   const [rechazoDrive, setRechazoDrive] = useState<ReferenciaDriveTrabajo[]>([]);
   const [grabandoRechazo, setGrabandoRechazo] = useState(false);
+  const [avisoCuentaDriveRechazo, setAvisoCuentaDriveRechazo] = useState(false);
   const [abriendoPickerRechazo, setAbriendoPickerRechazo] = useState(false);
   const [errorPickerRechazo, setErrorPickerRechazo] = useState("");
   const [errorRechazo, setErrorRechazo] = useState("");
@@ -141,6 +148,39 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     if (!cargando && destino) document.getElementById(`tarea-${destino}`)?.scrollIntoView({ block: "nearest" });
   }, [cargando, destino]);
 
+  useEffect(() => {
+    const idsWa = tareas
+      .filter((t) => t.estado === "hecha" && t.metodo_entrega === "whatsapp")
+      .map((t) => t.id);
+    if (idsWa.length === 0) return;
+    let activo = true;
+    for (const id of idsWa) {
+      void api
+        .getTareaWhatsApp(id)
+        .then((res) => {
+          if (!activo) return;
+          setWhatsappPorTarea((prev) => ({
+            ...prev,
+            [id]: {
+              estado: "listo",
+              url: typeof res?.url === "string" ? res.url : "",
+              nombre: typeof res?.nombre === "string" ? res.nombre : "",
+            },
+          }));
+        })
+        .catch(() => {
+          if (!activo) return;
+          setWhatsappPorTarea((prev) => ({
+            ...prev,
+            [id]: { estado: "error", url: "", nombre: "" },
+          }));
+        });
+    }
+    return () => {
+      activo = false;
+    };
+  }, [tareas]);
+
   const handleAbrirAceptarTarea = (t: Tarea) => {
     setModalAceptarTarea(t);
     setMinutosAceptarInput(t.cantidad ? String(t.cantidad) : "");
@@ -185,6 +225,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
     setRechazoLocales([]);
     setRechazoDrive([]);
     setGrabandoRechazo(false);
+    setAvisoCuentaDriveRechazo(false);
     setAbriendoPickerRechazo(false);
     setErrorPickerRechazo("");
     setErrorRechazo("");
@@ -199,6 +240,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       setMotivoRechazo("");
       setRechazoLocales([]);
       setRechazoDrive([]);
+      setAvisoCuentaDriveRechazo(false);
       setErrorPickerRechazo("");
       setErrorRechazo("");
       setRechazoGuardadoId(null);
@@ -222,6 +264,11 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
         },
         onCancelar: () => {
           if (pickerVigente.current) setAbriendoPickerRechazo(false);
+        },
+        onError: (msg) => {
+          if (!pickerVigente.current) return;
+          setAbriendoPickerRechazo(false);
+          setErrorPickerRechazo(msg);
         },
         onSeleccion: async (elementos) => {
           const resueltos = await Promise.all(
@@ -256,7 +303,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
       } else if (apiErr.codigo === "drive_sin_organizar") {
         setErrorPickerRechazo("Organiza el Drive del equipo en Gestión → Equipo.");
       } else {
-        setErrorPickerRechazo(err instanceof Error ? err.message : "No pudimos abrir Google Drive.");
+        setErrorPickerRechazo(traducirErrorGooglePicker(err));
       }
     }
   };
@@ -384,97 +431,126 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               />
             ) : (
               <div className={styles.bandejaReviewGrid}>
-                {tareasPorRevisar.map((t) => (
-                  <article key={t.id} id={`tarea-${t.id}`} className={`${styles.reviewCard} ${destino === String(t.id) ? estilosTarea.tareaResaltada : ""}`}>
-                    <div className={styles.reviewHeader}>
-                      <span className={styles.reviewPersona}>
-                        {t.asignado?.nombre || "Miembro"}
-                      </span>
-                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                        <Chip punto="azul">
-                          {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
-                        </Chip>
-                        {t.cliente && (
-                          <Chip punto="verde">
-                            {t.cliente.nombre}
+                {tareasPorRevisar.map((t) => {
+                  const elementosEntregados = elementosEntregaDrive(t);
+                  const waInfo = whatsappPorTarea[t.id];
+                  const nombreEntrega = waInfo?.nombre || t.asignado?.nombre || "quien entregó";
+                  return (
+                    <article key={t.id} id={`tarea-${t.id}`} className={`${styles.reviewCard} ${destino === String(t.id) ? estilosTarea.tareaResaltada : ""}`}>
+                      <div className={styles.reviewHeader}>
+                        <span className={styles.reviewPersona}>
+                          {t.asignado?.nombre || "Miembro"}
+                        </span>
+                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <Chip punto="azul">
+                            {t.tipo?.rol?.nombre || t.tipo?.nombre || "Trabajo"}
                           </Chip>
-                        )}
+                          {t.cliente && (
+                            <Chip punto="verde">
+                              {t.cliente.nombre}
+                            </Chip>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className={styles.reviewTitulo}>{t.titulo}</div>
-                    {t.descripcion && t.descripcion !== t.titulo && (
-                      <div style={{ fontSize: 12, color: "var(--rc-texto-secundario)", whiteSpace: "pre-wrap" }}>
-                        {t.descripcion}
+                      <div className={styles.reviewTitulo}>{t.titulo}</div>
+                      {t.descripcion && t.descripcion !== t.titulo && (
+                        <div className={styles.reviewDescripcion}>
+                          {t.descripcion}
+                        </div>
+                      )}
+
+                      {t.tipo?.unidad === "minuto" && (
+                        <div style={{ fontSize: 12, color: "var(--rc-azul-texto)", fontWeight: 600 }}>
+                          Minutos grabados reportados: {t.cantidad || 0} min
+                        </div>
+                      )}
+
+                      {t.nota_persona && (
+                        <div className={styles.reviewNota}>
+                          <strong>Nota de la persona:</strong> {t.nota_persona}
+                        </div>
+                      )}
+
+                      <div className={styles.reviewEntregaCaja}>
+                        {t.metodo_entrega === "whatsapp" ? (
+                          <>
+                            <div className={styles.entregaDriveBloque}>
+                              <span className={styles.entregaWhatsappChip}>
+                                <IconoWhatsApp size={14} />
+                                Entregado por WhatsApp
+                              </span>
+                            </div>
+                            {waInfo?.estado === "listo" && waInfo.url ? (
+                              <div className={styles.reviewCarpetaFila}>
+                                <EnlaceExterno href={waInfo.url} className="rc-btn rc-btn--secundario rc-btn--sm">
+                                  <IconoWhatsApp size={14} />
+                                  Abrir WhatsApp de {nombreEntrega}
+                                </EnlaceExterno>
+                              </div>
+                            ) : waInfo?.estado === "listo" ? (
+                              <p className={styles.whatsappNoDisponible}>
+                                WhatsApp de {nombreEntrega} no disponible (sin número válido configurado).
+                              </p>
+                            ) : waInfo?.estado === "error" ? (
+                              <p className={styles.whatsappNoDisponible}>
+                                No pudimos consultar el WhatsApp de {nombreEntrega}.
+                              </p>
+                            ) : null}
+                          </>
+                        ) : elementosEntregados.length > 0 ? (
+                          <ul className={styles.reviewEntregaLista} aria-label="Elementos entregados en Drive">
+                            {elementosEntregados.map((el) => (
+                              <li key={el.id || el.url} className={styles.reviewEntregaItem}>
+                                <span className={styles.entregaDriveNombre}>
+                                  {el.tipo === "carpeta" ? (
+                                    <FolderOpen size={14} aria-hidden="true" />
+                                  ) : (
+                                    <FileText size={14} aria-hidden="true" />
+                                  )}
+                                  <span>{el.nombre}</span>
+                                </span>
+                                <EnlaceDrive enlace={el.url} />
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+
+                        <div className={styles.reviewCarpetaFila}>
+                          <CarpetaDriveTarea tarea={t} />
+                        </div>
                       </div>
-                    )}
 
-                    {t.tipo?.unidad === "minuto" && (
-                      <div style={{ fontSize: 12, color: "var(--rc-azul-texto)", fontWeight: 600 }}>
-                        Minutos grabados reportados: {t.cantidad || 0} min
-                      </div>
-                    )}
-
-                    {t.nota_persona && (
-                      <div className={styles.reviewNota}>
-                        <strong>Nota de la persona:</strong> {t.nota_persona}
-                      </div>
-                    )}
-
-                    {t.metodo_entrega === "whatsapp" ? (
-                      <div className={styles.entregaDriveBloque}>
-                        <span className={styles.entregaWhatsappChip}>
-                          <MessageCircle size={14} aria-hidden="true" />
-                          Entregado por WhatsApp
+                      <div className={styles.reviewValor}>
+                        <span>Valor:</span>
+                        <span className={styles.reviewValorMonto}>
+                          {t.tipo?.unidad === "minuto" && t.cantidad && t.tipo?.precio
+                            ? `$ ${(t.cantidad * t.tipo.precio).toLocaleString("es-CO")} (${t.cantidad} min × $ ${t.tipo.precio.toLocaleString("es-CO")})`
+                            : `$ ${(t.tipo?.precio || 0).toLocaleString("es-CO")}`}
                         </span>
                       </div>
-                    ) : t.enlace_medios ? (
-                      <div className={styles.entregaDriveBloque}>
-                        {t.entrega_nombre && (
-                          <span className={styles.entregaDriveNombre}>
-                            {t.entrega_tipo === "carpeta" ? (
-                              <FolderOpen size={14} aria-hidden="true" />
-                            ) : (
-                              <FileText size={14} aria-hidden="true" />
-                            )}
-                            <span>{t.entrega_nombre}</span>
-                          </span>
-                        )}
-                        <EnlaceDrive enlace={t.enlace_medios} />
+
+                      <div className={styles.reviewAcciones}>
+                        <Link className="rc-btn rc-btn--secundario rc-btn--sm" href={`/trabajos/${t.id}?desde=tareas`}>Abrir</Link>
+                        <Boton
+                          variante="peligro"
+                          tamano="sm"
+                          onClick={() => abrirModalRechazar(t)}
+                        >
+                          Rechazar
+                        </Boton>
+                        <Boton
+                          variante="primario"
+                          tamano="sm"
+                          onClick={() => handleAbrirAceptarTarea(t)}
+                        >
+                          <Check size={14} style={{ marginRight: 4 }} />
+                          {t.tipo?.unidad === "minuto" ? "Revisar y aceptar" : "Aceptar"}
+                        </Boton>
                       </div>
-                    ) : null}
-
-                    <div style={{ marginTop: "var(--rc-esp-6)" }}>
-                      <CarpetaDriveTarea tarea={t} />
-                    </div>
-
-                    <div className={styles.reviewValor}>
-                      <span>Valor estimado a congelar:</span>
-                      <span className={styles.reviewValorMonto}>
-                        {t.tipo?.unidad === "minuto" && t.cantidad && t.tipo?.precio
-                          ? `$ ${(t.cantidad * t.tipo.precio).toLocaleString("es-CO")} (${t.cantidad} min × $ ${t.tipo.precio.toLocaleString("es-CO")})`
-                          : `$ ${(t.tipo?.precio || 0).toLocaleString("es-CO")}`}
-                      </span>
-                    </div>
-
-                    <div className={styles.reviewAcciones}>
-                      <Link className="rc-btn rc-btn--fantasma rc-btn--sm" href={`/trabajos/${t.id}?desde=tareas`}>Abrir</Link>
-                      <Boton
-                        variante="peligro"
-                        onClick={() => abrirModalRechazar(t)}
-                      >
-                        Rechazar
-                      </Boton>
-                      <Boton
-                        variante="primario"
-                        onClick={() => handleAbrirAceptarTarea(t)}
-                      >
-                        <Check size={14} style={{ marginRight: 4 }} />
-                        {t.tipo?.unidad === "minuto" ? "Revisar y aceptar" : "Aceptar"}
-                      </Boton>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -497,7 +573,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                   <option value="pendiente">Pendiente</option>
                   <option value="hecha">Por revisar (hecha)</option>
                   <option value="aceptada">Aceptada</option>
-                  <option value="rechazada">Rechazada</option>
+                  <option value="rechazada">Por corregir</option>
                   <option value="cancelada">Cancelada</option></>)} />
               </div>
             </div>
@@ -649,7 +725,6 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                 cantidad={rechazoLocales.length}
                 bloqueado={rechazando}
                 onGrabando={setGrabandoRechazo}
-                permitirResumen={false}
                 tituloSeccion="Audio, imágenes o video (opcional)"
                 compacto={true}
               />
@@ -659,17 +734,32 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
               <div className={styles.rechazoAdjuntosBloque}>
                 <div className={styles.rechazoDriveCabecera}>
                   <h3>Elemento de Drive (opcional)</h3>
-                  <Boton
-                    variante="secundario"
-                    tamano="sm"
-                    cargando={abriendoPickerRechazo}
-                    disabled={rechazando || grabandoRechazo || rechazoDrive.length >= MAX_DRIVE_RECHAZO}
-                    onClick={() => void handleElegirDriveRechazo()}
-                  >
-                    <FolderOpen size={15} aria-hidden="true" />
-                    Elegir de Drive
-                  </Boton>
+                  {!avisoCuentaDriveRechazo && (
+                    <Boton
+                      variante="secundario"
+                      tamano="sm"
+                      cargando={abriendoPickerRechazo}
+                      disabled={rechazando || grabandoRechazo || rechazoDrive.length >= MAX_DRIVE_RECHAZO}
+                      onClick={() => {
+                        setErrorPickerRechazo("");
+                        setAvisoCuentaDriveRechazo(true);
+                      }}
+                    >
+                      <FolderOpen size={15} aria-hidden="true" />
+                      Elegir de Drive
+                    </Boton>
+                  )}
                 </div>
+                {avisoCuentaDriveRechazo && (
+                  <AvisoCuentaDrive
+                    abriendo={abriendoPickerRechazo}
+                    onCancelar={() => setAvisoCuentaDriveRechazo(false)}
+                    onContinuar={() => {
+                      setAvisoCuentaDriveRechazo(false);
+                      void handleElegirDriveRechazo();
+                    }}
+                  />
+                )}
                 {errorPickerRechazo && (
                   <p className={styles.errorTexto} role="alert">
                     {errorPickerRechazo}

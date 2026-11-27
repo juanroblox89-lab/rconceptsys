@@ -8,15 +8,16 @@ import {
   ClipboardList,
   FileText,
   FolderOpen,
-  MessageCircle,
   RotateCcw,
   Send,
   XCircle,
 } from "lucide-react";
-import type { MetodoEntrega, Tarea, TareaHistorialItem, TipoElementoEntrega } from "@/lib/types";
+import type { MetodoEntrega, ReferenciaDriveTrabajo, Tarea, TareaHistorialItem, TipoElementoEntrega } from "@/lib/types";
 import { EnlaceDrive } from "@/components/ui/EnlaceDrive";
+import { IconoWhatsApp } from "@/components/ui/IconoWhatsApp";
 import { AdjuntosRechazoVista, type AdjuntoRechazoItem } from "@/components/AdjuntosAsignacion";
-import { ESTADOS_TRABAJO, fechaTrabajo } from "./FilaTrabajo";
+import { elementosEntregaDrive } from "@/lib/referencias-trabajo";
+import { ESTADOS_TRABAJO, fechaHoraTrabajo } from "./FilaTrabajo";
 import styles from "./FlujoTrabajo.module.css";
 
 type TonoPaso = "inicio" | "entrega" | "retirada" | "devuelto" | "aprobado" | "cancelado";
@@ -35,6 +36,7 @@ interface PasoRoadmap {
   enlaceMedios?: string | null;
   entregaNombre?: string | null;
   entregaTipo?: TipoElementoEntrega | null;
+  entregaDrive?: ReferenciaDriveTrabajo[] | null;
   driveAdjuntos?: TareaHistorialItem["drive_adjuntos"];
   adjuntos?: AdjuntoRechazoItem[];
   valorAprobado?: number | null;
@@ -86,7 +88,7 @@ export function construirPasosRoadmap(tarea: Tarea): PasoRoadmap[] {
           subtitulo:
             h.metodo_entrega === "whatsapp"
               ? "Por WhatsApp"
-              : h.enlace_medios
+              : (h.entrega_drive?.length || h.enlace_medios)
                 ? "Por Drive"
                 : h.detalle || undefined,
           tono: "entrega",
@@ -97,6 +99,7 @@ export function construirPasosRoadmap(tarea: Tarea): PasoRoadmap[] {
           enlaceMedios: h.enlace_medios,
           entregaNombre: h.entrega_nombre,
           entregaTipo: h.entrega_tipo,
+          entregaDrive: h.entrega_drive,
         });
       } else if (h.evento === "entrega_retirada") {
         pasos.push({
@@ -139,7 +142,7 @@ export function construirPasosRoadmap(tarea: Tarea): PasoRoadmap[] {
           id: `hist-${h.id}`, orden, titulo: "Se pidió rehacer", tono: "retirada",
           fecha: h.creado_en, actor: h.actor_nombre, motivo: h.motivo,
           // Si no hay entrega previa registrada (trabajos antiguos), mostrar su copia histórica aquí.
-          ...(!huboEntrega && { nota: h.nota, metodoEntrega: h.metodo_entrega, enlaceMedios: h.enlace_medios, entregaNombre: h.entrega_nombre, entregaTipo: h.entrega_tipo }),
+          ...(!huboEntrega && { nota: h.nota, metodoEntrega: h.metodo_entrega, enlaceMedios: h.enlace_medios, entregaNombre: h.entrega_nombre, entregaTipo: h.entrega_tipo, entregaDrive: h.entrega_drive }),
         });
       } else {
         pasos.push({
@@ -171,7 +174,8 @@ export function construirPasosRoadmap(tarea: Tarea): PasoRoadmap[] {
     tarea.hecha_en ||
       tarea.nota_persona ||
       tarea.metodo_entrega ||
-      tarea.enlace_medios,
+      tarea.enlace_medios ||
+      (tarea.entrega_drive && tarea.entrega_drive.length > 0),
   );
   if (tieneEntrega) {
     pasos.push({
@@ -186,6 +190,7 @@ export function construirPasosRoadmap(tarea: Tarea): PasoRoadmap[] {
       enlaceMedios: tarea.enlace_medios,
       entregaNombre: tarea.entrega_nombre,
       entregaTipo: tarea.entrega_tipo,
+      entregaDrive: tarea.entrega_drive,
     });
   }
 
@@ -241,9 +246,19 @@ export function RoadmapHistorial({ tarea }: { tarea: Tarea }) {
       {pasos.map((paso, idx) => {
         const esUltimo = idx === pasos.length - 1;
         const Icono = iconoPaso(paso.tono);
-        const meta = [paso.fecha ? fechaTrabajo(paso.fecha) : "", paso.actor ?? ""]
+        const meta = [paso.fecha ? fechaHoraTrabajo(paso.fecha) : "", paso.actor ?? ""]
           .filter(Boolean)
           .join(" · ");
+        const elementosDrive =
+          paso.metodoEntrega === "whatsapp"
+            ? []
+            : elementosEntregaDrive({
+                metodo_entrega: paso.metodoEntrega,
+                entrega_drive: paso.entregaDrive,
+                enlace_medios: paso.enlaceMedios,
+                entrega_nombre: paso.entregaNombre,
+                entrega_tipo: paso.entregaTipo,
+              });
 
         return (
           <li key={paso.id} className={styles.roadmapItem}>
@@ -277,23 +292,25 @@ export function RoadmapHistorial({ tarea }: { tarea: Tarea }) {
 
               {paso.metodoEntrega === "whatsapp" ? (
                 <span className={styles.entregaWhatsappChip}>
-                  <MessageCircle size={13} aria-hidden="true" />
+                  <IconoWhatsApp size={13} />
                   Entregado por WhatsApp
                 </span>
-              ) : paso.enlaceMedios ? (
-                <div className={styles.roadmapEntregaDrive}>
-                  {paso.entregaNombre && (
-                    <span className={styles.historialDriveNombre}>
-                      {paso.entregaTipo === "carpeta" ? (
-                        <FolderOpen size={14} aria-hidden="true" />
-                      ) : (
-                        <FileText size={14} aria-hidden="true" />
-                      )}
-                      <span>{paso.entregaNombre}</span>
-                    </span>
-                  )}
-                  <EnlaceDrive enlace={paso.enlaceMedios} />
-                </div>
+              ) : elementosDrive.length > 0 ? (
+                <ul className={styles.historialDriveLista} aria-label="Elementos entregados en Drive">
+                  {elementosDrive.map((el) => (
+                    <li key={el.id || el.url} className={styles.historialDriveItem}>
+                      <span className={styles.historialDriveNombre}>
+                        {el.tipo === "carpeta" ? (
+                          <FolderOpen size={14} aria-hidden="true" />
+                        ) : (
+                          <FileText size={14} aria-hidden="true" />
+                        )}
+                        <span>{el.nombre}</span>
+                      </span>
+                      <EnlaceDrive enlace={el.url} />
+                    </li>
+                  ))}
+                </ul>
               ) : null}
 
               {paso.driveAdjuntos && paso.driveAdjuntos.length > 0 && (

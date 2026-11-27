@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   combinarMensajesChat,
+  esComandoAyuda,
   esComposicionIME,
   guardarSolicitudRIAPublica,
   leerComandoRIAPublico,
+  opcionesComandosEquipo,
   recuperarSolicitudRIAPublica,
   transmitirRIAPublica,
 } from '../ria';
@@ -30,9 +32,18 @@ function sse(texto: string): Response {
   }), { headers: { 'Content-Type': 'text/event-stream; charset=utf-8' } });
 }
 
-test('solo un /ria explícito es comando; @ria, URLs y otras rutas son texto', () => {
+test('solo un /ria explícito es comando; @ria, URLs y otras rutas son texto; soporta /RIA, /ría y /help', () => {
   assert.equal(leerComandoRIAPublico(' /RIA   ¿Qué hago?\nOtra línea  '), '/ria ¿Qué hago?\nOtra línea');
+  assert.equal(leerComandoRIAPublico(' /ría   ¿Qué comandos existen?'), '/ria ¿Qué comandos existen?');
+  assert.equal(leerComandoRIAPublico(' /RÍA   hola'), '/ria hola');
   assert.equal(leerComandoRIAPublico(' /ria \n  '), '');
+  assert.equal(esComandoAyuda('/help'), true);
+  assert.equal(esComandoAyuda('  /HELP  '), true);
+  assert.equal(esComandoAyuda('/ria hola'), false);
+  assert.deepEqual(opcionesComandosEquipo('/').map((c) => c.nombre), ['/ria', '/help']);
+  assert.deepEqual(opcionesComandosEquipo('/RÍ').map((c) => c.nombre), ['/ria']);
+  assert.deepEqual(opcionesComandosEquipo('/h').map((c) => c.nombre), ['/help']);
+  assert.deepEqual(opcionesComandosEquipo('/ria hola'), []);
   for (const texto of ['Hola @RIA', '/ria123', '/ria/demo', 'di /ria hola', 'https://example.com/ria']) {
     assert.equal(leerComandoRIAPublico(texto), null, texto);
   }

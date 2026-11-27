@@ -4,8 +4,14 @@ import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { ExternalLink, FileText, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { api, type ApiError } from "@/lib/api";
-import { cargarGooglePicker, type DialogoPicker } from "@/lib/google-picker";
+import {
+  cargarGooglePicker,
+  observarErroresPicker,
+  traducirErrorGooglePicker,
+  type DialogoPicker,
+} from "@/lib/google-picker";
 import { enlaceReferenciaDrive, nombreReferenciaVisible } from "@/lib/referencias-trabajo";
+import { AvisoCuentaDrive } from "@/components/ui/AvisoCuentaDrive";
 import { Boton } from "@/components/ui/Boton";
 import styles from "./FlujoTrabajo.module.css";
 
@@ -16,6 +22,7 @@ export interface TokenPickerDrive {
   access_token: string;
   expires_in: number;
   carpeta_id: string;
+  raiz_id?: string;
   clave: string;
   proyecto_id: string;
   correo?: string;
@@ -69,6 +76,7 @@ export interface OpcionesSelectorDrive {
     correoPicker?: string,
   ) => void | Promise<void>;
   onCancelar?: () => void;
+  onError?: (mensaje: string) => void;
 }
 
 /** Abre el Google Picker oficial usando el token temporal del Drive del equipo (/api/admin/drive/picker-token). */
@@ -91,94 +99,133 @@ export async function abrirSelectorGoogleDrive(opts: OpcionesSelectorDrive): Pro
     opts.dialogoRef.current = null;
   }
 
-  const vista = new picker.DocsView()
+  const vistaInicial = new picker.DocsView()
     .setIncludeFolders(true)
     .setSelectFolderEnabled(true)
     .setParent(conf.carpeta_id);
+  vistaInicial.setEnableDrives?.(true);
+  vistaInicial.setLabel?.(
+    opts.clienteId && conf.raiz_id && conf.carpeta_id !== conf.raiz_id
+      ? "Carpeta del cliente"
+      : "Carpeta del equipo",
+  );
 
-  let builder = new picker.PickerBuilder()
-    .addView(vista)
-    .setOAuthToken(conf.access_token);
+  let builder = new picker.PickerBuilder().addView(vistaInicial);
 
+  if (conf.raiz_id && conf.raiz_id !== conf.carpeta_id) {
+    const vistaRaiz = new picker.DocsView()
+      .setIncludeFolders(true)
+      .setSelectFolderEnabled(true)
+      .setParent(conf.raiz_id);
+    vistaRaiz.setEnableDrives?.(true);
+    vistaRaiz.setLabel?.("Carpeta del equipo");
+    builder = builder.addView(vistaRaiz);
+  }
+
+  const vistaTodo = new picker.DocsView(picker.ViewId?.DOCS)
+    .setIncludeFolders(true)
+    .setSelectFolderEnabled(true);
+  vistaTodo.setEnableDrives?.(true);
+  vistaTodo.setLabel?.("Todo Drive del equipo");
+  builder = builder.addView(vistaTodo);
+
+  if (picker.Feature?.SUPPORT_DRIVES) {
+    builder = builder.enableFeature(picker.Feature.SUPPORT_DRIVES);
+  }
   if (opts.multiselect && picker.Feature?.MULTISELECT_ENABLED) {
     builder = builder.enableFeature(picker.Feature.MULTISELECT_ENABLED);
   }
 
-  const dialogo = builder
-    .setMaxItems(Math.max(1, opts.maxItems ?? 1))
-    .setOrigin(window.location.origin)
-    .setDeveloperKey(conf.clave)
-    .setAppId(conf.proyecto_id)
-    .setLocale("es")
-    .setCallback((r) => {
+  let dejarObservar: (() => void) | null = null;
+  const cerrarYLimpiar = () => {
+    dejarObservar?.();
+    dejarObservar = null;
+    if (opts.dialogoRef?.current) {
+      try {
+        opts.dialogoRef.current.setVisible(false);
+        opts.dialogoRef.current.dispose?.();
+      } catch {
+        // Ignorar cierre
+      }
+      opts.dialogoRef.current = null;
+    }
+  };
+
+  try {
+    dejarObservar = observarErroresPicker((msg) => {
       if (opts.vigenteRef && !opts.vigenteRef.current) return;
-      if (r.action === picker.Action.CANCEL) {
-        if (opts.dialogoRef?.current) {
-          try {
-            opts.dialogoRef.current.setVisible(false);
-            opts.dialogoRef.current.dispose?.();
-          } catch {
-            // Ignorar cierre
-          }
-          opts.dialogoRef.current = null;
+      cerrarYLimpiar();
+      opts.onError?.(msg);
+    });
+
+    const dialogo = builder
+      .setOAuthToken(conf.access_token)
+      .setMaxItems(Math.max(1, opts.maxItems ?? 1))
+      .setOrigin(window.location.origin)
+      .setDeveloperKey(conf.clave)
+      .setAppId(conf.proyecto_id)
+      .setLocale("es")
+      .setCallback((r) => {
+        if (opts.vigenteRef && !opts.vigenteRef.current) return;
+        if (r.action === picker.Action.CANCEL) {
+          cerrarYLimpiar();
+          opts.onCancelar?.();
+          return;
         }
-        opts.onCancelar?.();
-        return;
-      }
-      if (r.action !== picker.Action.PICKED) return;
-
-      const extra = r as unknown as { userEmail?: string; email?: string };
-      const correoPicker =
-        typeof extra.userEmail === "string"
-          ? extra.userEmail
-          : typeof extra.email === "string"
-            ? extra.email
-            : undefined;
-
-      const elementos: ElementoDriveSeleccionado[] = [];
-      for (const d of r.docs ?? []) {
-        if (!d || !/^[\w-]{3,160}$/.test(d.id) || !d.name?.trim()) continue;
-        const esCarpeta =
-          d.mimeType === "application/vnd.google-apps.folder" ||
-          d.type === "folder" ||
-          Boolean(d.url?.includes("/folders/"));
-        const urlValida =
-          d.url && /^https:\/\/(drive|docs|drive\.usercontent)\.google\.com\//i.test(d.url)
-            ? d.url
-            : undefined;
-        const url =
-          urlValida ??
-          (esCarpeta
-            ? `https://drive.google.com/drive/folders/${d.id}`
-            : `https://drive.google.com/open?id=${d.id}`);
-        elementos.push({
-          id: d.id,
-          nombre: d.name.trim(),
-          url,
-          tipo: esCarpeta ? "carpeta" : "archivo",
-        });
-      }
-
-      if (opts.dialogoRef?.current) {
-        try {
-          opts.dialogoRef.current.setVisible(false);
-          opts.dialogoRef.current.dispose?.();
-        } catch {
-          // Ignorar cierre
+        if (r.action === picker.Action.ERROR || r.action === "error" || r.error) {
+          cerrarYLimpiar();
+          opts.onError?.(traducirErrorGooglePicker(r.error ?? r.message ?? "Error al abrir Google Picker."));
+          return;
         }
-        opts.dialogoRef.current = null;
-      }
+        if (r.action !== picker.Action.PICKED) return;
 
-      void opts.onSeleccion(elementos, conf, correoPicker);
-    })
-    .build();
+        const extra = r as unknown as { userEmail?: string; email?: string };
+        const correoPicker =
+          typeof extra.userEmail === "string"
+            ? extra.userEmail
+            : typeof extra.email === "string"
+              ? extra.email
+              : undefined;
 
-  if (opts.dialogoRef) {
-    opts.dialogoRef.current = dialogo;
+        const elementos: ElementoDriveSeleccionado[] = [];
+        for (const d of r.docs ?? []) {
+          if (!d || !/^[\w-]{3,160}$/.test(d.id) || !d.name?.trim()) continue;
+          const esCarpeta =
+            d.mimeType === "application/vnd.google-apps.folder" ||
+            d.type === "folder" ||
+            Boolean(d.url?.includes("/folders/"));
+          const urlValida =
+            d.url && /^https:\/\/(drive|docs|drive\.usercontent)\.google\.com\//i.test(d.url)
+              ? d.url
+              : undefined;
+          const url =
+            urlValida ??
+            (esCarpeta
+              ? `https://drive.google.com/drive/folders/${d.id}`
+              : `https://drive.google.com/open?id=${d.id}`);
+          elementos.push({
+            id: d.id,
+            nombre: d.name.trim(),
+            url,
+            tipo: esCarpeta ? "carpeta" : "archivo",
+          });
+        }
+
+        cerrarYLimpiar();
+        void opts.onSeleccion(elementos, conf, correoPicker);
+      })
+      .build();
+
+    if (opts.dialogoRef) {
+      opts.dialogoRef.current = dialogo;
+    }
+    dialogo.setVisible(true);
+    opts.onAbrir?.(conf);
+    return { conf, dialogo };
+  } catch (e) {
+    cerrarYLimpiar();
+    throw new Error(traducirErrorGooglePicker(e));
   }
-  dialogo.setVisible(true);
-  opts.onAbrir?.(conf);
-  return { conf, dialogo };
 }
 
 function limpiarDialogoPicker(ref: MutableRefObject<DialogoPicker | null>) {
@@ -198,6 +245,8 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
   clienteId?: number; valor: ReferenciaDrive[]; onChange(r: ReferenciaDrive[]): void; disabled: boolean;
 }) {
   const [estado, setEstado] = useState<"preparando" | "listo" | "abriendo" | "sin_drive" | "sin_organizar">("preparando");
+  const [avisoCuenta, setAvisoCuenta] = useState(false);
+  const [cuentaEquipo, setCuentaEquipo] = useState<string | undefined>();
   const [error, setError] = useState("");
   const [confirmar, setConfirmar] = useState<string | null>(null);
   const dialogo = useRef<DialogoPicker | null>(null);
@@ -209,8 +258,11 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
     let activo = true;
     vigente.current = true;
     api.adminGetDrive().then(drive => {
-      if (activo) setEstado(!drive.conectado ? "sin_drive" : !drive.organizado ? "sin_organizar" : "listo");
-    }).catch(() => { if (activo) setEstado("listo"); }); // El clic vuelve a consultar si falló la red.
+      if (activo) {
+        setCuentaEquipo(drive.cuenta_equipo);
+        setEstado(!drive.conectado ? "sin_drive" : !drive.organizado ? "sin_organizar" : "listo");
+      }
+    }).catch(() => { if (activo) setEstado("listo"); });
     return () => {
       activo = false;
       vigente.current = false;
@@ -228,6 +280,12 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
         dialogoRef: dialogo,
         vigenteRef: vigente,
         onAbrir: () => setEstado("listo"),
+        onCancelar: () => setEstado("listo"),
+        onError: (msg) => {
+          if (!vigente.current) return;
+          setEstado("listo");
+          setError(msg);
+        },
         onSeleccion: async (elementos) => {
           const resueltos = await Promise.all(
             elementos.map((el) => resolverReferenciaDriveSeleccionada(el)),
@@ -254,7 +312,7 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
       if (!vigente.current) return;
       const codigo = (e as ApiError).codigo;
       setEstado(codigo === "drive_no_conectado" ? "sin_drive" : codigo === "drive_sin_organizar" ? "sin_organizar" : "listo");
-      if (codigo !== "drive_no_conectado" && codigo !== "drive_sin_organizar") setError(e instanceof Error ? e.message : "No pudimos abrir Google Drive.");
+      if (codigo !== "drive_no_conectado" && codigo !== "drive_sin_organizar") setError(traducirErrorGooglePicker(e));
     }
   }
 
@@ -285,11 +343,23 @@ export function PickerDriveCliente({ clienteId, valor, onChange, disabled }: {
         </li>;
         })}
       </ul>}
-    <div className={styles.acciones}>
-      {valor.length === 0
-        ? <Boton variante="secundario" disabled={bloqueado} cargando={estado === "preparando" || estado === "abriendo"} onClick={abrir}>Seleccionar en Google Drive</Boton>
-        : !lleno && <Boton variante="secundario" tamano="sm" disabled={bloqueado} cargando={estado === "abriendo"} onClick={abrir} aria-label="Añadir otra referencia de Google Drive"><Plus size={16} aria-hidden="true" /> Añadir</Boton>}
-    </div>
+    {avisoCuenta ? (
+      <AvisoCuentaDrive
+        cuenta={cuentaEquipo}
+        abriendo={estado === "abriendo"}
+        onCancelar={() => setAvisoCuenta(false)}
+        onContinuar={() => {
+          setAvisoCuenta(false);
+          void abrir();
+        }}
+      />
+    ) : (
+      <div className={styles.acciones}>
+        {valor.length === 0
+          ? <Boton variante="secundario" disabled={bloqueado} cargando={estado === "preparando" || estado === "abriendo"} onClick={() => { setError(""); setAvisoCuenta(true); }}>Seleccionar en Google Drive</Boton>
+          : !lleno && <Boton variante="secundario" tamano="sm" disabled={bloqueado} cargando={estado === "abriendo"} onClick={() => { setError(""); setAvisoCuenta(true); }} aria-label="Añadir otra referencia de Google Drive"><Plus size={16} aria-hidden="true" /> Añadir</Boton>}
+      </div>
+    )}
     {estado === "sin_drive" && <p className={styles.ayuda} role="status">Conecta el Drive del equipo en Gestión → Equipo</p>}
     {estado === "sin_organizar" && <p className={styles.ayuda} role="status">Organiza el Drive del equipo en Gestión → Equipo</p>}
     {lleno && <p className={styles.ayuda}>Máximo: {MAX_REFERENCIAS} referencias.</p>}

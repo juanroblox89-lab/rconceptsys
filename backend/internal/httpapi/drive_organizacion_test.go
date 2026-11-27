@@ -225,9 +225,22 @@ func TestF8DriveOrganizacionPickerYMigracion(t *testing.T) {
 	}
 	for _, tc := range []struct{ q, padre string }{{"", conexion.CarpetaRaizID}, {fmt.Sprintf("?cliente_id=%d", c.ID), *c.DriveCarpetaID}} {
 		r := doRequest(rutas, "GET", "/api/admin/drive/picker-token"+tc.q, admin, nil)
-		if r.Code != 200 || !strings.Contains(r.Header().Get("Cache-Control"), "no-store") || strings.Contains(r.Body.String(), "secreto-de-prueba") || strings.Contains(r.Body.String(), "refresh_token") || !strings.Contains(r.Body.String(), tc.padre) {
+		if r.Code != 200 || !strings.Contains(r.Header().Get("Cache-Control"), "no-store") || strings.Contains(r.Body.String(), "secreto-de-prueba") || strings.Contains(r.Body.String(), "refresh_token") || !strings.Contains(r.Body.String(), tc.padre) || !strings.Contains(r.Body.String(), `"raiz_id":"`+conexion.CarpetaRaizID+`"`) {
 			t.Fatalf("picker: %d %s", r.Code, r.Body.String())
 		}
+	}
+	// Cliente anidado en subcarpeta bajo la raíz también abre en la carpeta del cliente
+	folders["sub_clientes"] = carpetaPrueba{ID: "sub_clientes", Name: "Clientes", Mime: mime, Parents: []string{"raiz_real"}}
+	folders["cliente_anidado"] = carpetaPrueba{ID: "cliente_anidado", Name: "Anidado", Mime: mime, Parents: []string{"sub_clientes"}}
+	cliAnidado, err := s.CrearCliente(ctx, "Anidado")
+	if err != nil {
+		t.Fatal(err)
+	}
+	anidadoID := "cliente_anidado"
+	_, _ = s.ActualizarCliente(ctx, cliAnidado.ID, map[string]any{"drive_carpeta_id": anidadoID})
+	rAnidado := doRequest(rutas, "GET", fmt.Sprintf("/api/admin/drive/picker-token?cliente_id=%d", cliAnidado.ID), admin, nil)
+	if rAnidado.Code != 200 || !strings.Contains(rAnidado.Body.String(), `"carpeta_id":"cliente_anidado"`) {
+		t.Fatalf("cliente anidado picker-token: %d %s", rAnidado.Code, rAnidado.Body.String())
 	}
 	altaTarea := func(cliente any) store.Tarea {
 		var tarea store.Tarea

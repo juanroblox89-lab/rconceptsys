@@ -62,10 +62,19 @@ func TestF10AdjuntosPermisosYSubida(t *testing.T) {
 		return b
 	}
 	for _, c := range []struct {
-		n, tip string
-		limite int
-	}{{"foto.heic", "imagen", 10}, {"clip.mov", "video", 50}, {"voz.webm", "audio", 25}} {
-		check(pet("POST", admin, "admin", reservar(nuevoIntentoAdjunto(), c.n, c.tip, c.limite*mibAdjunto+1, false)), 413)
+		n, tip  string
+		limite  int
+		mensaje string
+	}{
+		{"foto.heic", "imagen", 10, "La imagen supera el límite de 10 MB."},
+		{"clip.mov", "video", 50, "El video supera el límite de 50 MB."},
+		{"voz.webm", "audio", 25, "El audio supera el límite de 25 MB."},
+	} {
+		errTam := pet("POST", admin, "admin", reservar(nuevoIntentoAdjunto(), c.n, c.tip, c.limite*mibAdjunto+1, false))
+		check(errTam, 413)
+		if !strings.Contains(errTam.Body.String(), c.mensaje) {
+			t.Fatalf("mensaje de tamaño incorrecto para %s: %s", c.tip, errTam.Body.String())
+		}
 		uuid := nuevoIntentoAdjunto()
 		check(pet("POST", admin, "admin", reservar(uuid, c.n, c.tip, c.limite*mibAdjunto, false)), 200)
 		check(pet("DELETE", admin+"/"+uuid, "admin", nil), 204)

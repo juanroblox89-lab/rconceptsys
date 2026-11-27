@@ -103,6 +103,12 @@ func TestRIAGrupoAuthComandoYLimite(t *testing.T) {
 	if n != 0 {
 		t.Fatal("consultó el modelo sin autorización/activación")
 	}
+	if cmd, preg := normalizarComandoRIAGrupo("/RÍA ¿Qué comandos hay?"); cmd != "/ria ¿Qué comandos hay?" || preg != "¿Qué comandos hay?" {
+		t.Fatalf("normalizarComandoRIAGrupo(/RÍA) = %q %q", cmd, preg)
+	}
+	if cmd, preg := normalizarComandoRIAGrupo("/ría hola"); cmd != "/ria hola" || preg != "hola" {
+		t.Fatalf("normalizarComandoRIAGrupo(/ría) = %q %q", cmd, preg)
+	}
 	// El chat común ignora campos de autoría y nunca invoca RIA ni siquiera al mencionar @ria.
 	normal := pedirRIA(r, "POST", "/api/chat", "uno", `{"cuerpo":"@ria mensaje normal","es_ria":true,"autor_id":"dos"}`)
 	var humano store.ChatMensaje
@@ -198,7 +204,7 @@ func TestRIAGrupoSoloHistorialVisibleYAcotado(t *testing.T) {
 				t.Fatalf("dato no permitido: %s", palabra)
 			}
 		}
-		for _, regla := range []string{"máximo 1500 caracteres", "tablas", "ria-viz", "solo valores aportados en el chat", "no inventes estadísticas"} {
+		for _, regla := range []string{"máximo 1500 caracteres", "tablas", "ria-viz", "solo valores aportados en el chat", "no inventes estadísticas", "/ria", "/help"} {
 			if !strings.Contains(ms[0].Texto, regla) {
 				t.Errorf("falta restricción de formato o datos: %q", regla)
 			}

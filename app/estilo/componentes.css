@@ -276,6 +276,24 @@
 
 .rc-btn--primario {
   min-width: 72px;
+  background: var(--rc-azul-btn-bg, var(--rc-azul-suave));
+  color: var(--rc-azul-btn-texto, var(--rc-azul-texto));
+  border: 1px solid var(--rc-azul-btn-borde, transparent);
+}
+
+.rc-btn--primario:hover:not(:disabled):not(.rc-btn--deshabilitado) {
+  background: var(--rc-azul-btn-hover, var(--rc-azul-tinte));
+  color: var(--rc-azul-btn-texto, var(--rc-azul-texto));
+}
+
+.rc-btn--primario:active:not(:disabled):not(.rc-btn--deshabilitado) {
+  background: var(--rc-azul-btn-activo, var(--rc-azul-tinte));
+  box-shadow: var(--rc-elev-hundido-sm);
+}
+
+.rc-btn--primario:disabled,
+.rc-btn--primario.rc-btn--deshabilitado {
+  border-color: transparent;
 }
 
 .rc-btn--vidrio {
@@ -781,8 +799,8 @@
 }
 
 .rc-estado--pendiente {
-  background: var(--rc-ambar-suave);
-  color: var(--rc-gris-700);
+  background: var(--rc-naranja-suave, var(--rc-ambar-suave));
+  color: var(--rc-naranja-texto, var(--rc-ambar-texto));
 }
 
 .rc-estado--aprobado {
@@ -1665,7 +1683,7 @@
 
 .rc-toast--exito { background: var(--rc-vidrio-verde-bg); }
 .rc-toast--info { background: var(--rc-vidrio-azul-bg); }
-.rc-toast--advertencia { background: var(--rc-vidrio-ambar-bg); }
+.rc-toast--advertencia { background: var(--rc-naranja-suave, var(--rc-vidrio-ambar-bg)); border: 1px solid var(--rc-naranja-borde, transparent); }
 .rc-toast--error { background: var(--rc-vidrio-rojo-bg); }
 
 .rc-toast__icono {

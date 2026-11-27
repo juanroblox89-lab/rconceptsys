@@ -54,7 +54,8 @@
 .estadoTrabajo { grid-area: estado; justify-self: start; padding: 4px 10px; border-radius: var(--rc-radio-pildora); color: var(--rc-texto-secundario); background: var(--rc-superficie); box-shadow: var(--rc-elev-relieve-sm); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .estadoTrabajo[data-estado=hecha] { color: var(--rc-azul-texto); background: var(--rc-azul-suave); }
 .estadoTrabajo[data-estado=aceptada] { color: var(--rc-verde-texto); background: var(--rc-verde-suave); }
-.estadoTrabajo[data-estado=vencido], .estadoTrabajo[data-estado=rechazada] { color: var(--rc-rojo-texto); background: var(--rc-rojo-suave); }
+.estadoTrabajo[data-estado=vencido] { color: var(--rc-naranja-texto, var(--rc-ambar-texto)); background: var(--rc-naranja-suave, var(--rc-ambar-suave)); }
+.estadoTrabajo[data-estado=rechazada] { color: var(--rc-rojo-texto); background: var(--rc-rojo-suave); }
 .abrir { min-height: 40px; justify-self: start; }
 .filaAcciones { grid-area: abrir; display: flex; flex-wrap: wrap; align-items: center; gap: var(--rc-esp-6); }
 :global([data-rc-shell]) .botonPedirDeNuevo:global(.rc-btn--sm):not(:global(.rc-btn--icono)):not(:global(.rc-btn--cargando)) { min-height: 40px; }
