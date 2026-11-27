@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "co.rohlfing.rconceptsys",
+      "sha256_cert_fingerprints": [
+        "80:95:76:2D:10:DD:0E:89:F3:7F:58:B3:9B:D6:6D:89:75:40:AF:6E:3D:C7:0C:7E:D8:B9:48:8F:6A:E2:62:08"
+      ]
+    }
+  }
+]
