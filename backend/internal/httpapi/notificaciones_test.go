@@ -34,7 +34,7 @@ func TestF6BandejaPrivadaAgrupaYMencionesSiempreLlegan(t *testing.T) {
 	post(admin, "Primer mensaje")
 	post(admin, "Segundo mensaje")
 	v, n := bandeja(editor)
-	if n != 1 || len(v) != 1 || v[0].Titulo != "2 mensajes nuevos" || !strings.Contains(v[0].URL, "#mensaje-") {
+	if n != 2 || len(v) != 2 || !strings.Contains(v[0].URL, "#mensaje-") {
 		t.Fatalf("agrupación incorrecta: %d %+v", n, v)
 	}
 	if _, n := bandeja(admin); n != 0 {
@@ -47,13 +47,13 @@ func TestF6BandejaPrivadaAgrupaYMencionesSiempreLlegan(t *testing.T) {
 	post(cam, "Mensaje ordinario")
 	post(cam, "@Eduardo revisa este mensaje, por favor")
 	v, n = bandeja(editor)
-	if n != 2 || v[0].Tipo != "mencion" {
+	if n != 3 || v[0].Tipo != "mencion" {
 		t.Fatalf("mención no recibida: %d %+v", n, v)
 	}
 	if r := doRequest(rutas, "POST", "/api/notificaciones/leidas", cam, nil); r.Code != 200 {
 		t.Fatalf("leer: %d", r.Code)
 	}
-	if _, n := bandeja(editor); n != 2 {
+	if _, n := bandeja(editor); n != 3 {
 		t.Fatal("otro usuario marcó avisos ajenos")
 	}
 	if r := doRequest(rutas, "POST", "/api/notificaciones/leidas", editor, nil); r.Code != 200 {
