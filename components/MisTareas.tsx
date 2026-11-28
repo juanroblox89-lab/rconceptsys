@@ -34,6 +34,7 @@ import { CabeceraPagina } from "@/components/ui/CabeceraPagina";
 import { useAviso } from "@/components/ui/Aviso";
 import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo";
 import { AdjuntosRechazoVista } from "@/components/AdjuntosAsignacion";
+import { GuionTrabajo } from "@/components/GuionTrabajo";
 import {
   MAX_ELEMENTOS_ENTREGA_DRIVE,
   elementosEntregaDrive,
@@ -1120,6 +1121,7 @@ function TarjetaTarea({
       <div className={`${styles.porCorregirCuerpo} ${esPorCorregir && tieneAdjuntosRechazo ? styles.porCorregirCuerpoConAdjuntos : ""}`}>
         <div className={styles.porCorregirPrincipal}>
           <p className={styles.tareaDescripcion}>{t.descripcion || t.titulo}</p>
+          <GuionTrabajo guion={t.guion} />
           {t.estado === "aceptada" && t.precio_congelado != null && (
             <div className={styles.tareaMeta}>
               <span className={styles.precioCongelado}>

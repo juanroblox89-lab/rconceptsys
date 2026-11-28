@@ -1,6 +1,10 @@
 package store
 
-import "context"
+import (
+	"context"
+	"strings"
+	"unicode/utf8"
+)
 
 // ActualizarTarea no permite cambiar el estado ni los valores de una factura.
 func (m *MemoryStore) ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error) {
@@ -12,6 +16,14 @@ func (m *MemoryStore) ActualizarTarea(ctx context.Context, id int64, campos map[
 	}
 	if t.Estado != EstadoTareaPendiente && t.Estado != EstadoTareaRechazada {
 		return nil, ErrConflict
+	}
+	if v, existe := campos["guion"]; existe {
+		texto, ok := v.(string)
+		texto = strings.TrimSpace(texto)
+		if !ok || utf8.RuneCountInString(texto) > MaxCaracteresGuion || strings.ContainsRune(texto, 0) {
+			return nil, ErrValidation
+		}
+		t.Guion = texto
 	}
 	if v, ok := campos["tipo_id"].(int); ok {
 		t.TipoID = v

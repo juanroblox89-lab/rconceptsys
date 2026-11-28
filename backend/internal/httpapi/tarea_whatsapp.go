@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,18 @@ func (a *API) handleTareaWhatsApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var contacto string
-	if yo.EsAdmin && t.Estado == store.EstadoTareaHecha && t.MetodoEntrega != nil && *t.MetodoEntrega == "whatsapp" {
+	avisoAsignacion := r.URL.Query().Get("para") == "asignacion"
+	if avisoAsignacion {
+		if !yo.EsAdmin {
+			ResponderError(w, 403, "sin_permiso", "Solo un administrador puede enviar un aviso de asignación.")
+			return
+		}
+		if t.Estado != store.EstadoTareaPendiente && t.Estado != store.EstadoTareaRechazada {
+			ResponderError(w, 409, "trabajo_cerrado", "Solo puedes avisar sobre trabajos pendientes o devueltos.")
+			return
+		}
+		contacto = t.AsignadoA
+	} else if yo.EsAdmin && t.Estado == store.EstadoTareaHecha && t.MetodoEntrega != nil && *t.MetodoEntrega == "whatsapp" {
 		// El envío se autoriza solo al asignado y no se puede reasignar en revisión.
 		contacto = t.AsignadoA
 	} else if t.AsignadoA == yo.ID && (t.Estado == store.EstadoTareaPendiente || t.Estado == store.EstadoTareaRechazada) && t.AsignadorID != nil {
@@ -52,6 +64,14 @@ func (a *API) handleTareaWhatsApp(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+	if avisoAsignacion && enlace != "" {
+		// Solo una marca: ni el guion ni las especificaciones salen por WhatsApp.
+		mensaje := "Te asignaron un trabajo en RConcept. Ábrelo en la app para ver los detalles."
+		if t.Guion != "" {
+			mensaje += " Incluye guion."
+		}
+		enlace += "?" + (url.Values{"text": {mensaje}}).Encode()
 	}
 	ResponderJSON(w, 200, map[string]any{
 		"url":        enlace,

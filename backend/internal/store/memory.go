@@ -262,13 +262,7 @@ func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, des
 				continue
 			}
 			if msg.ID > despuesID {
-				autor := m.perfiles[msg.AutorID]
-				cpMsg := *msg
-				cpMsg.Adjuntos = m.adjuntosDeMensajeLocked(msg.ID)
-				if autor != nil {
-					cpMsg.Autor = m.clonarPerfilLocked(autor)
-				}
-				nuevos = append(nuevos, &cpMsg)
+				nuevos = append(nuevos, m.clonarMensajeChatLocked(msg, false))
 				if len(nuevos) >= limite {
 					break
 				}
@@ -287,13 +281,7 @@ func (m *MemoryStore) ListarMensajesChat(ctx context.Context, antesID int64, des
 		if antesID > 0 && msg.ID >= antesID {
 			continue
 		}
-		autor := m.perfiles[msg.AutorID]
-		cpMsg := *msg
-		cpMsg.Adjuntos = m.adjuntosDeMensajeLocked(msg.ID)
-		if autor != nil {
-			cpMsg.Autor = m.clonarPerfilLocked(autor)
-		}
-		filtrados = append(filtrados, &cpMsg)
+		filtrados = append(filtrados, m.clonarMensajeChatLocked(msg, false))
 		if len(filtrados) >= limite {
 			break
 		}
@@ -341,6 +329,7 @@ func (m *MemoryStore) clonarMensajeChatLocked(msg *ChatMensaje, conservarBorrado
 		cp.BorradoEn = nil
 	}
 	cp.Adjuntos = m.adjuntosDeMensajeLocked(msg.ID)
+	cp.Cita = m.citaChatLocked(msg.RespuestaAID)
 	if !msg.EsRIA {
 		if autor := m.perfiles[msg.AutorID]; autor != nil {
 			cp.Autor = m.clonarPerfilLocked(autor)
@@ -1060,6 +1049,8 @@ func (m *MemoryStore) vistaAdjuntosRechazoLocked(tareaID, historialID int64) []*
 	out := make([]*VistaAdjuntoTarea, 0, len(lista))
 	for _, a := range lista {
 		out = append(out, &VistaAdjuntoTarea{
+			Conservar:     a.Conservar,
+			PurgadoEn:     a.PurgadoEn,
 			ID:            a.ID,
 			Tipo:          a.Tipo,
 			Nombre:        a.Nombre,
@@ -1098,6 +1089,11 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 		return nil, fmt.Errorf("%w: el aviso debe tener al menos 3 letras o números", ErrValidation)
 	}
 	if t.Descripcion != nil && len(*t.Descripcion) > 1000 {
+		return nil, ErrValidation
+	}
+
+	guion := strings.TrimSpace(t.Guion)
+	if utf8.RuneCountInString(guion) > MaxCaracteresGuion || strings.ContainsRune(guion, 0) {
 		return nil, ErrValidation
 	}
 
@@ -1144,6 +1140,7 @@ func (m *MemoryStore) CrearTarea(ctx context.Context, t *Tarea) (*Tarea, error) 
 		PiezaID:         t.PiezaID,
 		Titulo:          strings.TrimSpace(t.Titulo),
 		Descripcion:     t.Descripcion,
+		Guion:           guion,
 		AsignadoA:       t.AsignadoA,
 		CreadoPor:       t.CreadoPor,
 		AsignadorID:     &t.CreadoPor,
@@ -1633,6 +1630,7 @@ func (m *MemoryStore) PedirDeNuevoTarea(ctx context.Context, id int64, adminID s
 		h.Nota, h.Cantidad = t.NotaPersona, t.Cantidad
 		h.EntregaDrive = t.EntregaDrive
 	})
+	// Se reabre la misma fila: el guion y las especificaciones siguen vigentes.
 	t.Estado = EstadoTareaPendiente
 	t.CantidadAceptada, t.PrecioUnitarioCongelado, t.PrecioCongelado = nil, nil, nil
 	t.FacturaID, t.ResueltaEn, t.ResueltaPor, t.HechaEn = nil, nil, nil, nil
@@ -1795,7 +1793,9 @@ func (m *MemoryStore) hidratarFacturaLocked(f *Factura) *Factura {
 	var total int64 = 0
 	for _, t := range m.tareas {
 		if t.FacturaID != nil && *t.FacturaID == f.ID && t.Estado == EstadoTareaAceptada {
-			lineas = append(lineas, m.clonarTareaLocked(t))
+			linea := m.clonarTareaLocked(t)
+			linea.Guion = "" // Las instrucciones del pedido no son un dato de facturación.
+			lineas = append(lineas, linea)
 			if t.PrecioCongelado != nil {
 				total += *t.PrecioCongelado
 			}

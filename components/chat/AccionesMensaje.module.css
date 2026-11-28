@@ -328,3 +328,19 @@
   border-color: var(--rc-glass-borde-flotante);
   box-shadow: var(--rc-glass-sombra-flotante);
 }
+
+.fila[data-rc-burbuja] { position: relative; }
+.fila[data-rc-burbuja] .trigger { position: absolute; top: 2px; right: 2px; z-index: 1; }
+.contenido[data-presion] { opacity: .72; transition: opacity var(--rc-transicion-rapida); }
+.opcionTexto { display: grid; min-width: 0; }
+.opcionTexto small { color: var(--rc-texto-secundario); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu { max-height: min(70dvh, 450px); overflow-y: auto; overscroll-behavior: contain; }
+.veloMovil { background: var(--rc-glass-velo-modal, rgba(12, 16, 24, .42)); }
+@media (hover: hover) and (pointer: fine) {
+  .fila[data-rc-burbuja] .trigger { background: var(--rc-superficie); box-shadow: var(--rc-elev-relieve-sm); }
+  .fila[data-rc-burbuja]:not(:hover):not(:focus-within) .trigger:not([aria-expanded="true"]) { pointer-events: none; }
+}
+@media (pointer: coarse) {
+  .fila[data-rc-burbuja] .trigger:not(:focus-visible) { width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+  .fila[data-rc-burbuja] .trigger:focus-visible { width: 40px; height: 40px; background: var(--rc-superficie); }
+}

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, Info, Send, X } from "lucide-react";
+import { ArrowDown, Info, Reply, Send, X } from "lucide-react";
 import { api } from "@/lib/api";
-import type { ChatAdjunto, ChatMensaje, Perfil, SolicitudRIAPublica } from "@/lib/types";
-import { agruparMensajes } from "@/lib/chat-utils";
+import type { ChatAdjunto, ChatMensaje, CitaChat, Perfil, SolicitudRIAPublica } from "@/lib/types";
+import { agruparMensajes, citaVisible, accionesConservacion } from "@/lib/chat-utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAviso } from "@/components/ui/Aviso";
 import { Boton } from "@/components/ui/Boton";
@@ -74,6 +74,11 @@ export default function ChatPage() {
   const revisionChat = useRef(0);
   const recibidosRIA = useRef(new Map<number, { mensaje: ChatMensaje; revision: number }>());
   const destinoRef = useRef(0);
+  const [respuesta, setRespuesta] = useState<{ id: number; cita: CitaChat } | null>(null);
+  const [resaltado, setResaltado] = useState<number | null>(null);
+  const [grabando, setGrabando] = useState(false);
+  const focoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const compositorRef = useRef<HTMLFormElement>(null);
   const [cuerpo, setCuerpo] = useState("");
   const [yo, setYo] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -93,7 +98,7 @@ export default function ChatPage() {
 
   useCambiosSinGuardar(
     editandoId !== null ||
-      pendientes.length > 0 ||
+      pendientes.length > 0 || grabando || respuesta !== null ||
       (cuerpo.trim() !== "" && !cuerpo.trim().startsWith("/")),
   );
 
@@ -103,6 +108,7 @@ export default function ChatPage() {
   useEffect(() => {
     return () => {
       if (deshacerTimerRef.current) clearTimeout(deshacerTimerRef.current);
+      if (focoTimer.current) clearTimeout(focoTimer.current);
     };
   }, []);
 
@@ -215,7 +221,7 @@ export default function ChatPage() {
     if (!destinoMensaje && isNearBottomRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [mensajes, destinoMensaje]);
+  }, [mensajes, destinoMensaje, pendientes.length, respuesta, grabando]);
 
   // Con la hoja del equipo abierta en móvil el fondo no scrollea.
   useEffect(() => {
@@ -244,7 +250,7 @@ export default function ChatPage() {
     }
   };
 
-  const subirAdjunto = useCallback(async (clave: string, tarea: Promise<ChatAdjunto>) => {
+  const subirAdjunto = async (clave: string, tarea: Promise<ChatAdjunto>) => {
     try {
       const adjunto = await tarea;
       setPendientes((prev) =>
@@ -255,7 +261,7 @@ export default function ChatPage() {
       setErrorAdjunto(mensaje);
       setPendientes((prev) => prev.map((p) => (p.id === clave ? { ...p, estado: "error" } : p)));
     }
-  }, []);
+  };
 
   const agregarArchivos = (archivos: ArchivoNuevo[]) => {
     setErrorAdjunto(null);
@@ -336,6 +342,7 @@ export default function ChatPage() {
 
   const enviarMensaje = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (grabando) return;
     const texto = cuerpo.trim();
     const listos = pendientes.filter((p) => p.estado === "listo" && p.adjunto).map((p) => p.adjunto as ChatAdjunto);
     if ((!texto && listos.length === 0) || !yo) return;
@@ -347,6 +354,8 @@ export default function ChatPage() {
     if (comando !== null) {
       if (comando === "") {
         setAvisoRIA("Escribe tu pregunta después de /ria.");
+      } else if (respuesta) {
+        setAvisoRIA("Quita la cita antes de enviar una consulta a RIA.");
       } else if (pendientes.length) {
         setAvisoRIA("Quita los adjuntos antes de enviar una consulta a RIA.");
       } else if ([...comando].length > LIMITE_COMANDO_RIA_PUBLICO) {
@@ -377,16 +386,20 @@ export default function ChatPage() {
       creado_en: new Date().toISOString(),
       autor: yo,
       adjuntos: listos,
+      respuesta_a_id: respuesta?.id,
+      cita: respuesta?.cita,
       enviando: true,
     };
 
     setMensajes((prev) => [...prev, optimista]);
     setCuerpo("");
     setPendientes([]);
+    setRespuesta(null);
+    isNearBottomRef.current = true;
     setErrorAdjunto(null);
 
     try {
-      const creado = await api.postChat(texto, listos.map((a) => a.id));
+      const creado = await api.postChat(texto, listos.map((a) => a.id), respuesta?.id);
       setMensajes((prev) =>
         [...prev.filter((m) => m.id !== tempID && m.id !== creado.id), creado].sort((a,b) => a.id-b.id),
       );
@@ -412,6 +425,9 @@ export default function ChatPage() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (esComposicionIME(e.nativeEvent) || comandos.teclado(e)) return;
+    if (e.key === "Escape" && respuesta && !ayudaComandos) {
+      e.preventDefault(); setRespuesta(null); setAvisoRIA(null); return;
+    }
     if (e.key === "Escape" && ayudaComandos) {
       e.preventDefault();
       setAyudaComandos(false);
@@ -423,12 +439,12 @@ export default function ChatPage() {
     }
   };
 
-  const reintentarEnvio = async (id: number, texto: string, adjuntos?: ChatAdjunto[]) => {
+  const reintentarEnvio = async (id: number, texto: string, adjuntos?: ChatAdjunto[], respuestaId?: number | null) => {
     setMensajes((prev) =>
       prev.map((m) => (m.id === id ? { ...m, enviando: true, error: false } : m)),
     );
     try {
-      const creado = await api.postChat(texto, (adjuntos ?? []).map((a) => a.id));
+      const creado = await api.postChat(texto, (adjuntos ?? []).map((a) => a.id), respuestaId);
       setMensajes((prev) =>
         [...prev.filter((m) => m.id !== id && m.id !== creado.id), creado].sort((a,b) => a.id-b.id),
       );
@@ -514,6 +530,31 @@ export default function ChatPage() {
     }
   };
 
+  const responder = (id: number, cita: CitaChat) => {
+    setRespuesta({ id, cita });
+    compositorRef.current?.querySelector("textarea")?.focus({ preventScroll: true });
+  };
+  const saltarACita = (id: number) => {
+    const original = document.getElementById(`mensaje-${id}`);
+    if (!original) return;
+    isNearBottomRef.current = false;
+    setResaltado(id);
+    original.scrollIntoView({ block: "center" });
+    original.focus({ preventScroll: true });
+    if (focoTimer.current) clearTimeout(focoTimer.current);
+    focoTimer.current = setTimeout(() => setResaltado(null), 1800);
+  };
+  const guardarConservacion = async (id: number, conservar: boolean) => {
+    try {
+      const adjunto = await api.conservarChatAdjunto(id, conservar);
+      setMensajes(prev => prev.map(m => m.adjuntos?.some(a => a.id === id)
+        ? { ...m, adjuntos: m.adjuntos.map(a => a.id === id ? adjunto : a) } : m));
+      mostrarAviso({ tipo: "exito", titulo: conservar ? "Archivo protegido de la purga" : "Protección retirada" });
+    } catch (err) {
+      mostrarAviso({ tipo: "error", titulo: err instanceof Error ? err.message : "No se pudo cambiar la protección." });
+    }
+  };
+
   const grupos = agruparMensajes(mensajes, yo?.id || "");
   const hayPendientes = pendientes.length > 0;
   const enviando = pendientes.some((p) => p.estado === "subiendo");
@@ -578,7 +619,6 @@ export default function ChatPage() {
                         {rol.nombre}
                       </span>
                     ))}
-                    <span className={styles.time}>{grupo.lineas[0]?.hora}</span>
                   </div>
 
                   <div className={styles.bubbles}>
@@ -593,12 +633,18 @@ export default function ChatPage() {
                       const puedeCopiar = esPersistido && Boolean(esRia ? linea.cuerpo.trim() : textoCopiar);
                       const puedeEditar = esPersistido && grupo.es_mio && !esRia;
                       const puedeEliminar = esPersistido && ((grupo.es_mio && !esRia) || Boolean(yo?.es_admin));
+                      const cita = citaVisible(linea);
+                      const citaId = linea.cita ? linea.respuesta_a_id : null;
+                      const conservar = esPersistido ? accionesConservacion(linea.adjuntos, yo) : [];
                       const estaEditando = editandoId === linea.id;
 
                       return (
                         <AccionesMensaje
                           key={`l-${linea.id}`}
                           propio={grupo.es_mio}
+                          burbuja
+                          onResponder={esPersistido ? () => responder(linea.id, { autor: esRia ? "RIA" : grupo.autor_nombre, extracto: esRia ? "Respuesta de RIA" : linea.cuerpo.trim() || "Mensaje con adjunto" }) : undefined}
+                          conservacion={conservar.map(accion => ({ ...accion, ejecutar: () => void guardarConservacion(accion.id, accion.conservar) }))}
                           resumen={textoCopiar || "Mensaje con adjunto"}
                           puedeCopiar={puedeCopiar}
                           puedeEditar={puedeEditar}
@@ -619,7 +665,8 @@ export default function ChatPage() {
                         >
                           <div
                             id={`mensaje-${linea.id}`}
-                            style={linea.id === destinoMensaje ? { outline: "2px solid var(--rc-azul-texto)" } : undefined}
+                            tabIndex={-1}
+                            data-rc-resaltado={linea.id === destinoMensaje || linea.id === resaltado || undefined}
                             className={`${styles.bubble} ${grupo.es_mio ? styles.bubbleMine : ""} ${
                               tieneAdjuntos ? styles.bubbleConAdjuntos : ""
                             } ${linea.enviando ? styles.bubbleSending : ""} ${linea.error ? styles.bubbleError : ""}`}
@@ -638,6 +685,11 @@ export default function ChatPage() {
                               />
                             ) : (
                               <>
+                                {cita && (citaId && mensajes.some(m => m.id === citaId) ? (
+                                  <button type="button" className={styles.cita} onClick={() => saltarACita(citaId)} aria-label={`Ir al mensaje citado de ${cita.autor}`}>
+                                    <strong>{cita.autor}</strong><span>{cita.extracto}</span>
+                                  </button>
+                                ) : <div className={styles.cita}><strong>{cita.autor}</strong><span>{cita.extracto}</span></div>)}
                                 {linea.cuerpo ? esRia ? (
                                   <RespuestaRIA texto={linea.cuerpo} grupo />
                                 ) : (
@@ -654,7 +706,10 @@ export default function ChatPage() {
                                     ))}
                                   </div>
                                 )}
-                                <MarcaEditado fecha={linea.editado_en} />
+                                <div className={styles.bubbleMeta}>
+                                  <MarcaEditado fecha={linea.editado_en} />
+                                  <time className={styles.time} dateTime={linea.creado_en}>{linea.hora}</time>
+                                </div>
                               </>
                             )}
 
@@ -664,7 +719,7 @@ export default function ChatPage() {
                                 <button
                                   type="button"
                                   className={styles.retryBtn}
-                                  onClick={() => reintentarEnvio(linea.id, linea.cuerpo, linea.adjuntos)}
+                                  onClick={() => reintentarEnvio(linea.id, linea.cuerpo, linea.adjuntos, linea.respuesta_a_id)}
                                 >
                                   Reintentar
                                 </button>
@@ -702,30 +757,6 @@ export default function ChatPage() {
                 setDeshacerId(null);
               }}
             />
-          )}
-
-          {hayPendientes && (
-            <div className={adjuntosStyles.pendientes}>
-              {pendientes.map((p) => (
-                <span
-                  key={p.id}
-                  className={`${adjuntosStyles.pendiente} ${p.estado === "error" ? adjuntosStyles.pendienteError : ""}`}
-                  title={p.nombre}
-                >
-                  <span className={adjuntosStyles.pendienteNombre}>{p.nombre}</span>
-                  {p.estado === "subiendo" && <span className={adjuntosStyles.pendienteEstado}>subiendo…</span>}
-                  {p.estado === "error" && <span className={adjuntosStyles.pendienteEstado}>error</span>}
-                  <button
-                    type="button"
-                    className={adjuntosStyles.pendienteQuitar}
-                    aria-label={`Quitar ${p.nombre}`}
-                    onClick={() => { setPendientes((prev) => prev.filter((x) => x.id !== p.id)); setAvisoRIA(null); }}
-                  >
-                    <X size={12} strokeWidth={2} />
-                  </button>
-                </span>
-              ))}
-            </div>
           )}
 
           {errorAdjunto && (
@@ -766,7 +797,7 @@ export default function ChatPage() {
             </div>
             <ul>{comandosEquipo.map(c => <li key={c.nombre}><code>{c.ejemplo}</code><span>{c.descripcion}</span></li>)}</ul>
           </section>}
-          <form className={styles.composer} data-rc-compositor onSubmit={enviarMensaje}>
+          <form ref={compositorRef} className={styles.composer} data-rc-compositor onSubmit={enviarMensaje}>
              {comandos.menu}
             <MenuAdjuntos
               onArchivos={agregarArchivos}
@@ -775,33 +806,66 @@ export default function ChatPage() {
               esAdmin={Boolean(yo?.es_admin)}
               deshabilitado={comandoRIA !== null}
             />
-            <div className={styles.composerCaja}>
-              <EntradaComandos
-                className={styles.textarea}
-                rows={1}
-                placeholder="Escribe al equipo..."
-                aria-label="Escribe al equipo"
-                title="Enter para enviar, Shift+Enter para salto de línea"
-                texto={cuerpo} rutas={rutasMenu} glass={glass} autoAltura {...comandos.propsEntrada}
-                 onFocus={() => { equipo.propsEntrada.onFocus(); secciones.propsEntrada.onFocus(); }}
-                 onBlur={() => { equipo.propsEntrada.onBlur(); secciones.propsEntrada.onBlur(); }}
-                 onCompositionStart={() => { equipo.propsEntrada.onCompositionStart(); secciones.propsEntrada.onCompositionStart(); }}
-                 onCompositionEnd={() => { equipo.propsEntrada.onCompositionEnd(); secciones.propsEntrada.onCompositionEnd(); }}
-                aria-describedby={avisoRIA || comandoRIA !== null ? "ayuda-ria-publica" : undefined}
-                onChange={e => { setCuerpo(e.currentTarget.value); setAvisoRIA(null); equipo.editar(); secciones.editar(); }}
-                onKeyDown={handleKeyDown}
-              />
+            <div className={styles.composerColumna}>
+              {respuesta && <div className={styles.citaBorrador} data-rc-cita-borrador>
+                <Reply size={16} aria-hidden="true" />
+                <div className={styles.cita}><strong>Respondiendo a {respuesta.cita.autor}</strong><span>{respuesta.cita.extracto}</span></div>
+                <button type="button" aria-label="Quitar cita" onClick={() => { setRespuesta(null); setAvisoRIA(null); }}><X size={15} /></button>
+              </div>}
+              {hayPendientes && (
+                <div className={adjuntosStyles.pendientes} data-rc-chips-chat>
+                  {pendientes.map((p) => (
+                    <span
+                      key={p.id}
+                      className={`${adjuntosStyles.pendiente} ${p.estado === "error" ? adjuntosStyles.pendienteError : ""}`}
+                      title={p.nombre}
+                    >
+                      <span className={adjuntosStyles.pendienteNombre}>{p.nombre}</span>
+                      {p.estado === "subiendo" && <span className={adjuntosStyles.pendienteEstado}>subiendo…</span>}
+                      {p.estado === "error" && <span className={adjuntosStyles.pendienteEstado}>error</span>}
+                      <button
+                        type="button"
+                        className={adjuntosStyles.pendienteQuitar}
+                        aria-label={`Quitar ${p.nombre}`}
+                        onClick={() => { setPendientes((prev) => prev.filter((x) => x.id !== p.id)); setAvisoRIA(null); }}
+                      >
+                        <X size={12} strokeWidth={2} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className={styles.composerCaja}>
+                <EntradaComandos
+                  className={styles.textarea}
+                  rows={1}
+                  placeholder="Escribe al equipo..."
+                  aria-label="Escribe al equipo"
+                  title="Enter para enviar, Shift+Enter para salto de línea"
+                  texto={cuerpo} rutas={rutasMenu} glass={glass} autoAltura {...comandos.propsEntrada}
+                   onFocus={() => { equipo.propsEntrada.onFocus(); secciones.propsEntrada.onFocus(); }}
+                   onBlur={() => { equipo.propsEntrada.onBlur(); secciones.propsEntrada.onBlur(); }}
+                   onCompositionStart={() => { equipo.propsEntrada.onCompositionStart(); secciones.propsEntrada.onCompositionStart(); }}
+                   onCompositionEnd={() => { equipo.propsEntrada.onCompositionEnd(); secciones.propsEntrada.onCompositionEnd(); }}
+                  aria-describedby={avisoRIA || comandoRIA !== null ? "ayuda-ria-publica" : undefined}
+                  onChange={e => { setCuerpo(e.currentTarget.value); setAvisoRIA(null); equipo.editar(); secciones.editar(); }}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
             </div>
-            <GrabadorAudio
+            <div className={styles.composerMic}>
+              <GrabadorAudio
               onGrabado={(archivo, duracion) => agregarArchivos([{ archivo, duracionSeg: duracion }])}
               onError={(m) => setErrorAdjunto(m)}
               deshabilitado={enviando || comandoRIA !== null}
-            />
+                onGrabando={setGrabando}
+              />
+            </div>
             <div className="rc-escena-vidrio">
               <span className="rc-mancha rc-mancha--azul" aria-hidden="true" />
               <button
                 type="submit"
-                disabled={!yo || (comandoRIA === null ? (!cuerpo.trim() && !pendientes.some((p) => p.estado === "listo")) || enviando : riaActiva)}
+                disabled={!yo || grabando || (comandoRIA === null ? (!cuerpo.trim() && !pendientes.some((p) => p.estado === "listo")) || enviando : riaActiva)}
                 className="rc-btn-enviar rc-vidrio rc-vidrio--azul"
                 data-rc-compositor-boton
                 aria-label="Enviar mensaje"

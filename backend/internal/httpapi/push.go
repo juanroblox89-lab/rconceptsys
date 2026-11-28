@@ -244,7 +244,7 @@ func (a *API) AvisarTareaNueva(ctx context.Context, tarea *store.Tarea) {
 func (a *API) avisarTareaNueva(ctx context.Context, tarea *store.Tarea, clave string) {
 	a.avisar(ctx, tarea.AsignadoA, AvisoPush{
 		Titulo:   "Tarea nueva " + FechaEntrega(tarea.FechaLimite, time.Now()),
-		Cuerpo:   datosAvisoTarea(tarea),
+		Cuerpo:   cuerpoAvisoConGuion(datosAvisoTarea(tarea), tarea),
 		URL:      urlTarea(tarea.ID),
 		Etiqueta: "tarea-nueva",
 	}, clave)

@@ -138,6 +138,7 @@ func (a *API) Routes() http.Handler {
 	// F5: adjuntos del chat (imágenes, video, archivos y audios)
 	mux.HandleFunc("POST /api/chat/adjuntos", a.MiddlewareAuth(a.handlePostChatAdjunto, true, false))
 	mux.HandleFunc("GET /api/chat/adjuntos/{id}/archivo", a.MiddlewareAuth(a.handleGetChatAdjuntoArchivo, true, false))
+	mux.HandleFunc("PATCH /api/chat/adjuntos/{id}/conservar", a.MiddlewareAuth(a.handleConservarChat, true, false))
 
 	// F5: Recientes y página de Asignaciones (solo admin)
 	mux.HandleFunc("GET /api/admin/asignaciones", a.MiddlewareAuth(a.handleAdminGetAsignaciones, true, true))
@@ -197,6 +198,7 @@ func (a *API) Routes() http.Handler {
 	// F10: adjuntos privados de asignaciones.
 	mux.HandleFunc("GET /api/tareas/{id}/detalle", a.MiddlewareAuth(a.handleDetalleAsignacion, true, false))
 	mux.HandleFunc("GET /api/tareas/{id}/adjuntos", a.MiddlewareAuth(a.handleListarAdjuntos, true, false))
+	mux.HandleFunc("PATCH /api/tareas/{id}/adjuntos/{adjunto}/conservar", a.MiddlewareAuth(a.handleConservarAsignacion, true, false))
 	mux.HandleFunc("GET /api/tareas/{id}/adjuntos/{adjunto}/firma", a.MiddlewareAuth(a.handleFirmarAdjunto, true, false))
 	mux.HandleFunc("GET /api/tareas/{id}/adjuntos/{adjunto}/medio", a.MiddlewareAuth(a.handleMedioDemoAdjunto, true, false))
 	mux.HandleFunc("POST /api/tareas/{id}/adjuntos/{adjunto}/reintentar", a.MiddlewareAuth(a.handleReintentarResumenAdjunto, true, false))
@@ -650,8 +652,9 @@ func (a *API) handlePostChat(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*32) // 32KB
 	var req struct {
-		Cuerpo   string  `json:"cuerpo"`
-		Adjuntos []int64 `json:"adjuntos"`
+		Cuerpo    string  `json:"cuerpo"`
+		Adjuntos  []int64 `json:"adjuntos"`
+		Respuesta *int64  `json:"respuesta_a_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ResponderError(w, http.StatusBadRequest, "cuerpo_invalido", "El formato del mensaje no es válido.")
@@ -673,17 +676,14 @@ func (a *API) handlePostChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg, err := a.Store.CrearMensajeChat(r.Context(), yo.ID, c)
+	msg, err := a.Store.EnviarChat(r.Context(), yo.ID, c, req.Respuesta, req.Adjuntos)
+	if err == store.ErrValidation {
+		ResponderError(w, http.StatusBadRequest, "mensaje_invalido", "La cita o alguno de los adjuntos ya no está disponible.")
+		return
+	}
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_crear_mensaje", "No se pudo enviar el mensaje al chat.")
 		return
-	}
-
-	if len(req.Adjuntos) > 0 {
-		adjuntos, errAdj := a.Store.EnlazarAdjuntosMensaje(r.Context(), msg.ID, yo.ID, req.Adjuntos)
-		if errAdj == nil {
-			msg.Adjuntos = adjuntos
-		}
 	}
 
 	a.avisarChat(r.Context(), yo, msg)
@@ -1488,7 +1488,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 1024*32)
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytesDatosTarea)
 	var req struct {
 		TipoID           int             `json:"tipo_id"`
 		ClienteID        *int            `json:"cliente_id"`
@@ -1496,6 +1496,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		AsignadoA        string          `json:"asignado_a"`
 		Titulo           string          `json:"titulo"`
 		Descripcion      *string         `json:"descripcion"`
+		Guion            string          `json:"guion"`
 		FechaLimite      *string         `json:"fecha_limite"`
 		Forzar           bool            `json:"forzar"`
 		DriveCarpetaID   string          `json:"drive_carpeta_id"`
@@ -1519,6 +1520,11 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 
 	if req.Descripcion != nil && len(*req.Descripcion) > 1000 {
 		ResponderError(w, http.StatusBadRequest, "descripcion_larga", "La descripción no puede superar los 1000 caracteres.")
+		return
+	}
+
+	guion, ok := validarGuion(w, req.Guion)
+	if !ok {
 		return
 	}
 
@@ -1635,6 +1641,7 @@ func (a *API) handleAdminPostTarea(w http.ResponseWriter, r *http.Request) {
 		PiezaID:          req.PiezaID,
 		Titulo:           titulo,
 		Descripcion:      req.Descripcion,
+		Guion:            guion,
 		AsignadoA:        asignado.ID,
 		CreadoPor:        admin.ID,
 		FechaLimite:      req.FechaLimite,

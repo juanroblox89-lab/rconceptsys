@@ -1,3 +1,40 @@
+# Informe · Chat del equipo y retención segura de 15 días
+
+**Implementado y verificado en local** sobre `desde-cero` (HEAD `a95f506`). Cambios sin commit, push ni despliegue. El informe previo sigue debajo.
+
+| Parte | Resultado |
+|---|---|
+| [Chat y compositor](<app/(app)/page.tsx>) · [estilos](<app/(app)/chat.module.css>) | Chip en la columna del campo, burbujas agrupadas con hora propia, citas con extracto y salto al original visible. |
+| [Acciones](components/chat/AccionesMensaje.tsx) · [reproductor](components/chat/ReproductorAudio.tsx) · [grabadora](components/chat/GrabadorAudio.tsx) | Flecha al hover o foco, pulsación táctil de 410 ms; responder, copiar, editar, conservar y eliminar según permisos. Graba o adjunta notas de voz; play/pausa, onda con clic y arrastre, teclado y tiempo real. |
+| [API](backend/internal/httpapi/chat_whatsapp.go) · [Storage](backend/internal/supa/chat_whatsapp.go) | Envío de chat atómico. El cron autenticado reclama elegibles, borra el binario primero y registra `purgado_en` y conteos tras verificar la ausencia del objeto. Protegidos, Drive y trabajos abiertos, en revisión o devueltos no se purgan. |
+| [Migración](supabase/migrations/030_chat_whatsapp_y_retencion.sql) · [orden](supabase/ORDEN.md) · [operación](docs/RETENCION-STORAGE-15D.md) | `030` en vez de `027`: 027 ya corresponde a Pedido de nuevo y 029 estaba reservada. La migración mantiene texto, historial, referencias, transcripciones y resúmenes. No se aplicó a producción. |
+| [Arquitectura](docs/arquitectura/flujos.json) · [mapa generado](docs/arquitectura/mapa.html) | Actualizado con ambos flujos; 127 endpoints validados por el generador. |
+
+### Verificación
+
+- `npm run mapa`, `npm run typecheck`, `npm run lint` y `npm test`: OK, 39 pruebas TS. `go vet ./...` y `go test -count=1 ./...`: OK en los paquetes Go.
+- [Prueba SQL](scripts/qa-retencion-sql.mjs): dos aplicaciones consecutivas en PostgreSQL embebido con esquema reducido. Confirma elegibilidad, permisos, rechazo antes de eliminar el objeto, conservación de resumen/transcripción y bloqueo de reapertura durante la purga. [Pruebas Go de Storage](backend/internal/supa/retencion_test.go): DELETE antes de marcar, fallo sin marca, alcance de la ruta.
+- [12 capturas](<_qa-chat-whatsapp/INDICE.md>) · [mediciones](<_qa-chat-whatsapp/resultados.json>): Edge headless, 375×812 y 1280×800, claro, oscuro y Glass. Sin desborde horizontal; onda, reproductor, citas, conservación y grabación sintética comprobados. Next aislado y oculto; PID final `18164` cerrado, puerto `3397` liberado. No se usaron secretos, Drive real ni datos de producción.
+
+### Antes de activar la purga con archivos reales
+
+Validar el cron, las firmas y el DELETE en un Supabase aislado antes de publicar. El primer cron autorizado sobre un histórico real puede purgar archivos elegibles de inmediato: revisar candidatos y **marcar lo que se deba conservar antes de activarlo**. Si Storage o la confirmación fallan, el reclamo queda reintentable después de 5 minutos; la tarea no se reabre mientras exista ese reclamo. No se verificaron micrófono físico, Safari ni el límite de subida del hosting remoto.
+
+---
+
+# Informe · Guion opcional al asignar un trabajo
+
+**Listo para revisión de Elías.** Cambios locales en `desde-cero`, sin commit, push ni despliegue.
+
+- **Asignación:** debajo de Especificaciones se puede añadir un guion por separado. El textarea crece al escribir, admite pegar texto sin truncarlo y valida hasta 20.000 caracteres. Se puede editar o borrar en trabajos pendientes o devueltos.
+- **Lectura:** trabajador y admin pueden leer una vista previa, ver el guion completo y copiarlo conservando los saltos de línea. **Pedir de nuevo** conserva el guion; facturas, CSV y PDF no lo incluyen.
+- **Avisos:** el push y el aviso manual de WhatsApp solo indican «Incluye guion». RIA privada recibe un extracto breve según los permisos existentes; RIA grupal no recibe guiones.
+- **Verificación:** mapa, tipos, lint, 35 pruebas de frontend, `go vet` y pruebas Go en verde. [24 capturas](<_qa-guion/INDICE.md>) en 375×812 y 1280×800, en claro, oscuro y Glass, revisadas por un subagente y sin desborde horizontal. Edge solo headless y servidor oculto; puerto de QA cerrado.
+
+**Siguiente paso:** validar en una base aislada la [migración 029](supabase/migrations/029_guion_tarea.sql), después de 028 y antes de publicar el backend. Quedó en el portapapeles; no se ejecutó SQL. El [reporte técnico](HARNESS-REPORTE.md) incluye archivos, auditoría, verificación y estado para retomar.
+
+---
+
 # Informe · Pulido integral QA en vivo (26 nov)
 
 **Rama `desde-cero` · cambios locales, sin commit ni push.**

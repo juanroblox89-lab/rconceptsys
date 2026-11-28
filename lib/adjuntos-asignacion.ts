@@ -10,7 +10,7 @@ export type BorradorResumenAplicar = {
 };
 export type AdjuntoAsignacion = {
   id: string; nombre: string; tipo: TipoAdjunto; mime: string; tamano: number; duracion_ms?: number | null;
-  resumir: boolean; estado_resumen: EstadoResumen;
+  resumir: boolean; estado_resumen: EstadoResumen; conservar?: boolean; purgado_en?: string | null;
   resumen?: string[]; transcripcion?: string; error_resumen?: string;
 };
 export type AdjuntoLocal = {
@@ -153,6 +153,7 @@ export const adjuntos = {
     const qs = q.toString();
     return fetchApi<AdjuntoAsignacion[]>(`${base(id)}${qs ? `?${qs}` : ""}`, { cache: "no-store" });
   },
+  conservar: (id: number, a: string, conservar: boolean) => fetchApi<AdjuntoAsignacion>(`${base(id)}/${a}/conservar`, json("PATCH", { conservar })),
   firma: (id: number, a: string, descarga = false) => fetchApi<{ url: string; expira_en: number }>(`${base(id)}/${a}/firma${descarga ? "?descargar=1" : ""}`, { cache: "no-store" }),
   reintentar: (id: number, a: string) => fetchApi<AdjuntoAsignacion>(`${base(id)}/${a}/reintentar`, { method: "POST" }),
   procesarResumen: (id: number, a: string) => fetchApi<AdjuntoAsignacion>(`${base(id)}/${a}/procesar-resumen`, { method: "POST" }),

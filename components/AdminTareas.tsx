@@ -24,6 +24,7 @@ import {
 import { type DialogoPicker, traducirErrorGooglePicker } from "@/lib/google-picker";
 import { abrirSelectorGoogleDrive, resolverReferenciaDriveSeleccionada } from "@/components/PickerDriveCliente";
 import { EditorAdjuntos } from "@/components/AdjuntosAsignacion";
+import { GuionTrabajo } from "@/components/GuionTrabajo";
 import { useCambiosSinGuardar } from "@/components/CambiosSinGuardar";
 import { subirAdjunto, type AdjuntoLocal } from "@/lib/adjuntos-asignacion";
 import { elementosEntregaDrive } from "@/lib/referencias-trabajo";
@@ -459,6 +460,7 @@ export function AdminTareas({ embedded = false }: AdminTareasProps) {
                           {t.descripcion}
                         </div>
                       )}
+                      <GuionTrabajo guion={t.guion} />
 
                       {t.tipo?.unidad === "minuto" && (
                         <div style={{ fontSize: 12, color: "var(--rc-azul-texto)", fontWeight: 600 }}>

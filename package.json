@@ -8,7 +8,7 @@
     "start": "next start -p 3300",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npx tsx --test --test-concurrency=1 lib/__tests__/chat-utils.test.ts lib/__tests__/drive-enlaces.test.ts lib/__tests__/adjuntos-resumen.test.ts lib/__tests__/ria-publica.test.ts lib/__tests__/ajustes-juan.test.ts lib/__tests__/respuesta-ria.test.tsx",
+    "test": "npx tsx --test --test-concurrency=1 lib/__tests__/chat-utils.test.ts lib/__tests__/chat-whatsapp.test.ts lib/__tests__/drive-enlaces.test.ts lib/__tests__/adjuntos-resumen.test.ts lib/__tests__/ria-publica.test.ts lib/__tests__/ajustes-juan.test.ts lib/__tests__/respuesta-ria.test.tsx lib/__tests__/guion-trabajo.test.ts",
     "mapa": "node scripts/generar-mapa.mjs"
   },
   "dependencies": {

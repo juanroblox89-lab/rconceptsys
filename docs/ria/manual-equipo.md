@@ -2,7 +2,7 @@
 
 ## Recibir y entregar trabajo
 
-- `/tareas`: los avisos de asignación o cambios resaltan la tarea exacta. La tarjeta muestra el cliente, la fecha de entrega relativa y absoluta, el tipo y la descripción. El texto de fecha aparece en naranjado si el trabajo vence hoy o ya venció.
+- `/tareas`: los avisos de asignación o cambios resaltan la tarea exacta. La tarjeta muestra el cliente, la fecha de entrega relativa y absoluta, el tipo y las especificaciones. Si incluye **Guion**, usa **Ver completo** para leerlo y **Copiar guion** para copiar el texto con sus saltos de línea. El texto de fecha aparece en naranjado si el trabajo vence hoy o ya venció.
 - Abre la carpeta de Drive del trabajo desde la tarjeta cuando exista. Usa **Entregar** para enviar el trabajo a revisión eligiendo entre **Entrega por Drive** (hasta cuatro carpetas o archivos sin duplicados desde Google Picker, carpeta del trabajo o enlace manual, sin editar el Drive del equipo) o **Entrega por WhatsApp** (donde puedes abrir el WhatsApp de quien te asignó ese trabajo si tiene número válido configurado), más una nota opcional. Si el tipo se cobra por minuto, indica los minutos reales.
 - En **Por revisar**, puedes usar **Cambiar** antes de que un administrador la acepte o rechace para retirarla de revisión de forma atómica, modificar método, selección o nota y volver a enviar.
 - Si te piden cambios, la tarjeta en **Por corregir** y **Corregir** muestran el motivo, el historial completo (con fecha y hora) y los adjuntos del rechazo (audio con resumen IA opcional, imágenes, video o elementos de Drive). Al pulsar **Volver a entregar**, confirma que ya realizaste los cambios pedidos.

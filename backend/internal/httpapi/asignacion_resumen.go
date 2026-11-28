@@ -857,6 +857,11 @@ func (a *API) handleCronAdjuntos(w http.ResponseWriter, r *http.Request) {
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(108 * time.Second))
 	ctx, fin := context.WithTimeout(r.Context(), 101*time.Second)
 	defer fin()
+	// El resumen puede tardar: se reserva primero una ventana breve para la retención.
+	purga, cancelarPurga := context.WithTimeout(ctx, 12*time.Second)
+	conteo, errPurga := a.Store.PurgarRetencion(purga)
+	cancelarPurga()
+	log.Printf("[adjuntos] retencion chat=%d asignaciones=%d error=%t", conteo.Chat, conteo.Asignaciones, errPurga != nil)
 	if e := a.procesarResumenPendiente(ctx, audioDesdeEntorno()); e != nil {
 		log.Print("[adjuntos] no se pudo procesar la cola")
 		errorAdjunto(w)
@@ -868,6 +873,10 @@ func (a *API) handleCronAdjuntos(w http.ResponseWriter, r *http.Request) {
 			log.Print("[adjuntos] quedaron cargas pendientes de limpiar")
 		}
 		cancel()
+	}
+	if errPurga != nil {
+		errorAdjunto(w)
+		return
 	}
 	w.WriteHeader(204)
 }

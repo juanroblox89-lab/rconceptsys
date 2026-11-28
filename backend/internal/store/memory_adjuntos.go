@@ -172,7 +172,7 @@ func (m *MemoryStore) ReclamarResumenAdjunto(_ context.Context, intento string) 
 		if a.EstadoResumen == "procesando" && a.ResumenHasta != nil && a.ResumenHasta.After(ahora) {
 			return nil, ErrNotFound
 		}
-		if a.EstadoArchivo != "listo" || !a.Resumir || (a.EstadoResumen != "pendiente" && a.EstadoResumen != "procesando") {
+		if a.EstadoArchivo != "listo" || a.PurgadoEn != nil || !a.Resumir || (a.EstadoResumen != "pendiente" && a.EstadoResumen != "procesando") {
 			continue
 		}
 		if elegido == nil || a.ActualizadoEn.Before(elegido.ActualizadoEn) {
@@ -191,7 +191,7 @@ func (m *MemoryStore) ReclamarResumenAdjuntoPorID(_ context.Context, tarea int64
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a := m.adjuntosAsignacion[id]
-	if a == nil || a.TareaID != tarea || a.EstadoArchivo != "listo" {
+	if a == nil || a.TareaID != tarea || a.EstadoArchivo != "listo" || a.PurgadoEn != nil {
 		return nil, false, ErrNotFound
 	}
 	ahora := time.Now().UTC()

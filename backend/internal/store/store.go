@@ -47,15 +47,22 @@ type Perfil struct {
 }
 
 type ChatMensaje struct {
-	EsRIA     bool           `json:"es_ria,omitempty"`
-	ID        int64          `json:"id"`
-	AutorID   string         `json:"autor_id"`
-	Autor     *Perfil        `json:"autor,omitempty"`
-	Cuerpo    string         `json:"cuerpo"`
-	CreadoEn  time.Time      `json:"creado_en"`
-	EditadoEn *time.Time     `json:"editado_en,omitempty"`
-	BorradoEn *time.Time     `json:"borrado_en,omitempty"`
-	Adjuntos  []*ChatAdjunto `json:"adjuntos,omitempty"`
+	EsRIA        bool           `json:"es_ria,omitempty"`
+	ID           int64          `json:"id"`
+	AutorID      string         `json:"autor_id"`
+	Autor        *Perfil        `json:"autor,omitempty"`
+	Cuerpo       string         `json:"cuerpo"`
+	CreadoEn     time.Time      `json:"creado_en"`
+	EditadoEn    *time.Time     `json:"editado_en,omitempty"`
+	BorradoEn    *time.Time     `json:"borrado_en,omitempty"`
+	Adjuntos     []*ChatAdjunto `json:"adjuntos,omitempty"`
+	RespuestaAID *int64         `json:"respuesta_a_id,omitempty"`
+	Cita         *CitaChat      `json:"cita,omitempty"`
+}
+
+type CitaChat struct {
+	Autor    string `json:"autor"`
+	Extracto string `json:"extracto"`
 }
 
 type FiltroMiembros struct {
@@ -167,17 +174,19 @@ type EntregaTarea struct {
 }
 
 type VistaAdjuntoTarea struct {
-	ID            string   `json:"id"`
-	Tipo          string   `json:"tipo"`
-	Nombre        string   `json:"nombre"`
-	Tamano        int      `json:"tamano"`
-	Mime          string   `json:"mime"`
-	DuracionMS    *int     `json:"duracion_ms,omitempty"`
-	Resumir       bool     `json:"resumir"`
-	EstadoResumen string   `json:"estado_resumen"`
-	Resumen       []string `json:"resumen,omitempty"`
-	Transcripcion *string  `json:"transcripcion,omitempty"`
-	ErrorResumen  *string  `json:"error_resumen,omitempty"`
+	Conservar     bool       `json:"conservar"`
+	PurgadoEn     *time.Time `json:"purgado_en,omitempty"`
+	ID            string     `json:"id"`
+	Tipo          string     `json:"tipo"`
+	Nombre        string     `json:"nombre"`
+	Tamano        int        `json:"tamano"`
+	Mime          string     `json:"mime"`
+	DuracionMS    *int       `json:"duracion_ms,omitempty"`
+	Resumir       bool       `json:"resumir"`
+	EstadoResumen string     `json:"estado_resumen"`
+	Resumen       []string   `json:"resumen,omitempty"`
+	Transcripcion *string    `json:"transcripcion,omitempty"`
+	ErrorResumen  *string    `json:"error_resumen,omitempty"`
 }
 
 type RechazoEvento struct {
@@ -213,6 +222,8 @@ type ResultadoReversionEntrega struct {
 	HechaEnAnterior *time.Time
 }
 
+const MaxCaracteresGuion = 20_000
+
 type Tarea struct {
 	DriveReferencias        []ReferenciaDriveTrabajo `json:"drive_referencias"`
 	ID                      int64                    `json:"id"`
@@ -224,6 +235,7 @@ type Tarea struct {
 	Pieza                   *PiezaCorta              `json:"pieza,omitempty"`
 	Titulo                  string                   `json:"titulo"`
 	Descripcion             *string                  `json:"descripcion,omitempty"`
+	Guion                   string                   `json:"guion,omitempty"`
 	AsignadoA               string                   `json:"asignado_a"`
 	Asignado                *Perfil                  `json:"asignado,omitempty"`
 	CreadoPor               string                   `json:"creado_por"`
@@ -421,6 +433,7 @@ type Store interface {
 	StoreCelular
 	StoreDriveOAuth
 	StoreAdjuntosAsignacion
+	StoreRetencion
 	ActualizarTarea(ctx context.Context, id int64, campos map[string]any) (*Tarea, error)
 
 	// Perfiles & Auth
@@ -437,6 +450,7 @@ type Store interface {
 	// Chat
 	ListarMensajesChat(ctx context.Context, antesID int64, despuesID int64, limite int) ([]*ChatMensaje, error)
 	CrearMensajeChat(ctx context.Context, autorID string, cuerpo string) (*ChatMensaje, error)
+	EnviarChat(ctx context.Context, autorID, cuerpo string, respuesta *int64, adjuntos []int64) (*ChatMensaje, error)
 	ObtenerMensajeChatPorID(ctx context.Context, id int64, incluirBorrado bool) (*ChatMensaje, error)
 	EditarMensajeChat(ctx context.Context, id int64, autorID string, cuerpo string) (*ChatMensaje, error)
 	EliminarMensajeChat(ctx context.Context, id int64, actorID string, esAdmin bool) error

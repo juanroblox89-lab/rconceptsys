@@ -80,21 +80,23 @@ func (a *API) handleDetalleAsignacion(w http.ResponseWriter, r *http.Request) {
 }
 
 type vistaAdjunto struct {
-	ID            string   `json:"id"`
-	Tipo          string   `json:"tipo"`
-	Nombre        string   `json:"nombre"`
-	Tamano        int      `json:"tamano"`
-	Mime          string   `json:"mime"`
-	DuracionMS    *int     `json:"duracion_ms"`
-	Resumir       bool     `json:"resumir"`
-	EstadoResumen string   `json:"estado_resumen"`
-	Resumen       []string `json:"resumen,omitempty"`
-	Transcripcion *string  `json:"transcripcion,omitempty"`
-	ErrorResumen  *string  `json:"error_resumen,omitempty"`
+	ID            string     `json:"id"`
+	Tipo          string     `json:"tipo"`
+	Nombre        string     `json:"nombre"`
+	Tamano        int        `json:"tamano"`
+	Mime          string     `json:"mime"`
+	DuracionMS    *int       `json:"duracion_ms"`
+	Resumir       bool       `json:"resumir"`
+	EstadoResumen string     `json:"estado_resumen"`
+	Resumen       []string   `json:"resumen,omitempty"`
+	Transcripcion *string    `json:"transcripcion,omitempty"`
+	ErrorResumen  *string    `json:"error_resumen,omitempty"`
+	Conservar     bool       `json:"conservar"`
+	PurgadoEn     *time.Time `json:"purgado_en,omitempty"`
 }
 
 func vistaDeAdjunto(v *store.AdjuntoAsignacion) vistaAdjunto {
-	return vistaAdjunto{v.ID, v.Tipo, v.Nombre, v.Tamano, v.Mime, v.DuracionMS, v.Resumir, v.EstadoResumen, v.Resumen, v.Transcripcion, v.ErrorResumen}
+	return vistaAdjunto{v.ID, v.Tipo, v.Nombre, v.Tamano, v.Mime, v.DuracionMS, v.Resumir, v.EstadoResumen, v.Resumen, v.Transcripcion, v.ErrorResumen, v.Conservar, v.PurgadoEn}
 }
 
 func errorAdjunto(w http.ResponseWriter) {
@@ -155,6 +157,10 @@ func (a *API) adjuntoDeRuta(w http.ResponseWriter, r *http.Request, editar, solo
 	}
 	if e != nil {
 		errorAdjunto(w)
+		return nil
+	}
+	if v.PurgadoEn != nil {
+		responderArchivoPurgado(w)
 		return nil
 	}
 	return v

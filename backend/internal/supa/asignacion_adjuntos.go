@@ -121,6 +121,8 @@ func (s *SupabaseStore) ReclamarResumenAdjuntoPorID(ctx context.Context, tarea i
 	q.Set("estado_archivo", "eq.listo")
 	q.Set("resumir", "eq.true")
 	q.Set("estado_resumen", "eq.pendiente")
+	q.Set("purgado_en", "is.null")
+	q.Set("purga_intento", "is.null")
 	var filas []*store.AdjuntoAsignacion
 	if err := s.client.REST(ctx, http.MethodPatch, tablaAdjuntos, q, campos, "return=representation", &filas); err != nil {
 		return nil, false, err
@@ -132,7 +134,7 @@ func (s *SupabaseStore) ReclamarResumenAdjuntoPorID(ctx context.Context, tarea i
 	if err != nil {
 		return nil, false, err
 	}
-	if actual.EstadoArchivo != "listo" {
+	if actual.EstadoArchivo != "listo" || actual.PurgadoEn != nil {
 		return nil, false, store.ErrNotFound
 	}
 	if actual.Resumir && actual.EstadoResumen == "procesando" && (actual.ResumenHasta == nil || !actual.ResumenHasta.After(ahora)) && actual.ResumenIntento != nil {
@@ -140,6 +142,8 @@ func (s *SupabaseStore) ReclamarResumenAdjuntoPorID(ctx context.Context, tarea i
 		qExp.Set("estado_archivo", "eq.listo")
 		qExp.Set("resumir", "eq.true")
 		qExp.Set("estado_resumen", "eq.procesando")
+		qExp.Set("purgado_en", "is.null")
+		qExp.Set("purga_intento", "is.null")
 		qExp.Set("resumen_intento", "eq."+*actual.ResumenIntento)
 		var filasExp []*store.AdjuntoAsignacion
 		if err := s.client.REST(ctx, http.MethodPatch, tablaAdjuntos, qExp, campos, "return=representation", &filasExp); err != nil {

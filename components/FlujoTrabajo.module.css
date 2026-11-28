@@ -27,6 +27,16 @@
 .panel h2 { font-size: var(--rc-fs-titulo-seccion); }
 .accionesFormulario { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .form textarea::placeholder { color: var(--rc-texto-secundario); opacity: 1; }
+.guionEditor { display: grid; gap: var(--rc-esp-8); justify-items: start; min-width: 0; }
+.guionEditor > div { min-width: 0; width: 100%; }
+.form textarea.guionCampo { field-sizing: content; min-height: 150px; height: auto; max-height: min(60dvh, 34rem); font-size: 16px; resize: none; }
+.guionContador { margin: var(--rc-esp-4) 0 0; text-align: end; color: var(--rc-texto-secundario); font-size: var(--rc-fs-secundario); font-variant-numeric: tabular-nums; }
+.guionBloque { display: grid; gap: var(--rc-esp-6); min-width: 0; padding: var(--rc-esp-10); border-radius: var(--rc-radio-md); background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm); }
+.guionTexto { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--rc-texto); font-size: var(--rc-fs-cuerpo); line-height: 1.5; }
+.guionAcciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rc-esp-6) var(--rc-esp-8); }
+.guionEstado { color: var(--rc-texto-secundario); font-size: var(--rc-fs-secundario); }
+:global([data-rc-shell]) .guionAccion:global(.rc-btn--sm) { min-height: 40px; }
+.whatsappAsignacion { display: flex; flex-wrap: wrap; gap: var(--rc-esp-8); align-items: center; }
 .datosTrabajo { margin: 0; display: grid; gap: 12px; }
 .datosTrabajo dt { font-weight: 600; }
 .datosTrabajo dd { margin: 0; color: var(--rc-texto-secundario); }

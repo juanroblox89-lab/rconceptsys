@@ -221,10 +221,13 @@ Todos requieren `es_admin: true`. Cualquier usuario no administrador recibe `403
     "asignado_a": "uuid-perfil-editor",
     "titulo": "Edición video canal principal",
     "descripcion": "Incluir intro y música aprobada",
+    "guion": "Escena 1: plano general.\nLocución: Bienvenidos.",
     "fecha_limite": "2026-10-31",
     "forzar": false
   }
   ```
+- **Guion:** texto plano opcional, separado de `descripcion`. Se recorta el espacio exterior y se conservan los saltos internos. No puede superar los 20.000 puntos de código Unicode (`400`, `guion_largo`). Se omite de las respuestas si está vacío y nunca se incluye en una factura.
+- `PATCH /api/admin/tareas/{id}` acepta `guion` para trabajos pendientes o devueltos. Omitirlo conserva el valor y enviar `""` lo limpia. `POST /api/admin/tareas/{id}/pedir-de-nuevo` conserva el guion al reabrir la misma fila.
 - **Validación de Rol y Forzado:**
   - Si el trabajo tiene un `rol_id` y la persona asignada **no** cuenta con ese rol:
     - Con `forzar: false` (por defecto): Responde `422 Unprocessable Entity` con mensaje explicativo indicando que la persona no tiene el rol correspondiente.
