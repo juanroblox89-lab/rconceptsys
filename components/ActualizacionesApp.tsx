@@ -46,18 +46,22 @@ export function ActualizacionesApp() {
   }, []);
 
   useEffect(() => {
-    try {
-      const b = window.localStorage.getItem(KEY_BUSCAR);
-      const i = window.localStorage.getItem(KEY_INSTALAR);
-      const nb = b === null ? true : b === "true";
-      const ni = i === null ? true : i === "true";
-      setBuscarAuto(nb);
-      setInstalarAuto(ni);
-      if (nb) void comprobar(true);
-      else setEstado("La búsqueda automática está desactivada.");
-    } catch {
-      void comprobar(true);
-    }
+    // Lee las preferencias del navegador después de hidratar, sin un render síncrono en el efecto.
+    const inicio = window.setTimeout(() => {
+      try {
+        const b = window.localStorage.getItem(KEY_BUSCAR);
+        const i = window.localStorage.getItem(KEY_INSTALAR);
+        const nb = b === null ? true : b === "true";
+        const ni = i === null ? true : i === "true";
+        setBuscarAuto(nb);
+        setInstalarAuto(ni);
+        if (nb) void comprobar(true);
+        else setEstado("La búsqueda automática está desactivada.");
+      } catch {
+        void comprobar(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(inicio);
   }, [comprobar]);
 
   const alternarBuscar = () => {

@@ -181,13 +181,8 @@ func TestF5ChatAdjuntos(t *testing.T) {
 
 	// Un adjunto ya enlazado no se puede reutilizar
 	otro := doRequest(routes, "POST", "/api/chat", editorID, map[string]any{"cuerpo": "hola", "adjuntos": []int{int(adjunto.ID)}})
-	if otro.Code != http.StatusCreated {
-		t.Fatalf("mensaje de texto: esperado 201, obtenido %d", otro.Code)
-	}
-	var msgOtro store.ChatMensaje
-	_ = json.Unmarshal(otro.Body.Bytes(), &msgOtro)
-	if len(msgOtro.Adjuntos) != 0 {
-		t.Fatal("un adjunto ya usado no debe volver a enlazarse")
+	if otro.Code != http.StatusBadRequest {
+		t.Fatalf("el envío debe rechazar un adjunto usado y no guardar un mensaje parcial: %d", otro.Code)
 	}
 
 	// Los mensajes del chat traen sus adjuntos al listar
@@ -196,6 +191,9 @@ func TestF5ChatAdjuntos(t *testing.T) {
 	_ = json.Unmarshal(lista.Body.Bytes(), &mensajes)
 	encontrado := false
 	for _, m := range mensajes {
+		if m.Cuerpo == "hola" {
+			t.Fatal("apareció el mensaje parcial")
+		}
 		if m.ID == creado.ID && len(m.Adjuntos) == 1 {
 			encontrado = true
 		}

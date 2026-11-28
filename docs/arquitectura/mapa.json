@@ -1,5 +1,5 @@
 {
-  "generado_en": "2026-11-27T03:38:54.302Z",
+  "generado_en": "2026-11-28T12:25:14.633Z",
   "version": "1.0",
   "modulos": [
     {
@@ -607,6 +607,13 @@
       "auth": "miembros_aprobados"
     },
     {
+      "metodo": "PATCH",
+      "ruta": "/api/chat/adjuntos/{id}/conservar",
+      "handler": "backend/internal/httpapi/chat_whatsapp.go:handleConservarChat",
+      "archivo_funcion": "backend/internal/httpapi/chat_whatsapp.go:handleConservarChat",
+      "auth": "miembros_aprobados"
+    },
+    {
       "metodo": "GET",
       "ruta": "/api/admin/asignaciones",
       "handler": "backend/internal/httpapi/f5.go:handleAdminGetAsignaciones",
@@ -919,6 +926,13 @@
       "ruta": "/api/tareas/{id}/adjuntos",
       "handler": "backend/internal/httpapi/asignacion_adjuntos.go:handleListarAdjuntos",
       "archivo_funcion": "backend/internal/httpapi/asignacion_adjuntos.go:handleListarAdjuntos",
+      "auth": "miembros_aprobados"
+    },
+    {
+      "metodo": "PATCH",
+      "ruta": "/api/tareas/{id}/adjuntos/{adjunto}/conservar",
+      "handler": "backend/internal/httpapi/chat_whatsapp.go:handleConservarAsignacion",
+      "archivo_funcion": "backend/internal/httpapi/chat_whatsapp.go:handleConservarAsignacion",
       "auth": "miembros_aprobados"
     },
     {
@@ -1465,22 +1479,22 @@
         {
           "orden": 1,
           "archivo_funcion": "components/FormularioAsignacion.tsx:FormularioAsignacion",
-          "descripcion": "Formulario compartido en /trabajos/nuevo: especificaciones, cliente, persona, tipo, fecha y hasta tres referencias de Drive."
+          "descripcion": "Formulario compartido en /trabajos/nuevo: especificaciones, guion opcional separado con contador y aviso por cambios sin guardar, cliente, persona, tipo, fecha y hasta tres referencias de Drive."
         },
         {
           "orden": 2,
           "archivo_funcion": "backend/internal/httpapi/handlers.go:handleAdminPostTarea",
-          "descripcion": "POST /api/admin/tareas guarda la lista de Drive; si se omite, toma como referencia la carpeta registrada del cliente."
+          "descripcion": "POST /api/admin/tareas recorta y valida el guion (hasta 20.000 puntos de código Unicode), y guarda la lista de Drive; si se omite, toma como referencia la carpeta registrada del cliente."
         },
         {
           "orden": 3,
           "archivo_funcion": "backend/internal/store/store.go:CrearTarea",
-          "descripcion": "Store crea la tarea en estado pendiente; el precio se congela al aprobar la entrega"
+          "descripcion": "Store crea la tarea en estado pendiente con guion o vacío; el precio se congela al aprobar la entrega"
         },
         {
           "orden": 4,
           "archivo_funcion": "backend/internal/httpapi/push.go:AvisarTareaNueva",
-          "descripcion": "Encola aviso 'tarea-nueva' para la persona asignada"
+          "descripcion": "Encola aviso 'tarea-nueva' para la persona asignada; añade solo la marca «Incluye guion» cuando existe"
         },
         {
           "orden": 5,
@@ -1501,6 +1515,11 @@
           "orden": 8,
           "archivo_funcion": "backend/internal/httpapi/notificaciones.go:enviarColaNotificaciones",
           "descripcion": "Reclama notificaciones (RPC rc_reclamar_notificaciones), cifra y envía Web Push via VAPID"
+        },
+        {
+          "orden": 9,
+          "archivo_funcion": "supabase/migrations/029_guion_tarea.sql",
+          "descripcion": "Añade tareas.guion con valor vacío por defecto y restricción idempotente de 20.000 caracteres; no se incluye en datos de facturación ni se duplica en entrega/historial."
         }
       ]
     },
@@ -1512,7 +1531,7 @@
         {
           "orden": 1,
           "archivo_funcion": "components/MisTareas.tsx:MisTareas",
-          "descripcion": "Sección Por corregir con botón Corregir y confirmación en Volver a entregar; modal Drive (hasta 4 elementos) / WhatsApp con contacto de quien asignó, aviso de cuenta Drive y botón Cambiar con contraste corregido."
+          "descripcion": "Muestra el guion asignado como texto plano con vista previa y copia. Sección Por corregir con botón Corregir y confirmación en Volver a entregar; modal Drive (hasta 4 elementos) / WhatsApp con contacto de quien asignó, aviso de cuenta Drive y botón Cambiar con contraste corregido."
         },
         {
           "orden": 2,
@@ -1532,7 +1551,7 @@
         {
           "orden": 5,
           "archivo_funcion": "backend/internal/httpapi/tarea_whatsapp.go:handleTareaWhatsApp",
-          "descripcion": "GET /api/tareas/{id}/whatsapp resuelve por trabajo el contacto WhatsApp de quien asignó/reasignó (para trabajador) o quien entregó (para revisor), sin usar genéricos ni exponer a terceros."
+          "descripcion": "GET /api/tareas/{id}/whatsapp resuelve por trabajo el contacto WhatsApp de quien asignó/reasignó (para trabajador) o quien entregó (para revisor), sin usar genéricos ni exponer a terceros. Con para=asignacion, un admin puede abrir un mensaje para el asignado de una tarea abierta; se añade la marca, no el guion."
         },
         {
           "orden": 6,
@@ -1619,17 +1638,17 @@
         {
           "orden": 3,
           "archivo_funcion": "backend/internal/supa/store.go:PedirDeNuevoTarea",
-          "descripcion": "PATCH REST a tareas con estado aceptada; 0 filas implica conflicto si la tarea existe."
+          "descripcion": "PATCH REST sobre la misma tarea con estado aceptada; conserva el guion sin reescribirlo. 0 filas implica conflicto si la tarea existe."
         },
         {
           "orden": 4,
-          "archivo_funcion": "supabase/migrations/027_pedido_de_nuevo.sql:rc_registrar_reapertura_tarea",
+          "archivo_funcion": "supabase/migrations/028_entrega_drive_y_asignador.sql:rc_registrar_reapertura_tarea",
           "descripcion": "Valida el corte pagado con bloqueo, archiva la entrega y el evento, limpia la factura y corrige la fecha límite en Bogotá."
         },
         {
           "orden": 5,
           "archivo_funcion": "backend/internal/httpapi/notificaciones_eventos.go:avisarPedidoDeNuevo",
-          "descripcion": "Encola pedido-de-nuevo para el asignado y demás admins, salvo al actor; respeta preferencias."
+          "descripcion": "Encola pedido-de-nuevo para el asignado y demás admins, salvo al actor; indica si incluye guion y respeta preferencias."
         },
         {
           "orden": 6,
@@ -1898,7 +1917,7 @@
         {
           "orden": 3,
           "archivo_funcion": "backend/internal/httpapi/ria.go:contextoRIA",
-          "descripcion": "Incluye HistorialRIA (últimos 16) del usuario y contexto con permisos; nada se persiste en el grupo."
+          "descripcion": "Incluye HistorialRIA (últimos 16) y contexto de tareas con permisos. Solo incluye un extracto breve de cada guion; nada se comparte con la RIA grupal."
         },
         {
           "orden": 4,
@@ -2071,7 +2090,7 @@
         {
           "orden": 3,
           "archivo_funcion": "components/PaginaTrabajo.tsx:PaginaTrabajo",
-          "descripcion": "Muestra datos, estado y la tarjeta Historial y entregas. Pendientes y devueltos se editan con el formulario compartido."
+          "descripcion": "Muestra datos, guion de solo lectura con expansión y copia, estado e historial. Pendientes y devueltos se editan con el formulario compartido; el admin puede avisar manualmente por WhatsApp."
         },
         {
           "orden": 4,
@@ -2081,7 +2100,7 @@
         {
           "orden": 5,
           "archivo_funcion": "backend/internal/httpapi/flujo.go:handleAdminPatchTarea",
-          "descripcion": "PATCH de los campos modificados y notificación deduplicada 'Pedido actualizado' al asignado (si es distinto del actor) apuntando al detalle del trabajo."
+          "descripcion": "PATCH de los campos modificados, incluido guion (si se omite, no cambia; si queda vacío, se borra), y notificación deduplicada 'Pedido actualizado' al asignado (si es distinto del actor) apuntando al detalle del trabajo."
         },
         {
           "orden": 6,
@@ -2494,7 +2513,7 @@
         {
           "orden": 3,
           "archivo_funcion": "components/chat/AccionesMensaje.tsx:AccionesMensaje",
-          "descripcion": "Menú WhatsApp (pulsación larga en móvil, botón ⋯ en escritorio) con Copiar, Editar y Eliminar."
+          "descripcion": "Chat del equipo: flecha de escritorio y pulsación larga táctil para Responder, Copiar, Editar, Conservar y Eliminar según permisos. RIA privada conserva su botón de opciones."
         },
         {
           "orden": 4,
@@ -2557,6 +2576,95 @@
           "orden": 4,
           "archivo_funcion": "app/(app)/admin/page.tsx:AdminPage",
           "descripcion": "Intercepta el cambio de pestañas en Gestión mediante confirmarSalida cuando hay ediciones pendientes."
+        }
+      ]
+    },
+    {
+      "id": "chat-equipo-citas-audio",
+      "nombre": "Chat del equipo: citas, adjuntos y voz",
+      "descripcion": "Compositor compacto y respuestas citadas; el binario permanece independiente del contenido del mensaje.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "app/(app)/page.tsx:ChatPage",
+          "descripcion": "Alinea los chips sobre el campo, muestra hora por burbuja y permite responder y saltar a la cita original cargada."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "components/chat/GrabadorAudio.tsx:GrabadorAudio",
+          "descripcion": "Captura por MediaRecorder y deja la nota pendiente antes del envío."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "components/chat/ReproductorAudio.tsx:ReproductorAudio",
+          "descripcion": "Dibuja la onda, permite buscar con puntero o teclado y muestra la duración real y el tiempo transcurrido."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/handlers.go:handlePostChat",
+          "descripcion": "POST /api/chat recibe respuesta_a_id e IDs de adjuntos de la persona autenticada."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "supabase/migrations/030_chat_whatsapp_y_retencion.sql:rc_enviar_chat",
+          "descripcion": "Valida la cita visible y guarda mensaje y enlaces de adjuntos en una transacción."
+        },
+        {
+          "orden": 6,
+          "archivo_funcion": "backend/internal/supa/chat_whatsapp.go:citasChat",
+          "descripcion": "Devuelve extracto y autor en lote; no devuelve el texto de originales borrados."
+        }
+      ]
+    },
+    {
+      "id": "retencion-storage-15d",
+      "nombre": "Retención segura de binarios a 15 días",
+      "descripcion": "Solo Storage en buckets privados. Mantiene mensajes, Drive, historial, resumen y transcripción.",
+      "pasos": [
+        {
+          "orden": 1,
+          "archivo_funcion": "backend/internal/httpapi/chat_whatsapp.go:handleConservarChat",
+          "descripcion": "El miembro aprobado puede proteger multimedia del chat; quitar protección requiere autor o admin."
+        },
+        {
+          "orden": 2,
+          "archivo_funcion": "backend/internal/httpapi/chat_whatsapp.go:handleConservarAsignacion",
+          "descripcion": "El asignado o admin puede proteger; solo el admin quita la protección."
+        },
+        {
+          "orden": 3,
+          "archivo_funcion": "supabase/migrations/030_chat_whatsapp_y_retencion.sql:rconcept_llamar_cron_adjuntos",
+          "descripcion": "Reusa la programación y el secreto existentes; despierta cuando hay candidatos, resúmenes o cargas incompletas."
+        },
+        {
+          "orden": 4,
+          "archivo_funcion": "backend/internal/httpapi/asignacion_resumen.go:handleCronAdjuntos",
+          "descripcion": "GET /api/cron/adjuntos requiere CRON_SECRET y registra conteo por bucket."
+        },
+        {
+          "orden": 5,
+          "archivo_funcion": "supabase/migrations/030_chat_whatsapp_y_retencion.sql:rc_reclamar_purga_asignacion",
+          "descripcion": "Reclama adjuntos y tareas cerradas por más de 360 horas, excluye protegidos y serializa con reapertura."
+        },
+        {
+          "orden": 6,
+          "archivo_funcion": "backend/internal/supa/chat_whatsapp.go:PurgarRetencion",
+          "descripcion": "Valida bucket/ruta, borra el binario en Storage y luego confirma, con lease reintentable ante fallos."
+        },
+        {
+          "orden": 7,
+          "archivo_funcion": "supabase/migrations/030_chat_whatsapp_y_retencion.sql:rc_marcar_purga",
+          "descripcion": "Escribe purgado_en únicamente cuando el catálogo confirma ausencia del objeto."
+        },
+        {
+          "orden": 8,
+          "archivo_funcion": "components/chat/AdjuntoVista.tsx:AdjuntoVista",
+          "descripcion": "Muestra el aviso de retención sin montar un enlace o reproductor roto."
+        },
+        {
+          "orden": 9,
+          "archivo_funcion": "components/AdjuntosAsignacion.tsx:FilaGuardada",
+          "descripcion": "Evita firmas nuevas y conserva el resumen y la transcripción en los adjuntos purgados."
         }
       ]
     }
@@ -2658,5 +2766,5 @@
       "docs/ria/configuracion-nvidia.md"
     ]
   },
-  "commit_hash": "85fb44ffe7b7007129098ca9e5b0996d7b3cd3dc"
+  "commit_hash": "a95f506fc703af307be46760948a1cb6339b49ee"
 }

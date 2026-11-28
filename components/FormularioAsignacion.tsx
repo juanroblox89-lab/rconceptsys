@@ -2,7 +2,8 @@
 
 import { Casilla } from "@/components/ui/Casilla";
 import { CampoFecha } from "@/components/ui/CamposEspeciales";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Cliente, Perfil, Pieza, ReferenciaDriveTrabajo, Tarea, TipoTrabajo } from "@/lib/types";
 import { Boton } from "@/components/ui/Boton";
@@ -13,7 +14,18 @@ import { adjuntos, subirAdjunto, type AdjuntoLocal } from "@/lib/adjuntos-asigna
 import { MAX_REFERENCIAS_TRABAJO, referenciaDelCliente, referenciasDelTrabajo } from "@/lib/referencias-trabajo";
 import { resolverReferenciaDriveSeleccionada } from "./PickerDriveCliente";
 import { useCambiosSinGuardar } from "./CambiosSinGuardar";
+import { MAX_CARACTERES_GUION, cambiosDeGuion, medirGuion, normalizarGuion } from "@/lib/guion-trabajo";
 import styles from "./FlujoTrabajo.module.css";
+
+const formatoGuion = new Intl.NumberFormat("es-CO", { useGrouping: "always" });
+const limiteGuion = formatoGuion.format(MAX_CARACTERES_GUION);
+
+function ajustarAlturaGuion(campo: HTMLTextAreaElement) {
+  if (CSS.supports("field-sizing", "content")) return;
+  campo.style.height = "0px";
+  const borde = campo.offsetHeight - campo.clientHeight;
+  campo.style.height = `${campo.scrollHeight + borde}px`;
+}
 
 export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onGuardar }: {
   tarea?: Tarea; personaInicial?: string; onCerrar: () => void; onGuardar: (t: Tarea) => void;
@@ -25,6 +37,14 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
   const [pieza, setPieza] = useState("");
   const [fecha, setFecha] = useState(tarea?.fecha_limite ?? "");
   const [descripcion, setDescripcion] = useState(tarea?.descripcion ?? tarea?.titulo ?? "");
+  const [guion, setGuion] = useState(tarea?.guion ?? "");
+  const [guionAbierto, setGuionAbierto] = useState(() => Boolean(normalizarGuion(tarea?.guion)));
+  const guionId = useId();
+  const campoGuion = useRef<HTMLTextAreaElement>(null);
+  const cantidadGuion = medirGuion(normalizarGuion(guion));
+  const errorGuion = cantidadGuion > MAX_CARACTERES_GUION
+    ? `El guion no puede superar los ${limiteGuion} caracteres.`
+    : guion.includes("\0") ? "El guion contiene un carácter no válido. Pégalo como texto plano." : "";
   const [referencias, setReferencias] = useState<ReferenciaDriveTrabajo[]>(() => tarea ? referenciasDelTrabajo(tarea) : []);
   const [indiceAutomatico, setIndiceAutomatico] = useState<number | null>(null);
   const [referenciasEditadas, setReferenciasEditadas] = useState(false);
@@ -37,11 +57,25 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
   const [locales, setLocales] = useState<AdjuntoLocal[]>([]);
   const [guardados, setGuardados] = useState(0);
   const [versionAdjuntos, setVersionAdjuntos] = useState(0);
-  const [trabajoCreado, setTrabajoCreado] = useState<Tarea>();
+  const [trabajoGuardado, setTrabajoGuardado] = useState<Tarea>();
   const [grabando, setGrabando] = useState(false);
   const solicitudRefCliente = useRef(0);
   const vigenteRef = useRef(true);
-  const trabajoActual = trabajoCreado ?? tarea;
+  const trabajoActual = trabajoGuardado ?? tarea;
+  const trabajoCreado = !tarea ? trabajoGuardado : undefined;
+  const cambioGuion = cambiosDeGuion(guion, trabajoActual?.guion);
+
+  useLayoutEffect(() => {
+    if (!campoGuion.current || CSS.supports("field-sizing", "content")) return;
+    ajustarAlturaGuion(campoGuion.current);
+  }, [guion, guionAbierto, alta, catalogo]);
+
+  useEffect(() => {
+    if (CSS.supports("field-sizing", "content")) return;
+    const redimensionar = () => { if (campoGuion.current) ajustarAlturaGuion(campoGuion.current); };
+    window.addEventListener("resize", redimensionar);
+    return () => window.removeEventListener("resize", redimensionar);
+  }, []);
 
   useEffect(() => {
     vigenteRef.current = true;
@@ -52,7 +86,8 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
     ? persona !== trabajoActual.asignado_a ||
       tipo !== String(trabajoActual.tipo_id) ||
       fecha !== (trabajoActual.fecha_limite ?? "") ||
-      descripcion !== (trabajoActual.descripcion ?? trabajoActual.titulo ?? "") ||
+      descripcion.trim() !== (trabajoActual.descripcion ?? trabajoActual.titulo).trim() ||
+      cambioGuion.guion !== undefined ||
       forzar ||
       referenciasEditadas ||
       locales.length > 0 ||
@@ -63,6 +98,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       pieza !== "" ||
       fecha !== "" ||
       descripcion !== "" ||
+      cambioGuion.guion !== undefined ||
       forzar ||
       referenciasEditadas ||
       locales.length > 0 ||
@@ -156,29 +192,40 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         setNombre("");
         return;
       }
+      if (errorGuion) {
+        setGuionAbierto(true);
+        requestAnimationFrame(() => campoGuion.current?.focus());
+        return;
+      }
       if (!persona || !tipo) { setError("Elige una persona y un tipo de trabajo."); return; }
       const texto = descripcion.trim();
       if ((texto.match(/[\p{L}\p{N}]/gu) ?? []).length < 3) {
         setError("Escribe las especificaciones con al menos tres letras o números.");
         return;
       }
-      const datos = { asignado_a: persona, tipo_id: Number(tipo), fecha_limite: fecha, descripcion: texto, forzar,
-        ...(!tarea || referenciasEditadas ? { drive_referencias: referencias } : {}) };
+      const datos = { asignado_a: persona, tipo_id: Number(tipo), fecha_limite: fecha, descripcion: texto, ...cambioGuion };
       const esCreacion = !trabajoActual;
       let actual: Tarea;
       if (trabajoActual) {
-        const { asignado_a, tipo_id, fecha_limite, descripcion, ...otros } = datos;
-        const cambios = { ...otros,
+        const { asignado_a, tipo_id, fecha_limite, descripcion } = datos;
+        const cambios = {
+          ...(referenciasEditadas ? { drive_referencias: referencias } : {}),
           ...(trabajoActual.asignado_a !== asignado_a ? { asignado_a } : {}),
           ...(trabajoActual.tipo_id !== tipo_id ? { tipo_id } : {}),
           ...((trabajoActual.fecha_limite ?? "") !== fecha_limite ? { fecha_limite } : {}),
-          ...(trabajoActual.descripcion !== descripcion ? { descripcion } : {}),
+          ...((trabajoActual.descripcion ?? trabajoActual.titulo).trim() !== descripcion ? { descripcion } : {}),
+          ...cambioGuion,
         };
-        actual = await api.adminPatchTarea(trabajoActual.id, cambios);
+        actual = Object.keys(cambios).length
+          ? await api.adminPatchTarea(trabajoActual.id, { ...cambios, forzar })
+          : trabajoActual;
       } else {
-        actual = await api.adminPostTarea({ ...datos, cliente_id: cliente ? Number(cliente) : null, pieza_id: pieza ? Number(pieza) : null, titulo: [...texto].slice(0, 100).join("") });
+        actual = await api.adminPostTarea({ ...datos, forzar, drive_referencias: referencias, cliente_id: cliente ? Number(cliente) : null, pieza_id: pieza ? Number(pieza) : null, titulo: [...texto].slice(0, 100).join("") });
       }
-      if (!tarea) setTrabajoCreado(actual);
+      // Los adjuntos se guardan aparte. Si fallan, reintentar contra la versión persistida.
+      setTrabajoGuardado(actual);
+      setReferenciasEditadas(false);
+      setForzar(false);
       let fallos = 0;
       for (const a of locales) {
         const ajustar = (campos: Partial<AdjuntoLocal>) => setLocales(lista => lista.map(v => v.id === a.id ? { ...v, ...campos } : v));
@@ -193,9 +240,8 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
       }
       setVersionAdjuntos(v => v + 1);
       if (fallos) { setError("El trabajo quedó guardado. Reintenta los archivos pendientes o quítalos."); return; }
-      setReferenciasEditadas(false);
-      setForzar(false);
       setLocales([]);
+      if (tarea) setTrabajoGuardado(undefined);
       limpiarRegistro();
       onGuardar(actual);
     } catch (e) {
@@ -209,7 +255,7 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         <Campo etiqueta="Nombre del cliente" required maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} />
         <p className={styles.ayuda}>Tu asignación no se perderá.</p>
       </> : <>
-        {tarea ? <p className={styles.ayuda}>Cliente: {clienteActual?.nombre ?? "Sin cliente"}</p> : <>
+        {trabajoActual ? <p className={styles.ayuda}>Cliente: {clienteActual?.nombre ?? "Sin cliente"}</p> : <>
           <Campo como="select" etiqueta="Cliente" value={cliente} onChange={(e) => elegirCliente(catalogo.clientes.find(c => String(c.id) === e.target.value))}>
             <option value="">Sin cliente</option>
             {catalogo.clientes.filter((c) => c.activo).map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -228,6 +274,24 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
         <CampoFecha etiqueta="Fecha de entrega" requerido={!tarea || !!tarea.fecha_limite} valor={fecha} onCambio={setFecha} />
         <SelectorCarpetaTrabajo key={cliente} clienteId={clienteActual?.id} valor={referencias} onChange={cambiarReferencias} deshabilitado={ocupado} />
         <Campo como="textarea" filas={5} etiqueta="Especificaciones" placeholder="En este video, coge los medios de..." required maxLength={1000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+        <div className={styles.guionEditor}>
+          <Boton variante="secundario" tamano="sm" className={styles.guionAccion} aria-expanded={guionAbierto}
+            aria-controls={`${guionId}-editor`} onClick={() => setGuionAbierto(!guionAbierto)}>
+            {guionAbierto ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+            {guionAbierto ? "Ocultar guion" : guion ? "Mostrar guion" : "Agregar guion (opcional)"}
+          </Boton>
+          <div id={`${guionId}-editor`} hidden={!guionAbierto}>
+            {guionAbierto && <>
+              <Campo id={guionId} ref={campoGuion} como="textarea" filas={6} etiqueta="Guion" className={styles.guionCampo}
+                placeholder="Escenas, locución o textos en pantalla…" value={guion} readOnly={ocupado}
+                onChange={e => setGuion(e.target.value)} error={errorGuion}
+                aria-describedby={`${guionId}-contador${errorGuion ? ` ${guionId}-error` : ""}`} />
+              <p id={`${guionId}-contador`} className={styles.guionContador} data-testid="guion-contador">
+                {formatoGuion.format(cantidadGuion)} de {limiteGuion} caracteres
+              </p>
+            </>}
+          </div>
+        </div>
         <EditorAdjuntos locales={locales} cambiar={setLocales} quitar={a => void quitarLocal(a)} cantidad={guardados + locales.length} bloqueado={ocupado} onGrabando={setGrabando} />
         {trabajoActual && <AdjuntosGuardados key={`${trabajoActual.id}-${versionAdjuntos}`} tarea={trabajoActual.id} editable bloqueado={ocupado || grabando} cantidad={setGuardados} />}
         {!trabajoActual && catalogo.piezas.some((p) => String(p.cliente_id) === cliente) && <Campo como="select" etiqueta="Pieza (opcional)" value={pieza} onChange={(e) => setPieza(e.target.value)}>
@@ -242,8 +306,10 @@ export function FormularioAsignacion({ tarea, personaInicial = "", onCerrar, onG
     {catalogo && <div className={styles.accionesFormulario}>
       <Boton variante="secundario" disabled={ocupado || grabando} onClick={() => {
         if (alta) setAlta(false);
-        else if (trabajoCreado) { limpiarRegistro(); onGuardar(trabajoCreado); }
-        else confirmarSalida(onCerrar);
+        else confirmarSalida(() => {
+          if (trabajoCreado) onGuardar(trabajoCreado);
+          else onCerrar();
+        });
       }}>{alta ? "Volver al trabajo" : trabajoCreado ? "Ver trabajo guardado" : "Volver sin guardar"}</Boton>
       <Boton type="submit" variante={!alta && trabajoActual ? "guardar" : "primario"} disabled={grabando} cargando={ocupado}>{alta ? "Crear y seleccionar" : trabajoActual ? "Guardar cambios" : "Asignar trabajo"}</Boton>
     </div>}

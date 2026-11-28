@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const TIMEOUT_MS = 25_000;
-const MAX_BODY_BYTES = 3 * 1024 * 1024; // la foto de perfil pesa como maximo 1 MB; sobra margen
+const MAX_BODY_BYTES = 3 * 1024 * 1024;
 const SEGMENTO = /^[A-Za-z0-9_.-]{1,80}$/;
 const METODOS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]);
 
@@ -38,7 +38,8 @@ function error(status: number, codigo: string, mensaje: string): NextResponse {
 async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await ctx.params;
   const esMedioApariencia = path.length === 4 && path[0] === "yo" && path[1] === "apariencia" && path[2] === "fondo";
-  if (!METODOS.has(req.method) || (req.method === "HEAD" && !esMedioApariencia)) return error(405, "metodo_no_permitido", "Esa acción no está permitida.");
+  const esMedioChat = path.length === 4 && path[0] === "chat" && path[1] === "adjuntos" && path[3] === "archivo";
+  if (!METODOS.has(req.method) || (req.method === "HEAD" && !esMedioApariencia && !esMedioChat)) return error(405, "metodo_no_permitido", "Esa acción no está permitida.");
   const esParteAdjunto = req.method === "PUT" && path.length === 7 && path[0] === "admin" && path[1] === "tareas" && path[3] === "adjuntos" && path[5] === "partes";
   if (path.length === 0 || (!esParteAdjunto && path.length > 6) || !path.every((s) => SEGMENTO.test(s) && s !== "." && s !== "..")) {
     return error(404, "no_encontrado", "No encontramos lo que buscas.");
@@ -80,16 +81,37 @@ async function reenviar(req: NextRequest, ctx: { params: Promise<{ path: string[
   try {
     let cuerpo: ArrayBuffer | undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {
-      cuerpo = await req.arrayBuffer();
-      if (cuerpo.byteLength > MAX_BODY_BYTES) return error(413, "demasiado_grande", "El archivo o el mensaje es demasiado grande.");
+      const esArchivoChat = req.method === "POST" && path.join("/") === "chat/adjuntos" && req.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data;");
+      // Mismo máximo que Go para multipart del chat; las demás rutas conservan su tope.
+      const maximo = esArchivoChat ? 20 * 1024 * 1024 + 64 * 1024 : MAX_BODY_BYTES;
+      if (Number(req.headers.get("content-length")) > maximo) return error(413, "demasiado_grande", "El archivo o el mensaje es demasiado grande.");
+      const lector = req.body?.getReader();
+      if (lector) {
+        const trozos: Uint8Array[] = [];
+        let longitud = 0;
+        while (true) {
+          const { done, value } = await lector.read();
+          if (done) break;
+          longitud += value.byteLength;
+          if (longitud > maximo) {
+            void lector.cancel().catch(() => {});
+            return error(413, "demasiado_grande", "El archivo o el mensaje es demasiado grande.");
+          }
+          trozos.push(value);
+        }
+        const bytes = new Uint8Array(longitud);
+        let offset = 0;
+        for (const trozo of trozos) { bytes.set(trozo, offset); offset += trozo.byteLength; }
+        cuerpo = bytes.buffer;
+      }
     }
     const res = await fetch(destino, { method: req.method, headers: cabeceras, body: cuerpo, signal: controlador.signal, redirect: "manual" });
 
     const salida = sinCache();
     const tipo = res.headers.get("content-type");
     if (tipo !== null) salida.set("Content-Type", tipo);
-    if (esMedioApariencia) {
-      for (const nombre of ["accept-ranges", "content-range", "content-length", "x-content-type-options"]) {
+    if (esMedioApariencia || esMedioChat) {
+      for (const nombre of ["accept-ranges", "content-range", "content-length", "content-disposition", "x-content-type-options"]) {
         const v = res.headers.get(nombre);
         if (v !== null) salida.set(nombre, v);
       }

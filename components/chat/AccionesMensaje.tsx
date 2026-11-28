@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, MoreHorizontal, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { ChevronDown, Copy, MoreHorizontal, Pencil, Reply, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
 import { useAviso } from "@/components/ui/Aviso";
 import { copiarCuerpoRIA } from "@/lib/copiar-ria";
 import styles from "./AccionesMensaje.module.css";
@@ -58,6 +58,9 @@ export interface AccionesMensajeProps {
   editando?: boolean;
   /** Copia solo el cuerpo renderizado de RIA, nunca el texto del menú ni adjuntos. */
   copiarRIA?: boolean;
+  burbuja?: boolean;
+  onResponder?: () => void;
+  conservacion?: { id: number; nombre: string; etiqueta: string; ejecutar: () => void }[];
   onCopiar?: () => void;
   onEditar?: () => void;
   onEliminar?: () => void;
@@ -72,12 +75,16 @@ export function AccionesMensaje({
   puedeEditar = false,
   puedeEliminar = false,
   editando = false,
+  burbuja = false,
+  onResponder,
+  conservacion = [],
   onCopiar,
   copiarRIA = false,
   onEditar,
   onEliminar,
 }: AccionesMensajeProps) {
-  const hayAcciones = !editando && (puedeCopiar || puedeEditar || puedeEliminar);
+  const hayAcciones = !editando && (puedeCopiar || puedeEditar || puedeEliminar || Boolean(onResponder) || conservacion.length > 0);
+  const [presion, setPresion] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [movilSheet, setMovilSheet] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -87,7 +94,8 @@ export function AccionesMensaje({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inicioToqueRef = useRef<{ x: number; y: number } | null>(null);
-  const abrioPorLargaRef = useRef(false);
+  const suprimirContextoRef = useRef(0);
+  const inicioEnMenuRef = useRef(false);
   const menuId = useId();
 
   const limpiarTemporizador = () => {
@@ -99,6 +107,7 @@ export function AccionesMensaje({
   };
 
   useEffect(() => () => limpiarTemporizador(), []);
+  const terminarLarga = () => { limpiarTemporizador(); setPresion(false); };
 
   const abrirDesdeBoton = () => {
     if (!hayAcciones) return;
@@ -106,7 +115,7 @@ export function AccionesMensaje({
       setAbierto(false);
       return;
     }
-    const esMovil = typeof window !== "undefined" && window.innerWidth < 640;
+    const esMovil = typeof window !== "undefined" && (window.innerWidth < 640 || window.matchMedia("(pointer: coarse)").matches);
     setMovilSheet(esMovil);
     if (!esMovil && triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
@@ -117,7 +126,9 @@ export function AccionesMensaje({
 
   const abrirPorPulsacionLarga = (clientX: number, clientY: number) => {
     if (!hayAcciones) return;
-    abrioPorLargaRef.current = true;
+    inicioEnMenuRef.current = false;
+    suprimirContextoRef.current = Date.now() + 900;
+    setPresion(false);
     const esMovil = typeof window !== "undefined" && (window.innerWidth < 640 || window.matchMedia("(hover: none)").matches);
     setMovilSheet(esMovil);
     if (!esMovil) {
@@ -161,11 +172,12 @@ export function AccionesMensaje({
 
   useEffect(() => {
     if (!abierto) return;
+    menuRef.current?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         setAbierto(false);
-        if (!movilSheet) triggerRef.current?.focus();
+        triggerRef.current?.focus({ preventScroll: true });
       }
     };
     const onScroll = () => {
@@ -182,22 +194,24 @@ export function AccionesMensaje({
   const iniciarLarga = (x: number, y: number, target: EventTarget | null) => {
     if (!hayAcciones || esObjetivoInteractivo(target)) return;
     limpiarTemporizador();
+    setPresion(true);
     inicioToqueRef.current = { x, y };
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       abrirPorPulsacionLarga(x, y);
-    }, 430);
+    }, 410);
   };
 
   const moverLarga = (x: number, y: number) => {
     if (!inicioToqueRef.current) return;
     if (Math.hypot(x - inicioToqueRef.current.x, y - inicioToqueRef.current.y) > 10) {
-      limpiarTemporizador();
+      terminarLarga();
     }
   };
 
   const ejecutar = (fn?: () => void) => {
     setAbierto(false);
+    triggerRef.current?.focus({ preventScroll: true });
     fn?.();
   };
 
@@ -227,8 +241,19 @@ export function AccionesMensaje({
       className={`${styles.menu} ${movilSheet ? styles.menuMovil : ""}`}
       style={movilSheet ? undefined : { top: `${coords.top}px`, left: `${coords.left}px` }}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("button")];
+        const i = items.indexOf(document.activeElement as HTMLButtonElement);
+        const destino = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1
+          : e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey) ? (i + 1) % items.length
+          : e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey) ? (i - 1 + items.length) % items.length : -1;
+        if (destino >= 0) { e.preventDefault(); items[destino]?.focus({ preventScroll: true }); }
+      }}
     >
       {movilSheet && vistaPrevia ? <p className={styles.preview}>{vistaPrevia}</p> : null}
+      {onResponder && <button type="button" role="menuitem" className={styles.opcion} onClick={() => ejecutar(onResponder)}>
+        <Reply size={15} strokeWidth={1.75} aria-hidden="true" /><span>Responder</span>
+      </button>}
       {puedeCopiar && (
         <button type="button" role="menuitem" className={styles.opcion} onClick={() => {
           ejecutar(copiarRIA ? () => void copiar() : onCopiar);
@@ -244,6 +269,10 @@ export function AccionesMensaje({
           <span>Editar</span>
         </button>
       )}
+      {conservacion.map((a) => <button key={a.id} type="button" role="menuitem" className={styles.opcion} onClick={() => ejecutar(a.ejecutar)}>
+        <ShieldCheck size={15} strokeWidth={1.75} aria-hidden="true" />
+        <span className={styles.opcionTexto}>{a.etiqueta}{conservacion.length > 1 && <small title={a.nombre}>{a.nombre}</small>}</span>
+      </button>)}
       {puedeEliminar && (
         <button
           type="button"
@@ -259,7 +288,7 @@ export function AccionesMensaje({
         <button
           type="button"
           className={`${styles.opcion} ${styles.cancelarMovil}`}
-          onClick={() => setAbierto(false)}
+          onClick={() => ejecutar()}
         >
           Cancelar
         </button>
@@ -279,45 +308,34 @@ export function AccionesMensaje({
       aria-controls={abierto ? menuId : undefined}
       onClick={abrirDesdeBoton}
     >
-      <MoreHorizontal size={15} strokeWidth={1.9} aria-hidden="true" />
+      {burbuja ? <ChevronDown size={15} strokeWidth={1.9} aria-hidden="true" /> : <MoreHorizontal size={15} strokeWidth={1.9} aria-hidden="true" />}
     </button>
   ) : null;
 
   return (
     <div
       data-rc-mensaje-fila
+      data-rc-burbuja={burbuja || undefined}
       className={`${styles.fila} ${propio ? styles.filaMia : ""} ${bloque ? styles.filaBloque : ""}`}
     >
       <div
         ref={copiarRIA ? contenidoRef : undefined}
         className={`${styles.contenido} ${hayAcciones ? (copiarRIA ? styles.interactivoRIA : styles.interactivo) : ""}`}
+        data-presion={presion || undefined}
         onPointerDown={(e) => {
-          if (e.pointerType === "touch" || e.pointerType === "pen") {
+          if (e.isPrimary && (e.pointerType === "touch" || e.pointerType === "pen")) {
             iniciarLarga(e.clientX, e.clientY, e.target);
           }
         }}
         onPointerMove={(e) => {
           if (e.pointerType === "touch" || e.pointerType === "pen") moverLarga(e.clientX, e.clientY);
         }}
-        onPointerUp={limpiarTemporizador}
-        onPointerCancel={limpiarTemporizador}
-        onTouchStart={(e) => {
-          const t = e.touches[0];
-          if (t) iniciarLarga(t.clientX, t.clientY, e.target);
-        }}
-        onTouchMove={(e) => {
-          const t = e.touches[0];
-          if (t) moverLarga(t.clientX, t.clientY);
-        }}
-        onTouchEnd={limpiarTemporizador}
-        onTouchCancel={limpiarTemporizador}
+        onPointerUp={terminarLarga}
+        onPointerCancel={terminarLarga}
+        onPointerLeave={terminarLarga}
         onContextMenu={(e) => {
           if (!hayAcciones || esObjetivoInteractivo(e.target)) return;
-          if (abrioPorLargaRef.current || (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches)) {
-            e.preventDefault();
-            abrioPorLargaRef.current = false;
-            if (!abierto) abrirPorPulsacionLarga(e.clientX, e.clientY);
-          }
+          if (presion || Date.now() < suprimirContextoRef.current) e.preventDefault();
         }}
       >
         {children}
@@ -329,7 +347,13 @@ export function AccionesMensaje({
         createPortal(
           <div
             className={`${styles.velo} ${movilSheet ? styles.veloMovil : ""}`}
-            onClick={() => setAbierto(false)}
+            onPointerDownCapture={() => { inicioEnMenuRef.current = true; }}
+            onClickCapture={e => {
+              if (e.detail && !inicioEnMenuRef.current && Date.now() < suprimirContextoRef.current) {
+                e.preventDefault(); e.stopPropagation();
+              }
+            }}
+            onClick={() => ejecutar()}
           >
             {contenidoMenu}
           </div>,

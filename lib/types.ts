@@ -21,7 +21,11 @@ export interface Perfil {
   roles?: Rol[];
 }
 
+export interface CitaChat { autor: string; extracto: string }
+
 export interface ChatMensaje {
+  respuesta_a_id?: number | null;
+  cita?: CitaChat | null;
   es_ria?: boolean;
   id: number;
   autor_id: string;
@@ -77,6 +81,8 @@ export interface ConfigEquipo {
 export type TipoAdjunto = 'imagen' | 'video' | 'audio' | 'archivo' | 'drive';
 
 export interface ChatAdjunto {
+  conservar?: boolean;
+  purgado_en?: string | null;
   id: number;
   mensaje_id?: number | null;
   autor_id: string;
@@ -272,6 +278,8 @@ export interface EntregaTarea {
 }
 
 export interface AdjuntoRechazoVista {
+  conservar?: boolean;
+  purgado_en?: string | null;
   id: string;
   tipo: 'imagen' | 'video' | 'audio';
   nombre: string;
@@ -344,6 +352,7 @@ export interface Tarea {
   pieza?: { id: number; nombre: string; etapa: EtapaPieza } | null;
   titulo: string;
   descripcion?: string | null;
+  guion?: string;
   asignado_a: string;
   asignado?: Perfil;
   creado_por: string;

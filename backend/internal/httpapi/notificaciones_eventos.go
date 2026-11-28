@@ -120,8 +120,7 @@ func (a *API) avisarPedidoDeNuevo(ctx context.Context, tarea *store.Tarea, actor
 	if motivo != "" {
 		cuerpo = motivo + " · " + cuerpo
 	}
-	runas := []rune(cuerpo)
-	cuerpo = string(runas[:min(len(runas), 160)])
+	cuerpo = cuerpoAvisoConGuion(cuerpo, tarea)
 	clave := fmt.Sprintf("pedido-de-nuevo:%d:%d", tarea.ID, time.Now().UnixNano())
 	aviso := AvisoPush{Titulo: "Te pidieron rehacer un trabajo", Cuerpo: cuerpo, URL: urlTarea(tarea.ID), Etiqueta: "pedido-de-nuevo"}
 	miembros, err := a.Store.ListarEquipo(ctx)

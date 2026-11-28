@@ -45,6 +45,8 @@ func (a *API) handleAdminPostTareaPedirDeNuevo(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 	tarea, err := a.Store.PedirDeNuevoTarea(ctx, id, actor.ID, motivo)
 	switch {
+	case errors.Is(err, store.ErrPurgaEnCurso):
+		ResponderError(w, 409, "purga_en_curso", "Hay una limpieza de archivos en curso. Intenta de nuevo en unos minutos.")
 	case errors.Is(err, store.ErrCortePagado):
 		ResponderError(w, 409, "corte_pagado", "Ese trabajo ya está incluido en un corte pagado. Crea un trabajo nuevo para el rehacer.")
 	case errors.Is(err, store.ErrConflict):

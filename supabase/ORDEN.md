@@ -22,6 +22,10 @@ No se aplicaron desde el agente. Partir de una base que ya tenga 001–011 aplic
 
 17. [`migrations/028_entrega_drive_y_asignador.sql`](migrations/028_entrega_drive_y_asignador.sql) — agrega `asignador_id` en `tareas` (contacto exacto de WhatsApp tras reasignación) y `entrega_drive` (hasta 4 elementos de Google Drive) en `tareas`, `tarea_entregas` y `tarea_historial`, más el RPC `rc_entregar_tarea_drive`. Aplicar antes de desplegar estos cambios. **Pendiente de aplicar.**
 
+18. [`migrations/029_guion_tarea.sql`](migrations/029_guion_tarea.sql) — guion opcional de hasta 20.000 caracteres en `tareas`; conserva valores previos y no cambia permisos. Aplicar después de 028 y antes de desplegar el backend que guarda guiones. **Pendiente de validar y aplicar.**
+
+19. [`migrations/030_chat_whatsapp_y_retencion.sql`](migrations/030_chat_whatsapp_y_retencion.sql) — citas, envío atómico y retención de binarios. El número 027 solicitado ya pertenece a Pedido de nuevo. Aplicar después de 029 en una base aislada antes de desplegar. **No aplicada contra producción.**
+
 ## Aplicación de 026 · RIA en el grupo
 
 1. Valida primero en una base de pruebas aislada con 001–025 aplicadas y datos sintéticos. En el SQL Editor del proyecto autorizado, ejecuta **el archivo completo** como rol de migraciones (o `psql -v ON_ERROR_STOP=1 -f supabase/migrations/026_ria_grupo.sql` desde una conexión autorizada). Es transaccional e idempotente; no lo ejecutes aquí ni sobre una base sin verificar.

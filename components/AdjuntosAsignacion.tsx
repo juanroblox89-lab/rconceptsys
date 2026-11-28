@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Check, Download, Film, ImageIcon, Mic, Music2, Paperclip, Trash2 } from "lucide-react";
+import { Check, Download, Film, ImageIcon, Mic, Music2, Paperclip, ShieldCheck, Trash2 } from "lucide-react";
 import { Boton } from "@/components/ui/Boton";
 import { aceptarAdjuntos, adjuntos, bytesPorMBAdjunto, detectarTipoArchivo, limiteAdjunto, pesoAdjunto, validarPesoAdjunto, type AdjuntoAsignacion, type AdjuntoLocal, type TipoAdjunto } from "@/lib/adjuntos-asignacion";
 import { BarraGrabacion, useGrabacionAudio } from '@/components/ui/BarraGrabacion';
+import { AVISO_ARCHIVO_PURGADO } from "@/lib/chat-utils";
 import styles from "./AdjuntosAsignacion.module.css";
 
 const textoError = (e: unknown) => e instanceof Error ? e.message : "No se pudo completar la acción.";
@@ -240,6 +241,7 @@ function FilaGuardada({
   tarea,
   a,
   editable,
+  puedeRetirarProteccion,
   bloqueado,
   actualizar,
   onProcesar,
@@ -247,6 +249,7 @@ function FilaGuardada({
   tarea: number;
   a: AdjuntoAsignacion;
   editable: boolean;
+  puedeRetirarProteccion: boolean;
   bloqueado: boolean;
   actualizar: (id: string, v?: AdjuntoAsignacion) => void;
   onProcesar: (id: string) => Promise<void>;
@@ -257,10 +260,11 @@ function FilaGuardada({
   const [version, setVersion] = useState(0);
   const id = a.id;
   useEffect(() => {
+    if (a.purgado_en) return;
     let vivo = true;
     adjuntos.firma(tarea, id).then(r => { if (vivo) setMedio({ url: r.url, expira: Date.now() + r.expira_en * 1000 }); }).catch(() => { if (vivo) setError("No se pudo cargar la vista previa."); });
     return () => { vivo = false; };
-  }, [tarea, id, version]);
+  }, [tarea, id, version, a.purgado_en]);
   function renovar() { if (medio && Date.now() >= medio.expira - 3000) setVersion(n => n + 1); }
   async function accion(fn: () => Promise<unknown>) {
     setOcupado(true); setError(""); try { await fn(); } catch (e) { setError(textoError(e)); } finally { setOcupado(false); }
@@ -274,9 +278,12 @@ function FilaGuardada({
   const resumiendo = a.resumir && (estado === "pendiente" || estado === "procesando");
   return <li>
     <strong className={styles.nombre}>{a.nombre}</strong><span className={styles.ayuda}>{pesoAdjunto(a.tamano, a.tipo)}</span>
+    {a.purgado_en ? <p className={styles.ayuda}>{AVISO_ARCHIVO_PURGADO}</p> : <>
     <Medio key={medio?.url} tipo={a.tipo} url={medio?.url ?? ""} nombre={a.nombre} visor renovar={renovar} />
     <div className={styles.acciones}>
       <Boton variante="secundario" tamano="sm" aria-label={`Descargar ${a.nombre}`} disabled={ocupado} onClick={() => void accion(descargar)}><Download size={15} aria-hidden="true" /> Descargar</Boton>
+      {(!a.conservar || puedeRetirarProteccion) ? <Boton variante="secundario" tamano="sm" disabled={ocupado || bloqueado}
+        onClick={() => void accion(async () => actualizar(id, await adjuntos.conservar(tarea, id, !a.conservar)))}><ShieldCheck size={15} aria-hidden="true" /> {a.conservar ? "Quitar protección" : "Conservar / No purgar"}</Boton> : <span className={styles.ayuda}>Conservado</span>}
       {editable && a.tipo === "audio" && (
         <BotonResumen
           activo={a.resumir}
@@ -293,10 +300,10 @@ function FilaGuardada({
         />
       )}
       {editable && <Quitar nombre={a.nombre} bloqueado={ocupado || bloqueado} onQuitar={() => void accion(async () => { await adjuntos.quitar(tarea, id); actualizar(id); })} />}
-    </div>
+    </div></>}
     {a.resumir && <div className={styles.resumen}>
       <strong role="status">{estado === "listo" ? "Listo" : estado === "fallido" ? "No se pudo" : "Resumiendo…"}</strong>
-      {estado === "fallido" && (
+      {!a.purgado_en && estado === "fallido" && (
         <>
           <p role="alert" className={styles.error}>{a.error_resumen || "No pudimos resumir este audio. Pulsa Reintentar para intentarlo de nuevo."}</p>
           <div className={styles.acciones}>
@@ -315,7 +322,7 @@ function FilaGuardada({
   </li>;
 }
 
-export function AdjuntosGuardados({ tarea, editable = false, bloqueado = false, cantidad }: { tarea: number; editable?: boolean; bloqueado?: boolean; cantidad?: (n: number) => void }) {
+export function AdjuntosGuardados({ tarea, editable = false, esAdmin = editable, bloqueado = false, cantidad }: { tarea: number; editable?: boolean; esAdmin?: boolean; bloqueado?: boolean; cantidad?: (n: number) => void }) {
   const [lista, setLista] = useState<AdjuntoAsignacion[] | null>(null);
   const [error, setError] = useState(false);
   const [intento, setIntento] = useState(0);
@@ -402,7 +409,7 @@ export function AdjuntosGuardados({ tarea, editable = false, bloqueado = false, 
     <div className={styles.cabecera}><h3 id={titulo}>{editable ? "Adjuntos guardados" : "Adjuntos"}</h3></div>
     {!lista && !error && <span className={styles.ayuda} role="status">Cargando adjuntos…</span>}
     {error && <div className={styles.acciones}><span className={styles.error} role="alert">No se pudieron cargar los adjuntos.</span><Boton variante="secundario" tamano="sm" onClick={() => setIntento(i => i + 1)}>Reintentar</Boton></div>}
-    {!!lista?.length && <ul className={styles.lista}>{lista.map(a => <FilaGuardada key={a.id} tarea={tarea} a={a} editable={editable} bloqueado={bloqueado} actualizar={actualizar} onProcesar={id => procesar(id)} />)}</ul>}
+    {!!lista?.length && <ul className={styles.lista}>{lista.map(a => <FilaGuardada key={a.id} tarea={tarea} a={a} editable={editable} puedeRetirarProteccion={esAdmin} bloqueado={bloqueado} actualizar={actualizar} onProcesar={id => procesar(id)} />)}</ul>}
   </section>;
 }
 
@@ -418,6 +425,7 @@ export interface AdjuntoRechazoItem {
   resumen?: string[];
   transcripcion?: string | null;
   error_resumen?: string | null;
+  purgado_en?: string | null;
 }
 
 function FilaRechazo({ tarea, a: inicial }: { tarea: number; a: AdjuntoRechazoItem }) {
@@ -440,6 +448,7 @@ function FilaRechazo({ tarea, a: inicial }: { tarea: number; a: AdjuntoRechazoIt
   );
 
   useEffect(() => {
+    if (item.purgado_en) return;
     let vivo = true;
     adjuntos
       .firma(tarea, item.id)
@@ -452,10 +461,11 @@ function FilaRechazo({ tarea, a: inicial }: { tarea: number; a: AdjuntoRechazoIt
     return () => {
       vivo = false;
     };
-  }, [tarea, item.id, version]);
+  }, [tarea, item.id, version, item.purgado_en]);
 
   useEffect(() => {
     if (
+      item.purgado_en ||
       item.tipo !== "audio" ||
       !item.resumir ||
       (item.estado_resumen !== "pendiente" && item.estado_resumen !== "procesando") ||
@@ -485,7 +495,7 @@ function FilaRechazo({ tarea, a: inicial }: { tarea: number; a: AdjuntoRechazoIt
     return () => {
       vivo = false;
     };
-  }, [tarea, item.id, item.tipo, item.resumir, item.estado_resumen, actualizarItem]);
+  }, [tarea, item.id, item.purgado_en, item.tipo, item.resumir, item.estado_resumen, actualizarItem]);
 
   function renovar() {
     if (medio && Date.now() >= medio.expira - 3000) setVersion((n) => n + 1);
@@ -528,6 +538,7 @@ function FilaRechazo({ tarea, a: inicial }: { tarea: number; a: AdjuntoRechazoIt
     <li>
       <strong className={styles.nombre}>{item.nombre}</strong>
       <span className={styles.ayuda}>{pesoAdjunto(item.tamano, item.tipo)}</span>
+      {item.purgado_en ? <p className={styles.ayuda}>{AVISO_ARCHIVO_PURGADO}</p> : <>
       <Medio key={medio?.url} tipo={item.tipo} url={medio?.url ?? ""} nombre={item.nombre} visor renovar={renovar} />
       <div className={styles.acciones}>
         <Boton
@@ -539,13 +550,13 @@ function FilaRechazo({ tarea, a: inicial }: { tarea: number; a: AdjuntoRechazoIt
         >
           <Download size={15} aria-hidden="true" /> Descargar
         </Boton>
-      </div>
+      </div></>}
       {item.resumir && item.tipo === "audio" && (
         <div className={styles.resumen}>
           <strong role="status">
             {estado === "listo" ? "Listo" : estado === "fallido" ? "No se pudo" : "Resumiendo…"}
           </strong>
-          {estado === "fallido" && (
+          {!item.purgado_en && estado === "fallido" && (
             <>
               <p role="alert" className={styles.error}>
                 {item.error_resumen || "No pudimos resumir este audio. Pulsa Reintentar para intentarlo de nuevo."}

@@ -701,3 +701,30 @@ a.tarjeta:hover {
   background: var(--rc-menu-fondo); color: var(--rc-texto);
   border: 1px solid var(--rc-glass-borde-flotante); box-shadow: var(--rc-glass-sombra-flotante);
 }
+
+.audioCaja { width: min(300px, 64vw); max-width: 100%; }
+.audio {
+  display: grid; grid-template-columns: 40px minmax(0,1fr) 36px; grid-template-rows: auto auto;
+  gap: 0 var(--rc-esp-6); padding: 2px var(--rc-esp-6); align-items: center;
+  background: var(--rc-superficie-hundida); box-shadow: var(--rc-elev-hundido-sm);
+}
+.audioPropio { background: var(--rc-azul-suave); }
+.audioPlay { grid-area: 1 / 1 / 3 / 2; width: 40px; height: 40px; }
+.ondaCaja { grid-area: 1 / 2; display: grid; position: relative; align-items: center; height: 30px; min-width: 0; }
+.onda { pointer-events: none; min-width: 0; width: 100%; height: 20px; gap: 2px; }
+.ondaBarra { opacity: .34; }
+.ondaBarra[data-avance] { opacity: 1; }
+.ondaCaja input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; touch-action: pan-y; }
+.ondaCaja:focus-within { outline: 2px solid var(--rc-azul-texto); border-radius: var(--rc-radio-xs); }
+.audioMic { grid-area: 1 / 3; display: grid; place-items: center; color: var(--rc-azul-texto); }
+.audioTiempo { grid-area: 2 / 2; }
+.audioVelocidad { grid-area: 2 / 3; padding: 0; justify-content: center; box-shadow: none; background: transparent; }
+.audioError { grid-column: 1 / -1; color: var(--rc-texto-secundario); }
+.avisoPurgado, .protegido { display: flex; gap: var(--rc-esp-6); align-items: center; color: var(--rc-texto-secundario); font-size: var(--rc-fs-secundario); }
+.avisoPurgado { background: var(--rc-superficie-hundida); border-radius: var(--rc-radio-sm); padding: var(--rc-esp-6); }
+.avisoPurgado svg, .protegido svg { flex: none; }
+.protegido { color: var(--rc-azul-texto); padding: 2px var(--rc-esp-4); font-size: var(--rc-fs-micro); }
+.pendiente { max-width: 100%; }
+.pendienteQuitar { flex: none; }
+:global(html[data-rc-tema="glass"]) .audio { background: var(--rc-glass-campo); border: 1px solid var(--rc-glass-borde); }
+@media (pointer: coarse) { .ondaCaja { height: 40px; } .audioVelocidad { height: 28px; } }

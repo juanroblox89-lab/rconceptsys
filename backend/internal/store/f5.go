@@ -48,24 +48,26 @@ const (
 
 // ChatAdjunto es un archivo, audio, video o carpeta de Drive de un mensaje.
 type ChatAdjunto struct {
-	ID          int64     `json:"id"`
-	MensajeID   *int64    `json:"mensaje_id,omitempty"`
-	AutorID     string    `json:"autor_id"`
-	Tipo        string    `json:"tipo"`
-	Nombre      string    `json:"nombre"`
-	Mime        string    `json:"mime"`
-	Tamano      int64     `json:"tamano"`
-	DuracionSeg *int      `json:"duracion_seg,omitempty"`
-	Ancho       *int      `json:"ancho,omitempty"`
-	Alto        *int      `json:"alto,omitempty"`
-	StoragePath *string   `json:"storage_path,omitempty"`
-	URLExterna  *string   `json:"url_externa,omitempty"`
-	CreadoEn    time.Time `json:"creado_en"`
+	ID          int64      `json:"id"`
+	MensajeID   *int64     `json:"mensaje_id,omitempty"`
+	AutorID     string     `json:"autor_id"`
+	Tipo        string     `json:"tipo"`
+	Nombre      string     `json:"nombre"`
+	Mime        string     `json:"mime"`
+	Tamano      int64      `json:"tamano"`
+	DuracionSeg *int       `json:"duracion_seg,omitempty"`
+	Ancho       *int       `json:"ancho,omitempty"`
+	Alto        *int       `json:"alto,omitempty"`
+	Conservar   bool       `json:"conservar"`
+	PurgadoEn   *time.Time `json:"purgado_en,omitempty"`
+	StoragePath *string    `json:"storage_path,omitempty"`
+	URLExterna  *string    `json:"url_externa,omitempty"`
+	CreadoEn    time.Time  `json:"creado_en"`
 }
 
 // Descargable indica si el adjunto se puede servir desde el backend.
 func (a *ChatAdjunto) Descargable() bool {
-	return a != nil && a.StoragePath != nil && *a.StoragePath != ""
+	return a != nil && a.PurgadoEn == nil && a.StoragePath != nil && *a.StoragePath != ""
 }
 
 // AsignacionResumen es una asignación (tarea) con la marca de novedad vista por el admin.

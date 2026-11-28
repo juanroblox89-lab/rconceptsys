@@ -76,7 +76,7 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var datos map[string]json.RawMessage
-	if leerJSONCuerpo(r, 16*1024, &datos) != nil {
+	if leerJSONCuerpo(r, maxBytesDatosTarea, &datos) != nil {
 		ResponderError(w, 400, "datos_invalidos", "Revisa los datos del trabajo.")
 		return
 	}
@@ -139,6 +139,17 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			campos[k] = s
+		case "guion":
+			s, ok := v.(string)
+			if !ok {
+				ResponderError(w, 400, "guion_invalido", "Escribe el guion como texto.")
+				return
+			}
+			guion, ok := validarGuion(w, s)
+			if !ok {
+				return
+			}
+			campos[k] = guion
 		case "descripcion", "fecha_limite":
 			s, ok := v.(string)
 			if !ok || len([]rune(s)) > 1000 {
@@ -229,6 +240,10 @@ func (a *API) handleAdminPatchTarea(w http.ResponseWriter, r *http.Request) {
 			}
 		case "asignado_a":
 			if v == t.AsignadoA {
+				delete(campos, k)
+			}
+		case "guion":
+			if v == t.Guion {
 				delete(campos, k)
 			}
 		case "descripcion":

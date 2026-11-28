@@ -14,6 +14,8 @@ import { ReferenciasDriveTrabajo } from "@/components/ui/ReferenciasDriveTrabajo
 import { EstadoTrabajo, fechaTrabajo } from "./FilaTrabajo";
 import { FormularioAsignacion } from "./FormularioAsignacion";
 import { AdjuntosGuardados } from "./AdjuntosAsignacion";
+import { GuionTrabajo } from "./GuionTrabajo";
+import { WhatsAppAsignacion } from "./WhatsAppAsignacion";
 import { RoadmapHistorial } from "./RoadmapHistorial";
 import { BotonPedirDeNuevo, ModalPedirDeNuevo } from "./PedirDeNuevoTrabajo";
 import { usePerfilActual } from "./AppShell";
@@ -80,6 +82,8 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "", pedir
       id !== undefined && !tarea ? (perfil === null ? <p role="alert">No pudimos comprobar tu sesión.</p> : <Esqueleto filas={5} />) : <>
       {id === undefined && perfil === null && <p role="alert">No pudimos comprobar tu sesión.</p>}
       {id === undefined && perfil && !admin && <p role="alert">Solo un administrador puede asignar trabajos.</p>}
+      {editable && tarea && <WhatsAppAsignacion id={tarea.id}
+        key={`${tarea.id}:${tarea.estado}:${tarea.asignado_a}:${Boolean(tarea.guion)}`} />}
       {((id === undefined && admin) || editable) && <section className={styles.panel} aria-label={tarea ? "Editar trabajo" : "Datos de asignación"}>
         {tarea && <h2>Editar trabajo</h2>}
         <FormularioAsignacion key={tarea ? `${tarea.id}-${cambio}` : persona} tarea={tarea ?? undefined} personaInicial={persona}
@@ -96,10 +100,12 @@ export function PaginaTrabajo({ id, origen = "asignaciones", persona = "", pedir
           {tarea.pieza && <div><dt>Pieza</dt><dd>{tarea.pieza.nombre}</dd></div>}
           <div><dt>Especificaciones</dt><dd className={styles.textoLargo}>{tarea.descripcion || tarea.titulo}</dd></div>
         </dl>
-        <AdjuntosGuardados key={tarea.id} tarea={tarea.id} />
+        {!admin && <GuionTrabajo guion={tarea.guion} />}
+        <AdjuntosGuardados key={tarea.id} tarea={tarea.id} esAdmin={admin} />
       </section>}
       {tarea && <section className={styles.panel} aria-label="Historial y entregas">
         <h2>Historial y entregas</h2>
+        {admin && <GuionTrabajo guion={tarea.guion} />}
         <RoadmapHistorial tarea={tarea} />
         {!editable && <ReferenciasDriveTrabajo tarea={tarea} />}
         {(tarea.drive_referencias != null || !(tarea.drive_carpeta_id || tarea.drive_carpeta_url)) && <CarpetaDriveTarea tarea={tarea} onActualizada={setRespuesta} />}

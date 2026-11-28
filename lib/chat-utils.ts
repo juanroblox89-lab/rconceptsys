@@ -16,6 +16,9 @@ export interface MensajeAgrupado {
     editado_en?: string | null;
     es_ria?: boolean;
     adjuntos?: ChatAdjunto[];
+    respuesta_a_id?: ChatMensaje["respuesta_a_id"];
+    cita?: ChatMensaje["cita"];
+    creado_en: string;
     enviando?: boolean;
     error?: boolean;
   }[];
@@ -99,9 +102,13 @@ export function agruparMensajes(mensajes: ChatMensaje[], miID: string): MensajeA
         editado_en: msg.editado_en ?? null,
         es_ria: msg.es_ria,
         adjuntos: msg.adjuntos,
+        respuesta_a_id: msg.respuesta_a_id,
+        cita: msg.cita,
+        creado_en: msg.creado_en,
         enviando: msg.enviando,
         error: msg.error,
       });
+      grupoAnterior.fecha_hora = msg.creado_en;
     } else {
       // Iniciar nuevo grupo
       grupos.push({
@@ -120,6 +127,9 @@ export function agruparMensajes(mensajes: ChatMensaje[], miID: string): MensajeA
             editado_en: msg.editado_en ?? null,
             es_ria: msg.es_ria,
             adjuntos: msg.adjuntos,
+        respuesta_a_id: msg.respuesta_a_id,
+        cita: msg.cita,
+        creado_en: msg.creado_en,
             enviando: msg.enviando,
             error: msg.error,
           },
@@ -130,4 +140,37 @@ export function agruparMensajes(mensajes: ChatMensaje[], miID: string): MensajeA
   }
 
   return grupos;
+}
+
+export const AVISO_ARCHIVO_PURGADO = "Archivo eliminado tras 15 días para liberar espacio";
+
+export function citaVisible(m: Pick<ChatMensaje, "respuesta_a_id" | "cita">) {
+  if (!m.respuesta_a_id) return null;
+  return m.cita ?? { autor: "Mensaje citado", extracto: "El mensaje original ya no está disponible." };
+}
+
+export function accionesConservacion(adjuntos: ChatAdjunto[] | undefined, yo: { id: string; es_admin: boolean } | null) {
+  return (adjuntos ?? []).flatMap(a => {
+    if (!yo || a.purgado_en || a.url_externa || !a.storage_path || !["audio", "imagen", "video"].includes(a.tipo)) return [];
+    if (a.conservar && !yo.es_admin && a.autor_id !== yo.id) return [];
+    return [{ id: a.id, nombre: a.nombre, conservar: !a.conservar,
+      etiqueta: a.conservar ? "Quitar protección" : "Conservar / No purgar" }];
+  });
+}
+
+export function formatoTiempoAudio(segundos: number) {
+  const n = Number.isFinite(segundos) ? Math.max(0, Math.floor(segundos)) : 0;
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
+}
+
+export function escalaOnda(canal: Float32Array, barras: number) {
+  const picos = Array.from({ length: barras }, (_, i) => {
+    let pico = 0;
+    for (let j = Math.floor(i * canal.length / barras); j < Math.floor((i + 1) * canal.length / barras); j++) {
+      pico = Math.max(pico, Math.abs(canal[j]));
+    }
+    return pico;
+  });
+  const maximo = Math.max(.01, ...picos);
+  return picos.map(p => Math.max(.13, p / maximo));
 }

@@ -455,3 +455,31 @@
 }
 :global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar)::before,
 :global(html[data-rc-tema="glass"]) .composer :global(.rc-btn-enviar)::after { content: none; }
+
+.groupContent { min-width: 0; }
+.groupMine .groupHeader { align-self: flex-end; justify-content: flex-end; }
+.bubbles { gap: var(--rc-esp-4); }
+.bubble { padding: var(--rc-esp-6) var(--rc-esp-10); }
+.bubbleConAdjuntos { padding: var(--rc-esp-6); }
+.bubbleMeta { display: flex; align-items: baseline; justify-content: flex-end; gap: var(--rc-esp-6); margin-top: 2px; }
+.bubbleMeta .time { white-space: nowrap; color: var(--rc-texto-secundario); }
+.bubble[data-rc-resaltado] { outline: 2px solid var(--rc-azul-texto); outline-offset: 2px; }
+.cita {
+  display: grid; gap: 1px; width: 100%; min-width: 0; max-width: 100%;
+  margin: 0 0 3px; padding: 4px 8px;
+  border: 0; border-inline-start: 3px solid var(--rc-azul-texto); border-radius: var(--rc-radio-xs);
+  background: var(--rc-superficie-hundida); color: var(--rc-texto-secundario);
+  text-align: start; font: inherit; font-size: var(--rc-fs-secundario); line-height: 1.35;
+}
+.cita strong { color: var(--rc-azul-texto); }
+.cita :is(strong, span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.cita { cursor: pointer; min-height: 40px; }
+.composerColumna { flex: 1 1 0; min-width: 0; display: grid; gap: var(--rc-esp-4); }
+.composerColumna > [data-rc-chips-chat] { padding: 0; }
+.composerMic { flex: none; display: flex; }
+.citaBorrador { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: var(--rc-esp-4); color: var(--rc-azul-texto); }
+.citaBorrador .cita { margin: 0; }
+.citaBorrador button { display: grid; place-items: center; min-width: 40px; min-height: 40px; border: 0; border-radius: var(--rc-radio-sm); background: none; color: inherit; cursor: pointer; }
+.citaBorrador button:hover { background: var(--rc-superficie-hundida); }
+:global(html[data-rc-tema="glass"]) .cita { background: var(--rc-menu-fondo); }
+@media (prefers-reduced-motion: reduce) { .bubble { animation: none; } }

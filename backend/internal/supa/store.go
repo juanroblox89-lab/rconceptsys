@@ -49,14 +49,15 @@ type dbPerfilRol struct {
 }
 
 type dbChatMensaje struct {
-	EsRIA     bool      `json:"es_ria"`
-	ID        int64     `json:"id"`
-	AutorID   string    `json:"autor_id"`
-	Cuerpo    string    `json:"cuerpo"`
-	CreadoEn  string    `json:"creado_en"`
-	EditadoEn *string   `json:"editado_en"`
-	BorradoEn *string   `json:"borrado_en"`
-	Autor     *dbPerfil `json:"perfiles"`
+	RespuestaAID *int64    `json:"respuesta_a_id"`
+	EsRIA        bool      `json:"es_ria"`
+	ID           int64     `json:"id"`
+	AutorID      string    `json:"autor_id"`
+	Cuerpo       string    `json:"cuerpo"`
+	CreadoEn     string    `json:"creado_en"`
+	EditadoEn    *string   `json:"editado_en"`
+	BorradoEn    *string   `json:"borrado_en"`
+	Autor        *dbPerfil `json:"perfiles"`
 }
 
 // Modelos DB PostgREST para F2 y F3
@@ -98,6 +99,7 @@ type dbTarea struct {
 	PiezaID                 *int                           `json:"pieza_id"`
 	Titulo                  string                         `json:"titulo"`
 	Descripcion             *string                        `json:"descripcion"`
+	Guion                   string                         `json:"guion"`
 	AsignadoA               string                         `json:"asignado_a"`
 	CreadoPor               string                         `json:"creado_por"`
 	AsignadorID             *string                        `json:"asignador_id"`
@@ -349,14 +351,15 @@ func (s *SupabaseStore) convertirChatMensaje(ctx context.Context, item *dbChatMe
 		autorID = store.AutorChatRIA
 	}
 	return &store.ChatMensaje{
-		EsRIA:     item.EsRIA,
-		ID:        item.ID,
-		AutorID:   autorID,
-		Autor:     autor,
-		Cuerpo:    item.Cuerpo,
-		CreadoEn:  t,
-		EditadoEn: editT,
-		BorradoEn: borradoT,
+		RespuestaAID: item.RespuestaAID,
+		EsRIA:        item.EsRIA,
+		ID:           item.ID,
+		AutorID:      autorID,
+		Autor:        autor,
+		Cuerpo:       item.Cuerpo,
+		CreadoEn:     t,
+		EditadoEn:    editT,
+		BorradoEn:    borradoT,
 	}
 }
 
@@ -389,6 +392,7 @@ func (s *SupabaseStore) ListarMensajesChat(ctx context.Context, antesID int64, d
 		res = append(res, s.convertirChatMensaje(ctx, &rows[i], false))
 	}
 	s.adjuntosPorMensajes(ctx, res)
+	s.citasChat(ctx, res)
 	return res, nil
 }
 
@@ -409,6 +413,7 @@ func (s *SupabaseStore) ObtenerMensajeChatPorID(ctx context.Context, id int64, i
 	}
 	msg := s.convertirChatMensaje(ctx, &rows[0], incluirBorrado)
 	s.adjuntosPorMensajes(ctx, []*store.ChatMensaje{msg})
+	s.citasChat(ctx, []*store.ChatMensaje{msg})
 	return msg, nil
 }
 
@@ -446,6 +451,7 @@ func (s *SupabaseStore) EditarMensajeChat(ctx context.Context, id int64, autorID
 	}
 	msg := s.convertirChatMensaje(ctx, &rows[0], false)
 	s.adjuntosPorMensajes(ctx, []*store.ChatMensaje{msg})
+	s.citasChat(ctx, []*store.ChatMensaje{msg})
 	return msg, nil
 }
 
@@ -515,6 +521,7 @@ func (s *SupabaseStore) RestaurarMensajeChat(ctx context.Context, id int64, acto
 	}
 	msg := s.convertirChatMensaje(ctx, &rows[0], false)
 	s.adjuntosPorMensajes(ctx, []*store.ChatMensaje{msg})
+	s.citasChat(ctx, []*store.ChatMensaje{msg})
 	return msg, nil
 }
 
@@ -834,6 +841,7 @@ func convertirTarea(dt *dbTarea) *store.Tarea {
 		ClienteID:               dt.ClienteID,
 		Titulo:                  dt.Titulo,
 		Descripcion:             dt.Descripcion,
+		Guion:                   dt.Guion,
 		AsignadoA:               dt.AsignadoA,
 		CreadoPor:               dt.CreadoPor,
 		AsignadorID:             dt.AsignadorID,
@@ -959,6 +967,7 @@ func (s *SupabaseStore) CrearTarea(ctx context.Context, t *store.Tarea) (*store.
 		"pieza_id":         t.PiezaID,
 		"titulo":           strings.TrimSpace(t.Titulo),
 		"descripcion":      t.Descripcion,
+		"guion":            t.Guion,
 		"asignado_a":       t.AsignadoA,
 		"creado_por":       t.CreadoPor,
 		"asignador_id":     t.CreadoPor,
@@ -1176,13 +1185,16 @@ func (s *SupabaseStore) PedirDeNuevoTarea(ctx context.Context, id int64, adminID
 		"id": {fmt.Sprintf("eq.%d", id)}, "estado": {"eq.aceptada"},
 		"select": {"*,tipos_trabajo(*,roles(*)),clientes(*),piezas(id,nombre,etapa),asignado:perfiles!tareas_asignado_a_fkey(*),creador:perfiles!tareas_creado_por_fkey(*)"},
 	}
-	// La migración 027 usa resuelta_por como actor y lo limpia en el mismo PATCH.
+	// La reapertura usa resuelta_por como actor y lo limpia en el mismo PATCH.
+	// Es la misma fila: el guion se devuelve en la representación sin reescribirlo.
 	payload := map[string]any{"estado": store.EstadoTareaPendiente, "resuelta_por": adminID, "motivo_reapertura": strings.TrimSpace(motivo)}
 	var rows []dbTarea
 	if err := s.client.REST(ctx, "PATCH", "tareas", q, payload, "return=representation", &rows); err != nil {
 		var fallo *Error
 		if errors.As(err, &fallo) {
 			switch {
+			case fallo.Status == 409 && strings.Contains(fallo.Body, "purga_en_curso"):
+				return nil, store.ErrPurgaEnCurso
 			case fallo.Status == 409 && strings.Contains(fallo.Body, "corte_pagado"):
 				return nil, store.ErrCortePagado
 			case strings.Contains(fallo.Body, "no_autorizado"):
@@ -1264,6 +1276,8 @@ func vistaAdjuntosDeLista(lista []*store.AdjuntoAsignacion) map[int64][]*store.V
 			continue
 		}
 		porHist[*a.HistorialID] = append(porHist[*a.HistorialID], &store.VistaAdjuntoTarea{
+			Conservar:     a.Conservar,
+			PurgadoEn:     a.PurgadoEn,
 			ID:            a.ID,
 			Tipo:          a.Tipo,
 			Nombre:        a.Nombre,
@@ -1496,6 +1510,7 @@ func (s *SupabaseStore) cargarLineasFactura(ctx context.Context, f *store.Factur
 	lineas := make([]*store.Tarea, len(rows))
 	for i := range rows {
 		t := convertirTarea(&rows[i])
+		t.Guion = "" // Las instrucciones del pedido no son un dato de facturación.
 		lineas[i] = t
 		if t.PrecioCongelado != nil {
 			total += *t.PrecioCongelado

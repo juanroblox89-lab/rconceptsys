@@ -182,10 +182,10 @@ export const api = {
     if (limite && limite > 0) q.set('limite', limite.toString());
     return fetchApi<ChatMensaje[]>(`/api/chat?${q.toString()}`);
   },
-  postChat: (cuerpo: string, adjuntos?: number[]) =>
+  postChat: (cuerpo: string, adjuntos?: number[], respuesta_a_id?: number | null) =>
     fetchApi<ChatMensaje>('/api/chat', {
       method: 'POST',
-      body: JSON.stringify({ cuerpo, adjuntos: adjuntos ?? [] }),
+      body: JSON.stringify({ cuerpo, adjuntos: adjuntos ?? [], respuesta_a_id }),
     }),
   patchChatMensaje: (id: number, cuerpo: string) =>
     fetchApi<ChatMensaje>(`/api/chat/${id}`, {
@@ -223,6 +223,10 @@ export const api = {
     fetchApi<ChatAdjunto>('/api/chat/adjuntos', {
       method: 'POST',
       body: JSON.stringify({ nombre, url }),
+    }),
+  conservarChatAdjunto: (id: number, conservar: boolean) =>
+    fetchApi<ChatAdjunto>(`/api/chat/adjuntos/${id}/conservar`, {
+      method: "PATCH", body: JSON.stringify({ conservar }),
     }),
   urlAdjunto: (id: number) => `/api/chat/adjuntos/${id}/archivo`,
 
@@ -393,8 +397,8 @@ export const api = {
     if (estado) q.set('estado', estado);
     return fetchApi<Tarea[]>(`/api/tareas?${q.toString()}`);
   },
-  getTareaWhatsApp: (id: number) =>
-    fetchApi<{ url: string; disponible?: boolean; nombre?: string }>(`/api/tareas/${id}/whatsapp`, { cache: 'no-store' }),
+  getTareaWhatsApp: (id: number, para?: 'asignacion') =>
+    fetchApi<{ url: string; disponible?: boolean; nombre?: string }>(`/api/tareas/${id}/whatsapp${para ? '?para=asignacion' : ''}`, { cache: 'no-store' }),
   postTareaHecha: (
     id: number,
     nota?: string,
@@ -487,6 +491,7 @@ export const api = {
     asignado_a: string;
     titulo: string;
     descripcion?: string;
+    guion?: string;
     fecha_limite?: string;
     forzar?: boolean;
  drive_carpeta_id?: string;
@@ -497,7 +502,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(tarea),
     }),
-  adminPatchTarea: (id: number, campos: Partial<{ tipo_id: number; asignado_a: string; descripcion: string; fecha_limite: string; drive_carpeta_id: string; drive_crear: string; drive_referencias: ReferenciaDriveTrabajo[]; forzar: boolean }>) => fetchApi<Tarea>(`/api/admin/tareas/${id}`, { method: 'PATCH', body: JSON.stringify(campos) }),
+  adminPatchTarea: (id: number, campos: Partial<{ tipo_id: number; asignado_a: string; descripcion: string; guion: string; fecha_limite: string; drive_carpeta_id: string; drive_crear: string; drive_referencias: ReferenciaDriveTrabajo[]; forzar: boolean }>) => fetchApi<Tarea>(`/api/admin/tareas/${id}`, { method: 'PATCH', body: JSON.stringify(campos) }),
  adminClienteDrive: (id: number, datos: {crear?: boolean; carpeta_id?: string}) => fetchApi<Cliente>(`/api/admin/clientes/${id}/drive`, {method: 'POST',body:JSON.stringify(datos)}),
  adminAceptarTarea: (id: number, cantidad?: number) =>
     fetchApi<Tarea>(`/api/admin/tareas/${id}/aceptar`, {

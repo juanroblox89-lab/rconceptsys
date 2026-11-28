@@ -3,7 +3,8 @@
 import { EnlaceExterno } from "@/components/ui/EnlaceExterno";
 import { errorEnlaceDrive } from "@/components/ui/EnlaceDrive";
 import { useEffect, useState } from "react";
-import { Download, FileText, FolderOpen, X, ExternalLink } from "lucide-react";
+import { Download, FileText, FolderOpen, X, ExternalLink, ShieldCheck, Archive } from "lucide-react";
+import { AVISO_ARCHIVO_PURGADO } from "@/lib/chat-utils";
 import { api } from "@/lib/api";
 import { ChatAdjunto } from "@/lib/types";
 import { ReproductorAudio } from "./ReproductorAudio";
@@ -48,9 +49,15 @@ export function AdjuntoVista({ adjunto, propio = false }: AdjuntoVistaProps) {
     return () => window.removeEventListener("keydown", escapar);
   }, [zoom]);
 
+  if (adjunto.purgado_en && adjunto.tipo !== "drive") return <div className={styles.avisoPurgado}>
+    <Archive size={16} aria-hidden="true" /><span>{AVISO_ARCHIVO_PURGADO}</span>
+  </div>;
+  const protegido = adjunto.conservar ? <span className={styles.protegido}><ShieldCheck size={13} aria-hidden="true" />Conservado</span> : null;
+
   if (adjunto.tipo === "imagen") {
     return (
       <div className={styles.imagenCaja}>
+        {protegido}
         <button type="button" className={styles.imagenBoton} onClick={() => setZoom(true)} aria-label={`Abrir ${adjunto.nombre} en grande`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={url} alt={adjunto.nombre} className={styles.imagen} loading="lazy" />
@@ -75,6 +82,7 @@ export function AdjuntoVista({ adjunto, propio = false }: AdjuntoVistaProps) {
   if (adjunto.tipo === "video") {
     return (
       <div className={styles.videoCaja}>
+        {protegido}
         <video src={url} controls preload="metadata" className={styles.video} aria-label={adjunto.nombre} />
         <p className={styles.videoNombre}>
           {adjunto.nombre} · {fmtPeso(adjunto.tamano)}
@@ -86,6 +94,7 @@ export function AdjuntoVista({ adjunto, propio = false }: AdjuntoVistaProps) {
   if (adjunto.tipo === "audio") {
     return (
       <div className={styles.audioCaja}>
+        {protegido}
         <ReproductorAudio src={url} nombre={adjunto.nombre} duracion={adjunto.duracion_seg} propio={propio} />
       </div>
     );

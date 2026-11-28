@@ -29,19 +29,21 @@ type configEquipoJSON struct {
 }
 
 type dbAdjunto struct {
-	ID          int64   `json:"id"`
-	MensajeID   *int64  `json:"mensaje_id"`
-	AutorID     string  `json:"autor_id"`
-	Tipo        string  `json:"tipo"`
-	Nombre      string  `json:"nombre"`
-	Mime        string  `json:"mime"`
-	Tamano      int64   `json:"tamano"`
-	DuracionSeg *int    `json:"duracion_seg"`
-	Ancho       *int    `json:"ancho"`
-	Alto        *int    `json:"alto"`
-	StoragePath *string `json:"storage_path"`
-	URLExterna  *string `json:"url_externa"`
-	CreadoEn    string  `json:"creado_en"`
+	Conservar   bool       `json:"conservar"`
+	PurgadoEn   *time.Time `json:"purgado_en"`
+	ID          int64      `json:"id"`
+	MensajeID   *int64     `json:"mensaje_id"`
+	AutorID     string     `json:"autor_id"`
+	Tipo        string     `json:"tipo"`
+	Nombre      string     `json:"nombre"`
+	Mime        string     `json:"mime"`
+	Tamano      int64      `json:"tamano"`
+	DuracionSeg *int       `json:"duracion_seg"`
+	Ancho       *int       `json:"ancho"`
+	Alto        *int       `json:"alto"`
+	StoragePath *string    `json:"storage_path"`
+	URLExterna  *string    `json:"url_externa"`
+	CreadoEn    string     `json:"creado_en"`
 }
 
 func convertirAdjunto(d *dbAdjunto) *store.ChatAdjunto {
@@ -50,6 +52,8 @@ func convertirAdjunto(d *dbAdjunto) *store.ChatAdjunto {
 	}
 	t, _ := time.Parse(time.RFC3339, d.CreadoEn)
 	return &store.ChatAdjunto{
+		Conservar:   d.Conservar,
+		PurgadoEn:   d.PurgadoEn,
 		ID:          d.ID,
 		MensajeID:   d.MensajeID,
 		AutorID:     d.AutorID,
@@ -566,7 +570,7 @@ func (s *SupabaseStore) LeerArchivoAdjunto(ctx context.Context, id int64) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	if a.StoragePath == nil || *a.StoragePath == "" {
+	if !a.Descargable() {
 		return nil, store.ErrNotFound
 	}
 	return s.client.DownloadStorage(ctx, "chat", *a.StoragePath)

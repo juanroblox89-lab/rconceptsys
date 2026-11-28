@@ -22,6 +22,8 @@ type AdjuntoAsignacion struct {
 	Tamano         int        `json:"tamano"`
 	Mime           string     `json:"mime"`
 	DuracionMS     *int       `json:"duracion_ms"`
+	Conservar      bool       `json:"conservar"`
+	PurgadoEn      *time.Time `json:"purgado_en,omitempty"`
 	EstadoArchivo  string     `json:"estado_archivo"`
 	Resumir        bool       `json:"resumir"`
 	EstadoResumen  string     `json:"estado_resumen"`

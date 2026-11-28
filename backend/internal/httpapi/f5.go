@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -194,10 +196,12 @@ func (a *API) handlePostChatAdjunto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(maxAdjuntoChat + 1024*1024); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxAdjuntoChat+64*1024)
+	if err := r.ParseMultipartForm(maxAdjuntoChat + 64*1024); err != nil {
 		ResponderError(w, http.StatusBadRequest, "archivo_grande", "El archivo supera el límite de 20 MB. Para videos pesados usa una carpeta de Drive.")
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 	archivo, cabecera, err := r.FormFile("archivo")
 	if err != nil {
 		ResponderError(w, http.StatusBadRequest, "archivo_faltante", "Adjunta un archivo en el campo 'archivo'.")
@@ -205,6 +209,10 @@ func (a *API) handlePostChatAdjunto(w http.ResponseWriter, r *http.Request) {
 	}
 	defer archivo.Close()
 
+	if cabecera.Size == 0 {
+		ResponderError(w, http.StatusBadRequest, "archivo_vacio", "El archivo está vacío.")
+		return
+	}
 	if cabecera.Size > maxAdjuntoChat {
 		ResponderError(w, http.StatusBadRequest, "archivo_grande", "El archivo supera el límite de 20 MB. Para videos pesados usa una carpeta de Drive.")
 		return
@@ -216,14 +224,14 @@ func (a *API) handlePostChatAdjunto(w http.ResponseWriter, r *http.Request) {
 		ResponderError(w, http.StatusBadRequest, "archivo_ilegible", "No se pudo leer el archivo.")
 		return
 	}
-	mime := http.DetectContentType(cabecera512[:n])
+	tipoMIME := http.DetectContentType(cabecera512[:n])
 	// Los navegadores no siempre detectan bien audios y documentos: se usa el tipo declarado como respaldo.
-	declarado := cabecera.Header.Get("Content-Type")
+	declarado, _, _ := mime.ParseMediaType(cabecera.Header.Get("Content-Type"))
 	if strings.HasPrefix(declarado, "audio/") || strings.HasPrefix(declarado, "video/") {
-		mime = declarado
+		tipoMIME = declarado
 	}
 
-	tipo, ok := tipoDeMime(mime)
+	tipo, ok := tipoDeMime(tipoMIME)
 	if !ok {
 		ResponderError(w, http.StatusBadRequest, "tipo_no_permitido", "Ese tipo de archivo no se puede adjuntar.")
 		return
@@ -253,7 +261,7 @@ func (a *API) handlePostChatAdjunto(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	adjunto, err := a.Store.GuardarAdjuntoChat(r.Context(), yo.ID, tipo, cabecera.Filename, mime, int64(len(datos)), duracion, datos)
+	adjunto, err := a.Store.GuardarAdjuntoChat(r.Context(), yo.ID, tipo, cabecera.Filename, tipoMIME, int64(len(datos)), duracion, datos)
 	if err != nil {
 		ResponderError(w, http.StatusInternalServerError, "error_guardar", "No se pudo guardar el archivo.")
 		return
@@ -277,6 +285,20 @@ func (a *API) handleGetChatAdjuntoArchivo(w http.ResponseWriter, r *http.Request
 		ResponderError(w, http.StatusInternalServerError, "error_adjunto", "No se pudo consultar el archivo.")
 		return
 	}
+	yo := UsuarioDesdeContexto(r.Context())
+	if adjunto.MensajeID == nil {
+		if adjunto.AutorID != yo.ID {
+			faltaAdjunto(w)
+			return
+		}
+	} else if _, err := a.Store.ObtenerMensajeChatPorID(r.Context(), *adjunto.MensajeID, false); err != nil {
+		faltaAdjunto(w)
+		return
+	}
+	if adjunto.PurgadoEn != nil {
+		responderArchivoPurgado(w)
+		return
+	}
 	datos, err := a.Store.LeerArchivoAdjunto(r.Context(), id)
 	if err != nil {
 		ResponderError(w, http.StatusNotFound, "archivo_no_encontrado", "El archivo no está disponible.")
@@ -293,10 +315,9 @@ func (a *API) handleGetChatAdjuntoArchivo(w http.ResponseWriter, r *http.Request
 	}
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposicion, adjunto.Nombre))
-	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(datos)
+	http.ServeContent(w, r, adjunto.Nombre, time.Time{}, bytes.NewReader(datos))
 }
 
 // ---------- Asignaciones (admin) ----------

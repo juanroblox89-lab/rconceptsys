@@ -107,3 +107,14 @@ npx next start -p 3310
 - Administración puede reabrir un trabajo aprobado desde Tareas, su detalle, el historial de la persona o el cliente. Gestión → Facturas enlaza al detalle desde una factura abierta. El trabajo vuelve a pendiente, conserva el historial de la entrega y sale de la factura abierta; no se permite reabrir uno ya pagado.
 - El asignado y los demás admins reciben «Trabajo para rehacer», salvo quien ejecutó la acción. Configuración controla este aviso y los de cancelación o reasignación.
 - Aplicar [027](supabase/migrations/027_pedido_de_nuevo.sql) antes de desplegar el backend. No hace falta una RPC nueva ni mover archivos de Drive.
+
+## 13. Guion opcional del trabajo
+
+- Bajo **Especificaciones**, **Agregar guion (opcional)** admite hasta 20.000 caracteres. El trabajador y el admin pueden expandirlo y copiarlo desde el trabajo; no forma parte de facturas ni exportes.
+- **Pedir de nuevo** conserva el guion vigente al reabrir el trabajo. Los avisos de asignación y el mensaje manual de WhatsApp solo indican «Incluye guion».
+- Validar [029](supabase/migrations/029_guion_tarea.sql) en una base aislada después de 028 y aplicarla antes del backend que guarda guiones.
+
+## 14. Chat del equipo y retención de archivos
+
+- En el chat, usa **Responder**, graba o adjunta voz y protege cualquier medio importante con **Conservar / No purgar**. En móviles, abre las acciones manteniendo pulsado el mensaje.
+- La retención de 15 días afecta solo a binarios elegibles de Storage; conserva texto, referencias de Drive, resúmenes y transcripciones. Consulta [criterios, permisos y puesta en marcha](docs/RETENCION-STORAGE-15D.md) antes de habilitar el cron sobre datos reales.
